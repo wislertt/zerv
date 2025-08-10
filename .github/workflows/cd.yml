@@ -1,9 +1,12 @@
 name: CD
 
 on:
-    release:
-        # types: [published]
-        types: [published, created, edited]
+    push:
+        tags:
+            - "v*"
+    # release:
+    #     # types: [published]
+    #     types: [published, created, edited]
     workflow_dispatch:
 
 jobs:
@@ -18,8 +21,9 @@ jobs:
 
             - name: Update version from tag
               run: |
-                  echo "Tag: $GITHUB_REF_NAME"
-                  sed -i "s/^version = \".*\"/version = \"$GITHUB_REF_NAME\"/" Cargo.toml
+                  TAG="${{ github.event.release.tag_name }}"
+                  echo "Tag: $TAG"
+                  sed -i "s/^version = \".*\"/version = \"${TAG#v}\"/" Cargo.toml
 
             - name: Publish to crates.io
               run: cargo publish --token ${{ secrets.CARGO_TOKEN }}
