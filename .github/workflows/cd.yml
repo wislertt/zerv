@@ -50,4 +50,4 @@ jobs:
                   sed -i "s/^version = \".*\"/version = \"${{ needs.versioning.outputs.new_release_version }}\"/" Cargo.toml
 
             - name: Publish to crates.io
-              run: cargo publish --token ${{ secrets.CARGO_TOKEN }}
+              run: cargo publish --token ${{ secrets.CARGO_TOKEN }} --allow-dirty
