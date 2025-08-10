@@ -19,3 +19,11 @@ Download pre-built binaries from [GitHub Releases](https://github.com/wisarootl/
 ```bash
 cargo install zerv
 ```
+
+## Uninstall
+
+For Quick Install and Manual Download:
+
+```bash
+rm ~/.local/bin/zerv
+```
