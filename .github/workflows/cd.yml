@@ -32,10 +32,55 @@ jobs:
             - name: Use version output
               run: echo "Released version is ${{ steps.release.outputs.new_release_version }}"
 
-    publish:
-        name: Publish
-        runs-on: ubuntu-latest
+    build:
+        name: Build Binaries
+        runs-on: ${{ matrix.os }}
         needs: versioning
+        if: needs.versioning.outputs.new_release_published == 'true'
+        strategy:
+            matrix:
+                include:
+                    - os: ubuntu-latest
+                      target: x86_64-unknown-linux-gnu
+                      artifact_name: zerv
+                      asset_name: zerv-linux-x86_64
+                    - os: macos-latest
+                      target: x86_64-apple-darwin
+                      artifact_name: zerv
+                      asset_name: zerv-macos-x86_64
+                    - os: windows-latest
+                      target: x86_64-pc-windows-msvc
+                      artifact_name: zerv.exe
+                      asset_name: zerv-windows-x86_64.exe
+        steps:
+            - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+              with:
+                  toolchain: stable
+                  targets: ${{ matrix.target }}
+
+            - name: Update Cargo.toml version
+              run: |
+                  echo "Updating version to ${{ needs.versioning.outputs.new_release_version }}"
+                  sed -i "s/^version = \".*\"/version = \"${{ needs.versioning.outputs.new_release_version }}\"/" Cargo.toml
+              shell: bash
+
+            - name: Build binary
+              run: cargo build --release --target ${{ matrix.target }}
+
+            - name: Upload binary to release
+              uses: svenstaro/upload-release-action@04733e069f2d7f7f0b4aebc4fbdbce8613b03ccd # v2
+              with:
+                  repo_token: ${{ secrets.GITHUB_TOKEN }}
+                  file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+                  asset_name: ${{ matrix.asset_name }}
+                  tag: v${{ needs.versioning.outputs.new_release_version }}
+
+    publish:
+        name: Publish to Crates.io
+        runs-on: ubuntu-latest
+        needs: [versioning, build]
         if: needs.versioning.outputs.new_release_published == 'true'
         steps:
             - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
