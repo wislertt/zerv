@@ -18,10 +18,20 @@ jobs:
             - uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
               with:
                   toolchain: stable
+            - name: Get tag
+              run: |
+                  if [ "${{ github.event_name }}" = "release" ]; then
+                      TAG="${{ github.event.release.tag_name }}"
+                  elif [ "${{ github.ref_type }}" = "tag" ]; then
+                      TAG="${GITHUB_REF_NAME}"
+                  else
+                      echo "No tag found. Please provide one."
+                      exit 1
+                  fi
+                  echo "TAG=$TAG" >> $GITHUB_ENV
 
             - name: Update version from tag
               run: |
-                  TAG="${{ github.event.release.tag_name }}"
                   echo "Tag: $TAG"
                   sed -i "s/^version = \".*\"/version = \"${TAG#v}\"/" Cargo.toml
 
