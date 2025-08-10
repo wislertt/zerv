@@ -1,0 +1,14 @@
+name: Tag Push Debug
+
+on:
+    push:
+        tags:
+            - "v*"
+
+jobs:
+    debug:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Debug tag
+              run: |
+                  echo "Workflow triggered on tag: $GITHUB_REF_NAME"
