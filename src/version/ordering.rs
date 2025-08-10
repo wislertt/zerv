@@ -186,6 +186,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::nonminimal_bool)]
     fn test_version_equal_comparison() {
         let v1 = Version::new(1, 2, 3);
         let v2 = Version::new(1, 2, 3);
@@ -194,6 +195,18 @@ mod tests {
         assert!(v1 >= v2);
         assert!(!(v1 < v2));
         assert!(!(v1 > v2));
+    }
+
+    #[test]
+    #[allow(clippy::nonminimal_bool)]
+    fn test_version_strict_inequality() {
+        let v1 = Version::new(1, 2, 3);
+        let v2 = Version::new(1, 2, 4);
+
+        assert!(v1 < v2); // v1 is less than v2
+        assert!(!(v2 < v1)); // v2 is not less than v1
+        assert!(v2 > v1); // v2 is greater than v1
+        assert!(!(v1 > v2)); // v1 is not greater than v2
     }
 
     #[test]

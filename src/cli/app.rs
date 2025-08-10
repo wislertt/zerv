@@ -21,9 +21,9 @@ pub fn run_with_args<W: Write>(
 
     let version = Version::new(1, 2, 3);
     let output = format_version(&version);
-    writeln!(writer, "{}", output)?;
-    writeln!(writer, "Debug: {:?}", version)?;
-    writeln!(writer, "Display: {:#?}", version)?;
+    writeln!(writer, "{output}")?;
+    writeln!(writer, "Debug: {version:?}")?;
+    writeln!(writer, "Display: {version:#?}")?;
     Ok(())
 }
 
@@ -34,13 +34,13 @@ pub fn run() {
         if let Some(clap_err) = e.downcast_ref::<clap::Error>() {
             match clap_err.kind() {
                 clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion => {
-                    print!("{}", clap_err);
+                    print!("{clap_err}");
                     return;
                 }
                 _ => {}
             }
         }
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
         std::process::exit(1);
     }
 }

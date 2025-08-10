@@ -4,7 +4,7 @@ use std::process::Command;
 #[test]
 fn test_default_output() {
     let output = Command::new("cargo")
-        .args(&["run", "--bin", "zerv"])
+        .args(["run", "--bin", "zerv"])
         .output()
         .expect("Failed to execute command");
 
@@ -19,7 +19,7 @@ fn test_default_output() {
 #[case("--version")]
 fn test_version_flags(#[case] flag: &str) {
     let output = Command::new("cargo")
-        .args(&["run", "--bin", "zerv", "--", flag])
+        .args(["run", "--bin", "zerv", "--", flag])
         .output()
         .expect("Failed to execute command");
 
