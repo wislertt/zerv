@@ -1,7 +1,10 @@
 [package]
 name = "zerv"
-version = "0.1.0"
+version = "0.0.0" # Use git tag
 edition = "2024"
+description = "Dynamic Versioning CLI"
+license = "Apache-2.0"
+repository = "https://github.com/wisarootl/zerv"
 
 [[bin]]
 name = "zerv"

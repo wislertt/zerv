@@ -1,0 +1,21 @@
+name: CD
+
+on:
+    release:
+        types: [published]
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - uses: dtolnay/rust-toolchain@4305c38b25d97ef35a8ad1f985ccf2d2242004f2 # stable
+
+            - name: Update version from tag
+              run: |
+                  VERSION=${GITHUB_REF#refs/tags/v}
+                  sed -i "s/^version = .*/version = \"$VERSION\"/" Cargo.toml
+
+            - name: Publish to crates.io
+              run: cargo publish --token ${{ secrets.CARGO_TOKEN }}
