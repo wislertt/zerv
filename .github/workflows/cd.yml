@@ -46,8 +46,8 @@ jobs:
 
             - name: Update Cargo.toml version
               run: |
-                  echo "Updating version to ${{ needs.versioning.outputs.version }}"
-                  sed -i "s/^version = \".*\"/version = \"${{ needs.versioning.outputs.version }}\"/" Cargo.toml
+                  echo "Updating version to ${{ needs.versioning.outputs.new_release_published }}"
+                  sed -i "s/^version = \".*\"/version = \"${{ needs.versioning.outputs.new_release_published }}\"/" Cargo.toml
 
             - name: Publish to crates.io
               run: cargo publish --token ${{ secrets.CARGO_TOKEN }}
