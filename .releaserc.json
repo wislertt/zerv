@@ -13,7 +13,9 @@
                     { "type": "style", "release": "patch" },
                     { "type": "refactor", "release": "patch" },
                     { "type": "perf", "release": "patch" },
-                    { "type": "test", "release": "patch" }
+                    { "type": "test", "release": "patch" },
+                    { "type": "build", "release": "patch" },
+                    { "type": "ci", "release": "patch" }
                 ]
             }
         ],
