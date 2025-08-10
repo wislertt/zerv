@@ -11,4 +11,8 @@ name = "zerv"
 path = "src/main.rs"
 
 [dependencies]
+chrono = ">=0.4.41"
 clap = { version = ">=4.4", features = ["derive"] }
+
+[dev-dependencies]
+rstest = ">=0.18"

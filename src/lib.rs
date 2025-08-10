@@ -1,24 +1,5 @@
-use clap::Command;
+pub mod cli;
+pub mod version;
 
-pub fn hello() -> String {
-    "Hello, world!".to_string()
-}
-
-pub fn run() {
-    let app = Command::new("zerv")
-        .version(env!("CARGO_PKG_VERSION"))
-        .about("Dynamic Versioning CLI");
-
-    let _matches = app.get_matches();
-    println!("{}", hello());
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_hello() {
-        assert_eq!(hello(), "Hello, world!");
-    }
-}
+pub use cli::{create_app, format_version, run, run_with_args};
+pub use version::{Stage, Version};
