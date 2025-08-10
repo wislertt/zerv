@@ -24,3 +24,14 @@ fn test_main_binary() {
         "Hello, world!"
     );
 }
+
+#[test]
+fn test_version_flag() {
+    let output = Command::new("cargo")
+        .args(&["run", "--bin", "zerv", "--", "-V"])
+        .output()
+        .expect("Failed to execute command");
+
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stdout).contains("zerv 0.0.0"));
+}
