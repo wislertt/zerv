@@ -18,7 +18,8 @@ jobs:
             - name: Update version from tag
               run: |
                   VERSION=${GITHUB_REF#refs/tags/v}
-                  sed -i "s/^version = .*/version = \"$VERSION\"/" Cargo.toml
+                  echo $VERSION
+                  sed -i 's/^version = .*/version = "'$VERSION'"/' Cargo.toml
 
             - name: Publish to crates.io
               run: cargo publish --token ${{ secrets.CARGO_TOKEN }}
