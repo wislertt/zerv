@@ -25,6 +25,8 @@ Use these commands during development:
 
 Dunamai source code is available at `.cache/repos/dunamai` for reference during development.
 
+Ripgrep source code can be referenced at [https://github.com/BurntSushi/ripgrep](https://github.com/BurntSushi/ripgrep) for installation patterns and CLI best practices.
+
 ## Files
 
 - `planning.md` - Project planning and roadmap

@@ -35,17 +35,30 @@ jobs:
               with:
                   toolchain: stable
 
-            - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+            - name: Restore cache
+              uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
               with:
                   path: |
                       ~/.cargo/bin/
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
                   restore-keys: |
+                      cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                       cargo-${{ runner.os }}-
 
             - run: cargo install cargo-tarpaulin --locked || true
 
             - run: make test
+
+            - name: Save cache
+              uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+              if: always()
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}

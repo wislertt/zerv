@@ -13,15 +13,19 @@ lint:
 	cargo check
 	cargo fmt -- --check || (cargo fmt && exit 1)
 	cargo clippy --all-targets --all-features -- -D warnings
-	prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
+	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
+
+test_fast:
+	cargo test
 
 test:
-	cargo tarpaulin \
+	RUST_BACKTRACE=1 cargo tarpaulin \
 		--out Xml \
 		--out Html \
 		--output-dir coverage \
 		--include-tests \
-		--exclude-files src/main.rs
+		--exclude-files src/main.rs \
+		-- --include-ignored
 
 open_coverage:
 	open coverage/tarpaulin-report.html
