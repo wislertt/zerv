@@ -218,8 +218,7 @@ mod tests {
     #[ignore = "docker"]
     fn test_docker_git_init() {
         if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
-            return;
+            panic!("Docker not available - test should fail!");
         }
         let (dir, docker_git) = setup_docker_git();
         docker_git.init_repo(&dir).expect(DOCKER_INIT_ERROR);
@@ -230,8 +229,7 @@ mod tests {
     #[ignore = "docker"]
     fn test_docker_git_commit() {
         if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
-            return;
+            panic!("Docker not available - test should fail!");
         }
         let (dir, docker_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
@@ -244,8 +242,7 @@ mod tests {
     #[ignore = "docker"]
     fn test_docker_git_tag() {
         if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
-            return;
+            panic!("Docker not available - test should fail!");
         }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
@@ -257,8 +254,7 @@ mod tests {
     #[ignore = "docker"]
     fn test_docker_git_integration() {
         if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
-            return;
+            panic!("Docker not available - test should fail!");
         }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
