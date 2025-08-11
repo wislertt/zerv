@@ -16,5 +16,3 @@ clap = { version = ">=4.4", features = ["derive"] }
 
 [dev-dependencies]
 rstest = ">=0.18"
-# TODO:
-# Dummy comment to test cache - remove this line later

@@ -91,14 +91,6 @@ mod tests {
         drop(dir);
     }
 
-    // TODO: delete this
-    #[test]
-    #[allow(clippy::assertions_on_constants)]
-    fn test_cache_fail_dummy() {
-        // Dummy test to fail and test CI cache behavior
-        assert!(false, "Testing CI cache on failure");
-    }
-
     #[test]
     fn test_dir_path() {
         let dir = TestDir::new().unwrap();
