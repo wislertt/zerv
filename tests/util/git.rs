@@ -76,6 +76,36 @@ impl DockerGit {
 mod tests {
     use super::*;
 
+    // Error message constants
+    const DOCKER_INIT_ERROR: &str = "Docker git init should succeed";
+    const DOCKER_COMMIT_ERROR: &str = "Docker git commit should succeed";
+    const DOCKER_TAG_ERROR: &str = "Docker git tag should succeed";
+    const TEST_DIR_ERROR: &str = "Failed to create test dir";
+
+    // Helper for Docker test setup
+    fn setup_docker_git() -> (TestDir, DockerGit) {
+        let dir = TestDir::new().expect(TEST_DIR_ERROR);
+        let docker_git = DockerGit::new();
+        (dir, docker_git)
+    }
+
+    // Helper for initialized Docker git repo
+    fn setup_initialized_repo() -> (TestDir, DockerGit) {
+        let (dir, docker_git) = setup_docker_git();
+        docker_git.init_repo(&dir).expect(DOCKER_INIT_ERROR);
+        (dir, docker_git)
+    }
+
+    // Helper for repo with initial commit
+    fn setup_repo_with_commit() -> (TestDir, DockerGit) {
+        let (dir, docker_git) = setup_initialized_repo();
+        dir.create_file("README.md", "# Test").unwrap();
+        docker_git
+            .create_commit(&dir, "Initial commit")
+            .expect(DOCKER_COMMIT_ERROR);
+        (dir, docker_git)
+    }
+
     // Fast tests - always run (no Docker required)
     #[test]
     fn test_dummy_git_structure() {
@@ -99,69 +129,41 @@ mod tests {
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_init() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-        let docker_git = DockerGit::new();
-
-        docker_git
-            .init_repo(&dir)
-            .expect("Docker git init should succeed");
+        let (dir, docker_git) = setup_docker_git();
+        docker_git.init_repo(&dir).expect(DOCKER_INIT_ERROR);
         assert!(dir.path().join(".git").exists());
     }
 
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_commit() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-        let docker_git = DockerGit::new();
-
-        docker_git
-            .init_repo(&dir)
-            .expect("Docker git init should succeed");
+        let (dir, docker_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
         docker_git
             .create_commit(&dir, "Initial commit")
-            .expect("Docker git commit should succeed");
+            .expect(DOCKER_COMMIT_ERROR);
     }
 
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_tag() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-        let docker_git = DockerGit::new();
-
-        docker_git
-            .init_repo(&dir)
-            .expect("Docker git init should succeed");
-        dir.create_file("README.md", "# Test").unwrap();
-        docker_git
-            .create_commit(&dir, "Initial commit")
-            .expect("Docker git commit should succeed");
+        let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")
-            .expect("Docker git tag should succeed");
+            .expect(DOCKER_TAG_ERROR);
     }
 
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_integration() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-        let docker_git = DockerGit::new();
-
-        // Test full workflow
-        docker_git
-            .init_repo(&dir)
-            .expect("Docker git init should succeed");
-        dir.create_file("README.md", "# Test Repository").unwrap();
-        docker_git
-            .create_commit(&dir, "Initial commit")
-            .expect("Docker git commit should succeed");
+        let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")
-            .expect("Docker git tag should succeed");
+            .expect(DOCKER_TAG_ERROR);
         dir.create_file("feature.txt", "new feature").unwrap();
         docker_git
             .create_commit(&dir, "Add feature")
-            .expect("Docker git second commit should succeed");
+            .expect(DOCKER_COMMIT_ERROR);
 
         // Verify files exist
         assert!(dir.path().join(".git").exists());
