@@ -13,7 +13,7 @@ lint:
 	cargo check
 	cargo fmt -- --check || (cargo fmt && exit 1)
 	cargo clippy --all-targets --all-features -- -D warnings
-	prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
+	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
 test_fast:
 	cargo test

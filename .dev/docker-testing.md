@@ -16,7 +16,6 @@ Successfully implemented Docker-based testing approach to solve git integration 
 ### Test Categories
 
 1. **Fast Tests** (always run)
-
     - Dummy git structure tests using filesystem operations
     - No external dependencies required
     - Run in milliseconds
