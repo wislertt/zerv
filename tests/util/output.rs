@@ -55,16 +55,29 @@ impl TestOutput {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
     use std::process::Command;
 
-    #[test]
-    fn test_output_methods() {
-        let output = Command::new("/bin/echo")
-            .arg("test output")
-            .output()
-            .unwrap();
-        let test_output = TestOutput::new(output);
-        assert!(test_output.stdout().contains("test output"));
+    #[rstest]
+    #[case("test output", "test", true)]
+    #[case("hello world", "world", true)]
+    #[case("hello world", "foo", false)]
+    fn test_output_stdout_contains(
+        #[case] output: &str,
+        #[case] search: &str,
+        #[case] should_contain: bool,
+    ) {
+        let cmd_output = Command::new("/bin/echo").arg(output).output().unwrap();
+        let test_output = TestOutput::new(cmd_output);
+
+        if should_contain {
+            test_output.assert_stdout_contains(search);
+        } else {
+            let result = std::panic::catch_unwind(|| {
+                test_output.assert_stdout_contains(search);
+            });
+            assert!(result.is_err());
+        }
     }
 
     #[test]

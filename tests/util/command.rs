@@ -89,6 +89,7 @@ impl TestCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
     use std::process::Command;
 
     #[test]
@@ -97,11 +98,14 @@ mod tests {
         assert!(cmd.current_dir.is_none());
     }
 
-    #[test]
-    fn test_command_arg() {
+    #[rstest]
+    #[case("--version")]
+    #[case("--help")]
+    #[case("-V")]
+    #[case("-h")]
+    fn test_command_arg_variations(#[case] arg: &str) {
         let mut cmd = TestCommand::new();
-        cmd.arg("--version");
-        let _chained = cmd.arg("--help");
+        cmd.arg(arg);
     }
 
     #[test]

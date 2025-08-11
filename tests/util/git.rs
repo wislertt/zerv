@@ -114,12 +114,23 @@ impl DockerGit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
     // Error message constants
     const DOCKER_INIT_ERROR: &str = "Docker git init should succeed";
     const DOCKER_COMMIT_ERROR: &str = "Docker git commit should succeed";
     const DOCKER_TAG_ERROR: &str = "Docker git tag should succeed";
     const TEST_DIR_ERROR: &str = "Failed to create test dir";
+
+    #[rstest]
+    #[case(DOCKER_INIT_ERROR)]
+    #[case(DOCKER_COMMIT_ERROR)]
+    #[case(DOCKER_TAG_ERROR)]
+    #[case(TEST_DIR_ERROR)]
+    fn test_error_message_constants(#[case] message: &str) {
+        assert!(!message.is_empty());
+        assert!(message.len() > 10);
+    }
 
     // Helper for Docker test setup
     fn setup_docker_git() -> (TestDir, DockerGit) {
@@ -194,13 +205,14 @@ mod tests {
         // We don't assert the result since Docker may or may not be available
     }
 
-    #[test]
-    fn test_docker_git_run_command_without_docker() {
+    #[rstest]
+    #[case(&["--version"])]
+    #[case(&["status"])]
+    #[case(&["log", "--oneline"])]
+    fn test_docker_git_commands_without_docker(#[case] args: &[&str]) {
         let (dir, docker_git) = setup_docker_git();
-        // This will fail if Docker isn't available, but exercises the code path
-        let result = docker_git.run_git_command(&dir, &["--version"]);
-        // We don't assert success since Docker may not be available
-        let _ = result;
+        let result = docker_git.run_git_command(&dir, args);
+        let _ = result; // May fail if Docker unavailable
     }
 
     #[test]
