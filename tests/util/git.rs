@@ -54,6 +54,7 @@ impl DockerGit {
     }
 
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
+        // First, run git init with shell entrypoint
         let output = Command::new("docker")
             .args([
                 "run",
@@ -66,7 +67,7 @@ impl DockerGit {
                 "/workspace",
                 "alpine/git:latest",
                 "-c",
-                "git init && git config user.name 'Test User' && git config user.email 'test@example.com'",
+                "git init",
             ])
             .output()?;
 
@@ -76,6 +77,10 @@ impl DockerGit {
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
+
+        // Then configure git using separate commands
+        self.run_git_command(test_dir, &["config", "user.name", "Test User"])?;
+        self.run_git_command(test_dir, &["config", "user.email", "test@example.com"])?;
 
         Ok(())
     }
