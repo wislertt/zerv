@@ -48,6 +48,7 @@ impl Drop for TestDir {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
     #[test]
     fn test_dir_new() {
@@ -58,26 +59,16 @@ mod tests {
         drop(dir);
     }
 
-    #[test]
-    fn test_dir_create_file() {
+    #[rstest]
+    #[case("test.txt", "content")]
+    #[case("sub/dir/test.txt", "content")]
+    #[case("deep/nested/path/file.txt", "deep content")]
+    fn test_dir_create_file_variations(#[case] path: &str, #[case] content: &str) {
         let dir = TestDir::new().unwrap();
-        dir.create_file("test.txt", "content").unwrap();
-        let file_path = dir.path().join("test.txt");
+        dir.create_file(path, content).unwrap();
+        let file_path = dir.path().join(path);
         assert!(file_path.exists());
-        assert_eq!(fs::read_to_string(&file_path).unwrap(), "content");
-        // Keep dir alive until end of test
-        drop(dir);
-    }
-
-    #[test]
-    fn test_dir_create_file_with_subdirs() {
-        let dir = TestDir::new().unwrap();
-        dir.create_file("sub/dir/test.txt", "content").unwrap();
-        let file_path = dir.path().join("sub/dir/test.txt");
-        assert!(file_path.exists());
-        assert_eq!(fs::read_to_string(&file_path).unwrap(), "content");
-        // Keep dir alive until end of test
-        drop(dir);
+        assert_eq!(fs::read_to_string(&file_path).unwrap(), content);
     }
 
     #[test]
