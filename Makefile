@@ -16,7 +16,7 @@ lint:
 	prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
 test:
-	cargo tarpaulin \
+	RUST_BACKTRACE=1 cargo tarpaulin \
 		--out Xml \
 		--out Html \
 		--output-dir coverage \
