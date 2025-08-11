@@ -14,7 +14,7 @@ curl -sSL https://raw.githubusercontent.com/wisarootl/zerv/main/scripts/install.
 curl -sSL https://raw.githubusercontent.com/wisarootl/zerv/main/scripts/install.sh | bash -s v0.4.3
 
 # Or using environment variable
-ZERV_VERSION=v0.4.3 curl -sSL https://raw.githubusercontent.com/wisarootl/zerv/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/wisarootl/zerv/main/scripts/install.sh | ZERV_VERSION=v0.4.3 bash
 ```
 
 ### Manual Download
