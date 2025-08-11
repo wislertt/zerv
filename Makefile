@@ -15,13 +15,17 @@ lint:
 	cargo clippy --all-targets --all-features -- -D warnings
 	prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
+test_fast:
+	cargo test
+
 test:
 	RUST_BACKTRACE=1 cargo tarpaulin \
 		--out Xml \
 		--out Html \
 		--output-dir coverage \
 		--include-tests \
-		--exclude-files src/main.rs
+		--exclude-files src/main.rs \
+		-- --include-ignored
 
 open_coverage:
 	open coverage/tarpaulin-report.html

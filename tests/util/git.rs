@@ -2,113 +2,72 @@ use super::TestDir;
 use std::io;
 use std::process::Command;
 
-/// Git VCS test utilities for git integration testing
+/// Git VCS test utilities
 impl TestDir {
-    /// Initialize a real git repository with initial commit
-    pub fn init_git_repo(&self) -> io::Result<()> {
-        // Initialize git repo
-        let output = Command::new("git")
-            .args(["init"])
-            .current_dir(self.path())
-            .output()?;
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "git init failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
-
-        // Configure git user for testing
-        let output = Command::new("git")
-            .args(["config", "user.name", "Test User"])
-            .current_dir(self.path())
-            .output()?;
-        if !output.status.success() {
-            return Err(io::Error::other("git config user.name failed"));
-        }
-
-        let output = Command::new("git")
-            .args(["config", "user.email", "test@example.com"])
-            .current_dir(self.path())
-            .output()?;
-        if !output.status.success() {
-            return Err(io::Error::other("git config user.email failed"));
-        }
-
-        Ok(())
-    }
-
-    /// Create an initial commit
-    pub fn create_initial_commit(&self) -> io::Result<()> {
-        self.create_file("README.md", "# Test Repository")?;
-
-        Command::new("git")
-            .args(["add", "."])
-            .current_dir(self.path())
-            .output()?;
-
-        Command::new("git")
-            .args(["commit", "-m", "Initial commit"])
-            .current_dir(self.path())
-            .output()?;
-
-        Ok(())
-    }
-
-    /// Create a git tag
-    pub fn create_tag(&self, tag: &str) -> io::Result<()> {
-        Command::new("git")
-            .args(["tag", tag])
-            .current_dir(self.path())
-            .output()?;
-        Ok(())
-    }
-
-    /// Create additional commits for distance testing
-    pub fn create_commits(&self, count: usize) -> io::Result<()> {
-        for i in 1..=count {
-            self.create_file(format!("file{i}.txt"), &format!("Content {i}"))?;
-
-            Command::new("git")
-                .args(["add", "."])
-                .current_dir(self.path())
-                .output()?;
-
-            Command::new("git")
-                .args(["commit", "-m", &format!("Commit {i}")])
-                .current_dir(self.path())
-                .output()?;
-        }
-        Ok(())
-    }
-
-    /// Make repository dirty (uncommitted changes)
-    pub fn make_dirty(&self) -> io::Result<()> {
-        self.create_file("dirty.txt", "uncommitted changes")?;
-        Ok(())
-    }
-
-    /// Create a branch and switch to it
-    pub fn create_branch(&self, branch: &str) -> io::Result<()> {
-        let output = Command::new("git")
-            .args(["checkout", "-b", branch])
-            .current_dir(self.path())
-            .output()?;
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "git checkout -b failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
-        Ok(())
-    }
-
-    /// Initialize a git repository (dummy implementation for future VCS support)
+    /// Initialize a dummy git repository (no real git commands)
     pub fn init_git(&self) -> io::Result<()> {
-        // Placeholder for future git initialization
-        // This would run: git init, git config, etc.
         self.create_dir(".git")?;
         self.create_file(".git/HEAD", "ref: refs/heads/main")?;
+        self.create_dir(".git/refs/heads")?;
+        self.create_file(".git/refs/heads/main", "dummy-commit-hash")?;
+        Ok(())
+    }
+
+    /// Create dummy git files for testing
+    pub fn create_dummy_git_files(&self) -> io::Result<()> {
+        self.init_git()?;
+        self.create_file("README.md", "# Test Repository")?;
+        Ok(())
+    }
+}
+
+/// Docker-based git operations for integration testing
+struct DockerGit;
+
+impl DockerGit {
+    fn new() -> Self {
+        Self
+    }
+
+    fn run_git_command(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
+        let output = Command::new("/opt/homebrew/bin/docker")
+            .args([
+                "run",
+                "--rm",
+                "-v",
+                &format!("{}:/workspace", test_dir.path().display()),
+                "-w",
+                "/workspace",
+                "alpine/git:latest",
+            ])
+            .args(args)
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker git command failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
+
+    fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
+        self.run_git_command(test_dir, &["init"])?;
+        self.run_git_command(test_dir, &["config", "user.name", "Test User"])?;
+        self.run_git_command(test_dir, &["config", "user.email", "test@example.com"])?;
+        Ok(())
+    }
+
+    fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()> {
+        self.run_git_command(test_dir, &["add", "."])?;
+        self.run_git_command(test_dir, &["commit", "-m", message])?;
+        Ok(())
+    }
+
+    fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
+        self.run_git_command(test_dir, &["tag", tag])?;
         Ok(())
     }
 }
@@ -117,146 +76,96 @@ impl TestDir {
 mod tests {
     use super::*;
 
-    fn git_available() -> bool {
-        std::process::Command::new("git")
-            .args(["--version"])
-            .output()
-            .map(|output| output.status.success())
-            .unwrap_or(false)
-    }
-
+    // Fast tests - always run (no Docker required)
     #[test]
-    fn test_git_available() {
-        // Test the git_available function itself
-        let _available = git_available();
-        // Just ensure it returns a boolean without panicking
-    }
-
-    #[test]
-    fn test_init_git_repo_without_git() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-
-        // Test that init_git_repo handles missing git gracefully
-        if !git_available() {
-            // If git is not available, the function should return an error
-            let result = dir.init_git_repo();
-            assert!(result.is_err());
-            return;
-        }
-
-        // If git is available, test successful initialization
-        let result = dir.init_git_repo();
-        if result.is_ok() {
-            assert!(dir.path().join(".git").exists());
-        }
-    }
-
-    #[test]
-    fn test_create_initial_commit() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-
-        if !git_available() {
-            return;
-        }
-
-        // Initialize git first
-        if dir.init_git_repo().is_ok() {
-            let result = dir.create_initial_commit();
-            if result.is_ok() {
-                assert!(dir.path().join("README.md").exists());
-            }
-        }
-    }
-
-    #[test]
-    fn test_create_tag() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-
-        if !git_available() {
-            return;
-        }
-
-        if dir.init_git_repo().is_ok() && dir.create_initial_commit().is_ok() {
-            let result = dir.create_tag("v1.0.0");
-            // Just test that the function doesn't panic
-            assert!(result.is_ok() || result.is_err());
-        }
-    }
-
-    #[test]
-    fn test_create_commits() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-
-        if !git_available() {
-            return;
-        }
-
-        if dir.init_git_repo().is_ok() && dir.create_initial_commit().is_ok() {
-            let result = dir.create_commits(2);
-            if result.is_ok() {
-                assert!(dir.path().join("file1.txt").exists());
-                assert!(dir.path().join("file2.txt").exists());
-            }
-        }
-    }
-
-    #[test]
-    fn test_make_dirty() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-
-        dir.make_dirty().unwrap();
-        assert!(dir.path().join("dirty.txt").exists());
-        let content = std::fs::read_to_string(dir.path().join("dirty.txt")).unwrap();
-        assert_eq!(content, "uncommitted changes");
-        // Keep dir alive until end of test
-        drop(dir);
-    }
-
-    #[test]
-    fn test_create_branch() {
-        let dir = TestDir::new().expect("Failed to create test dir");
-
-        if !git_available() {
-            return;
-        }
-
-        if dir.init_git_repo().is_ok() && dir.create_initial_commit().is_ok() {
-            let result = dir.create_branch("feature-branch");
-            // Just test that the function doesn't panic
-            assert!(result.is_ok() || result.is_err());
-        }
-    }
-
-    #[test]
-    fn test_git_utilities_integration() {
-        if !git_available() {
-            return;
-        }
-
-        let dir = TestDir::new().expect("Failed to create test dir");
-
-        // Test the full workflow if git is available
-        if let Ok(()) = dir.init_git_repo()
-            && let Ok(()) = dir.create_initial_commit()
-        {
-            let _ = dir.create_tag("v1.0.0");
-            let _ = dir.create_commits(1);
-            let _ = dir.make_dirty();
-
-            // Verify basic file structure
-            assert!(dir.path().join(".git").exists());
-            assert!(dir.path().join("README.md").exists());
-            assert!(dir.path().join("dirty.txt").exists());
-        }
-    }
-
-    #[test]
-    fn test_dir_init_git() {
+    fn test_dummy_git_structure() {
         let dir = TestDir::new().unwrap();
         dir.init_git().unwrap();
         assert!(dir.path().join(".git").exists());
         assert!(dir.path().join(".git/HEAD").exists());
         let head_content = std::fs::read_to_string(dir.path().join(".git/HEAD")).unwrap();
         assert_eq!(head_content, "ref: refs/heads/main");
+    }
+
+    #[test]
+    fn test_dummy_git_files() {
+        let dir = TestDir::new().unwrap();
+        dir.create_dummy_git_files().unwrap();
+        assert!(dir.path().join(".git").exists());
+        assert!(dir.path().join("README.md").exists());
+    }
+
+    // Docker-based integration tests - ignored by default
+    #[test]
+    #[ignore = "docker"]
+    fn test_docker_git_init() {
+        let dir = TestDir::new().expect("Failed to create test dir");
+        let docker_git = DockerGit::new();
+
+        docker_git
+            .init_repo(&dir)
+            .expect("Docker git init should succeed");
+        assert!(dir.path().join(".git").exists());
+    }
+
+    #[test]
+    #[ignore = "docker"]
+    fn test_docker_git_commit() {
+        let dir = TestDir::new().expect("Failed to create test dir");
+        let docker_git = DockerGit::new();
+
+        docker_git
+            .init_repo(&dir)
+            .expect("Docker git init should succeed");
+        dir.create_file("test.txt", "test content").unwrap();
+        docker_git
+            .create_commit(&dir, "Initial commit")
+            .expect("Docker git commit should succeed");
+    }
+
+    #[test]
+    #[ignore = "docker"]
+    fn test_docker_git_tag() {
+        let dir = TestDir::new().expect("Failed to create test dir");
+        let docker_git = DockerGit::new();
+
+        docker_git
+            .init_repo(&dir)
+            .expect("Docker git init should succeed");
+        dir.create_file("README.md", "# Test").unwrap();
+        docker_git
+            .create_commit(&dir, "Initial commit")
+            .expect("Docker git commit should succeed");
+        docker_git
+            .create_tag(&dir, "v1.0.0")
+            .expect("Docker git tag should succeed");
+    }
+
+    #[test]
+    #[ignore = "docker"]
+    fn test_docker_git_integration() {
+        let dir = TestDir::new().expect("Failed to create test dir");
+        let docker_git = DockerGit::new();
+
+        // Test full workflow
+        docker_git
+            .init_repo(&dir)
+            .expect("Docker git init should succeed");
+        dir.create_file("README.md", "# Test Repository").unwrap();
+        docker_git
+            .create_commit(&dir, "Initial commit")
+            .expect("Docker git commit should succeed");
+        docker_git
+            .create_tag(&dir, "v1.0.0")
+            .expect("Docker git tag should succeed");
+        dir.create_file("feature.txt", "new feature").unwrap();
+        docker_git
+            .create_commit(&dir, "Add feature")
+            .expect("Docker git second commit should succeed");
+
+        // Verify files exist
+        assert!(dir.path().join(".git").exists());
+        assert!(dir.path().join("README.md").exists());
+        assert!(dir.path().join("feature.txt").exists());
     }
 }
