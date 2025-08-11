@@ -62,7 +62,11 @@ jobs:
                   ls -la .git/
                   echo "3. Check .git inside container:"
                   docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "ls -la .git"
-                  echo "Debug passed - git init works!"
+                  echo "4. Test git config with explicit git dir:"
+                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "git --git-dir=.git config user.name 'Test User'"
+                  echo "5. Verify config was set:"
+                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "git --git-dir=.git config --list"
+                  echo "Debug passed - git init and config work!"
 
             - name: Restore cache
               uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
