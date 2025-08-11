@@ -59,14 +59,17 @@ mod tests {
 
     #[test]
     fn test_output_methods() {
-        let output = Command::new("echo").arg("test output").output().unwrap();
+        let output = Command::new("/bin/echo")
+            .arg("test output")
+            .output()
+            .unwrap();
         let test_output = TestOutput::new(output);
         assert!(test_output.stdout().contains("test output"));
     }
 
     #[test]
     fn test_output_stderr() {
-        let output = Command::new("sh")
+        let output = Command::new("/bin/sh")
             .args(["-c", "echo 'error output' >&2"])
             .output()
             .unwrap();
@@ -76,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_output_assert_stdout_contains() {
-        let output = Command::new("echo")
+        let output = Command::new("/bin/echo")
             .arg("hello world test")
             .output()
             .unwrap();
@@ -86,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_output_assert_stderr_contains() {
-        let output = Command::new("sh")
+        let output = Command::new("/bin/sh")
             .args(["-c", "echo 'error: something failed' >&2"])
             .output()
             .unwrap();
@@ -96,7 +99,10 @@ mod tests {
 
     #[test]
     fn test_output_assert_stdout_eq() {
-        let output = Command::new("echo").arg("exact match").output().unwrap();
+        let output = Command::new("/bin/echo")
+            .arg("exact match")
+            .output()
+            .unwrap();
         let test_output = TestOutput::new(output);
         test_output.assert_stdout_eq("exact match");
     }
