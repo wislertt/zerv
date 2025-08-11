@@ -21,31 +21,23 @@ impl TestDir {
     }
 }
 
-/// Docker-based git operations for integration testing
-struct DockerGit;
+/// System git operations for integration testing
+struct SystemGit;
 
-impl DockerGit {
+impl SystemGit {
     fn new() -> Self {
         Self
     }
 
     fn run_git_command(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
-        let output = Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "-v",
-                &format!("{}:/workspace", test_dir.path().display()),
-                "-w",
-                "/workspace",
-                "alpine/git:latest",
-            ])
+        let output = Command::new("git")
             .args(args)
+            .current_dir(test_dir.path())
             .output()?;
 
         if !output.status.success() {
             return Err(io::Error::other(format!(
-                "Docker git command failed: {}",
+                "Git command failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
@@ -54,7 +46,7 @@ impl DockerGit {
     }
 
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
-        self.run_git_command(test_dir, &["init", "."])?;
+        self.run_git_command(test_dir, &["init"])?;
         self.run_git_command(test_dir, &["config", "user.name", "Test User"])?;
         self.run_git_command(test_dir, &["config", "user.email", "test@example.com"])?;
         Ok(())
@@ -77,33 +69,33 @@ mod tests {
     use super::*;
 
     // Error message constants
-    const DOCKER_INIT_ERROR: &str = "Docker git init should succeed";
-    const DOCKER_COMMIT_ERROR: &str = "Docker git commit should succeed";
-    const DOCKER_TAG_ERROR: &str = "Docker git tag should succeed";
+    const GIT_INIT_ERROR: &str = "Git init should succeed";
+    const GIT_COMMIT_ERROR: &str = "Git commit should succeed";
+    const GIT_TAG_ERROR: &str = "Git tag should succeed";
     const TEST_DIR_ERROR: &str = "Failed to create test dir";
 
-    // Helper for Docker test setup
-    fn setup_docker_git() -> (TestDir, DockerGit) {
+    // Helper for git test setup
+    fn setup_system_git() -> (TestDir, SystemGit) {
         let dir = TestDir::new().expect(TEST_DIR_ERROR);
-        let docker_git = DockerGit::new();
-        (dir, docker_git)
+        let system_git = SystemGit::new();
+        (dir, system_git)
     }
 
-    // Helper for initialized Docker git repo
-    fn setup_initialized_repo() -> (TestDir, DockerGit) {
-        let (dir, docker_git) = setup_docker_git();
-        docker_git.init_repo(&dir).expect(DOCKER_INIT_ERROR);
-        (dir, docker_git)
+    // Helper for initialized git repo
+    fn setup_initialized_repo() -> (TestDir, SystemGit) {
+        let (dir, system_git) = setup_system_git();
+        system_git.init_repo(&dir).expect(GIT_INIT_ERROR);
+        (dir, system_git)
     }
 
     // Helper for repo with initial commit
-    fn setup_repo_with_commit() -> (TestDir, DockerGit) {
-        let (dir, docker_git) = setup_initialized_repo();
+    fn setup_repo_with_commit() -> (TestDir, SystemGit) {
+        let (dir, system_git) = setup_initialized_repo();
         dir.create_file("README.md", "# Test").unwrap();
-        docker_git
+        system_git
             .create_commit(&dir, "Initial commit")
-            .expect(DOCKER_COMMIT_ERROR);
-        (dir, docker_git)
+            .expect(GIT_COMMIT_ERROR);
+        (dir, system_git)
     }
 
     // Fast tests - always run (no Docker required)
@@ -125,70 +117,62 @@ mod tests {
         assert!(dir.path().join("README.md").exists());
     }
 
-    // Helper to check if Docker is available
-    fn is_docker_available() -> bool {
-        Command::new("docker")
+    // Helper to check if git is available
+    fn is_git_available() -> bool {
+        Command::new("git")
             .args(["--version"])
             .output()
             .map(|output| output.status.success())
             .unwrap_or(false)
     }
 
-    // Docker-based integration tests - ignored by default
+    // Git-based integration tests
     #[test]
-    #[ignore = "docker"]
-    fn test_docker_git_init() {
-        if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
+    fn test_system_git_init() {
+        if !is_git_available() {
+            eprintln!("Git not available, skipping test");
             return;
         }
-        let (dir, docker_git) = setup_docker_git();
-        docker_git.init_repo(&dir).expect(DOCKER_INIT_ERROR);
+        let (dir, system_git) = setup_system_git();
+        system_git.init_repo(&dir).expect(GIT_INIT_ERROR);
         assert!(dir.path().join(".git").exists());
     }
 
     #[test]
-    #[ignore = "docker"]
-    fn test_docker_git_commit() {
-        if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
+    fn test_system_git_commit() {
+        if !is_git_available() {
+            eprintln!("Git not available, skipping test");
             return;
         }
-        let (dir, docker_git) = setup_initialized_repo();
+        let (dir, system_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
-        docker_git
+        system_git
             .create_commit(&dir, "Initial commit")
-            .expect(DOCKER_COMMIT_ERROR);
+            .expect(GIT_COMMIT_ERROR);
     }
 
     #[test]
-    #[ignore = "docker"]
-    fn test_docker_git_tag() {
-        if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
+    fn test_system_git_tag() {
+        if !is_git_available() {
+            eprintln!("Git not available, skipping test");
             return;
         }
-        let (dir, docker_git) = setup_repo_with_commit();
-        docker_git
-            .create_tag(&dir, "v1.0.0")
-            .expect(DOCKER_TAG_ERROR);
+        let (dir, system_git) = setup_repo_with_commit();
+        system_git.create_tag(&dir, "v1.0.0").expect(GIT_TAG_ERROR);
     }
 
     #[test]
-    #[ignore = "docker"]
-    fn test_docker_git_integration() {
-        if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
+    fn test_system_git_integration() {
+        if !is_git_available() {
+            eprintln!("Git not available, skipping test");
             return;
         }
-        let (dir, docker_git) = setup_repo_with_commit();
-        docker_git
-            .create_tag(&dir, "v1.0.0")
-            .expect(DOCKER_TAG_ERROR);
+        let (dir, system_git) = setup_repo_with_commit();
+        system_git.create_tag(&dir, "v1.0.0").expect(GIT_TAG_ERROR);
         dir.create_file("feature.txt", "new feature").unwrap();
-        docker_git
+        system_git
             .create_commit(&dir, "Add feature")
-            .expect(DOCKER_COMMIT_ERROR);
+            .expect(GIT_COMMIT_ERROR);
 
         // Verify files exist
         assert!(dir.path().join(".git").exists());
