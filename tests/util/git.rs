@@ -54,7 +54,7 @@ impl DockerGit {
     }
 
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
-        self.run_git_command(test_dir, &["init"])?;
+        self.run_git_command(test_dir, &["init", "."])?;
         self.run_git_command(test_dir, &["config", "user.name", "Test User"])?;
         self.run_git_command(test_dir, &["config", "user.email", "test@example.com"])?;
         Ok(())
