@@ -124,4 +124,13 @@ mod tests {
         let output = cmd.output().unwrap();
         assert!(!output.status.success());
     }
+
+    #[test]
+    fn test_test_command_assert_failure() {
+        // Create a TestCommand that will fail by using an invalid argument
+        let mut cmd = TestCommand::new();
+        cmd.arg("--invalid-flag-that-does-not-exist");
+        let _test_output = cmd.assert_failure();
+        // If we reach here, assert_failure worked correctly
+    }
 }
