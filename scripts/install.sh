@@ -21,10 +21,21 @@ detect_platform() {
     echo "$platform"
 }
 
+detect_arch() {
+    local arch
+    case "$(uname -m)" in
+        x86_64|amd64) arch="x86_64" ;;
+        aarch64|arm64) arch="arm64" ;;
+        *)          echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+    esac
+    echo "$arch"
+}
+
 main() {
     local platform=$(detect_platform)
+    local arch=$(detect_arch)
     local version=$(get_latest_release)
-    local asset_name="${BINARY_NAME}-${platform}-x86_64"
+    local asset_name="${BINARY_NAME}-${platform}-${arch}"
 
     if [ "$platform" = "windows" ]; then
         asset_name="${asset_name}.exe"

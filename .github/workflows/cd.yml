@@ -32,8 +32,8 @@ jobs:
             - name: Use version output
               run: echo "Released version is ${{ steps.release.outputs.new_release_version }}"
 
-    build:
-        name: Build Binaries
+    release-binaries:
+        name: Release Binaries to GitHub
         runs-on: ${{ matrix.os }}
         needs: versioning
         if: needs.versioning.outputs.new_release_published == 'true'
@@ -45,14 +45,26 @@ jobs:
                       target: x86_64-unknown-linux-gnu
                       artifact_name: zerv
                       asset_name: zerv-linux-x86_64
+                    - os: ubuntu-latest
+                      target: aarch64-unknown-linux-gnu
+                      artifact_name: zerv
+                      asset_name: zerv-linux-arm64
                     - os: macos-latest
                       target: x86_64-apple-darwin
                       artifact_name: zerv
                       asset_name: zerv-macos-x86_64
+                    - os: macos-latest
+                      target: aarch64-apple-darwin
+                      artifact_name: zerv
+                      asset_name: zerv-macos-arm64
                     - os: windows-latest
                       target: x86_64-pc-windows-msvc
                       artifact_name: zerv.exe
                       asset_name: zerv-windows-x86_64.exe
+                    - os: windows-latest
+                      target: aarch64-pc-windows-msvc
+                      artifact_name: zerv.exe
+                      asset_name: zerv-windows-arm64.exe
         steps:
             - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -82,10 +94,10 @@ jobs:
                   asset_name: ${{ matrix.asset_name }}
                   tag: v${{ needs.versioning.outputs.new_release_version }}
 
-    publish:
-        name: Publish to Crates.io
+    release-crates:
+        name: Release to Crates.io
         runs-on: ubuntu-latest
-        needs: [versioning, build]
+        needs: [versioning, release-binaries]
         if: needs.versioning.outputs.new_release_published == 'true'
         steps:
             - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -99,5 +111,5 @@ jobs:
                   echo "Updating version to ${{ needs.versioning.outputs.new_release_version }}"
                   sed -i "s/^version = \".*\"/version = \"${{ needs.versioning.outputs.new_release_version }}\"/" Cargo.toml
 
-            - name: Publish to crates.io
+            - name: Release to crates.io
               run: cargo publish --token ${{ secrets.CARGO_TOKEN }} --allow-dirty
