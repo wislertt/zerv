@@ -46,15 +46,15 @@ jobs:
                   docker pull alpine/git:latest
                   which docker
 
-            - name: Debug Docker Git Init
+            - name: Debug Docker Git Commands
               run: |
                   mkdir -p /tmp/test_repo
                   cd /tmp/test_repo
-                  echo "Testing docker git init with single container..."
-                  docker run --rm -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest sh -c "git init && git config user.name 'Test User' && git config user.email 'test@example.com'"
-                  ls -la
+                  echo "Testing correct Docker git commands:"
+                  docker run --rm -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest init
+                  docker run --rm -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest config user.name "Test User"
+                  docker run --rm -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest config user.email "test@example.com"
                   ls -la .git/
-                  echo "Git config check:"
                   docker run --rm -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest config --list
 
             - name: Restore cache
