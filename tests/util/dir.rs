@@ -58,7 +58,9 @@ mod tests {
         dir.create_file("test.txt", "content").unwrap();
         let file_path = dir.path().join("test.txt");
         assert!(file_path.exists());
-        assert_eq!(fs::read_to_string(file_path).unwrap(), "content");
+        assert_eq!(fs::read_to_string(&file_path).unwrap(), "content");
+        // Keep dir alive until end of test
+        drop(dir);
     }
 
     #[test]
@@ -67,7 +69,9 @@ mod tests {
         dir.create_file("sub/dir/test.txt", "content").unwrap();
         let file_path = dir.path().join("sub/dir/test.txt");
         assert!(file_path.exists());
-        assert_eq!(fs::read_to_string(file_path).unwrap(), "content");
+        assert_eq!(fs::read_to_string(&file_path).unwrap(), "content");
+        // Keep dir alive until end of test
+        drop(dir);
     }
 
     #[test]
@@ -85,5 +89,7 @@ mod tests {
         let path = dir.path();
         assert!(path.exists());
         assert!(path.is_absolute());
+        // Keep dir alive until end of test
+        drop(dir);
     }
 }

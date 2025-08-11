@@ -208,6 +208,8 @@ mod tests {
         assert!(dir.path().join("dirty.txt").exists());
         let content = std::fs::read_to_string(dir.path().join("dirty.txt")).unwrap();
         assert_eq!(content, "uncommitted changes");
+        // Keep dir alive until end of test
+        drop(dir);
     }
 
     #[test]
