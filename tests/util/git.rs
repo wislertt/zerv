@@ -30,18 +30,35 @@ impl DockerGit {
     }
 
     fn run_git_command(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
+        let mut git_args = vec!["--git-dir=.git"];
+        git_args.extend(args);
+
+        let git_command = git_args
+            .iter()
+            .map(|arg| {
+                if arg.contains(' ') {
+                    format!("'{arg}'")
+                } else {
+                    arg.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+
         let output = Command::new("docker")
             .args([
                 "run",
                 "--rm",
+                "--entrypoint",
+                "sh",
                 "-v",
                 &format!("{}:/workspace", test_dir.path().display()),
                 "-w",
                 "/workspace",
                 "alpine/git:latest",
-                "git",
+                "-c",
+                &format!("git {git_command}"),
             ])
-            .args(args)
             .output()?;
 
         if !output.status.success() {
@@ -55,9 +72,30 @@ impl DockerGit {
     }
 
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
-        self.run_git_command(test_dir, &["init"])?;
-        self.run_git_command(test_dir, &["config", "user.name", "Test User"])?;
-        self.run_git_command(test_dir, &["config", "user.email", "test@example.com"])?;
+        // Run git init and config with explicit git-dir flag
+        let output = Command::new("docker")
+            .args([
+                "run",
+                "--rm",
+                "--entrypoint",
+                "sh",
+                "-v",
+                &format!("{}:/workspace", test_dir.path().display()),
+                "-w",
+                "/workspace",
+                "alpine/git:latest",
+                "-c",
+                "git init && git --git-dir=.git config user.name 'Test User' && git --git-dir=.git config user.email 'test@example.com'",
+            ])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker git init failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
         Ok(())
     }
 
@@ -143,7 +181,7 @@ mod tests {
     // Helper to check if Docker is available
     fn is_docker_available() -> bool {
         Command::new("docker")
-            .args(["run", "--rm", "alpine/git:latest", "git", "--version"])
+            .args(["run", "--rm", "alpine/git:latest", "--version"])
             .output()
             .map(|output| output.status.success())
             .unwrap_or(false)
@@ -217,22 +255,13 @@ mod tests {
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_init() {
-        if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
-            return;
-        }
-        let (dir, docker_git) = setup_docker_git();
-        docker_git.init_repo(&dir).expect(DOCKER_INIT_ERROR);
+        let (dir, _docker_git) = setup_initialized_repo();
         assert!(dir.path().join(".git").exists());
     }
 
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_commit() {
-        if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
-            return;
-        }
         let (dir, docker_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
         docker_git
@@ -243,10 +272,6 @@ mod tests {
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_tag() {
-        if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
-            return;
-        }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")
@@ -256,10 +281,6 @@ mod tests {
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_integration() {
-        if !is_docker_available() {
-            eprintln!("Docker not available, skipping test");
-            return;
-        }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")
