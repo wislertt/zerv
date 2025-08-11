@@ -43,8 +43,9 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
                   restore-keys: |
+                      cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                       cargo-${{ runner.os }}-
 
             - run: cargo install cargo-tarpaulin --locked || true
@@ -60,4 +61,4 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
