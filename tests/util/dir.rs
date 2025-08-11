@@ -10,7 +10,11 @@ pub struct TestDir {
 impl TestDir {
     /// Create a new temporary directory
     pub fn new() -> io::Result<Self> {
-        let path = std::env::temp_dir().join(format!("zerv-test-{}", std::process::id()));
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let path = std::env::temp_dir().join(format!("zerv-test-{}-{}", std::process::id(), id));
         fs::create_dir_all(&path)?;
         Ok(Self { path })
     }
@@ -50,6 +54,8 @@ mod tests {
         let dir = TestDir::new().unwrap();
         assert!(dir.path().exists());
         assert!(dir.path().is_dir());
+        // Keep dir alive until end of test
+        drop(dir);
     }
 
     #[test]
@@ -81,6 +87,8 @@ mod tests {
         let sub_path = dir.path().join("subdir");
         assert!(sub_path.exists());
         assert!(sub_path.is_dir());
+        // Keep dir alive until end of test
+        drop(dir);
     }
 
     #[test]
