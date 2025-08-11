@@ -33,7 +33,7 @@ jobs:
               run: echo "Released version is ${{ steps.release.outputs.new_release_version }}"
 
     release-binaries:
-        name: Release Binaries to GitHub
+        name: Release Binaries to GitHub (${{ matrix.name }})
         runs-on: ${{ matrix.os }}
         needs: versioning
         if: needs.versioning.outputs.new_release_published == 'true'
@@ -71,6 +71,7 @@ jobs:
                       target: aarch64-pc-windows-msvc
                       artifact_name: zerv.exe
                       asset_name: zerv-windows-arm64.exe
+
         steps:
             - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 

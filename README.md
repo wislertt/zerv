@@ -7,7 +7,14 @@ Dynamic Versioning Cli
 ### Quick Install (Recommended)
 
 ```bash
+# Install latest version
 curl -sSL https://raw.githubusercontent.com/wisarootl/zerv/main/scripts/install.sh | bash
+
+# Install specific version
+curl -sSL https://raw.githubusercontent.com/wisarootl/zerv/main/scripts/install.sh | bash -s v0.4.3
+
+# Or using environment variable
+ZERV_VERSION=v0.4.3 curl -sSL https://raw.githubusercontent.com/wisarootl/zerv/main/scripts/install.sh | bash
 ```
 
 ### Manual Download
