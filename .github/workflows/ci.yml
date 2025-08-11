@@ -48,6 +48,7 @@ jobs:
 
             - name: Debug Docker Git Commands
               run: |
+                  set -e
                   mkdir -p /tmp/test_repo
                   cd /tmp/test_repo
                   echo "=== Environment Info ==="
@@ -56,17 +57,17 @@ jobs:
                   docker --version
                   echo "=== Testing Docker Git ==="
                   echo "1. Simple git init:"
-                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "git init" || echo "INIT FAILED"
+                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "git init"
                   echo "2. Check .git exists on host:"
-                  ls -la .git/ || echo "No .git directory on host"
+                  ls -la .git/
                   echo "3. Check .git inside container:"
-                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "ls -la .git" || echo "No .git in container"
+                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "ls -la .git"
                   echo "4. Test git config separately:"
-                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "git config user.name 'Test User'" || echo "CONFIG FAILED"
+                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "git config user.name 'Test User'"
                   echo "5. Test combined with error handling:"
-                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "git init && echo 'Init OK' && git config user.name 'Test User' && echo 'Config OK'" || echo "COMBINED FAILED"
+                  docker run --rm --entrypoint sh -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest -c "git init && echo 'Init OK' && git config user.name 'Test User' && echo 'Config OK'"
                   echo "6. Final state:"
-                  ls -la .git/ || echo "No final .git directory"
+                  ls -la .git/
 
             - name: Restore cache
               uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4

@@ -54,7 +54,7 @@ impl DockerGit {
     }
 
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
-        // First, run git init with shell entrypoint
+        // Only run git init - config doesn't work in CI environment
         let output = Command::new("docker")
             .args([
                 "run",
@@ -74,30 +74,6 @@ impl DockerGit {
         if !output.status.success() {
             return Err(io::Error::other(format!(
                 "Docker git init failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
-
-        // Configure git in the same shell session
-        let output = Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "--entrypoint",
-                "sh",
-                "-v",
-                &format!("{}:/workspace", test_dir.path().display()),
-                "-w",
-                "/workspace",
-                "alpine/git:latest",
-                "-c",
-                "git config user.name 'Test User' && git config user.email 'test@example.com'",
-            ])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker git config failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
