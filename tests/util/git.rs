@@ -39,7 +39,6 @@ impl DockerGit {
                 "-w",
                 "/workspace",
                 "alpine/git:latest",
-                "git",
             ])
             .args(args)
             .output()?;
@@ -143,7 +142,7 @@ mod tests {
     // Helper to check if Docker is available
     fn is_docker_available() -> bool {
         Command::new("docker")
-            .args(["run", "--rm", "alpine/git:latest", "git", "--version"])
+            .args(["run", "--rm", "alpine/git:latest", "--version"])
             .output()
             .map(|output| output.status.success())
             .unwrap_or(false)
@@ -217,9 +216,6 @@ mod tests {
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_init() {
-        if !is_docker_available() {
-            panic!("Docker not available - test should fail!");
-        }
         let (dir, docker_git) = setup_docker_git();
         docker_git.init_repo(&dir).expect(DOCKER_INIT_ERROR);
         assert!(dir.path().join(".git").exists());
@@ -228,9 +224,6 @@ mod tests {
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_commit() {
-        if !is_docker_available() {
-            panic!("Docker not available - test should fail!");
-        }
         let (dir, docker_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
         docker_git
@@ -241,9 +234,6 @@ mod tests {
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_tag() {
-        if !is_docker_available() {
-            panic!("Docker not available - test should fail!");
-        }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")
@@ -253,9 +243,6 @@ mod tests {
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_integration() {
-        if !is_docker_available() {
-            panic!("Docker not available - test should fail!");
-        }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")
