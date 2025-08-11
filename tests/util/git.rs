@@ -78,9 +78,29 @@ impl DockerGit {
             )));
         }
 
-        // Then configure git using separate commands
-        self.run_git_command(test_dir, &["config", "user.name", "Test User"])?;
-        self.run_git_command(test_dir, &["config", "user.email", "test@example.com"])?;
+        // Configure git in the same shell session
+        let output = Command::new("docker")
+            .args([
+                "run",
+                "--rm",
+                "--entrypoint",
+                "sh",
+                "-v",
+                &format!("{}:/workspace", test_dir.path().display()),
+                "-w",
+                "/workspace",
+                "alpine/git:latest",
+                "-c",
+                "git config user.name 'Test User' && git config user.email 'test@example.com'",
+            ])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker git config failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
 
         Ok(())
     }
