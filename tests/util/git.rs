@@ -30,17 +30,35 @@ impl DockerGit {
     }
 
     fn run_git_command(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
+        let mut git_args = vec!["--git-dir=.git"];
+        git_args.extend(args);
+
+        let git_command = git_args
+            .iter()
+            .map(|arg| {
+                if arg.contains(' ') {
+                    format!("'{arg}'")
+                } else {
+                    arg.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+
         let output = Command::new("docker")
             .args([
                 "run",
                 "--rm",
+                "--entrypoint",
+                "sh",
                 "-v",
                 &format!("{}:/workspace", test_dir.path().display()),
                 "-w",
                 "/workspace",
                 "alpine/git:latest",
+                "-c",
+                &format!("git {git_command}"),
             ])
-            .args(args)
             .output()?;
 
         if !output.status.success() {
@@ -54,7 +72,7 @@ impl DockerGit {
     }
 
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
-        // Only run git init - config doesn't work in CI environment
+        // Run git init and config with explicit git-dir flag
         let output = Command::new("docker")
             .args([
                 "run",
@@ -67,7 +85,7 @@ impl DockerGit {
                 "/workspace",
                 "alpine/git:latest",
                 "-c",
-                "git init",
+                "git init && git --git-dir=.git config user.name 'Test User' && git --git-dir=.git config user.email 'test@example.com'",
             ])
             .output()?;
 
