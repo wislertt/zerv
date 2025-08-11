@@ -44,6 +44,18 @@ jobs:
                   sudo systemctl start docker
                   sudo usermod -aG docker $USER
                   docker pull alpine/git:latest
+                  which docker
+
+            - name: Debug Docker Git Init
+              run: |
+                  mkdir -p /tmp/test_repo
+                  cd /tmp/test_repo
+                  echo "Testing docker git init..."
+                  docker run --rm -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest init
+                  docker run --rm -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest config user.name "Test User"
+                  docker run --rm -v "$(pwd):/workspace" -w "/workspace" alpine/git:latest config user.email "test@example.com"
+                  ls -la
+                  ls -la .git/
 
             - name: Restore cache
               uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
