@@ -34,7 +34,7 @@ detect_arch() {
 main() {
     local platform=$(detect_platform)
     local arch=$(detect_arch)
-    local version=$(get_latest_release)
+    local version=${1:-${ZERV_VERSION:-$(get_latest_release)}}
     local asset_name="${BINARY_NAME}-${platform}-${arch}"
 
     if [ "$platform" = "windows" ]; then
@@ -46,9 +46,22 @@ main() {
     local binary_path="$install_dir/$BINARY_NAME"
 
     echo "Installing $BINARY_NAME $version for $platform..."
+    echo "Download URL: $download_url"
 
     mkdir -p "$install_dir"
-    curl -L "$download_url" -o "$binary_path"
+
+    if ! curl -L "$download_url" -o "$binary_path"; then
+        echo "Error: Failed to download $asset_name" >&2
+        exit 1
+    fi
+
+    # Check if downloaded file is actually a binary (not an error page)
+    if [ ! -s "$binary_path" ] || file "$binary_path" | grep -q "text"; then
+        echo "Error: Downloaded file is not a valid binary. Asset may not exist for $version" >&2
+        rm -f "$binary_path"
+        exit 1
+    fi
+
     chmod +x "$binary_path"
 
     echo "$BINARY_NAME installed to $binary_path"
