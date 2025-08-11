@@ -216,8 +216,7 @@ mod tests {
     #[test]
     #[ignore = "docker"]
     fn test_docker_git_init() {
-        let (dir, docker_git) = setup_docker_git();
-        docker_git.init_repo(&dir).expect(DOCKER_INIT_ERROR);
+        let (dir, _docker_git) = setup_initialized_repo();
         assert!(dir.path().join(".git").exists());
     }
 
