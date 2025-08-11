@@ -1,4 +1,4 @@
-name: Semantic Pull Request
+name: ci
 
 on:
     pull_request:
