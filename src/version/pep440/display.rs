@@ -26,8 +26,10 @@ impl fmt::Display for PEP440Version {
         }
 
         // Post-release
-        if let Some(post_number) = self.post_number {
-            write!(f, ".{}{}", self.post_label, post_number)?;
+        if let Some(ref post_label) = self.post_label
+            && let Some(post_number) = self.post_number
+        {
+            write!(f, ".{}{}", post_label.as_str(), post_number)?;
         }
 
         // Dev-release
@@ -80,10 +82,7 @@ mod tests {
             .with_pre_release(PreReleaseLabel::Alpha, Some(99))
             .with_post(123)
             .with_dev(456)
-            .with_local(vec![
-                LocalSegment::String("deadbeef".to_string()),
-                LocalSegment::String("abc123".to_string()),
-            ]);
+            .with_local("deadbeef.abc123");
         assert_eq!(
             version.to_string(),
             "42!2025.12.31a99.post123.dev456+deadbeef.abc123"
@@ -92,12 +91,8 @@ mod tests {
 
     #[test]
     fn test_display_with_local_mixed() {
-        let version = PEP440Version::new(vec![1, 0, 0]).with_local(vec![
-            LocalSegment::String("ubuntu".to_string()),
-            LocalSegment::Integer(20),
-            LocalSegment::String("04".to_string()),
-        ]);
-        assert_eq!(version.to_string(), "1.0.0+ubuntu.20.04");
+        let version = PEP440Version::new(vec![1, 0, 0]).with_local("ubuntu.20.04");
+        assert_eq!(version.to_string(), "1.0.0+ubuntu.20.4"); // "04" becomes "4"
     }
 
     #[test]

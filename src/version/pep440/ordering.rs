@@ -52,8 +52,13 @@ impl Ord for PEP440Version {
             },
         }
 
-        // Local versions are not compared in PEP 440
-        Ordering::Equal
+        // Compare local versions (None < Some)
+        match (&self.local, &other.local) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+            (Some(self_local), Some(other_local)) => self_local.cmp(other_local),
+        }
     }
 }
 
@@ -104,7 +109,6 @@ impl Eq for PEP440Version {}
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use rstest::rstest;
 
     #[rstest]
@@ -139,130 +143,170 @@ mod tests {
 
     #[test]
     fn test_basic_version_ordering() {
-        let v1 = PEP440Version::new(vec![1, 0, 0]);
-        let v2 = PEP440Version::new(vec![2, 0, 0]);
-        assert!(v1 < v2);
+        let version1: PEP440Version = "1.0.0".parse().unwrap();
+        let version2: PEP440Version = "2.0.0".parse().unwrap();
+        assert!(version1 < version2);
     }
 
     #[test]
     fn test_pre_release_ordering() {
-        let stable = PEP440Version::new(vec![1, 0, 0]);
-        let alpha =
-            PEP440Version::new(vec![1, 0, 0]).with_pre_release(PreReleaseLabel::Alpha, Some(1));
-        assert!(alpha < stable);
+        let stable_version: PEP440Version = "1.0.0".parse().unwrap();
+        let alpha_version: PEP440Version = "1.0.0a1".parse().unwrap();
+        assert!(alpha_version < stable_version);
     }
 
     #[test]
     fn test_post_release_ordering() {
-        let base = PEP440Version::new(vec![1, 0, 0]);
-        let post = PEP440Version::new(vec![1, 0, 0]).with_post(1);
-        assert!(base < post);
+        let base_version: PEP440Version = "1.0.0".parse().unwrap();
+        let post_version: PEP440Version = "1.0.0.post1".parse().unwrap();
+        assert!(base_version < post_version);
     }
 
     #[test]
     fn test_dev_release_ordering() {
-        let stable = PEP440Version::new(vec![1, 0, 0]);
-        let dev = PEP440Version::new(vec![1, 0, 0]).with_dev(1);
-        assert!(dev < stable);
+        let stable_version: PEP440Version = "1.0.0".parse().unwrap();
+        let dev_version: PEP440Version = "1.0.0.dev1".parse().unwrap();
+        assert!(dev_version < stable_version);
     }
 
     #[test]
     fn test_epoch_ordering() {
-        let v1 = PEP440Version::new(vec![2, 0, 0]);
-        let v2 = PEP440Version::new(vec![1, 0, 0]).with_epoch(1);
-        assert!(v1 < v2);
+        let version1: PEP440Version = "2.0.0".parse().unwrap();
+        let version2: PEP440Version = "1!1.0.0".parse().unwrap();
+        assert!(version1 < version2);
     }
 
     #[rstest]
-    #[case(LocalSegment::Integer(1), LocalSegment::Integer(2))]
-    #[case(LocalSegment::String("a".to_string()), LocalSegment::String("b".to_string()))]
-    #[case(LocalSegment::Integer(1), LocalSegment::String("a".to_string()))]
-    fn test_local_segment_less_than(#[case] left: LocalSegment, #[case] right: LocalSegment) {
-        assert!(left < right);
+    #[case("1", "2")]
+    #[case("a", "b")]
+    #[case("1", "a")]
+    fn test_local_segment_less_than(#[case] left: &str, #[case] right: &str) {
+        use super::super::parser::parse_local_segments;
+        let left_local = &parse_local_segments(left)[0];
+        let right_local = &parse_local_segments(right)[0];
+        assert!(left_local < right_local);
     }
 
     #[rstest]
-    #[case(LocalSegment::Integer(1), LocalSegment::Integer(1))]
-    #[case(LocalSegment::String("a".to_string()), LocalSegment::String("a".to_string()))]
-    fn test_local_segment_equal(#[case] left: LocalSegment, #[case] right: LocalSegment) {
-        assert_eq!(left, right);
+    #[case("1", "1")]
+    #[case("a", "a")]
+    fn test_local_segment_equal(#[case] left: &str, #[case] right: &str) {
+        use super::super::parser::parse_local_segments;
+        let left_local = &parse_local_segments(left)[0];
+        let right_local = &parse_local_segments(right)[0];
+        assert_eq!(left_local, right_local);
     }
 
     #[rstest]
-    #[case(LocalSegment::Integer(2), LocalSegment::Integer(1))]
-    #[case(LocalSegment::String("b".to_string()), LocalSegment::String("a".to_string()))]
-    #[case(LocalSegment::String("a".to_string()), LocalSegment::Integer(1))]
-    fn test_local_segment_greater_than(#[case] left: LocalSegment, #[case] right: LocalSegment) {
-        assert!(left > right);
+    #[case("2", "1")]
+    #[case("b", "a")]
+    #[case("a", "1")]
+    fn test_local_segment_greater_than(#[case] left: &str, #[case] right: &str) {
+        use super::super::parser::parse_local_segments;
+        let left_local = &parse_local_segments(left)[0];
+        let right_local = &parse_local_segments(right)[0];
+        assert!(left_local > right_local);
     }
 
-    #[test]
-    fn test_local_segment_vec_ordering() {
-        let v1 = vec![
-            LocalSegment::String("ubuntu".to_string()),
-            LocalSegment::Integer(20),
-        ];
-        let v2 = vec![
-            LocalSegment::String("ubuntu".to_string()),
-            LocalSegment::Integer(22),
-        ];
-        assert!(v1 < v2);
-
-        let v3 = vec![
-            LocalSegment::Integer(1),
-            LocalSegment::String("build".to_string()),
-        ];
-        let v4 = vec![
-            LocalSegment::Integer(1),
-            LocalSegment::String("build".to_string()),
-            LocalSegment::Integer(2),
-        ];
-        assert!(v3 < v4);
-
-        let v5 = vec![LocalSegment::Integer(1)];
-        let v6 = vec![LocalSegment::String("a".to_string())];
-        assert!(v5 < v6);
+    #[rstest]
+    #[case("ubuntu.20", "ubuntu.22")]
+    #[case("1.build", "1.build.2")]
+    #[case("1", "a")]
+    fn test_local_segment_vec_ordering(#[case] left: &str, #[case] right: &str) {
+        use super::super::parser::parse_local_segments;
+        let local1 = parse_local_segments(left);
+        let local2 = parse_local_segments(right);
+        assert!(local1 < local2);
     }
 
-    #[test]
-    fn test_pep440_version_with_local_ordering() {
-        // Local versions are ignored in PEP 440 comparison
-        let v1 = PEP440Version::new(vec![1, 0, 0]);
-        let v2 = PEP440Version::new(vec![1, 0, 0])
-            .with_local(vec![LocalSegment::String("build".to_string())]);
-        assert_eq!(v1, v2);
-
-        let v3 = PEP440Version::new(vec![1, 0, 0]).with_local(vec![LocalSegment::Integer(1)]);
-        let v4 = PEP440Version::new(vec![1, 0, 0]).with_local(vec![LocalSegment::Integer(999)]);
-        assert_eq!(v3, v4);
+    #[rstest]
+    #[case("1.0.0", "1.0.0+build")] // no local < with local
+    #[case("1.0.0+1", "1.0.0+999")] // single segment numeric
+    #[case("1.0.0+a", "1.0.0+z")] // single segment string
+    #[case("1.0.0+ubuntu.20", "1.0.0+ubuntu.22")] // multi-segment numeric
+    #[case("1.0.0+build.1", "1.0.0+build.2")] // multi-segment mixed
+    #[case("1.0.0+dev.alpha", "1.0.0+dev.beta")] // multi-segment string
+    #[case("1.0.0+1.2.3", "1.0.0+1.2.4")] // multi-segment all numeric
+    #[case("1.0.0+a.b.c", "1.0.0+a.b.d")] // multi-segment all string
+    #[case("1.0.0+build", "1.0.0+build.1")] // fewer segments < more segments
+    #[case("1.0.0+1.build", "1.0.0+2.build")] // numeric first segment
+    #[case("1.0.0+1", "1.0.0+a")] // numeric < string
+    #[case("1.0.0+1.alpha", "1.0.0+1.beta")] // same numeric, different string
+    fn test_pep440_version_with_local_ordering_less_than(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert!(left_version < right_version);
     }
 
-    #[test]
-    fn test_complex_pep440_version_ordering() {
-        let alpha1 =
-            PEP440Version::new(vec![1, 0, 0]).with_pre_release(PreReleaseLabel::Alpha, Some(1));
-        let alpha1_post = PEP440Version::new(vec![1, 0, 0])
-            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_post(1);
-        let alpha2 =
-            PEP440Version::new(vec![1, 0, 0]).with_pre_release(PreReleaseLabel::Alpha, Some(2));
-        let stable = PEP440Version::new(vec![1, 0, 0]);
-
-        assert!(alpha1 < alpha1_post);
-        assert!(alpha1_post < alpha2);
-        assert!(alpha2 < stable);
+    #[rstest]
+    #[case("1.0.0+build", "1.0.0+build")] // same single segment
+    #[case("1.0.0+1", "1.0.0+1")] // same numeric segment
+    #[case("1.0.0+a.b.c", "1.0.0+a.b.c")] // same all string
+    #[case("1.0.0+build.1.final", "1.0.0+build.1.final")] // same complex
+    fn test_pep440_version_with_local_ordering_equal(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert_eq!(left_version, right_version);
     }
 
-    #[test]
-    fn test_pre_release_vs_post_dev_ordering() {
-        let pre =
-            PEP440Version::new(vec![1, 0, 0]).with_pre_release(PreReleaseLabel::Alpha, Some(1));
-        let post = PEP440Version::new(vec![1, 0, 0]).with_post(1);
-        let dev = PEP440Version::new(vec![1, 0, 0]).with_dev(1);
-        let stable = PEP440Version::new(vec![1, 0, 0]);
+    #[rstest]
+    #[case("1.0.0+01", "1.0.0+1")] // leading zeros in numeric segments
+    #[case("1.0.0+ubuntu.020", "1.0.0+ubuntu.20")] // leading zeros in mixed segments
+    #[case("1.0.0+1.02.003", "1.0.0+1.2.3")] // multiple leading zeros
+    #[case("1.0.0+build.01", "1.0.0+build.1")] // leading zero in string-numeric mix
+    fn test_pep440_version_local_leading_zeros_equal(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert_eq!(left_version, right_version);
+    }
 
-        assert!(pre < dev);
-        assert!(dev < stable);
-        assert!(stable < post);
+    #[rstest]
+    #[case("1.0.0+0", "1.0.0+1")] // zero vs one
+    #[case("1.0.0+build.0", "1.0.0+build.1")] // zero in mixed segment
+    #[case("1.0.0+0.build", "1.0.0+1.build")] // zero first segment
+    #[case("1.0.0+a.0", "1.0.0+a.1")] // zero after string
+    fn test_pep440_version_local_zero_comparison(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert!(left_version < right_version);
+    }
+
+    #[rstest]
+    #[case("1.0.0+1.2", "1.0.0+1.2.0")] // shorter vs longer with trailing zero
+    #[case("1.0.0+build", "1.0.0+build.0")] // string vs string with zero
+    #[case("1.0.0+1", "1.0.0+1.0")] // single vs double with zero
+    fn test_pep440_version_local_segment_count_edge_cases(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert!(left_version < right_version);
+    }
+
+    #[rstest]
+    #[case("1.0.0a1", "1.0.0a1.post1")] // alpha < alpha.post
+    #[case("1.0.0a1.dev1", "1.0.0a1")] // alpha.dev < alpha
+    #[case("1.0.0a1.dev1", "1.0.0a1.post1")] // alpha.dev < alpha.post
+    #[case("1.0.0a1.post1", "1.0.0a2")] // alpha.post < alpha2
+    #[case("1.0.0a1", "1.0.0b1")] // alpha < beta
+    #[case("1.0.0b1", "1.0.0b1.post1")] // beta < beta.post
+    #[case("1.0.0b1.dev1", "1.0.0b1")] // beta.dev < beta
+    #[case("1.0.0b1.dev1", "1.0.0b1.post1")] // beta.dev < beta.post
+    #[case("1.0.0b1.post1", "1.0.0b2")] // beta.post < beta2
+    #[case("1.0.0b1", "1.0.0rc1")] // beta < rc
+    #[case("1.0.0rc1", "1.0.0rc1.post1")] // rc < rc.post
+    #[case("1.0.0rc1.dev1", "1.0.0rc1")] // rc.dev < rc
+    #[case("1.0.0rc1.dev1", "1.0.0rc1.post1")] // rc.dev < rc.post
+    #[case("1.0.0rc1.post1", "1.0.0rc2")] // rc.post < rc2
+    #[case("1.0.0rc1", "1.0.0")] // rc < stable
+    #[case("1.0.0a1", "1.0.0.dev1")] // alpha < stable.dev
+    #[case("1.0.0b1", "1.0.0.dev1")] // beta < stable.dev
+    #[case("1.0.0rc1", "1.0.0.dev1")] // rc < stable.dev
+    #[case("1.0.0.dev1", "1.0.0")] // stable.dev < stable
+    #[case("1.0.0", "1.0.0.post1")] // stable < stable.post
+    #[case("1.0.0.post1.dev1", "1.0.0.post1")] // post.dev < post
+    #[case("1.0.0.post1.dev1", "1.0.0.post2")] // post.dev < post2
+    fn test_complex_pep440_version_ordering(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert!(left_version < right_version);
     }
 }

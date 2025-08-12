@@ -6,6 +6,11 @@ pub enum PreReleaseLabel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PostReleaseLabel {
+    Post,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocalSegment {
     String(String),
     Integer(u32),
@@ -21,13 +26,21 @@ impl PreReleaseLabel {
     }
 }
 
+impl PostReleaseLabel {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PostReleaseLabel::Post => "post", // "post", "rev", "r"
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct PEP440Version {
     pub epoch: u32,
     pub release: Vec<u32>,
     pub pre_label: Option<PreReleaseLabel>,
     pub pre_number: Option<u32>,
-    pub post_label: &'static str,
+    pub post_label: Option<PostReleaseLabel>,
     pub post_number: Option<u32>,
     pub dev_number: Option<u32>,
     pub local: Option<Vec<LocalSegment>>,
@@ -40,7 +53,7 @@ impl PEP440Version {
             release,
             pre_label: None,
             pre_number: None,
-            post_label: "post",
+            post_label: None,
             post_number: None,
             dev_number: None,
             local: None,
@@ -59,6 +72,7 @@ impl PEP440Version {
     }
 
     pub fn with_post(mut self, post_number: u32) -> Self {
+        self.post_label = Some(PostReleaseLabel::Post);
         self.post_number = Some(post_number);
         self
     }
@@ -68,8 +82,9 @@ impl PEP440Version {
         self
     }
 
-    pub fn with_local(mut self, local: Vec<LocalSegment>) -> Self {
-        self.local = Some(local);
+    pub fn with_local(mut self, local: &str) -> Self {
+        use crate::version::pep440::parser::parse_local_segments;
+        self.local = Some(parse_local_segments(local));
         self
     }
 }
@@ -131,13 +146,13 @@ mod tests {
 
     #[test]
     fn test_pep440_version_with_local() {
-        let local = vec![
+        let version = PEP440Version::new(vec![1, 2, 3]).with_local("ubuntu.20.04");
+        let expected = vec![
             LocalSegment::String("ubuntu".to_string()),
             LocalSegment::Integer(20),
-            LocalSegment::String("04".to_string()),
+            LocalSegment::Integer(4), // "04" becomes integer 4
         ];
-        let version = PEP440Version::new(vec![1, 2, 3]).with_local(local.clone());
-        assert_eq!(version.local, Some(local));
+        assert_eq!(version.local, Some(expected));
     }
 
     #[test]
@@ -145,6 +160,11 @@ mod tests {
         assert_eq!(PreReleaseLabel::Alpha.as_str(), "a");
         assert_eq!(PreReleaseLabel::Beta.as_str(), "b");
         assert_eq!(PreReleaseLabel::Rc.as_str(), "rc");
+    }
+
+    #[test]
+    fn test_post_release_label_as_str() {
+        assert_eq!(PostReleaseLabel::Post.as_str(), "post");
     }
 
     #[test]
@@ -162,10 +182,7 @@ mod tests {
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(1)
             .with_dev(1)
-            .with_local(vec![
-                LocalSegment::String("local".to_string()),
-                LocalSegment::String("meta".to_string()),
-            ]);
+            .with_local("local.meta");
 
         assert_eq!(version.epoch, 2);
         assert_eq!(version.release, vec![1, 2, 3]);
