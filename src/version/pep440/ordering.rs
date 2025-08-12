@@ -169,11 +169,26 @@ mod tests {
         assert!(dev_version < stable_version);
     }
 
-    #[test]
-    fn test_epoch_ordering() {
-        let version1: PEP440Version = "2.0.0".parse().unwrap();
-        let version2: PEP440Version = "1!1.0.0".parse().unwrap();
-        assert!(version1 < version2);
+    #[rstest]
+    #[case("2.0.0", "1!1.0.0")] // no epoch < epoch 1
+    #[case("999.999.999", "1!0.0.0")] // large version < epoch 1
+    #[case("1!0.0.0", "2!0.0.0")] // epoch 1 < epoch 2
+    #[case("1!999.999.999", "2!0.0.0")] // epoch 1 large < epoch 2 small
+    #[case("0!1.0.0", "1!0.0.0")] // explicit epoch 0 < epoch 1
+    #[case("4294967294!1.0.0", "4294967295!0.0.0")] // max-1 epoch < max epoch
+    fn test_epoch_ordering_less_than(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert!(left_version < right_version);
+    }
+
+    #[rstest]
+    #[case("0!1.0.0", "1.0.0")] // explicit epoch 0 == implicit epoch 0
+    #[case("0!2.3.4", "2.3.4")] // explicit epoch 0 == implicit epoch 0
+    fn test_epoch_ordering_equal(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert_eq!(left_version, right_version);
     }
 
     #[rstest]
@@ -297,6 +312,9 @@ mod tests {
     #[case("1.0.0rc1.dev1", "1.0.0rc1.post1")] // rc.dev < rc.post
     #[case("1.0.0rc1.post1", "1.0.0rc2")] // rc.post < rc2
     #[case("1.0.0rc1", "1.0.0")] // rc < stable
+    #[case("1.0.0a", "1.0.0a0")] // alpha < alpha0
+    #[case("1.0.0a0", "1.0.0a1")] // alpha0 < alpha1
+    #[case("1.0.0a", "1.0.0a1")] // alpha < alpha1
     #[case("1.0.0a1", "1.0.0.dev1")] // alpha < stable.dev
     #[case("1.0.0b1", "1.0.0.dev1")] // beta < stable.dev
     #[case("1.0.0rc1", "1.0.0.dev1")] // rc < stable.dev
@@ -305,6 +323,98 @@ mod tests {
     #[case("1.0.0.post1.dev1", "1.0.0.post1")] // post.dev < post
     #[case("1.0.0.post1.dev1", "1.0.0.post2")] // post.dev < post2
     fn test_complex_pep440_version_ordering(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert!(left_version < right_version);
+    }
+
+    #[rstest]
+    // Boundary value edge cases
+    #[case("0.0.0", "0.0.1")] // minimum version
+    #[case("4294967295.0.0", "4294967295.0.1")] // u32::MAX in release
+    #[case("1.0.0a4294967295", "1.0.0b1")] // u32::MAX in pre-release number
+    #[case("1.0.0.post4294967295", "1.0.1")] // u32::MAX in post-release
+    #[case("1.0.0.dev4294967295", "1.0.0")] // u32::MAX in dev-release
+    #[case("4294967295!0.0.0", "4294967295!0.0.1")] // u32::MAX in epoch
+    // Zero value edge cases
+    #[case("1.0.0a0", "1.0.0a1")] // zero pre-release number
+    #[case("1.0.0.post0", "1.0.0.post1")] // zero post-release number
+    #[case("1.0.0.dev0", "1.0.0.dev1")]
+    // zero dev-release number
+    // Missing number edge cases (these are actually equal, not less than)
+    // #[case("1.0.0a", "1.0.0a0")] // pre-release without number vs with zero
+    // #[case("1.0.0dev", "1.0.0.dev0")] // dev without number vs with zero
+    // Local version edge cases with boundary values
+    #[case("1.0.0+0", "1.0.0+1")] // zero local segment
+    #[case("1.0.0+4294967295", "1.0.0+a")] // u32::MAX local vs string
+    #[case("1.0.0+z", "1.0.0+z.0")] // string vs string with zero
+    fn test_ordering_edge_cases(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+        assert!(left_version < right_version);
+    }
+
+    #[rstest]
+    // Reflexivity: a == a
+    #[case("1.0.0")]
+    #[case("1!2.3.4a5.post6.dev7+local.8")]
+    #[case("0.0.0")]
+    #[case(
+        "4294967295!4294967295.4294967295.4294967295a4294967295.post4294967295.dev4294967295+4294967295"
+    )]
+    fn test_ordering_reflexivity(#[case] version_str: &str) {
+        let version: PEP440Version = version_str.parse().unwrap();
+        // Reflexivity: a version should equal itself
+        assert_eq!(version.cmp(&version), std::cmp::Ordering::Equal);
+    }
+
+    #[rstest]
+    // Transitivity: if a < b and b < c, then a < c
+    #[case("1.0.0a1", "1.0.0a2", "1.0.0a3")]
+    #[case("1.0.0.dev1", "1.0.0", "1.0.0.post1")]
+    #[case("1.0.0+a", "1.0.0+b", "1.0.0+c")]
+    #[case("0!1.0.0", "1!0.0.0", "2!0.0.0")]
+    #[case("1!0.0.0", "1!0.0.1", "1!0.1.0")]
+    #[case("1.0.0", "1!0.0.0", "2!0.0.0")]
+    fn test_ordering_transitivity(#[case] a: &str, #[case] b: &str, #[case] c: &str) {
+        let version_a: PEP440Version = a.parse().unwrap();
+        let version_b: PEP440Version = b.parse().unwrap();
+        let version_c: PEP440Version = c.parse().unwrap();
+
+        assert!(version_a < version_b);
+        assert!(version_b < version_c);
+        assert!(version_a < version_c); // transitivity
+    }
+
+    #[rstest]
+    // Antisymmetry: if a < b, then !(b < a)
+    #[case("1.0.0", "2.0.0")]
+    #[case("1.0.0a1", "1.0.0")]
+    #[case("1.0.0+a", "1.0.0+b")]
+    #[case("1.0.0.dev1", "1.0.0.post1")]
+    fn test_ordering_antisymmetry(#[case] left: &str, #[case] right: &str) {
+        let left_version: PEP440Version = left.parse().unwrap();
+        let right_version: PEP440Version = right.parse().unwrap();
+
+        assert!(left_version < right_version);
+        assert!(right_version >= left_version);
+    }
+
+    #[rstest]
+    // Empty local segments vs non-empty
+    #[case("1.0.0", "1.0.0+a")]
+    // Single character local segments
+    #[case("1.0.0+a", "1.0.0+b")]
+    #[case("1.0.0+0", "1.0.0+9")]
+    // Very long local segments
+    #[case(
+        "1.0.0+a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z",
+        "1.0.0+a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z.1"
+    )]
+    // Mixed numeric and string with edge values
+    #[case("1.0.0+0.a", "1.0.0+0.b")]
+    #[case("1.0.0+a.0", "1.0.0+a.1")]
+    fn test_local_version_ordering_edge_cases(#[case] left: &str, #[case] right: &str) {
         let left_version: PEP440Version = left.parse().unwrap();
         let right_version: PEP440Version = right.parse().unwrap();
         assert!(left_version < right_version);

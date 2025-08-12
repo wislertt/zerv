@@ -129,4 +129,43 @@ mod tests {
         let output = format_local_segments(&segments);
         assert_eq!(output, input);
     }
+
+    #[test]
+    fn test_format_local_segments_edge_cases() {
+        assert_eq!(format_local_segments(&[]), "");
+        assert_eq!(format_local_segments(&[LocalSegment::Integer(42)]), "42");
+        assert_eq!(
+            format_local_segments(&[LocalSegment::String("test".to_string())]),
+            "test"
+        );
+        assert_eq!(
+            format_local_segments(&[LocalSegment::Integer(u32::MAX)]),
+            "4294967295"
+        );
+    }
+
+    #[test]
+    fn test_display_epoch_none() {
+        let version = PEP440Version::new(vec![1, 0, 0]);
+        assert_eq!(version.epoch, 0);
+        assert_eq!(version.to_string(), "1.0.0");
+    }
+
+    #[test]
+    fn test_display_epoch_zero() {
+        let version = PEP440Version::new(vec![1, 0, 0]).with_epoch(0);
+        assert_eq!(version.to_string(), "1.0.0");
+    }
+
+    #[test]
+    fn test_display_edge_cases() {
+        let mut version = PEP440Version::new(vec![1, 0, 0]);
+        version.pre_label = Some(PreReleaseLabel::Alpha);
+        version.pre_number = None;
+        assert_eq!(version.to_string(), "1.0.0a");
+
+        let mut version = PEP440Version::new(vec![1, 0, 0]);
+        version.dev_number = None;
+        assert_eq!(version.to_string(), "1.0.0");
+    }
 }

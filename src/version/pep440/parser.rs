@@ -55,7 +55,7 @@ pub fn parse_local_segments(local: &str) -> Vec<LocalSegment> {
     local
         .split('.')
         .map(|part| {
-            if part.chars().all(|c| c.is_ascii_digit()) {
+            if !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()) {
                 LocalSegment::Integer(part.parse().unwrap_or(0))
             } else {
                 LocalSegment::String(part.to_string())
@@ -268,12 +268,82 @@ mod tests {
     }
 
     #[rstest]
+    // Basic invalid formats
     #[case("invalid")]
     #[case("")]
+    #[case("   ")]
+    #[case(".")]
+    #[case("..")]
+    #[case("...")]
+    // Invalid release segments
+    #[case("1.")]
+    #[case(".1")]
+    #[case("1..2")]
+    #[case("1.2.")]
+    #[case("a.b.c")]
+    // Invalid epochs
+    #[case("!1.2.3")]
+    #[case("a!1.2.3")]
+    #[case("1.2!1.2.3")]
+    #[case("-1!1.2.3")]
+    // Invalid pre-release
+    #[case("1.2.3x1")]
+    #[case("1.2.3gamma1")]
+    #[case("1.2.3aa1")]
+    #[case("1.2.3a1a")]
+    // Invalid post-release
+    #[case("1.2.3.postx")]
+    #[case("1.2.3.postpost1")]
+    #[case("1.2.3--1")]
+    #[case("1.2.3-")]
+    // Invalid dev-release
+    #[case("1.2.3.devx")]
+    #[case("1.2.3.devdev1")]
+    // Invalid local versions
     #[case("1.2.3+")]
+    #[case("1.2.3++local")]
+    #[case("1.2.3+local+")]
+    #[case("1.2.3+local..build")]
+    #[case("1.2.3+.local")]
+    #[case("1.2.3+local.")]
+    #[case("1.2.3+local@build")]
+    #[case("1.2.3+local#build")]
+    #[case("1.2.3+local$build")]
+    #[case("1.2.3+local%build")]
+    #[case("1.2.3+local^build")]
+    #[case("1.2.3+local&build")]
+    #[case("1.2.3+local*build")]
+    #[case("1.2.3+local(build)")]
+    #[case("1.2.3+local[build]")]
+    #[case("1.2.3+local{build}")]
+    #[case("1.2.3+local|build")]
+    #[case("1.2.3+local\\build")]
+    #[case("1.2.3+local/build")]
+    #[case("1.2.3+local:build")]
+    #[case("1.2.3+local;build")]
+    #[case("1.2.3+local<build")]
+    #[case("1.2.3+local>build")]
+    #[case("1.2.3+local=build")]
+    #[case("1.2.3+local?build")]
+    #[case("1.2.3+local,build")]
+    #[case("1.2.3+local build")]
+    #[case("1.2.3+local\tuild")]
+    #[case("1.2.3+local\nbuild")]
+    // Mixed invalid cases
+    #[case(
+        "1.2.3.4.5.6.7.8.9.10.11.12.13.14.15.16.17.18.19.20.21.22.23.24.25.26.27.28.29.30.31.32.33.34.35.36.37.38.39.40.41.42.43.44.45.46.47.48.49.50+"
+    )]
+    #[case("v1.2.3+")]
+    #[case("version1.2.3")]
+    #[case("1.2.3.final")]
+    #[case("1.2.3.stable")]
+    #[case("1.2.3.release")]
     fn test_parse_invalid_versions(#[case] input: &str) {
         let result: Result<PEP440Version, _> = input.parse();
-        assert!(result.is_err());
+        assert!(
+            result.is_err(),
+            "Expected '{input}' to be invalid but it parsed successfully"
+        );
     }
 
     #[test]
@@ -488,5 +558,29 @@ mod tests {
         assert_eq!(parsed.post_number, Some(2));
         assert_eq!(parsed.dev_number, Some(3));
         assert_eq!(parsed.local, Some(parse_local_segments("build_123")));
+    }
+
+    #[rstest]
+    #[case("0.0.0", vec![0, 0, 0])]
+    #[case("4294967295.0.0", vec![4294967295, 0, 0])]
+    #[case("1.01.0", vec![1, 1, 0])]
+    fn test_parse_edge_cases(#[case] input: &str, #[case] expected_release: Vec<u32>) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        assert_eq!(parsed.release, expected_release);
+    }
+
+    #[test]
+    fn test_parse_local_segments_edge_cases() {
+        let segments = parse_local_segments("");
+        assert_eq!(segments, vec![LocalSegment::String("".to_string())]);
+
+        let segments = parse_local_segments("123");
+        assert_eq!(segments, vec![LocalSegment::Integer(123)]);
+
+        let segments = parse_local_segments("007.008");
+        assert_eq!(
+            segments,
+            vec![LocalSegment::Integer(7), LocalSegment::Integer(8)]
+        );
     }
 }
