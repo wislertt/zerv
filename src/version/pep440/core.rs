@@ -11,6 +11,11 @@ pub enum PostReleaseLabel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DevLabel {
+    Dev,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocalSegment {
     String(String),
     Integer(u32),
@@ -34,6 +39,14 @@ impl PostReleaseLabel {
     }
 }
 
+impl DevLabel {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DevLabel::Dev => "dev",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct PEP440Version {
     pub epoch: u32,
@@ -42,6 +55,7 @@ pub struct PEP440Version {
     pub pre_number: Option<u32>,
     pub post_label: Option<PostReleaseLabel>,
     pub post_number: Option<u32>,
+    pub dev_label: Option<DevLabel>,
     pub dev_number: Option<u32>,
     pub local: Option<Vec<LocalSegment>>,
 }
@@ -55,6 +69,7 @@ impl PEP440Version {
             pre_number: None,
             post_label: None,
             post_number: None,
+            dev_label: None,
             dev_number: None,
             local: None,
         }
@@ -71,14 +86,15 @@ impl PEP440Version {
         self
     }
 
-    pub fn with_post(mut self, post_number: u32) -> Self {
+    pub fn with_post(mut self, post_number: Option<u32>) -> Self {
         self.post_label = Some(PostReleaseLabel::Post);
-        self.post_number = Some(post_number);
+        self.post_number = post_number;
         self
     }
 
-    pub fn with_dev(mut self, dev_number: u32) -> Self {
-        self.dev_number = Some(dev_number);
+    pub fn with_dev(mut self, dev_number: Option<u32>) -> Self {
+        self.dev_label = Some(DevLabel::Dev);
+        self.dev_number = dev_number;
         self
     }
 
@@ -134,13 +150,13 @@ mod tests {
 
     #[test]
     fn test_pep440_version_with_post() {
-        let version = PEP440Version::new(vec![1, 2, 3]).with_post(5);
+        let version = PEP440Version::new(vec![1, 2, 3]).with_post(Some(5));
         assert_eq!(version.post_number, Some(5));
     }
 
     #[test]
     fn test_pep440_version_with_dev() {
-        let version = PEP440Version::new(vec![1, 2, 3]).with_dev(42);
+        let version = PEP440Version::new(vec![1, 2, 3]).with_dev(Some(42));
         assert_eq!(version.dev_number, Some(42));
     }
 
@@ -176,12 +192,33 @@ mod tests {
     }
 
     #[test]
+    fn test_pep440_version_with_pre_release_none_number() {
+        let version =
+            PEP440Version::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Alpha, None);
+        assert_eq!(version.pre_label, Some(PreReleaseLabel::Alpha));
+        assert_eq!(version.pre_number, None);
+    }
+
+    #[test]
+    fn test_pep440_version_with_dev_none() {
+        let version = PEP440Version::new(vec![1, 2, 3]).with_dev(None);
+        assert_eq!(version.dev_number, None);
+    }
+
+    #[test]
+    fn test_pep440_version_with_post_none() {
+        let version = PEP440Version::new(vec![1, 2, 3]).with_post(None);
+        assert_eq!(version.post_number, None);
+        assert_eq!(version.post_label, Some(PostReleaseLabel::Post));
+    }
+
+    #[test]
     fn test_complex_pep440_version() {
         let version = PEP440Version::new(vec![1, 2, 3])
             .with_epoch(2)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_post(1)
-            .with_dev(1)
+            .with_post(Some(1))
+            .with_dev(Some(1))
             .with_local("local.meta");
 
         assert_eq!(version.epoch, 2);
@@ -197,5 +234,83 @@ mod tests {
                 LocalSegment::String("meta".to_string()),
             ])
         );
+    }
+
+    // Edge case tests
+    #[test]
+    fn test_empty_release_vector() {
+        let version = PEP440Version::new(vec![]);
+        assert_eq!(version.release, vec![]);
+    }
+
+    #[test]
+    fn test_single_element_release() {
+        let version = PEP440Version::new(vec![1]);
+        assert_eq!(version.release, vec![1]);
+    }
+
+    #[test]
+    fn test_max_values() {
+        let version = PEP440Version::new(vec![u32::MAX])
+            .with_epoch(u32::MAX)
+            .with_pre_release(PreReleaseLabel::Alpha, Some(u32::MAX))
+            .with_post(Some(u32::MAX))
+            .with_dev(Some(u32::MAX));
+
+        assert_eq!(version.epoch, u32::MAX);
+        assert_eq!(version.release, vec![u32::MAX]);
+        assert_eq!(version.pre_number, Some(u32::MAX));
+        assert_eq!(version.post_number, Some(u32::MAX));
+        assert_eq!(version.dev_number, Some(u32::MAX));
+    }
+
+    #[test]
+    fn test_zero_values() {
+        let version = PEP440Version::new(vec![0])
+            .with_epoch(0)
+            .with_pre_release(PreReleaseLabel::Alpha, Some(0))
+            .with_post(Some(0))
+            .with_dev(Some(0));
+
+        assert_eq!(version.epoch, 0);
+        assert_eq!(version.pre_number, Some(0));
+        assert_eq!(version.post_number, Some(0));
+        assert_eq!(version.dev_number, Some(0));
+    }
+
+    #[test]
+    fn test_method_chaining_overwrite() {
+        let version = PEP440Version::new(vec![1])
+            .with_epoch(1)
+            .with_epoch(2)
+            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
+            .with_pre_release(PreReleaseLabel::Beta, Some(2));
+
+        assert_eq!(version.epoch, 2);
+        assert_eq!(version.pre_label, Some(PreReleaseLabel::Beta));
+        assert_eq!(version.pre_number, Some(2));
+    }
+
+    #[test]
+    fn test_post_none_after_some() {
+        let version = PEP440Version::new(vec![1])
+            .with_post(Some(1))
+            .with_post(None);
+
+        assert_eq!(version.post_number, None);
+        assert_eq!(version.post_label, Some(PostReleaseLabel::Post));
+    }
+
+    #[test]
+    fn test_local_empty_string() {
+        let version = PEP440Version::new(vec![1]).with_local("");
+        assert!(version.local.is_some());
+    }
+
+    #[test]
+    fn test_long_release_vector() {
+        let long_release = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let version = PEP440Version::new(long_release.clone());
+        assert_eq!(version.release, long_release);
     }
 }

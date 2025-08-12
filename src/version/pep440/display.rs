@@ -37,15 +37,19 @@ impl fmt::Display for PEP440Version {
         }
 
         // Post-release
-        if let Some(ref post_label) = self.post_label
-            && let Some(post_number) = self.post_number
-        {
-            write!(f, ".{}{}", post_label.as_str(), post_number)?;
+        if let Some(ref post_label) = self.post_label {
+            write!(f, ".{}", post_label.as_str())?;
+            if let Some(post_number) = self.post_number {
+                write!(f, "{post_number}")?;
+            }
         }
 
         // Dev-release
-        if let Some(dev_number) = self.dev_number {
-            write!(f, ".dev{dev_number}")?;
+        if let Some(ref dev_label) = self.dev_label {
+            write!(f, ".{}", dev_label.as_str())?;
+            if let Some(dev_number) = self.dev_number {
+                write!(f, "{dev_number}")?;
+            }
         }
 
         // Local version
@@ -82,8 +86,8 @@ mod tests {
         let version = PEP440Version::new(vec![2025, 12, 31])
             .with_epoch(42)
             .with_pre_release(PreReleaseLabel::Alpha, Some(99))
-            .with_post(123)
-            .with_dev(456)
+            .with_post(Some(123))
+            .with_dev(Some(456))
             .with_local("deadbeef.abc123");
         assert_eq!(
             version.to_string(),
@@ -167,5 +171,24 @@ mod tests {
         let mut version = PEP440Version::new(vec![1, 0, 0]);
         version.dev_number = None;
         assert_eq!(version.to_string(), "1.0.0");
+    }
+
+    #[test]
+    fn test_display_with_dev_none() {
+        let version = PEP440Version::new(vec![1, 2, 3]).with_dev(None);
+        assert_eq!(version.to_string(), "1.2.3.dev");
+    }
+
+    #[test]
+    fn test_display_with_post_none() {
+        let version = PEP440Version::new(vec![1, 2, 3]).with_post(None);
+        assert_eq!(version.to_string(), "1.2.3.post");
+    }
+
+    #[test]
+    fn test_display_with_pre_release_none() {
+        let version =
+            PEP440Version::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Alpha, None);
+        assert_eq!(version.to_string(), "1.2.3a");
     }
 }

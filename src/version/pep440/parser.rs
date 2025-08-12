@@ -1,6 +1,6 @@
 use crate::error::ZervError;
 use crate::version::pep440::core::{
-    LocalSegment, PEP440Version, PostReleaseLabel, PreReleaseLabel,
+    DevLabel, LocalSegment, PEP440Version, PostReleaseLabel, PreReleaseLabel,
 };
 use regex::Regex;
 use std::str::FromStr;
@@ -105,10 +105,11 @@ impl FromStr for PEP440Version {
             (None, None)
         };
 
-        let dev_number = if captures.name("dev").is_some() {
-            captures.name("dev_n").and_then(|m| m.as_str().parse().ok())
+        let (dev_label, dev_number) = if captures.name("dev").is_some() {
+            let dev_number = captures.name("dev_n").and_then(|m| m.as_str().parse().ok());
+            (Some(DevLabel::Dev), dev_number)
         } else {
-            None
+            (None, None)
         };
 
         let local = captures
@@ -122,6 +123,7 @@ impl FromStr for PEP440Version {
             pre_number,
             post_label,
             post_number,
+            dev_label,
             dev_number,
             local,
         })
@@ -198,11 +200,7 @@ mod tests {
     #[case("1.0.0post5", Some(5))]
     fn test_parse_post_release(#[case] input: &str, #[case] post_number: Option<u32>) {
         let parsed: PEP440Version = input.parse().unwrap();
-        let built = if let Some(post) = post_number {
-            PEP440Version::new(vec![1, 0, 0]).with_post(post)
-        } else {
-            PEP440Version::new(vec![1, 0, 0])
-        };
+        let built = PEP440Version::new(vec![1, 0, 0]).with_post(post_number);
 
         assert_eq!(parsed, built);
         assert_eq!(parsed.post_number, post_number);
@@ -215,16 +213,8 @@ mod tests {
     #[case("1.0.0dev", None)]
     fn test_parse_dev_release(#[case] input: &str, #[case] dev_number: Option<u32>) {
         let parsed: PEP440Version = input.parse().unwrap();
-        if let Some(dev) = dev_number {
-            let built = PEP440Version::new(vec![1, 0, 0]).with_dev(dev);
-            assert_eq!(parsed, built);
-        } else {
-            // For dev releases without numbers, we still have a dev release but with None
-            let mut expected = PEP440Version::new(vec![1, 0, 0]);
-            expected.dev_number = None;
-            // We can't easily compare the whole object since we can't construct it with builder
-            // So we just verify the dev_number field
-        }
+        let built = PEP440Version::new(vec![1, 0, 0]).with_dev(dev_number);
+        assert_eq!(parsed, built);
 
         assert_eq!(parsed.dev_number, dev_number);
     }
