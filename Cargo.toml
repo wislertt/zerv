@@ -1,18 +1,33 @@
 [package]
 name = "zerv"
 version = "0.0.0" # Use git tag
+authors = ["Wisaroot Lertthaweedech <l.wisaroot@gmail.com>"]
 edition = "2024"
-description = "Dynamic Versioning CLI"
+description = """
+Generate versions for any commit from git and other version control -
+perfect for CI/CD builds and multiple formats
+"""
 license = "Apache-2.0"
 repository = "https://github.com/wisarootl/zerv"
+homepage = "https://github.com/wisarootl/zerv"
+readme = "README.md"
+keywords = ["cli", "versioning", "git", "semver"]
+categories = ["command-line-utilities", "development-tools::build-utils", "config", "parsing"]
+rust-version = "1.89"
+exclude = [
+  "/.github/",
+  "/scripts/",
+  "/.dev/",
+  "/.amazonq/",
+]
 
 [[bin]]
 name = "zerv"
 path = "src/main.rs"
 
 [dependencies]
-chrono = ">=0.4.41"
-clap = { version = ">=4.4", features = ["derive"] }
+chrono = "^0.4.41"
+clap = { version = "^4.4", features = ["derive"] }
 
 [dev-dependencies]
-rstest = ">=0.18"
+rstest = "^0.18"
