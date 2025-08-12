@@ -9,91 +9,43 @@ impl PartialOrd for PEP440Version {
 
 impl Ord for PEP440Version {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Compare epoch first
-        match self.epoch.cmp(&other.epoch) {
-            Ordering::Equal => {}
-            other => return other,
-        }
-
-        // Compare release versions (normalize trailing zeros)
-        match compare_release_versions(&self.release, &other.release) {
-            Ordering::Equal => {}
-            other => return other,
-        }
-
-        // Compare pre-release (None > Some for pre-release)
-        match (&self.pre_label, &other.pre_label) {
-            (None, None) => {}
-            (None, Some(_)) => return Ordering::Greater,
-            (Some(_), None) => return Ordering::Less,
-            (Some(self_pre), Some(other_pre)) => match self_pre.cmp(other_pre) {
-                Ordering::Equal => {
-                    // Handle implicit vs explicit 0: None (implicit) < Some(0) (explicit) < Some(n) where n > 0
-                    match (self.pre_number, other.pre_number) {
-                        (None, None) => {}
-                        (None, Some(0)) => return Ordering::Less, // implicit 0 < explicit 0
-                        (None, Some(_)) => return Ordering::Less, // implicit 0 < explicit n
-                        (Some(0), None) => return Ordering::Greater, // explicit 0 > implicit 0
-                        (Some(_), None) => return Ordering::Greater, // explicit n > implicit 0
-                        (Some(a), Some(b)) => match a.cmp(&b) {
-                            Ordering::Equal => {}
-                            other => return other,
-                        },
-                    }
-                }
-                other => return other,
-            },
-        }
-
-        // Compare post-release (None < Some for post-release)
-        match (&self.post_label, &other.post_label) {
-            (None, None) => {}
-            (None, Some(_)) => return Ordering::Less,
-            (Some(_), None) => return Ordering::Greater,
-            (Some(_), Some(_)) => {
-                // Handle implicit vs explicit 0: None (implicit) < Some(0) (explicit) < Some(n) where n > 0
-                match (self.post_number, other.post_number) {
-                    (None, None) => {}
-                    (None, Some(0)) => return Ordering::Less, // implicit 0 < explicit 0
-                    (None, Some(_)) => return Ordering::Less, // implicit 0 < explicit n
-                    (Some(0), None) => return Ordering::Greater, // explicit 0 > implicit 0
-                    (Some(_), None) => return Ordering::Greater, // explicit n > implicit 0
-                    (Some(a), Some(b)) => match a.cmp(&b) {
-                        Ordering::Equal => {}
-                        other => return other,
-                    },
-                }
-            }
-        }
-
-        // Compare dev-release (None > Some for dev-release)
-        match (&self.dev_label, &other.dev_label) {
-            (None, None) => {}
-            (None, Some(_)) => return Ordering::Greater,
-            (Some(_), None) => return Ordering::Less,
-            (Some(_), Some(_)) => {
-                // Handle implicit vs explicit 0: None (implicit) < Some(0) (explicit) < Some(n) where n > 0
-                match (self.dev_number, other.dev_number) {
-                    (None, None) => {}
-                    (None, Some(0)) => return Ordering::Less, // implicit 0 < explicit 0
-                    (None, Some(_)) => return Ordering::Less, // implicit 0 < explicit n
-                    (Some(0), None) => return Ordering::Greater, // explicit 0 > implicit 0
-                    (Some(_), None) => return Ordering::Greater, // explicit n > implicit 0
-                    (Some(a), Some(b)) => match a.cmp(&b) {
-                        Ordering::Equal => {}
-                        other => return other,
-                    },
-                }
-            }
-        }
-
-        // Compare local versions (None < Some)
-        match (&self.local, &other.local) {
-            (None, None) => Ordering::Equal,
-            (None, Some(_)) => Ordering::Less,
-            (Some(_), None) => Ordering::Greater,
-            (Some(self_local), Some(other_local)) => self_local.cmp(other_local),
-        }
+        self.epoch
+            .cmp(&other.epoch)
+            .then_with(|| compare_release_versions(&self.release, &other.release))
+            .then_with(|| match (&self.pre_label, &other.pre_label) {
+                (None, None) => Ordering::Equal,
+                (None, Some(_)) => Ordering::Greater,
+                (Some(_), None) => Ordering::Less,
+                (Some(self_pre), Some(other_pre)) => self_pre.cmp(other_pre).then_with(|| {
+                    self.pre_number
+                        .unwrap_or(0)
+                        .cmp(&other.pre_number.unwrap_or(0))
+                }),
+            })
+            .then_with(|| match (&self.post_label, &other.post_label) {
+                (None, None) => Ordering::Equal,
+                (None, Some(_)) => Ordering::Less,
+                (Some(_), None) => Ordering::Greater,
+                (Some(_), Some(_)) => self
+                    .post_number
+                    .unwrap_or(0)
+                    .cmp(&other.post_number.unwrap_or(0)),
+            })
+            .then_with(|| match (&self.dev_label, &other.dev_label) {
+                (None, None) => Ordering::Equal,
+                (None, Some(_)) => Ordering::Greater,
+                (Some(_), None) => Ordering::Less,
+                (Some(_), Some(_)) => self
+                    .dev_number
+                    .unwrap_or(0)
+                    .cmp(&other.dev_number.unwrap_or(0)),
+            })
+            .then_with(|| match (&self.local, &other.local) {
+                (None, None) => Ordering::Equal,
+                (None, Some(_)) => Ordering::Less,
+                (Some(_), None) => Ordering::Greater,
+                (Some(self_local), Some(other_local)) => self_local.cmp(other_local),
+            })
     }
 }
 
@@ -323,7 +275,6 @@ mod tests {
     #[case("1.0.0rc1.dev1", "1.0.0rc1.post1")] // rc.dev < rc.post
     #[case("1.0.0rc1.post1", "1.0.0rc2")] // rc.post < rc2
     #[case("1.0.0rc1", "1.0.0")] // rc < stable
-    #[case("1.0.0a", "1.0.0a0")] // alpha < alpha0
     #[case("1.0.0a0", "1.0.0a1")] // alpha0 < alpha1
     #[case("1.0.0a", "1.0.0a1")] // alpha < alpha1
     #[case("1.0.0a1", "1.0.0.dev1")] // alpha < stable.dev

@@ -311,6 +311,69 @@ mod tests {
         assert_eq!(version.pre_number, Some(2));
     }
 
+    #[rstest]
+    #[case(PreReleaseLabel::Alpha, None, Some(0))]
+    #[case(PreReleaseLabel::Beta, None, Some(0))]
+    #[case(PreReleaseLabel::Rc, None, Some(0))]
+    fn test_implicit_vs_explicit_zero_equality(
+        #[case] pre_label: PreReleaseLabel,
+        #[case] implicit_num: Option<u32>,
+        #[case] explicit_num: Option<u32>,
+    ) {
+        // Test pre-release
+        let implicit_pre =
+            PEP440Version::new(vec![1, 0, 0]).with_pre_release(pre_label.clone(), implicit_num);
+        let explicit_pre =
+            PEP440Version::new(vec![1, 0, 0]).with_pre_release(pre_label.clone(), explicit_num);
+        assert_eq!(implicit_pre, explicit_pre);
+
+        // Test post-release
+        let implicit_post = PEP440Version::new(vec![1, 0, 0]).with_post(None);
+        let explicit_post = PEP440Version::new(vec![1, 0, 0]).with_post(Some(0));
+        assert_eq!(implicit_post, explicit_post);
+
+        // Test dev-release
+        let implicit_dev = PEP440Version::new(vec![1, 0, 0]).with_dev(None);
+        let explicit_dev = PEP440Version::new(vec![1, 0, 0]).with_dev(Some(0));
+        assert_eq!(implicit_dev, explicit_dev);
+
+        // Test 2-component combinations
+        let pre_post_implicit = PEP440Version::new(vec![1, 0, 0])
+            .with_pre_release(pre_label.clone(), None)
+            .with_post(None);
+        let pre_post_explicit = PEP440Version::new(vec![1, 0, 0])
+            .with_pre_release(pre_label.clone(), Some(0))
+            .with_post(Some(0));
+        assert_eq!(pre_post_implicit, pre_post_explicit);
+
+        let post_dev_implicit = PEP440Version::new(vec![1, 0, 0])
+            .with_post(None)
+            .with_dev(None);
+        let post_dev_explicit = PEP440Version::new(vec![1, 0, 0])
+            .with_post(Some(0))
+            .with_dev(Some(0));
+        assert_eq!(post_dev_implicit, post_dev_explicit);
+
+        let pre_dev_implicit = PEP440Version::new(vec![1, 0, 0])
+            .with_pre_release(pre_label.clone(), None)
+            .with_dev(None);
+        let pre_dev_explicit = PEP440Version::new(vec![1, 0, 0])
+            .with_pre_release(pre_label.clone(), Some(0))
+            .with_dev(Some(0));
+        assert_eq!(pre_dev_implicit, pre_dev_explicit);
+
+        // Test all combinations
+        let all_implicit = PEP440Version::new(vec![1, 0, 0])
+            .with_pre_release(pre_label.clone(), None)
+            .with_post(None)
+            .with_dev(None);
+        let all_explicit = PEP440Version::new(vec![1, 0, 0])
+            .with_pre_release(pre_label, Some(0))
+            .with_post(Some(0))
+            .with_dev(Some(0));
+        assert_eq!(all_implicit, all_explicit);
+    }
+
     #[test]
     fn test_post_none_after_some() {
         let version = PEP440Version::new(vec![1])
@@ -329,24 +392,24 @@ mod tests {
 
     #[test]
     fn test_normalize_pre_release() {
-        let version = PEP440Version::new(vec![1, 2, 3])
-            .with_pre_release(PreReleaseLabel::Alpha, None)
-            .normalize();
-        assert_eq!(version.pre_number, Some(0));
+        let version =
+            PEP440Version::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Alpha, None);
+        let normalized = version.normalize();
+        assert_eq!(normalized.pre_number, Some(0));
     }
 
     #[test]
     fn test_normalize_post_release() {
-        let version = PEP440Version::new(vec![1, 2, 3])
-            .with_post(None)
-            .normalize();
-        assert_eq!(version.post_number, Some(0));
+        let version = PEP440Version::new(vec![1, 2, 3]).with_post(None);
+        let normalized = version.normalize();
+        assert_eq!(normalized.post_number, Some(0));
     }
 
     #[test]
     fn test_normalize_dev_release() {
-        let version = PEP440Version::new(vec![1, 2, 3]).with_dev(None).normalize();
-        assert_eq!(version.dev_number, Some(0));
+        let version = PEP440Version::new(vec![1, 2, 3]).with_dev(None);
+        let normalized = version.normalize();
+        assert_eq!(normalized.dev_number, Some(0));
     }
 
     #[test]
@@ -354,11 +417,11 @@ mod tests {
         let version = PEP440Version::new(vec![1, 2, 3])
             .with_pre_release(PreReleaseLabel::Beta, None)
             .with_post(None)
-            .with_dev(None)
-            .normalize();
-        assert_eq!(version.pre_number, Some(0));
-        assert_eq!(version.post_number, Some(0));
-        assert_eq!(version.dev_number, Some(0));
+            .with_dev(None);
+        let normalized = version.normalize();
+        assert_eq!(normalized.pre_number, Some(0));
+        assert_eq!(normalized.post_number, Some(0));
+        assert_eq!(normalized.dev_number, Some(0));
     }
 
     #[test]
@@ -366,19 +429,20 @@ mod tests {
         let version = PEP440Version::new(vec![1, 2, 3])
             .with_pre_release(PreReleaseLabel::Alpha, Some(5))
             .with_post(Some(3))
-            .with_dev(Some(7))
-            .normalize();
-        assert_eq!(version.pre_number, Some(5));
-        assert_eq!(version.post_number, Some(3));
-        assert_eq!(version.dev_number, Some(7));
+            .with_dev(Some(7));
+        let normalized = version.normalize();
+        assert_eq!(normalized.pre_number, Some(5));
+        assert_eq!(normalized.post_number, Some(3));
+        assert_eq!(normalized.dev_number, Some(7));
     }
 
     #[test]
     fn test_normalize_no_labels() {
-        let version = PEP440Version::new(vec![1, 2, 3]).normalize();
-        assert_eq!(version.pre_number, None);
-        assert_eq!(version.post_number, None);
-        assert_eq!(version.dev_number, None);
+        let version = PEP440Version::new(vec![1, 2, 3]);
+        let normalized = version.normalize();
+        assert_eq!(normalized.pre_number, None);
+        assert_eq!(normalized.post_number, None);
+        assert_eq!(normalized.dev_number, None);
     }
 
     #[test]
@@ -502,7 +566,7 @@ mod tests {
     #[case("1.2.3preview.post.dev", "1.2.3rc0.post0.dev0")]
     fn test_roundtrip_unnormalized_strings(#[case] input: &str, #[case] expected: &str) {
         let parsed: PEP440Version = input.parse().unwrap();
-        let normalized = parsed.normalize();
+        let normalized = parsed;
         let output = normalized.to_string();
         assert_eq!(
             expected, output,

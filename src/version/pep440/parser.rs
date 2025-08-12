@@ -112,7 +112,7 @@ impl FromStr for PEP440Version {
             version = version.with_local(local_match.as_str());
         }
 
-        Ok(version)
+        Ok(version.normalize())
     }
 }
 
@@ -162,9 +162,9 @@ mod tests {
     #[case("1.0.0c6", PreReleaseLabel::Rc, Some(6))]
     #[case("1.0.0preview7", PreReleaseLabel::Rc, Some(7))]
     #[case("1.0.0pre8", PreReleaseLabel::Rc, Some(8))]
-    #[case("1.0.0a", PreReleaseLabel::Alpha, None)]
-    #[case("1.0.0b", PreReleaseLabel::Beta, None)]
-    #[case("1.0.0rc", PreReleaseLabel::Rc, None)]
+    #[case("1.0.0a", PreReleaseLabel::Alpha, Some(0))]
+    #[case("1.0.0b", PreReleaseLabel::Beta, Some(0))]
+    #[case("1.0.0rc", PreReleaseLabel::Rc, Some(0))]
     fn test_parse_pre_release(
         #[case] input: &str,
         #[case] pre_label: PreReleaseLabel,
@@ -196,8 +196,8 @@ mod tests {
     #[rstest]
     #[case("1.0.0.dev1", Some(1))]
     #[case("1.0.0dev2", Some(2))]
-    #[case("1.0.0.dev", None)]
-    #[case("1.0.0dev", None)]
+    #[case("1.0.0.dev", Some(0))]
+    #[case("1.0.0dev", Some(0))]
     fn test_parse_dev_release(#[case] input: &str, #[case] dev_number: Option<u32>) {
         let parsed: PEP440Version = input.parse().unwrap();
         let built = PEP440Version::new(vec![1, 0, 0]).with_dev(dev_number);
@@ -431,10 +431,10 @@ mod tests {
     #[case("1.0.0-dev1", Some(1))]
     #[case("1.0.0_dev1", Some(1))]
     #[case("1.0.0dev1", Some(1))]
-    #[case("1.0.0.dev", None)]
-    #[case("1.0.0-dev", None)]
-    #[case("1.0.0_dev", None)]
-    #[case("1.0.0dev", None)]
+    #[case("1.0.0.dev", Some(0))]
+    #[case("1.0.0-dev", Some(0))]
+    #[case("1.0.0_dev", Some(0))]
+    #[case("1.0.0dev", Some(0))]
     fn test_parse_dev_release_separators(
         #[case] input: &str,
         #[case] expected_number: Option<u32>,
@@ -500,8 +500,8 @@ mod tests {
     // Case insensitive dev-release labels
     #[case("1.0.0.DEV1", Some(1))]
     #[case("1.0.0.Dev1", Some(1))]
-    #[case("1.0.0.DEV", None)]
-    #[case("1.0.0.Dev", None)]
+    #[case("1.0.0.DEV", Some(0))]
+    #[case("1.0.0.Dev", Some(0))]
     fn test_parse_dev_release_case_insensitive(
         #[case] input: &str,
         #[case] expected_number: Option<u32>,
@@ -562,9 +562,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case("1.2.dev", None)] // dev without number stays None
+    #[case("1.2.dev", Some(0))] // dev without number normalized to Some(0)
     #[case("1.2.dev5", Some(5))] // explicit dev number preserved
-    #[case("1.2.post", None)] // post without number stays None
+    #[case("1.2.post", Some(0))] // post without number normalized to Some(0)
     #[case("1.2.post3", Some(3))] // explicit post number preserved
     fn test_parse_normalization_dev_post(#[case] input: &str, #[case] expected: Option<u32>) {
         let parsed: PEP440Version = input.parse().unwrap();
@@ -578,10 +578,10 @@ mod tests {
     }
 
     #[rstest]
-    #[case("1.2.a", PreReleaseLabel::Alpha, None)] // a without number stays None
+    #[case("1.2.a", PreReleaseLabel::Alpha, Some(0))] // a without number normalized to Some(0)
     #[case("1.2.a2", PreReleaseLabel::Alpha, Some(2))] // explicit number preserved
-    #[case("1.2.b", PreReleaseLabel::Beta, None)] // b without number stays None
-    #[case("1.2.rc", PreReleaseLabel::Rc, None)] // rc without number stays None
+    #[case("1.2.b", PreReleaseLabel::Beta, Some(0))] // b without number normalized to Some(0)
+    #[case("1.2.rc", PreReleaseLabel::Rc, Some(0))] // rc without number normalized to Some(0)
     fn test_parse_normalization_pre_release(
         #[case] input: &str,
         #[case] expected_label: PreReleaseLabel,
@@ -595,18 +595,12 @@ mod tests {
 
     #[test]
     fn test_parse_normalization_comprehensive() {
-        // Test version with all implicit numbers - should stay implicit until explicitly normalized
+        // Test version with all implicit numbers - now automatically normalized during parsing
         let parsed: PEP440Version = "1.2.3a.post.dev".parse().unwrap();
 
         assert_eq!(parsed.pre_label, Some(PreReleaseLabel::Alpha));
-        assert_eq!(parsed.pre_number, None); // stays None (implicit)
-        assert_eq!(parsed.post_number, None); // stays None (implicit)
-        assert_eq!(parsed.dev_number, None); // stays None (implicit)
-
-        // But explicit normalization should work
-        let normalized = parsed.normalize();
-        assert_eq!(normalized.pre_number, Some(0)); // normalized to Some(0)
-        assert_eq!(normalized.post_number, Some(0)); // normalized to Some(0)
-        assert_eq!(normalized.dev_number, Some(0)); // normalized to Some(0)
+        assert_eq!(parsed.pre_number, Some(0)); // automatically normalized to Some(0)
+        assert_eq!(parsed.post_number, Some(0)); // automatically normalized to Some(0)
+        assert_eq!(parsed.dev_number, Some(0)); // automatically normalized to Some(0)
     }
 }
