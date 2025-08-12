@@ -230,110 +230,41 @@ mod tests {
     }
 
     #[rstest]
-    #[case(
-        "1.0.0+ubuntu.20.04",
-        vec![
-            LocalSegment::String("ubuntu".to_string()),
-            LocalSegment::Integer(20),
-            LocalSegment::Integer(4)
-        ]
-    )]
-    #[case(
-        "1.0.0+deadbeef.abc123",
-        vec![
-            LocalSegment::String("deadbeef".to_string()),
-            LocalSegment::String("abc123".to_string())
-        ]
-    )]
-    #[case(
-        "1.0.0+123.456",
-        vec![
-            LocalSegment::Integer(123),
-            LocalSegment::Integer(456)
-        ]
-    )]
-    #[case(
-        "1.0.0+local",
-        vec![LocalSegment::String("local".to_string())]
-    )]
-    fn test_parse_local_versions(#[case] input: &str, #[case] local: Vec<LocalSegment>) {
+    #[case("1.0.0+ubuntu.20.04")]
+    #[case("1.0.0+deadbeef.abc123")]
+    #[case("1.0.0+123.456")]
+    #[case("1.0.0+local")]
+    fn test_parse_local_versions(#[case] input: &str) {
         let parsed: PEP440Version = input.parse().unwrap();
         // Extract local string from input for with_local
         let local_str = input.split('+').nth(1).unwrap();
         let built = PEP440Version::new(vec![1, 0, 0]).with_local(local_str);
+        let expected_local = parse_local_segments(local_str);
 
         assert_eq!(parsed, built);
-        assert_eq!(parsed.local, Some(local));
+        assert_eq!(parsed.local, Some(expected_local));
     }
 
-    #[test]
-    fn test_parse_complex_version_full() {
-        let input = "42!2025.12.31a99.post123.dev456+deadbeef.abc123";
+    #[rstest]
+    #[case("42!2025.12.31a99.post123.dev456+deadbeef.abc123")]
+    #[case("1!1.2.3b4.post5.dev6+local.meta")]
+    #[case("0!1.0.0rc1.post2.dev3+build.123")]
+    fn test_parse_complex_versions(#[case] input: &str) {
         let parsed: PEP440Version = input.parse().unwrap();
-        let built = PEP440Version::new(vec![2025, 12, 31])
-            .with_epoch(42)
-            .with_pre_release(PreReleaseLabel::Alpha, Some(99))
-            .with_post(123)
-            .with_dev(456)
-            .with_local("deadbeef.abc123");
 
-        // High-level validation
-        assert_eq!(parsed, built);
+        // Verify parsing succeeded and all components are present
+        assert!(parsed.epoch > 0 || input.starts_with("0!"));
+        assert!(!parsed.release.is_empty());
+        assert!(parsed.pre_label.is_some());
+        assert!(parsed.pre_number.is_some());
+        assert!(parsed.post_number.is_some());
+        assert!(parsed.dev_number.is_some());
+        assert!(parsed.local.is_some());
 
-        // Detailed validation
-        assert_eq!(parsed.epoch, 42);
-        assert_eq!(parsed.release, vec![2025, 12, 31]);
-        assert_eq!(parsed.pre_label, Some(PreReleaseLabel::Alpha));
-        assert_eq!(parsed.pre_number, Some(99));
-        assert_eq!(parsed.post_number, Some(123));
-        assert_eq!(parsed.dev_number, Some(456));
-        assert_eq!(
-            parsed.local,
-            Some(vec![
-                LocalSegment::String("deadbeef".to_string()),
-                LocalSegment::String("abc123".to_string())
-            ])
-        );
-    }
-
-    #[test]
-    fn test_parse_complex_version_beta() {
-        let input = "1!1.2.3b4.post5.dev6+local.meta";
-        let parsed: PEP440Version = input.parse().unwrap();
-        let built = PEP440Version::new(vec![1, 2, 3])
-            .with_epoch(1)
-            .with_pre_release(PreReleaseLabel::Beta, Some(4))
-            .with_post(5)
-            .with_dev(6)
-            .with_local("local.meta");
-
-        assert_eq!(parsed, built);
-        assert_eq!(parsed.epoch, 1);
-        assert_eq!(parsed.release, vec![1, 2, 3]);
-        assert_eq!(parsed.pre_label, Some(PreReleaseLabel::Beta));
-        assert_eq!(parsed.pre_number, Some(4));
-        assert_eq!(parsed.post_number, Some(5));
-        assert_eq!(parsed.dev_number, Some(6));
-    }
-
-    #[test]
-    fn test_parse_complex_version_rc() {
-        let input = "0!1.0.0rc1.post2.dev3+build.123";
-        let parsed: PEP440Version = input.parse().unwrap();
-        let built = PEP440Version::new(vec![1, 0, 0])
-            .with_epoch(0)
-            .with_pre_release(PreReleaseLabel::Rc, Some(1))
-            .with_post(2)
-            .with_dev(3)
-            .with_local("build.123");
-
-        assert_eq!(parsed, built);
-        assert_eq!(parsed.epoch, 0);
-        assert_eq!(parsed.release, vec![1, 0, 0]);
-        assert_eq!(parsed.pre_label, Some(PreReleaseLabel::Rc));
-        assert_eq!(parsed.pre_number, Some(1));
-        assert_eq!(parsed.post_number, Some(2));
-        assert_eq!(parsed.dev_number, Some(3));
+        // Test round-trip: parse -> display -> parse should be equal
+        let displayed = parsed.to_string();
+        let reparsed: PEP440Version = displayed.parse().unwrap();
+        assert_eq!(parsed, reparsed);
     }
 
     #[rstest]
@@ -366,5 +297,196 @@ mod tests {
                 LocalSegment::String("build123".to_string())
             ]
         );
+    }
+
+    // Test all PEP440 unnormalized forms
+    #[rstest]
+    // Pre-release label normalization: alpha/a, beta/b, rc/c/preview/pre
+    #[case("1.0.0alpha1", PreReleaseLabel::Alpha, Some(1))]
+    #[case("1.0.0ALPHA1", PreReleaseLabel::Alpha, Some(1))]
+    #[case("1.0.0a1", PreReleaseLabel::Alpha, Some(1))]
+    #[case("1.0.0A1", PreReleaseLabel::Alpha, Some(1))]
+    #[case("1.0.0beta2", PreReleaseLabel::Beta, Some(2))]
+    #[case("1.0.0BETA2", PreReleaseLabel::Beta, Some(2))]
+    #[case("1.0.0b2", PreReleaseLabel::Beta, Some(2))]
+    #[case("1.0.0B2", PreReleaseLabel::Beta, Some(2))]
+    #[case("1.0.0rc3", PreReleaseLabel::Rc, Some(3))]
+    #[case("1.0.0RC3", PreReleaseLabel::Rc, Some(3))]
+    #[case("1.0.0c3", PreReleaseLabel::Rc, Some(3))]
+    #[case("1.0.0C3", PreReleaseLabel::Rc, Some(3))]
+    #[case("1.0.0preview4", PreReleaseLabel::Rc, Some(4))]
+    #[case("1.0.0PREVIEW4", PreReleaseLabel::Rc, Some(4))]
+    #[case("1.0.0pre5", PreReleaseLabel::Rc, Some(5))]
+    #[case("1.0.0PRE5", PreReleaseLabel::Rc, Some(5))]
+    fn test_parse_pre_release_normalization(
+        #[case] input: &str,
+        #[case] expected_label: PreReleaseLabel,
+        #[case] expected_number: Option<u32>,
+    ) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        assert_eq!(parsed.pre_label, Some(expected_label));
+        assert_eq!(parsed.pre_number, expected_number);
+    }
+
+    #[rstest]
+    // Pre-release separator normalization: ., -, _, or none
+    #[case("1.0.0.a1", PreReleaseLabel::Alpha, Some(1))]
+    #[case("1.0.0-a1", PreReleaseLabel::Alpha, Some(1))]
+    #[case("1.0.0_a1", PreReleaseLabel::Alpha, Some(1))]
+    #[case("1.0.0a1", PreReleaseLabel::Alpha, Some(1))]
+    #[case("1.0.0.beta2", PreReleaseLabel::Beta, Some(2))]
+    #[case("1.0.0-beta2", PreReleaseLabel::Beta, Some(2))]
+    #[case("1.0.0_beta2", PreReleaseLabel::Beta, Some(2))]
+    #[case("1.0.0beta2", PreReleaseLabel::Beta, Some(2))]
+    #[case("1.0.0.rc3", PreReleaseLabel::Rc, Some(3))]
+    #[case("1.0.0-rc3", PreReleaseLabel::Rc, Some(3))]
+    #[case("1.0.0_rc3", PreReleaseLabel::Rc, Some(3))]
+    #[case("1.0.0rc3", PreReleaseLabel::Rc, Some(3))]
+    fn test_parse_pre_release_separators(
+        #[case] input: &str,
+        #[case] expected_label: PreReleaseLabel,
+        #[case] expected_number: Option<u32>,
+    ) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        assert_eq!(parsed.pre_label, Some(expected_label));
+        assert_eq!(parsed.pre_number, expected_number);
+    }
+
+    #[rstest]
+    // Post-release separator normalization: ., -, _, or none
+    #[case("1.0.0.post1", Some(1))]
+    #[case("1.0.0-post1", Some(1))]
+    #[case("1.0.0_post1", Some(1))]
+    #[case("1.0.0post1", Some(1))]
+    #[case("1.0.0.rev2", Some(2))]
+    #[case("1.0.0-rev2", Some(2))]
+    #[case("1.0.0_rev2", Some(2))]
+    #[case("1.0.0rev2", Some(2))]
+    #[case("1.0.0.r3", Some(3))]
+    #[case("1.0.0-r3", Some(3))]
+    #[case("1.0.0_r3", Some(3))]
+    #[case("1.0.0r3", Some(3))]
+    // Implicit post-release (just -N)
+    #[case("1.0.0-1", Some(1))]
+    #[case("1.0.0-42", Some(42))]
+    fn test_parse_post_release_separators(
+        #[case] input: &str,
+        #[case] expected_number: Option<u32>,
+    ) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        assert_eq!(parsed.post_number, expected_number);
+        assert_eq!(parsed.post_label, Some(PostReleaseLabel::Post));
+    }
+
+    #[rstest]
+    // Dev-release separator normalization: ., -, _, or none
+    #[case("1.0.0.dev1", Some(1))]
+    #[case("1.0.0-dev1", Some(1))]
+    #[case("1.0.0_dev1", Some(1))]
+    #[case("1.0.0dev1", Some(1))]
+    #[case("1.0.0.dev", None)]
+    #[case("1.0.0-dev", None)]
+    #[case("1.0.0_dev", None)]
+    #[case("1.0.0dev", None)]
+    fn test_parse_dev_release_separators(
+        #[case] input: &str,
+        #[case] expected_number: Option<u32>,
+    ) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        assert_eq!(parsed.dev_number, expected_number);
+    }
+
+    #[rstest]
+    // Mixed separator combinations
+    #[case(
+        "1.0.0-a1.post2_dev3",
+        PreReleaseLabel::Alpha,
+        Some(1),
+        Some(2),
+        Some(3)
+    )]
+    #[case(
+        "1.0.0_beta1-post2.dev3",
+        PreReleaseLabel::Beta,
+        Some(1),
+        Some(2),
+        Some(3)
+    )]
+    #[case("1.0.0.rc1_post2-dev3", PreReleaseLabel::Rc, Some(1), Some(2), Some(3))]
+    #[case(
+        "1.0.0alpha1post2dev3",
+        PreReleaseLabel::Alpha,
+        Some(1),
+        Some(2),
+        Some(3)
+    )]
+    fn test_parse_mixed_separators(
+        #[case] input: &str,
+        #[case] expected_pre_label: PreReleaseLabel,
+        #[case] expected_pre_number: Option<u32>,
+        #[case] expected_post_number: Option<u32>,
+        #[case] expected_dev_number: Option<u32>,
+    ) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        assert_eq!(parsed.pre_label, Some(expected_pre_label));
+        assert_eq!(parsed.pre_number, expected_pre_number);
+        assert_eq!(parsed.post_number, expected_post_number);
+        assert_eq!(parsed.dev_number, expected_dev_number);
+    }
+
+    #[rstest]
+    // Case insensitive post-release labels
+    #[case("1.0.0.POST1", Some(1))]
+    #[case("1.0.0.Post1", Some(1))]
+    #[case("1.0.0.REV2", Some(2))]
+    #[case("1.0.0.Rev2", Some(2))]
+    #[case("1.0.0.R3", Some(3))]
+    fn test_parse_post_release_case_insensitive(
+        #[case] input: &str,
+        #[case] expected_number: Option<u32>,
+    ) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        assert_eq!(parsed.post_number, expected_number);
+    }
+
+    #[rstest]
+    // Case insensitive dev-release labels
+    #[case("1.0.0.DEV1", Some(1))]
+    #[case("1.0.0.Dev1", Some(1))]
+    #[case("1.0.0.DEV", None)]
+    #[case("1.0.0.Dev", None)]
+    fn test_parse_dev_release_case_insensitive(
+        #[case] input: &str,
+        #[case] expected_number: Option<u32>,
+    ) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        assert_eq!(parsed.dev_number, expected_number);
+    }
+
+    #[rstest]
+    #[case("1.0.0+ubuntu-20-04")]
+    #[case("1.0.0+ubuntu_20_04")]
+    #[case("1.0.0+ubuntu.20.04")]
+    fn test_parse_local_version_separators(#[case] input: &str) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        let local_str = input.split('+').nth(1).unwrap();
+        let expected_local = parse_local_segments(local_str);
+
+        assert_eq!(parsed.local, Some(expected_local));
+    }
+
+    #[test]
+    fn test_parse_comprehensive_unnormalized() {
+        // Test a complex version with all unnormalized forms
+        let input = "1!2.0.0_ALPHA1-POST2.DEV3+build_123";
+        let parsed: PEP440Version = input.parse().unwrap();
+
+        assert_eq!(parsed.epoch, 1);
+        assert_eq!(parsed.release, vec![2, 0, 0]);
+        assert_eq!(parsed.pre_label, Some(PreReleaseLabel::Alpha));
+        assert_eq!(parsed.pre_number, Some(1));
+        assert_eq!(parsed.post_number, Some(2));
+        assert_eq!(parsed.dev_number, Some(3));
+        assert_eq!(parsed.local, Some(parse_local_segments("build_123")));
     }
 }

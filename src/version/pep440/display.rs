@@ -1,6 +1,17 @@
 use super::core::{LocalSegment, PEP440Version};
 use std::fmt;
 
+pub fn format_local_segments(segments: &[LocalSegment]) -> String {
+    segments
+        .iter()
+        .map(|segment| match segment {
+            LocalSegment::Integer(n) => n.to_string(),
+            LocalSegment::String(s) => s.clone(),
+        })
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
 impl fmt::Display for PEP440Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Epoch
@@ -39,16 +50,7 @@ impl fmt::Display for PEP440Version {
 
         // Local version
         if let Some(ref local) = self.local {
-            write!(f, "+")?;
-            let local_str = local
-                .iter()
-                .map(|segment| match segment {
-                    LocalSegment::String(s) => s.clone(),
-                    LocalSegment::Integer(i) => i.to_string(),
-                })
-                .collect::<Vec<_>>()
-                .join(".");
-            write!(f, "{local_str}")?;
+            write!(f, "+{}", format_local_segments(local))?;
         }
 
         Ok(())
@@ -106,5 +108,25 @@ mod tests {
     fn test_display_local_segment() {
         assert_eq!(LocalSegment::String("test".to_string()).to_string(), "test");
         assert_eq!(LocalSegment::Integer(42).to_string(), "42");
+    }
+
+    #[test]
+    fn test_format_local_segments() {
+        let segments = vec![
+            LocalSegment::String("ubuntu".to_string()),
+            LocalSegment::Integer(20),
+            LocalSegment::Integer(4),
+            LocalSegment::String("build123".to_string()),
+        ];
+        assert_eq!(format_local_segments(&segments), "ubuntu.20.4.build123");
+    }
+
+    #[test]
+    fn test_parse_format_roundtrip() {
+        use super::super::parser::parse_local_segments;
+        let input = "deadbeef.123.abc";
+        let segments = parse_local_segments(input);
+        let output = format_local_segments(&segments);
+        assert_eq!(output, input);
     }
 }
