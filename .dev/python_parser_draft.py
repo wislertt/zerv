@@ -132,6 +132,7 @@ pep_versions = [
     "1.2.3.rc1-post1",
     "1.2.3.c-rev",
     "1.2.3.dev",
+    "1.2.3.4.dev",
 ]
 
 semver_versions = [

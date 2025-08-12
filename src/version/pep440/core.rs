@@ -6,7 +6,7 @@ pub enum PreReleaseLabel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PostReleaseLabel {
+pub enum PostLabel {
     Post,
 }
 
@@ -31,10 +31,10 @@ impl PreReleaseLabel {
     }
 }
 
-impl PostReleaseLabel {
+impl PostLabel {
     pub fn as_str(&self) -> &'static str {
         match self {
-            PostReleaseLabel::Post => "post", // "post", "rev", "r"
+            PostLabel::Post => "post", // "post", "rev", "r"
         }
     }
 }
@@ -53,7 +53,7 @@ pub struct PEP440Version {
     pub release: Vec<u32>,
     pub pre_label: Option<PreReleaseLabel>,
     pub pre_number: Option<u32>,
-    pub post_label: Option<PostReleaseLabel>,
+    pub post_label: Option<PostLabel>,
     pub post_number: Option<u32>,
     pub dev_label: Option<DevLabel>,
     pub dev_number: Option<u32>,
@@ -87,7 +87,7 @@ impl PEP440Version {
     }
 
     pub fn with_post(mut self, post_number: Option<u32>) -> Self {
-        self.post_label = Some(PostReleaseLabel::Post);
+        self.post_label = Some(PostLabel::Post);
         self.post_number = post_number;
         self
     }
@@ -180,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_post_release_label_as_str() {
-        assert_eq!(PostReleaseLabel::Post.as_str(), "post");
+        assert_eq!(PostLabel::Post.as_str(), "post");
     }
 
     #[test]
@@ -209,7 +209,7 @@ mod tests {
     fn test_pep440_version_with_post_none() {
         let version = PEP440Version::new(vec![1, 2, 3]).with_post(None);
         assert_eq!(version.post_number, None);
-        assert_eq!(version.post_label, Some(PostReleaseLabel::Post));
+        assert_eq!(version.post_label, Some(PostLabel::Post));
     }
 
     #[test]
@@ -298,7 +298,7 @@ mod tests {
             .with_post(None);
 
         assert_eq!(version.post_number, None);
-        assert_eq!(version.post_label, Some(PostReleaseLabel::Post));
+        assert_eq!(version.post_label, Some(PostLabel::Post));
     }
 
     #[test]
@@ -312,5 +312,124 @@ mod tests {
         let long_release = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let version = PEP440Version::new(long_release.clone());
         assert_eq!(version.release, long_release);
+    }
+
+    // Round-trip tests for normalized strings (should get same string back)
+    #[rstest]
+    // Different release formats
+    #[case("1")]
+    #[case("1.2")]
+    #[case("1.2.3")]
+    #[case("1.2.3.4")]
+    //
+    #[case("1.0")]
+    #[case("1.2.0")]
+    #[case("1.2.3.0")]
+    // Prerelease variations
+    #[case("1.0.0a1")]
+    #[case("1.0.0b2")]
+    #[case("1.0.0rc3")]
+    #[case("1.0.0a")]
+    #[case("1.0.0b")]
+    #[case("1.0.0rc")]
+    #[case("1a1")]
+    #[case("1.2a")]
+    // Post release variations
+    #[case("1.0.0.post4")]
+    #[case("1.0.0.post")]
+    #[case("1.post1")]
+    #[case("1.2.post")]
+    // Dev release variations
+    #[case("1.0.0.dev5")]
+    #[case("1.0.0.dev")]
+    #[case("1.dev1")]
+    #[case("1.2.dev")]
+    // Local versions
+    #[case("1.0.0+local")]
+    #[case("1+build")]
+    #[case("1.2+local.123")]
+    // Epoch versions
+    #[case("5!1.2.3")]
+    #[case("2!1")]
+    #[case("1!1.2")]
+    // Combinations with different release formats
+    #[case("1a1.post2")]
+    #[case("1.2b3.dev4")]
+    #[case("1.post1.dev2")]
+    #[case("1a.post")]
+    #[case("1.2rc.dev")]
+    #[case("1.post.dev1")]
+    #[case("1a1.post2.dev3")]
+    #[case("1.2b.post.dev4")]
+    // Complex combinations
+    #[case("1.0.0a1.post2.dev3+build.123")]
+    #[case("2!1.2a.post.dev+local")]
+    #[case("1!1a1.dev2+build.456")]
+    fn test_roundtrip_normalized_strings(#[case] input: &str) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        let output = parsed.to_string();
+        assert_eq!(input, output, "Normalized string should remain unchanged");
+    }
+
+    // Round-trip tests for unnormalized strings (should get expected normalized version)
+    #[rstest]
+    // Prerelease normalization with different release formats
+    #[case("1alpha1", "1a1")]
+    #[case("1.2ALPHA1", "1.2a1")]
+    #[case("1.0.0alpha", "1.0.0a")]
+    #[case("1ALPHA", "1a")]
+    #[case("1.2beta2", "1.2b2")]
+    #[case("1.0.0BETA2", "1.0.0b2")]
+    #[case("1beta", "1b")]
+    #[case("1.2BETA", "1.2b")]
+    #[case("1c3", "1rc3")]
+    #[case("1.2c", "1.2rc")]
+    #[case("1.0.0preview4", "1.0.0rc4")]
+    #[case("1preview", "1rc")]
+    #[case("1.2pre5", "1.2rc5")]
+    #[case("1pre", "1rc")]
+    #[case("1-a1", "1a1")]
+    #[case("1.2-a", "1.2a")]
+    #[case("1_beta2", "1b2")]
+    #[case("1.2_beta", "1.2b")]
+    #[case("1.0.0.rc3", "1.0.0rc3")]
+    #[case("1.rc", "1rc")]
+    // Post release normalization with different release formats
+    #[case("1-1", "1.post1")]
+    #[case("1.2-2", "1.2.post2")]
+    #[case("1.0.0.rev2", "1.0.0.post2")]
+    #[case("1rev", "1.post")]
+    #[case("1.2.r3", "1.2.post3")]
+    #[case("1r", "1.post")]
+    // Dev release normalization with different release formats
+    #[case("1-dev1", "1.dev1")]
+    #[case("1.2-dev", "1.2.dev")]
+    #[case("1_dev2", "1.dev2")]
+    #[case("1.0.0_dev", "1.0.0.dev")]
+    // Local version normalization
+    #[case("1+ubuntu-20-04", "1+ubuntu.20.4")]
+    #[case("1.2+ubuntu_20_04", "1.2+ubuntu.20.4")]
+    // Complex combinations with different release formats
+    #[case("1alpha1-1-dev2", "1a1.post1.dev2")]
+    #[case("1.2beta-rev-dev", "1.2b.post.dev")]
+    #[case("1c1.r2_dev3", "1rc1.post2.dev3")]
+    #[case("1.2pre.post1-dev", "1.2rc.post1.dev")]
+    // Mixed separators and formats
+    #[case("1_alpha_1.post_2-dev_3", "1a1.post2.dev3")]
+    #[case("1.2-beta-2_r_3.dev.4", "1.2b2.post3.dev4")]
+    fn test_roundtrip_unnormalized_strings(#[case] input: &str, #[case] expected: &str) {
+        let parsed: PEP440Version = input.parse().unwrap();
+        let output = parsed.to_string();
+        assert_eq!(
+            expected, output,
+            "Unnormalized string should be normalized to expected form"
+        );
+
+        // Also verify the normalized version parses to the same object
+        let reparsed: PEP440Version = output.parse().unwrap();
+        assert_eq!(
+            parsed, reparsed,
+            "Normalized version should parse to same object"
+        );
     }
 }

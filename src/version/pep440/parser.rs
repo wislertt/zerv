@@ -1,7 +1,5 @@
 use crate::error::ZervError;
-use crate::version::pep440::core::{
-    DevLabel, LocalSegment, PEP440Version, PostReleaseLabel, PreReleaseLabel,
-};
+use crate::version::pep440::core::{LocalSegment, PEP440Version, PreReleaseLabel};
 use regex::Regex;
 use std::str::FromStr;
 use std::sync::LazyLock;
@@ -52,7 +50,9 @@ fn normalize_pre_label(label: &str) -> PreReleaseLabel {
 }
 
 pub fn parse_local_segments(local: &str) -> Vec<LocalSegment> {
-    local
+    // Normalize separators: replace - and _ with .
+    let normalized = local.replace(['-', '_'], ".");
+    normalized
         .split('.')
         .map(|part| {
             if !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()) {
@@ -72,11 +72,6 @@ impl FromStr for PEP440Version {
             .captures(s)
             .ok_or_else(|| ZervError::InvalidVersion(format!("Invalid PEP440 version: {s}")))?;
 
-        let epoch = captures
-            .name("epoch")
-            .map(|m| m.as_str().parse().unwrap_or(0))
-            .unwrap_or(0);
-
         let release = captures
             .name("release")
             .map(|m| {
@@ -87,52 +82,44 @@ impl FromStr for PEP440Version {
             })
             .unwrap_or_else(|| vec![0]);
 
-        let (pre_label, pre_number) = if let Some(pre_l) = captures.name("pre_l") {
+        let mut version = PEP440Version::new(release);
+
+        if let Some(epoch_match) = captures.name("epoch") {
+            let epoch = epoch_match.as_str().parse().unwrap_or(0);
+            version = version.with_epoch(epoch);
+        }
+
+        if let Some(pre_l) = captures.name("pre_l") {
             let label = normalize_pre_label(pre_l.as_str());
             let number = captures.name("pre_n").and_then(|m| m.as_str().parse().ok());
-            (Some(label), number)
-        } else {
-            (None, None)
-        };
+            version = version.with_pre_release(label, number);
+        }
 
-        let (post_label, post_number) = if captures.name("post").is_some() {
+        if captures.name("post").is_some() {
             let post_number = captures
                 .name("post_n1")
                 .or_else(|| captures.name("post_n2"))
                 .and_then(|m| m.as_str().parse().ok());
-            (Some(PostReleaseLabel::Post), post_number)
-        } else {
-            (None, None)
-        };
+            version = version.with_post(post_number);
+        }
 
-        let (dev_label, dev_number) = if captures.name("dev").is_some() {
+        if captures.name("dev").is_some() {
             let dev_number = captures.name("dev_n").and_then(|m| m.as_str().parse().ok());
-            (Some(DevLabel::Dev), dev_number)
-        } else {
-            (None, None)
-        };
+            version = version.with_dev(dev_number);
+        }
 
-        let local = captures
-            .name("local")
-            .map(|m| parse_local_segments(m.as_str()));
+        if let Some(local_match) = captures.name("local") {
+            version = version.with_local(local_match.as_str());
+        }
 
-        Ok(PEP440Version {
-            epoch,
-            release,
-            pre_label,
-            pre_number,
-            post_label,
-            post_number,
-            dev_label,
-            dev_number,
-            local,
-        })
+        Ok(version)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::version::pep440::core::PostLabel;
     use rstest::rstest;
 
     #[rstest]
@@ -435,7 +422,7 @@ mod tests {
     ) {
         let parsed: PEP440Version = input.parse().unwrap();
         assert_eq!(parsed.post_number, expected_number);
-        assert_eq!(parsed.post_label, Some(PostReleaseLabel::Post));
+        assert_eq!(parsed.post_label, Some(PostLabel::Post));
     }
 
     #[rstest]
