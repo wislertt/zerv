@@ -123,23 +123,20 @@ pub struct Pattern {
 
 **Auto-detection**: The Rust version uses auto-detection by trying multiple built-in patterns in order, rather than requiring users to specify pattern names. This provides better user experience while maintaining flexibility for custom regex patterns when needed.
 
-### 5. Error Types
+### 5. Error Handling Strategy (Ripgrep-Style)
+
+**Library Layer** - Specific error types for clean API:
+
+**Implementation**: Manual trait implementations (zero dependencies) with comprehensive error variants, Display/Error traits, From conversions, and full test coverage.
+
+**CLI Layer** - Uses `anyhow` for easy error propagation:
 
 ```rust
-#[derive(Debug, thiserror::Error)]
-pub enum ZervError {
-    #[error("VCS not found: {0}")]
-    VcsNotFound(String),
-    #[error("No tags found matching pattern")]
-    NoTagsFound,
-    #[error("Invalid version format: {0}")]
-    InvalidFormat(String),
-    #[error("Command execution failed: {0}")]
-    CommandFailed(String),
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Regex error: {0}")]
-    Regex(#[from] regex::Error),
+// CLI functions use anyhow::Result for convenience
+fn main() -> anyhow::Result<()> {
+    let version = zerv::get_version_from_git(".")?; // ZervError -> anyhow::Error
+    println!("{}", version.serialize(Style::SemVer));
+    Ok(())
 }
 ```
 
@@ -150,9 +147,9 @@ pub enum ZervError {
 - [x] Set up Cargo project with dependencies
 - [x] Implement `Version` struct with basic methods
 - [x] Add basic unit tests for Version struct
-- [ ] Create error types using `thiserror`
-- [ ] Implement basic pattern matching (default patterns only)
+- [x] Create ZervError types.
 - [ ] Add version parsing from string (simple cases)
+- [ ] Implement basic pattern matching (default patterns only)
 - [ ] Create basic CLI skeleton (main.rs + lib.rs structure)
 
 **Dependencies:**
@@ -168,14 +165,21 @@ name = "zerv"
 path = "src/main.rs"
 
 [dependencies]
+# Core library dependencies
 regex = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
-thiserror = "1.0"
-clap = { version = "4.0", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
-toml = "0.8"           # Config file parsing
-dirs = "5.0"           # Config directory detection
-tera = "1.0"           # Template engine
+
+# CLI-specific dependencies (optional for library users)
+anyhow = { version = "1.0", optional = true }  # CLI error handling
+clap = { version = "4.0", features = ["derive"], optional = true }
+toml = { version = "0.8", optional = true }     # Config file parsing
+dirs = { version = "5.0", optional = true }     # Config directory detection
+tera = { version = "1.0", optional = true }     # Template engine
+
+[features]
+default = ["cli"]
+cli = ["anyhow", "clap", "toml", "dirs", "tera"]  # CLI features optional for lib users
 ```
 
 ### Phase 2: Git VCS Implementation
@@ -200,6 +204,7 @@ tera = "1.0"           # Template engine
 ### Phase 4: Basic CLI Commands
 
 - [ ] Implement CLI argument parsing with `clap`
+- [ ] Set up CLI layer with `anyhow` error handling
 - [ ] Add `from git` command (basic functionality)
 - [ ] Add `check` command for version validation
 - [ ] Add basic output formatting
@@ -243,12 +248,18 @@ tera = "1.0"           # Template engine
 
 ## Key Implementation Details
 
-### Command Execution
+### Error Handling Architecture
+
+**Library Functions** (return specific errors):
 
 ```rust
-use std::process::Command;
+// Library API - specific error types
+pub fn get_version_from_git(path: &Path) -> Result<Version, ZervError> {
+    let output = run_command("git", &["describe", "--tags"], Some(path))?;
+    parse_version(&output)
+}
 
-fn run_command(cmd: &str, args: &[&str], cwd: Option<&Path>) -> Result<String> {
+fn run_command(cmd: &str, args: &[&str], cwd: Option<&Path>) -> Result<String, ZervError> {
     let mut command = Command::new(cmd);
     command.args(args);
 
@@ -256,7 +267,7 @@ fn run_command(cmd: &str, args: &[&str], cwd: Option<&Path>) -> Result<String> {
         command.current_dir(dir);
     }
 
-    let output = command.output()?;
+    let output = command.output()?; // io::Error -> ZervError::Io
 
     if !output.status.success() {
         return Err(ZervError::CommandFailed(
@@ -265,6 +276,22 @@ fn run_command(cmd: &str, args: &[&str], cwd: Option<&Path>) -> Result<String> {
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+```
+
+**CLI Functions** (use anyhow for convenience):
+
+```rust
+// CLI layer - anyhow for easy error handling
+fn cli_main() -> anyhow::Result<()> {
+    let version = zerv::get_version_from_git(".")
+        .context("Failed to get version from git")?; // ZervError -> anyhow::Error
+
+    let config = load_config()
+        .context("Failed to load config")?; // Any error -> anyhow::Error
+
+    println!("{}", version.serialize(config.style));
+    Ok(())
 }
 ```
 
