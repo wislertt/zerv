@@ -22,9 +22,9 @@ jobs:
             - name: Install Prettier
               run: npm install -g prettier
 
-            # - uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
-            #   with:
-            #       toolchain: stable
+            - uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+              with:
+                  toolchain: stable
 
             - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd #v3.0.1
               with:
