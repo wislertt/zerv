@@ -9,6 +9,8 @@ pub enum ZervError {
     NoTagsFound,
     /// Invalid version format
     InvalidFormat(String),
+    /// Invalid version string
+    InvalidVersion(String),
     /// Command execution failed
     CommandFailed(String),
     /// IO error
@@ -23,6 +25,7 @@ impl std::fmt::Display for ZervError {
             ZervError::VcsNotFound(vcs) => write!(f, "VCS not found: {vcs}"),
             ZervError::NoTagsFound => write!(f, "No tags found matching pattern"),
             ZervError::InvalidFormat(msg) => write!(f, "Invalid version format: {msg}"),
+            ZervError::InvalidVersion(msg) => write!(f, "Invalid version: {msg}"),
             ZervError::CommandFailed(msg) => write!(f, "Command execution failed: {msg}"),
             ZervError::Io(err) => write!(f, "IO error: {err}"),
             ZervError::Regex(msg) => write!(f, "Regex error: {msg}"),
@@ -51,6 +54,7 @@ impl PartialEq for ZervError {
             (ZervError::VcsNotFound(a), ZervError::VcsNotFound(b)) => a == b,
             (ZervError::NoTagsFound, ZervError::NoTagsFound) => true,
             (ZervError::InvalidFormat(a), ZervError::InvalidFormat(b)) => a == b,
+            (ZervError::InvalidVersion(a), ZervError::InvalidVersion(b)) => a == b,
             (ZervError::CommandFailed(a), ZervError::CommandFailed(b)) => a == b,
             (ZervError::Io(a), ZervError::Io(b)) => {
                 a.kind() == b.kind() && a.to_string() == b.to_string()

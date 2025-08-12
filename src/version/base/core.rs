@@ -85,6 +85,10 @@ impl Version {
         self.timestamp = Some(timestamp);
         self
     }
+
+    pub fn parse(input: &str) -> Result<Self, crate::error::ZervError> {
+        crate::version::parser::parse_version(input)
+    }
 }
 
 #[cfg(test)]
@@ -186,5 +190,19 @@ mod tests {
         assert!(version.stage.is_none());
         assert!(version.post.is_none());
         assert!(version.dev.is_none());
+    }
+
+    #[test]
+    fn test_version_parse() {
+        let version = Version::parse("1.2.3").unwrap();
+        assert_eq!(version.major, 1);
+        assert_eq!(version.minor, 2);
+        assert_eq!(version.patch, 3);
+    }
+
+    #[test]
+    fn test_version_parse_invalid() {
+        let result = Version::parse("invalid");
+        assert!(result.is_err());
     }
 }
