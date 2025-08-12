@@ -58,7 +58,7 @@ pub fn parse_local_segments(local: &str) -> Vec<LocalSegment> {
             if !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()) {
                 LocalSegment::Integer(part.parse().unwrap_or(0))
             } else {
-                LocalSegment::String(part.to_string())
+                LocalSegment::String(part.to_lowercase())
             }
         })
         .collect()
@@ -559,5 +559,54 @@ mod tests {
             segments,
             vec![LocalSegment::Integer(7), LocalSegment::Integer(8)]
         );
+    }
+
+    #[rstest]
+    #[case("1.2.dev", None)] // dev without number stays None
+    #[case("1.2.dev5", Some(5))] // explicit dev number preserved
+    #[case("1.2.post", None)] // post without number stays None
+    #[case("1.2.post3", Some(3))] // explicit post number preserved
+    fn test_parse_normalization_dev_post(#[case] input: &str, #[case] expected: Option<u32>) {
+        let parsed: PEP440Version = input.parse().unwrap();
+
+        if input.contains("dev") {
+            assert_eq!(parsed.dev_number, expected);
+        }
+        if input.contains("post") {
+            assert_eq!(parsed.post_number, expected);
+        }
+    }
+
+    #[rstest]
+    #[case("1.2.a", PreReleaseLabel::Alpha, None)] // a without number stays None
+    #[case("1.2.a2", PreReleaseLabel::Alpha, Some(2))] // explicit number preserved
+    #[case("1.2.b", PreReleaseLabel::Beta, None)] // b without number stays None
+    #[case("1.2.rc", PreReleaseLabel::Rc, None)] // rc without number stays None
+    fn test_parse_normalization_pre_release(
+        #[case] input: &str,
+        #[case] expected_label: PreReleaseLabel,
+        #[case] expected_number: Option<u32>,
+    ) {
+        let parsed: PEP440Version = input.parse().unwrap();
+
+        assert_eq!(parsed.pre_label, Some(expected_label));
+        assert_eq!(parsed.pre_number, expected_number);
+    }
+
+    #[test]
+    fn test_parse_normalization_comprehensive() {
+        // Test version with all implicit numbers - should stay implicit until explicitly normalized
+        let parsed: PEP440Version = "1.2.3a.post.dev".parse().unwrap();
+
+        assert_eq!(parsed.pre_label, Some(PreReleaseLabel::Alpha));
+        assert_eq!(parsed.pre_number, None); // stays None (implicit)
+        assert_eq!(parsed.post_number, None); // stays None (implicit)
+        assert_eq!(parsed.dev_number, None); // stays None (implicit)
+
+        // But explicit normalization should work
+        let normalized = parsed.normalize();
+        assert_eq!(normalized.pre_number, Some(0)); // normalized to Some(0)
+        assert_eq!(normalized.post_number, Some(0)); // normalized to Some(0)
+        assert_eq!(normalized.dev_number, Some(0)); // normalized to Some(0)
     }
 }

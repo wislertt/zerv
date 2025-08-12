@@ -103,6 +103,26 @@ impl PEP440Version {
         self.local = Some(parse_local_segments(local));
         self
     }
+
+    /// Normalize the version by setting implicit 0 values for dev, post, and pre-release numbers
+    pub fn normalize(mut self) -> Self {
+        // If pre-release label exists but number is None, set to 0
+        if self.pre_label.is_some() && self.pre_number.is_none() {
+            self.pre_number = Some(0);
+        }
+
+        // If post label exists but number is None, set to 0
+        if self.post_label.is_some() && self.post_number.is_none() {
+            self.post_number = Some(0);
+        }
+
+        // If dev label exists but number is None, set to 0
+        if self.dev_label.is_some() && self.dev_number.is_none() {
+            self.dev_number = Some(0);
+        }
+
+        self
+    }
 }
 
 impl Default for PEP440Version {
@@ -308,6 +328,60 @@ mod tests {
     }
 
     #[test]
+    fn test_normalize_pre_release() {
+        let version = PEP440Version::new(vec![1, 2, 3])
+            .with_pre_release(PreReleaseLabel::Alpha, None)
+            .normalize();
+        assert_eq!(version.pre_number, Some(0));
+    }
+
+    #[test]
+    fn test_normalize_post_release() {
+        let version = PEP440Version::new(vec![1, 2, 3])
+            .with_post(None)
+            .normalize();
+        assert_eq!(version.post_number, Some(0));
+    }
+
+    #[test]
+    fn test_normalize_dev_release() {
+        let version = PEP440Version::new(vec![1, 2, 3]).with_dev(None).normalize();
+        assert_eq!(version.dev_number, Some(0));
+    }
+
+    #[test]
+    fn test_normalize_all_implicit() {
+        let version = PEP440Version::new(vec![1, 2, 3])
+            .with_pre_release(PreReleaseLabel::Beta, None)
+            .with_post(None)
+            .with_dev(None)
+            .normalize();
+        assert_eq!(version.pre_number, Some(0));
+        assert_eq!(version.post_number, Some(0));
+        assert_eq!(version.dev_number, Some(0));
+    }
+
+    #[test]
+    fn test_normalize_preserves_explicit_values() {
+        let version = PEP440Version::new(vec![1, 2, 3])
+            .with_pre_release(PreReleaseLabel::Alpha, Some(5))
+            .with_post(Some(3))
+            .with_dev(Some(7))
+            .normalize();
+        assert_eq!(version.pre_number, Some(5));
+        assert_eq!(version.post_number, Some(3));
+        assert_eq!(version.dev_number, Some(7));
+    }
+
+    #[test]
+    fn test_normalize_no_labels() {
+        let version = PEP440Version::new(vec![1, 2, 3]).normalize();
+        assert_eq!(version.pre_number, None);
+        assert_eq!(version.post_number, None);
+        assert_eq!(version.dev_number, None);
+    }
+
+    #[test]
     fn test_long_release_vector() {
         let long_release = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let version = PEP440Version::new(long_release.clone());
@@ -329,21 +403,21 @@ mod tests {
     #[case("1.0.0a1")]
     #[case("1.0.0b2")]
     #[case("1.0.0rc3")]
-    #[case("1.0.0a")]
-    #[case("1.0.0b")]
-    #[case("1.0.0rc")]
+    #[case("1.0.0a0")]
+    #[case("1.0.0b0")]
+    #[case("1.0.0rc0")]
     #[case("1a1")]
-    #[case("1.2a")]
+    #[case("1.2a0")]
     // Post release variations
     #[case("1.0.0.post4")]
-    #[case("1.0.0.post")]
+    #[case("1.0.0.post0")]
     #[case("1.post1")]
-    #[case("1.2.post")]
+    #[case("1.2.post0")]
     // Dev release variations
     #[case("1.0.0.dev5")]
-    #[case("1.0.0.dev")]
+    #[case("1.0.0.dev0")]
     #[case("1.dev1")]
-    #[case("1.2.dev")]
+    #[case("1.2.dev0")]
     // Local versions
     #[case("1.0.0+local")]
     #[case("1+build")]
@@ -356,14 +430,14 @@ mod tests {
     #[case("1a1.post2")]
     #[case("1.2b3.dev4")]
     #[case("1.post1.dev2")]
-    #[case("1a.post")]
-    #[case("1.2rc.dev")]
-    #[case("1.post.dev1")]
+    #[case("1a0.post0")]
+    #[case("1.2rc0.dev0")]
+    #[case("1.post0.dev1")]
     #[case("1a1.post2.dev3")]
-    #[case("1.2b.post.dev4")]
+    #[case("1.2b0.post0.dev4")]
     // Complex combinations
     #[case("1.0.0a1.post2.dev3+build.123")]
-    #[case("2!1.2a.post.dev+local")]
+    #[case("2!1.2a0.post0.dev0+local")]
     #[case("1!1a1.dev2+build.456")]
     fn test_roundtrip_normalized_strings(#[case] input: &str) {
         let parsed: PEP440Version = input.parse().unwrap();
@@ -376,50 +450,60 @@ mod tests {
     // Prerelease normalization with different release formats
     #[case("1alpha1", "1a1")]
     #[case("1.2ALPHA1", "1.2a1")]
-    #[case("1.0.0alpha", "1.0.0a")]
-    #[case("1ALPHA", "1a")]
+    #[case("1.0.0alpha", "1.0.0a0")]
+    #[case("1ALPHA", "1a0")]
     #[case("1.2beta2", "1.2b2")]
     #[case("1.0.0BETA2", "1.0.0b2")]
-    #[case("1beta", "1b")]
-    #[case("1.2BETA", "1.2b")]
+    #[case("1beta", "1b0")]
+    #[case("1.2BETA", "1.2b0")]
     #[case("1c3", "1rc3")]
-    #[case("1.2c", "1.2rc")]
+    #[case("1.2c", "1.2rc0")]
     #[case("1.0.0preview4", "1.0.0rc4")]
-    #[case("1preview", "1rc")]
+    #[case("1preview", "1rc0")]
     #[case("1.2pre5", "1.2rc5")]
-    #[case("1pre", "1rc")]
+    #[case("1pre", "1rc0")]
     #[case("1-a1", "1a1")]
-    #[case("1.2-a", "1.2a")]
+    #[case("1.2-a", "1.2a0")]
     #[case("1_beta2", "1b2")]
-    #[case("1.2_beta", "1.2b")]
+    #[case("1.2_beta", "1.2b0")]
     #[case("1.0.0.rc3", "1.0.0rc3")]
-    #[case("1.rc", "1rc")]
+    #[case("1.rc", "1rc0")]
     // Post release normalization with different release formats
     #[case("1-1", "1.post1")]
     #[case("1.2-2", "1.2.post2")]
     #[case("1.0.0.rev2", "1.0.0.post2")]
-    #[case("1rev", "1.post")]
+    #[case("1rev", "1.post0")]
     #[case("1.2.r3", "1.2.post3")]
-    #[case("1r", "1.post")]
+    #[case("1r", "1.post0")]
     // Dev release normalization with different release formats
     #[case("1-dev1", "1.dev1")]
-    #[case("1.2-dev", "1.2.dev")]
+    #[case("1.2-dev", "1.2.dev0")]
     #[case("1_dev2", "1.dev2")]
-    #[case("1.0.0_dev", "1.0.0.dev")]
+    #[case("1.0.0_dev", "1.0.0.dev0")]
     // Local version normalization
     #[case("1+ubuntu-20-04", "1+ubuntu.20.4")]
     #[case("1.2+ubuntu_20_04", "1.2+ubuntu.20.4")]
     // Complex combinations with different release formats
     #[case("1alpha1-1-dev2", "1a1.post1.dev2")]
-    #[case("1.2beta-rev-dev", "1.2b.post.dev")]
+    #[case("1.2beta-rev-dev", "1.2b0.post0.dev0")]
     #[case("1c1.r2_dev3", "1rc1.post2.dev3")]
-    #[case("1.2pre.post1-dev", "1.2rc.post1.dev")]
+    #[case("1.2pre.post1-dev", "1.2rc0.post1.dev0")]
     // Mixed separators and formats
     #[case("1_alpha_1.post_2-dev_3", "1a1.post2.dev3")]
     #[case("1.2-beta-2_r_3.dev.4", "1.2b2.post3.dev4")]
+    #[case("1.0.0a1.post2.dev3+BUILD.123", "1.0.0a1.post2.dev3+build.123")]
+    #[case("1.0.0a1.post2.dev3+build-123", "1.0.0a1.post2.dev3+build.123")]
+    #[case("1.0.0a1.post2.dev3+build_123", "1.0.0a1.post2.dev3+build.123")]
+    #[case("1.2.3a.post.dev", "1.2.3a0.post0.dev0")]
+    #[case("1.2.3a.rev.dev", "1.2.3a0.post0.dev0")]
+    #[case("1.2.3a.r.dev", "1.2.3a0.post0.dev0")]
+    #[case("1.2.3c.post.dev", "1.2.3rc0.post0.dev0")]
+    #[case("1.2.3pre.post.dev", "1.2.3rc0.post0.dev0")]
+    #[case("1.2.3preview.post.dev", "1.2.3rc0.post0.dev0")]
     fn test_roundtrip_unnormalized_strings(#[case] input: &str, #[case] expected: &str) {
         let parsed: PEP440Version = input.parse().unwrap();
-        let output = parsed.to_string();
+        let normalized = parsed.normalize();
+        let output = normalized.to_string();
         assert_eq!(
             expected, output,
             "Unnormalized string should be normalized to expected form"
@@ -428,7 +512,7 @@ mod tests {
         // Also verify the normalized version parses to the same object
         let reparsed: PEP440Version = output.parse().unwrap();
         assert_eq!(
-            parsed, reparsed,
+            normalized, reparsed,
             "Normalized version should parse to same object"
         );
     }

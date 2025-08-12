@@ -27,29 +27,64 @@ impl Ord for PEP440Version {
             (None, Some(_)) => return Ordering::Greater,
             (Some(_), None) => return Ordering::Less,
             (Some(self_pre), Some(other_pre)) => match self_pre.cmp(other_pre) {
-                Ordering::Equal => match self.pre_number.cmp(&other.pre_number) {
-                    Ordering::Equal => {}
-                    other => return other,
-                },
+                Ordering::Equal => {
+                    // Handle implicit vs explicit 0: None (implicit) < Some(0) (explicit) < Some(n) where n > 0
+                    match (self.pre_number, other.pre_number) {
+                        (None, None) => {}
+                        (None, Some(0)) => return Ordering::Less, // implicit 0 < explicit 0
+                        (None, Some(_)) => return Ordering::Less, // implicit 0 < explicit n
+                        (Some(0), None) => return Ordering::Greater, // explicit 0 > implicit 0
+                        (Some(_), None) => return Ordering::Greater, // explicit n > implicit 0
+                        (Some(a), Some(b)) => match a.cmp(&b) {
+                            Ordering::Equal => {}
+                            other => return other,
+                        },
+                    }
+                }
                 other => return other,
             },
         }
 
         // Compare post-release (None < Some for post-release)
-        match self.post_number.cmp(&other.post_number) {
-            Ordering::Equal => {}
-            other => return other,
+        match (&self.post_label, &other.post_label) {
+            (None, None) => {}
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+            (Some(_), Some(_)) => {
+                // Handle implicit vs explicit 0: None (implicit) < Some(0) (explicit) < Some(n) where n > 0
+                match (self.post_number, other.post_number) {
+                    (None, None) => {}
+                    (None, Some(0)) => return Ordering::Less, // implicit 0 < explicit 0
+                    (None, Some(_)) => return Ordering::Less, // implicit 0 < explicit n
+                    (Some(0), None) => return Ordering::Greater, // explicit 0 > implicit 0
+                    (Some(_), None) => return Ordering::Greater, // explicit n > implicit 0
+                    (Some(a), Some(b)) => match a.cmp(&b) {
+                        Ordering::Equal => {}
+                        other => return other,
+                    },
+                }
+            }
         }
 
         // Compare dev-release (None > Some for dev-release)
-        match (&self.dev_number, &other.dev_number) {
+        match (&self.dev_label, &other.dev_label) {
             (None, None) => {}
             (None, Some(_)) => return Ordering::Greater,
             (Some(_), None) => return Ordering::Less,
-            (Some(self_dev), Some(other_dev)) => match self_dev.cmp(other_dev) {
-                Ordering::Equal => {}
-                other => return other,
-            },
+            (Some(_), Some(_)) => {
+                // Handle implicit vs explicit 0: None (implicit) < Some(0) (explicit) < Some(n) where n > 0
+                match (self.dev_number, other.dev_number) {
+                    (None, None) => {}
+                    (None, Some(0)) => return Ordering::Less, // implicit 0 < explicit 0
+                    (None, Some(_)) => return Ordering::Less, // implicit 0 < explicit n
+                    (Some(0), None) => return Ordering::Greater, // explicit 0 > implicit 0
+                    (Some(_), None) => return Ordering::Greater, // explicit n > implicit 0
+                    (Some(a), Some(b)) => match a.cmp(&b) {
+                        Ordering::Equal => {}
+                        other => return other,
+                    },
+                }
+            }
         }
 
         // Compare local versions (None < Some)
