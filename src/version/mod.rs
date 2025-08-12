@@ -1,4 +1,7 @@
-pub mod core;
-mod ordering;
+pub mod base;
+pub mod parser;
+pub mod pep440;
 
-pub use core::{Stage, Version};
+pub use base::{Stage, Version};
+pub use parser::parse_version;
+pub use pep440::{PEP440Version, PreReleaseLabel};

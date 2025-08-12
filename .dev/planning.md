@@ -15,7 +15,13 @@ zerv/
 │   ├── version/
 │   │   ├── mod.rs           # Version module
 │   │   ├── core.rs          # Version struct and core logic
-│   │   ├── parser.rs        # Version string parsing
+│   │   ├── parser/          # Version string parsing
+│   │   │   ├── mod.rs       # Parser module exports
+│   │   │   ├── basic.rs     # Basic semver parsing (1.2.3)
+│   │   │   ├── prerelease.rs # Pre-release parsing (alpha, beta, rc)
+│   │   │   ├── pep440.rs    # PEP 440 specific parsing
+│   │   │   ├── patterns.rs  # Regex patterns and matching
+│   │   │   └── utils.rs     # Parsing utilities
 │   │   └── serializer.rs    # Version formatting/serialization
 │   ├── vcs/
 │   │   ├── mod.rs           # VCS module
