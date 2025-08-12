@@ -312,66 +312,53 @@ mod tests {
     }
 
     #[rstest]
-    #[case(PreReleaseLabel::Alpha, None, Some(0))]
-    #[case(PreReleaseLabel::Beta, None, Some(0))]
-    #[case(PreReleaseLabel::Rc, None, Some(0))]
-    fn test_implicit_vs_explicit_zero_equality(
-        #[case] pre_label: PreReleaseLabel,
-        #[case] implicit_num: Option<u32>,
-        #[case] explicit_num: Option<u32>,
-    ) {
-        // Test pre-release
-        let implicit_pre =
-            PEP440Version::new(vec![1, 0, 0]).with_pre_release(pre_label.clone(), implicit_num);
-        let explicit_pre =
-            PEP440Version::new(vec![1, 0, 0]).with_pre_release(pre_label.clone(), explicit_num);
-        assert_eq!(implicit_pre, explicit_pre);
+    #[case(PreReleaseLabel::Alpha)]
+    #[case(PreReleaseLabel::Beta)]
+    #[case(PreReleaseLabel::Rc)]
+    fn test_implicit_vs_explicit_zero_equality(#[case] pre_label: PreReleaseLabel) {
+        let base = || PEP440Version::new(vec![1, 0, 0]);
 
-        // Test post-release
-        let implicit_post = PEP440Version::new(vec![1, 0, 0]).with_post(None);
-        let explicit_post = PEP440Version::new(vec![1, 0, 0]).with_post(Some(0));
-        assert_eq!(implicit_post, explicit_post);
+        // Individual components
+        assert_eq!(
+            base().with_pre_release(pre_label.clone(), None),
+            base().with_pre_release(pre_label.clone(), Some(0))
+        );
+        assert_eq!(base().with_post(None), base().with_post(Some(0)));
+        assert_eq!(base().with_dev(None), base().with_dev(Some(0)));
 
-        // Test dev-release
-        let implicit_dev = PEP440Version::new(vec![1, 0, 0]).with_dev(None);
-        let explicit_dev = PEP440Version::new(vec![1, 0, 0]).with_dev(Some(0));
-        assert_eq!(implicit_dev, explicit_dev);
+        // 2-component combinations
+        assert_eq!(
+            base()
+                .with_pre_release(pre_label.clone(), None)
+                .with_post(None),
+            base()
+                .with_pre_release(pre_label.clone(), Some(0))
+                .with_post(Some(0))
+        );
+        assert_eq!(
+            base().with_post(None).with_dev(None),
+            base().with_post(Some(0)).with_dev(Some(0))
+        );
+        assert_eq!(
+            base()
+                .with_pre_release(pre_label.clone(), None)
+                .with_dev(None),
+            base()
+                .with_pre_release(pre_label.clone(), Some(0))
+                .with_dev(Some(0))
+        );
 
-        // Test 2-component combinations
-        let pre_post_implicit = PEP440Version::new(vec![1, 0, 0])
-            .with_pre_release(pre_label.clone(), None)
-            .with_post(None);
-        let pre_post_explicit = PEP440Version::new(vec![1, 0, 0])
-            .with_pre_release(pre_label.clone(), Some(0))
-            .with_post(Some(0));
-        assert_eq!(pre_post_implicit, pre_post_explicit);
-
-        let post_dev_implicit = PEP440Version::new(vec![1, 0, 0])
-            .with_post(None)
-            .with_dev(None);
-        let post_dev_explicit = PEP440Version::new(vec![1, 0, 0])
-            .with_post(Some(0))
-            .with_dev(Some(0));
-        assert_eq!(post_dev_implicit, post_dev_explicit);
-
-        let pre_dev_implicit = PEP440Version::new(vec![1, 0, 0])
-            .with_pre_release(pre_label.clone(), None)
-            .with_dev(None);
-        let pre_dev_explicit = PEP440Version::new(vec![1, 0, 0])
-            .with_pre_release(pre_label.clone(), Some(0))
-            .with_dev(Some(0));
-        assert_eq!(pre_dev_implicit, pre_dev_explicit);
-
-        // Test all combinations
-        let all_implicit = PEP440Version::new(vec![1, 0, 0])
-            .with_pre_release(pre_label.clone(), None)
-            .with_post(None)
-            .with_dev(None);
-        let all_explicit = PEP440Version::new(vec![1, 0, 0])
-            .with_pre_release(pre_label, Some(0))
-            .with_post(Some(0))
-            .with_dev(Some(0));
-        assert_eq!(all_implicit, all_explicit);
+        // All combinations
+        assert_eq!(
+            base()
+                .with_pre_release(pre_label.clone(), None)
+                .with_post(None)
+                .with_dev(None),
+            base()
+                .with_pre_release(pre_label.clone(), Some(0))
+                .with_post(Some(0))
+                .with_dev(Some(0))
+        );
     }
 
     #[test]
