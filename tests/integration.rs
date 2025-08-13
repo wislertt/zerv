@@ -5,7 +5,7 @@ use util::{TestCommand, TestDir};
 
 #[rstest]
 #[case("1.2.3")]
-#[case("Debug: Version")]
+#[case("Debug: PEP440Version")]
 fn test_default_output_contains(#[case] expected_text: &str) {
     TestCommand::new()
         .assert_success()
