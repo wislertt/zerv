@@ -58,7 +58,7 @@ pub fn parse_local_segments(local: &str) -> Vec<LocalSegment> {
             if !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()) {
                 LocalSegment::Integer(part.parse().unwrap_or(0))
             } else {
-                LocalSegment::String(part.to_lowercase())
+                LocalSegment::String(part.to_string())
             }
         })
         .collect()

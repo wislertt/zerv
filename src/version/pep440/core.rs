@@ -121,6 +121,20 @@ impl PEP440Version {
             self.dev_number = Some(0);
         }
 
+        // Convert local segment strings to lowercase and to integers if possible
+        if let Some(ref mut local_segments) = self.local {
+            for segment in local_segments {
+                if let LocalSegment::String(s) = segment {
+                    let lowercase = s.to_lowercase();
+                    if let Ok(num) = lowercase.parse::<u32>() {
+                        *segment = LocalSegment::Integer(num);
+                    } else {
+                        *s = lowercase;
+                    }
+                }
+            }
+        }
+
         self
     }
 }
