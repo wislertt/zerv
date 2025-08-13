@@ -84,7 +84,9 @@ impl Ord for LocalSegment {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (LocalSegment::Integer(a), LocalSegment::Integer(b)) => a.cmp(b),
-            (LocalSegment::String(a), LocalSegment::String(b)) => a.cmp(b),
+            (LocalSegment::String(a), LocalSegment::String(b)) => {
+                a.to_lowercase().cmp(&b.to_lowercase())
+            }
             (LocalSegment::Integer(_), LocalSegment::String(_)) => Ordering::Less,
             (LocalSegment::String(_), LocalSegment::Integer(_)) => Ordering::Greater,
         }
