@@ -73,7 +73,7 @@ impl fmt::Display for LocalSegment {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::pep440::core::PreReleaseLabel;
+    use crate::version::zerv::PreReleaseLabel;
 
     #[test]
     fn test_display_simple_version() {

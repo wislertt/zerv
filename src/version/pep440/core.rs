@@ -1,11 +1,4 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PreReleaseLabel {
-    Alpha,
-    Beta,
-    Rc,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PostLabel {
     Post,
 }
@@ -21,13 +14,11 @@ pub enum LocalSegment {
     Integer(u32),
 }
 
+use crate::version::zerv::PreReleaseLabel;
+
 impl PreReleaseLabel {
     pub fn as_str(&self) -> &'static str {
-        match self {
-            PreReleaseLabel::Alpha => "a", // "alpha", "a"
-            PreReleaseLabel::Beta => "b",  // "beta", "b"
-            PreReleaseLabel::Rc => "rc",   // "rc", "c", "preview", "pre"
-        }
+        crate::version::pep440::utils::pre_release_label_to_pep440_string(self)
     }
 }
 
