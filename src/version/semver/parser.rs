@@ -1,5 +1,5 @@
 use crate::error::ZervError;
-use crate::version::semver::core::{BuildMetadata, PreReleaseIdentifier, SemVerVersion};
+use crate::version::semver::core::{BuildMetadata, PreReleaseIdentifier, SemVer};
 use regex::Regex;
 use std::str::FromStr;
 use std::sync::LazyLock;
@@ -58,7 +58,7 @@ fn parse_build_metadata(input: &str) -> Vec<BuildMetadata> {
         .collect()
 }
 
-impl FromStr for SemVerVersion {
+impl FromStr for SemVer {
     type Err = ZervError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -87,7 +87,7 @@ impl FromStr for SemVerVersion {
             .parse()
             .map_err(|_| ZervError::InvalidVersion("Invalid patch version".to_string()))?;
 
-        let mut version = SemVerVersion::new(major, minor, patch);
+        let mut version = SemVer::new(major, minor, patch);
 
         if let Some(pre_release_match) = captures.name("prerelease") {
             let pre_release = parse_identifiers(pre_release_match.as_str());
@@ -123,7 +123,7 @@ mod tests {
             #[case] minor: u64,
             #[case] patch: u64,
         ) {
-            let parsed: SemVerVersion = input.parse().unwrap();
+            let parsed: SemVer = input.parse().unwrap();
             assert_eq!(parsed.major, major);
             assert_eq!(parsed.minor, minor);
             assert_eq!(parsed.patch, patch);
@@ -134,7 +134,7 @@ mod tests {
         #[test]
         fn test_parse_max_values() {
             let input = format!("{}.{}.{}", u64::MAX, u64::MAX, u64::MAX);
-            let parsed: SemVerVersion = input.parse().unwrap();
+            let parsed: SemVer = input.parse().unwrap();
             assert_eq!(parsed.major, u64::MAX);
             assert_eq!(parsed.minor, u64::MAX);
             assert_eq!(parsed.patch, u64::MAX);
@@ -146,7 +146,7 @@ mod tests {
 
         #[test]
         fn test_parse_single_string_pre_release() {
-            let parsed: SemVerVersion = "1.0.0-alpha".parse().unwrap();
+            let parsed: SemVer = "1.0.0-alpha".parse().unwrap();
             assert_eq!(
                 parsed.pre_release,
                 Some(vec![PreReleaseIdentifier::String("alpha".to_string())])
@@ -155,7 +155,7 @@ mod tests {
 
         #[test]
         fn test_parse_single_integer_pre_release() {
-            let parsed: SemVerVersion = "1.0.0-1".parse().unwrap();
+            let parsed: SemVer = "1.0.0-1".parse().unwrap();
             assert_eq!(
                 parsed.pre_release,
                 Some(vec![PreReleaseIdentifier::Integer(1)])
@@ -164,7 +164,7 @@ mod tests {
 
         #[test]
         fn test_parse_mixed_pre_release() {
-            let parsed: SemVerVersion = "1.0.0-alpha.1".parse().unwrap();
+            let parsed: SemVer = "1.0.0-alpha.1".parse().unwrap();
             assert_eq!(
                 parsed.pre_release,
                 Some(vec![
@@ -176,7 +176,7 @@ mod tests {
 
         #[test]
         fn test_parse_complex_pre_release() {
-            let parsed: SemVerVersion = "1.0.0-alpha.1.beta.2".parse().unwrap();
+            let parsed: SemVer = "1.0.0-alpha.1.beta.2".parse().unwrap();
             assert_eq!(
                 parsed.pre_release,
                 Some(vec![
@@ -198,7 +198,7 @@ mod tests {
         #[case("1.0.0-alpha123")]
         #[case("1.0.0-123alpha")]
         fn test_parse_various_string_pre_release(#[case] input: &str) {
-            let parsed: SemVerVersion = input.parse().unwrap();
+            let parsed: SemVer = input.parse().unwrap();
             assert!(parsed.pre_release.is_some());
             assert!(parsed.is_pre_release());
         }
@@ -208,7 +208,7 @@ mod tests {
         #[case("1.0.0-1")]
         #[case("1.0.0-999")]
         fn test_parse_various_integer_pre_release(#[case] input: &str) {
-            let parsed: SemVerVersion = input.parse().unwrap();
+            let parsed: SemVer = input.parse().unwrap();
             assert!(parsed.pre_release.is_some());
             assert!(parsed.is_pre_release());
         }
@@ -216,14 +216,14 @@ mod tests {
         #[test]
         fn test_parse_leading_zero_pre_release() {
             // Leading zeros are invalid in SemVer according to the spec
-            let result: Result<SemVerVersion, _> = "1.0.0-01".parse();
+            let result: Result<SemVer, _> = "1.0.0-01".parse();
             assert!(result.is_err(), "Leading zeros should be invalid in SemVer");
         }
 
         #[test]
         fn test_parse_zero_pre_release() {
             // "0" is valid as integer
-            let parsed: SemVerVersion = "1.0.0-0".parse().unwrap();
+            let parsed: SemVer = "1.0.0-0".parse().unwrap();
             assert_eq!(
                 parsed.pre_release,
                 Some(vec![PreReleaseIdentifier::Integer(0)])
@@ -236,7 +236,7 @@ mod tests {
 
         #[test]
         fn test_parse_single_string_build_metadata() {
-            let parsed: SemVerVersion = "1.0.0+build".parse().unwrap();
+            let parsed: SemVer = "1.0.0+build".parse().unwrap();
             assert_eq!(
                 parsed.build_metadata,
                 Some(vec![BuildMetadata::String("build".to_string())])
@@ -245,7 +245,7 @@ mod tests {
 
         #[test]
         fn test_parse_single_integer_build_metadata() {
-            let parsed: SemVerVersion = "1.0.0+123".parse().unwrap();
+            let parsed: SemVer = "1.0.0+123".parse().unwrap();
             assert_eq!(
                 parsed.build_metadata,
                 Some(vec![BuildMetadata::Integer(123)])
@@ -254,7 +254,7 @@ mod tests {
 
         #[test]
         fn test_parse_mixed_build_metadata() {
-            let parsed: SemVerVersion = "1.0.0+build.123".parse().unwrap();
+            let parsed: SemVer = "1.0.0+build.123".parse().unwrap();
             assert_eq!(
                 parsed.build_metadata,
                 Some(vec![
@@ -266,7 +266,7 @@ mod tests {
 
         #[test]
         fn test_parse_complex_build_metadata() {
-            let parsed: SemVerVersion = "1.0.0+commit.abc123.20240101".parse().unwrap();
+            let parsed: SemVer = "1.0.0+commit.abc123.20240101".parse().unwrap();
             assert_eq!(
                 parsed.build_metadata,
                 Some(vec![
@@ -280,7 +280,7 @@ mod tests {
         #[test]
         fn test_parse_leading_zero_build_metadata() {
             // Leading zeros are treated as strings in build metadata
-            let parsed: SemVerVersion = "1.0.0+01".parse().unwrap();
+            let parsed: SemVer = "1.0.0+01".parse().unwrap();
             assert_eq!(
                 parsed.build_metadata,
                 Some(vec![BuildMetadata::String("01".to_string())])
@@ -290,7 +290,7 @@ mod tests {
         #[test]
         fn test_parse_zero_build_metadata() {
             // "0" is valid as integer
-            let parsed: SemVerVersion = "1.0.0+0".parse().unwrap();
+            let parsed: SemVer = "1.0.0+0".parse().unwrap();
             assert_eq!(parsed.build_metadata, Some(vec![BuildMetadata::Integer(0)]));
         }
     }
@@ -300,7 +300,7 @@ mod tests {
 
         #[test]
         fn test_parse_pre_release_and_build_metadata() {
-            let parsed: SemVerVersion = "1.2.3-alpha.1+build.456".parse().unwrap();
+            let parsed: SemVer = "1.2.3-alpha.1+build.456".parse().unwrap();
 
             assert_eq!(parsed.major, 1);
             assert_eq!(parsed.minor, 2);
@@ -323,7 +323,7 @@ mod tests {
 
         #[test]
         fn test_parse_complex_full_version() {
-            let parsed: SemVerVersion = "10.20.30-rc.2.hotfix+commit.abc123def.20240315"
+            let parsed: SemVer = "10.20.30-rc.2.hotfix+commit.abc123def.20240315"
                 .parse()
                 .unwrap();
 
@@ -399,7 +399,7 @@ mod tests {
         #[case("1:2:3")]
         #[case("1;2;3")]
         fn test_parse_invalid_versions(#[case] input: &str) {
-            let result: Result<SemVerVersion, _> = input.parse();
+            let result: Result<SemVer, _> = input.parse();
             assert!(
                 result.is_err(),
                 "Expected '{input}' to be invalid but it parsed successfully"
@@ -534,12 +534,12 @@ mod tests {
         #[case("1.0.0-alpha+beta")]
         #[case("1.0.0-0+0")]
         fn test_roundtrip_parsing(#[case] input: &str) {
-            let parsed: SemVerVersion = input.parse().unwrap();
+            let parsed: SemVer = input.parse().unwrap();
             let output = parsed.to_string();
             assert_eq!(input, output, "Roundtrip failed for: {input}");
 
             // Also verify the reparsed version is equal
-            let reparsed: SemVerVersion = output.parse().unwrap();
+            let reparsed: SemVer = output.parse().unwrap();
             assert_eq!(parsed, reparsed, "Reparsed version should be equal");
         }
     }
@@ -550,7 +550,7 @@ mod tests {
         #[test]
         fn test_parse_very_large_numbers() {
             let input = format!("{}.{}.{}", u64::MAX, u64::MAX, u64::MAX);
-            let parsed: SemVerVersion = input.parse().unwrap();
+            let parsed: SemVer = input.parse().unwrap();
             assert_eq!(parsed.major, u64::MAX);
             assert_eq!(parsed.minor, u64::MAX);
             assert_eq!(parsed.patch, u64::MAX);
@@ -563,7 +563,7 @@ mod tests {
                 .collect::<Vec<_>>()
                 .join(".");
             let input = format!("1.0.0-{long_pre_release}");
-            let parsed: SemVerVersion = input.parse().unwrap();
+            let parsed: SemVer = input.parse().unwrap();
             assert!(parsed.pre_release.is_some());
             assert_eq!(parsed.pre_release.as_ref().unwrap().len(), 100);
         }
@@ -575,14 +575,14 @@ mod tests {
                 .collect::<Vec<_>>()
                 .join(".");
             let input = format!("1.0.0+{long_build_metadata}");
-            let parsed: SemVerVersion = input.parse().unwrap();
+            let parsed: SemVer = input.parse().unwrap();
             assert!(parsed.build_metadata.is_some());
             assert_eq!(parsed.build_metadata.as_ref().unwrap().len(), 100);
         }
 
         #[test]
         fn test_parse_alphanumeric_identifiers() {
-            let parsed: SemVerVersion = "1.0.0-alpha123beta456+build789meta012".parse().unwrap();
+            let parsed: SemVer = "1.0.0-alpha123beta456+build789meta012".parse().unwrap();
             assert_eq!(
                 parsed.pre_release,
                 Some(vec![PreReleaseIdentifier::String(

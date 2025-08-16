@@ -11,7 +11,7 @@ pub enum BuildMetadata {
 }
 
 #[derive(Debug, Clone)]
-pub struct SemVerVersion {
+pub struct SemVer {
     pub major: u64,
     pub minor: u64,
     pub patch: u64,
@@ -19,7 +19,7 @@ pub struct SemVerVersion {
     pub build_metadata: Option<Vec<BuildMetadata>>,
 }
 
-impl SemVerVersion {
+impl SemVer {
     pub fn new(major: u64, minor: u64, patch: u64) -> Self {
         Self {
             major,
@@ -49,7 +49,7 @@ impl SemVerVersion {
     }
 }
 
-impl Default for SemVerVersion {
+impl Default for SemVer {
     fn default() -> Self {
         Self::new(0, 0, 0)
     }
@@ -65,7 +65,7 @@ mod tests {
 
         #[test]
         fn test_new() {
-            let version = SemVerVersion::new(1, 2, 3);
+            let version = SemVer::new(1, 2, 3);
             assert_eq!(version.major, 1);
             assert_eq!(version.minor, 2);
             assert_eq!(version.patch, 3);
@@ -75,7 +75,7 @@ mod tests {
 
         #[test]
         fn test_default() {
-            let version = SemVerVersion::default();
+            let version = SemVer::default();
             assert_eq!(version.major, 0);
             assert_eq!(version.minor, 0);
             assert_eq!(version.patch, 0);
@@ -89,7 +89,7 @@ mod tests {
                 PreReleaseIdentifier::String("alpha".to_string()),
                 PreReleaseIdentifier::Integer(1),
             ];
-            let version = SemVerVersion::new(1, 0, 0).with_pre_release(pre_release.clone());
+            let version = SemVer::new(1, 0, 0).with_pre_release(pre_release.clone());
             assert_eq!(version.pre_release, Some(pre_release));
         }
 
@@ -99,7 +99,7 @@ mod tests {
                 BuildMetadata::String("build".to_string()),
                 BuildMetadata::Integer(123),
             ];
-            let version = SemVerVersion::new(1, 0, 0).with_build_metadata(build_metadata.clone());
+            let version = SemVer::new(1, 0, 0).with_build_metadata(build_metadata.clone());
             assert_eq!(version.build_metadata, Some(build_metadata));
         }
 
@@ -108,7 +108,7 @@ mod tests {
             let pre_release = vec![PreReleaseIdentifier::String("alpha".to_string())];
             let build_metadata = vec![BuildMetadata::String("build".to_string())];
 
-            let version = SemVerVersion::new(1, 2, 3)
+            let version = SemVer::new(1, 2, 3)
                 .with_pre_release(pre_release.clone())
                 .with_build_metadata(build_metadata.clone());
 
@@ -125,14 +125,14 @@ mod tests {
 
         #[test]
         fn test_is_stable() {
-            let stable = SemVerVersion::new(1, 0, 0);
+            let stable = SemVer::new(1, 0, 0);
             assert!(stable.is_stable());
             assert!(!stable.is_pre_release());
         }
 
         #[test]
         fn test_is_pre_release() {
-            let pre_release = SemVerVersion::new(1, 0, 0)
+            let pre_release = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
             assert!(pre_release.is_pre_release());
             assert!(!pre_release.is_stable());
@@ -140,7 +140,7 @@ mod tests {
 
         #[test]
         fn test_build_metadata_does_not_affect_stability() {
-            let version = SemVerVersion::new(1, 0, 0)
+            let version = SemVer::new(1, 0, 0)
                 .with_build_metadata(vec![BuildMetadata::String("build".to_string())]);
             assert!(version.is_stable());
             assert!(!version.is_pre_release());
@@ -152,7 +152,7 @@ mod tests {
 
         #[test]
         fn test_zero_version() {
-            let version = SemVerVersion::new(0, 0, 0);
+            let version = SemVer::new(0, 0, 0);
             assert_eq!(version.major, 0);
             assert_eq!(version.minor, 0);
             assert_eq!(version.patch, 0);
@@ -160,7 +160,7 @@ mod tests {
 
         #[test]
         fn test_max_values() {
-            let version = SemVerVersion::new(u64::MAX, u64::MAX, u64::MAX);
+            let version = SemVer::new(u64::MAX, u64::MAX, u64::MAX);
             assert_eq!(version.major, u64::MAX);
             assert_eq!(version.minor, u64::MAX);
             assert_eq!(version.patch, u64::MAX);
@@ -168,14 +168,14 @@ mod tests {
 
         #[test]
         fn test_empty_pre_release() {
-            let version = SemVerVersion::new(1, 0, 0).with_pre_release(vec![]);
+            let version = SemVer::new(1, 0, 0).with_pre_release(vec![]);
             assert_eq!(version.pre_release, Some(vec![]));
             assert!(version.is_pre_release());
         }
 
         #[test]
         fn test_empty_build_metadata() {
-            let version = SemVerVersion::new(1, 0, 0).with_build_metadata(vec![]);
+            let version = SemVer::new(1, 0, 0).with_build_metadata(vec![]);
             assert_eq!(version.build_metadata, Some(vec![]));
         }
 
@@ -184,7 +184,7 @@ mod tests {
             let first = vec![PreReleaseIdentifier::String("alpha".to_string())];
             let second = vec![PreReleaseIdentifier::String("beta".to_string())];
 
-            let version = SemVerVersion::new(1, 0, 0)
+            let version = SemVer::new(1, 0, 0)
                 .with_pre_release(first)
                 .with_pre_release(second.clone());
 
@@ -196,7 +196,7 @@ mod tests {
             let first = vec![BuildMetadata::String("build1".to_string())];
             let second = vec![BuildMetadata::String("build2".to_string())];
 
-            let version = SemVerVersion::new(1, 0, 0)
+            let version = SemVer::new(1, 0, 0)
                 .with_build_metadata(first)
                 .with_build_metadata(second.clone());
 
@@ -273,7 +273,7 @@ mod tests {
                 PreReleaseIdentifier::Integer(456),
             ];
 
-            let version = SemVerVersion::new(2, 0, 0).with_pre_release(pre_release.clone());
+            let version = SemVer::new(2, 0, 0).with_pre_release(pre_release.clone());
             assert_eq!(version.pre_release, Some(pre_release));
         }
 
@@ -285,7 +285,7 @@ mod tests {
                 BuildMetadata::Integer(20240101),
             ];
 
-            let version = SemVerVersion::new(1, 5, 0).with_build_metadata(build_metadata.clone());
+            let version = SemVer::new(1, 5, 0).with_build_metadata(build_metadata.clone());
             assert_eq!(version.build_metadata, Some(build_metadata));
         }
 
@@ -300,7 +300,7 @@ mod tests {
                 BuildMetadata::Integer(789),
             ];
 
-            let version = SemVerVersion::new(3, 1, 4)
+            let version = SemVer::new(3, 1, 4)
                 .with_pre_release(pre_release.clone())
                 .with_build_metadata(build_metadata.clone());
 

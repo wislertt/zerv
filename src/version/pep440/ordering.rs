@@ -1,13 +1,13 @@
-use super::core::{LocalSegment, PEP440Version, PreReleaseLabel};
+use super::core::{LocalSegment, PEP440, PreReleaseLabel};
 use std::cmp::Ordering;
 
-impl PartialOrd for PEP440Version {
+impl PartialOrd for PEP440 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for PEP440Version {
+impl Ord for PEP440 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.epoch
             .cmp(&other.epoch)
@@ -68,7 +68,7 @@ impl Ord for PreReleaseLabel {
     }
 }
 
-impl PartialEq for PEP440Version {
+impl PartialEq for PEP440 {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == Ordering::Equal
     }
@@ -112,7 +112,7 @@ fn compare_release_versions(left: &[u32], right: &[u32]) -> Ordering {
     Ordering::Equal
 }
 
-impl Eq for PEP440Version {}
+impl Eq for PEP440 {}
 
 #[cfg(test)]
 mod tests {
@@ -204,7 +204,7 @@ mod tests {
         "4294967295!4294967295.4294967295.4294967295a4294967295.post4294967295.dev4294967295+4294967295"
     )]
     fn test_ordering_reflexivity(#[case] version_str: &str) {
-        let version: PEP440Version = version_str.parse().unwrap();
+        let version: PEP440 = version_str.parse().unwrap();
         // Reflexivity: a version should equal itself
         assert_eq!(version.cmp(&version), std::cmp::Ordering::Equal);
     }
@@ -218,9 +218,9 @@ mod tests {
     #[case("1!0.0.0", "1!0.0.1", "1!0.1.0")]
     #[case("1.0.0", "1!0.0.0", "2!0.0.0")]
     fn test_ordering_transitivity(#[case] a: &str, #[case] b: &str, #[case] c: &str) {
-        let version_a: PEP440Version = a.parse().unwrap();
-        let version_b: PEP440Version = b.parse().unwrap();
-        let version_c: PEP440Version = c.parse().unwrap();
+        let version_a: PEP440 = a.parse().unwrap();
+        let version_b: PEP440 = b.parse().unwrap();
+        let version_c: PEP440 = c.parse().unwrap();
 
         assert!(version_a < version_b);
         assert!(version_b < version_c);
@@ -309,8 +309,8 @@ mod tests {
     #[case("1.0.0+0.a", "1.0.0+0.b")] // mixed numeric and string
     #[case("1.0.0+a.0", "1.0.0+a.1")] // mixed string and numeric
     fn test_version_ordering_less_than(#[case] left: &str, #[case] right: &str) {
-        let left_version: PEP440Version = left.parse().unwrap();
-        let right_version: PEP440Version = right.parse().unwrap();
+        let left_version: PEP440 = left.parse().unwrap();
+        let right_version: PEP440 = right.parse().unwrap();
         assert!(left_version < right_version);
         assert!(left_version <= right_version);
         assert!(right_version > left_version);
@@ -373,8 +373,8 @@ mod tests {
     #[case("1.0.0+1.02.003", "1.0.0+1.2.3")] // multiple leading zeros
     #[case("1.0.0+build.01", "1.0.0+build.1")] // leading zero in string-numeric mix
     fn test_pep440_version_equality(#[case] left: &str, #[case] right: &str) {
-        let left_version: PEP440Version = left.parse().unwrap();
-        let right_version: PEP440Version = right.parse().unwrap();
+        let left_version: PEP440 = left.parse().unwrap();
+        let right_version: PEP440 = right.parse().unwrap();
         assert_eq!(left_version, right_version);
     }
 }

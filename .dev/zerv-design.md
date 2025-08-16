@@ -403,7 +403,7 @@ compact.serialize(); // "20240315.1-rc.1"
 
 ## Conversion Strategy
 
-See [zerv-conversions.md](./zerv-conversions.md) for detailed conversion logic between existing version objects (SemVerVersion, PEP440Version) and Zerv format.
+See [zerv-conversions.md](./zerv-conversions.md) for detailed conversion logic between existing version objects (SemVer, PEP440) and Zerv format.
 
 ## Component Resolution
 

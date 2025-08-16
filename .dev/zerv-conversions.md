@@ -10,7 +10,7 @@ This document describes the conversion system between existing version objects (
 
 ```rust
 // SemVer -> Zerv
-impl From<SemVerVersion> for Zerv {
+impl From<SemVer> for Zerv {
     fn from(semver: SemVerVersion) -> Self {
         Zerv {
             format: ZervFormat {
@@ -39,7 +39,7 @@ impl From<SemVerVersion> for Zerv {
 }
 
 // PEP440 -> Zerv
-impl From<PEP440Version> for Zerv {
+impl From<PEP440> for Zerv {
     fn from(pep440: PEP440Version) -> Self {
         let mut extra_core = vec![];
         if pep440.pre_release.is_some() {
@@ -84,7 +84,7 @@ impl From<PEP440Version> for Zerv {
 
 ```rust
 // Zerv -> SemVer
-impl TryFrom<Zerv> for SemVerVersion {
+impl TryFrom<Zerv> for SemVer {
     type Error = ConversionError;
 
     fn try_from(zerv: Zerv) -> Result<Self, Self::Error> {
@@ -93,7 +93,7 @@ impl TryFrom<Zerv> for SemVerVersion {
             return Err(ConversionError::IncompatibleFormat);
         }
 
-        Ok(SemVerVersion {
+        Ok(SemVer {
             major: zerv.vars.major.ok_or(ConversionError::MissingField("major"))?,
             minor: zerv.vars.minor.ok_or(ConversionError::MissingField("minor"))?,
             patch: zerv.vars.patch.ok_or(ConversionError::MissingField("patch"))?,
@@ -107,7 +107,7 @@ impl TryFrom<Zerv> for SemVerVersion {
 }
 
 // Zerv -> PEP440
-impl TryFrom<Zerv> for PEP440Version {
+impl TryFrom<Zerv> for PEP440 {
     type Error = ConversionError;
 
     fn try_from(zerv: Zerv) -> Result<Self, Self::Error> {
@@ -116,7 +116,7 @@ impl TryFrom<Zerv> for PEP440Version {
             return Err(ConversionError::IncompatibleFormat);
         }
 
-        Ok(PEP440Version {
+        Ok(PEP440 {
             epoch: zerv.vars.epoch,
             major: zerv.vars.major.ok_or(ConversionError::MissingField("major"))?,
             minor: zerv.vars.minor.ok_or(ConversionError::MissingField("minor"))?,
@@ -196,16 +196,16 @@ pub enum ConversionError {
 
 ```rust
 // Convert existing version to Zerv
-let semver = SemVerVersion::new(1, 2, 3);
+let semver = SemVer::new(1, 2, 3);
 let zerv: Zerv = semver.into();
 
 // Convert Zerv back to existing version
-let semver_back: SemVerVersion = zerv.try_into()?;
+let semver_back: SemVer = zerv.try_into()?;
 
 // Cross-format conversion via Zerv
-let pep440 = PEP440Version::new(1, 2, 3);
+let pep440 = PEP440::new(1, 2, 3);
 let zerv: Zerv = pep440.into();
-let semver: SemVerVersion = zerv.try_into()?;
+let semver: SemVer = zerv.try_into()?;
 ```
 
 ## Benefits

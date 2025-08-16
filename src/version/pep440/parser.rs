@@ -1,5 +1,5 @@
 use crate::error::ZervError;
-use crate::version::pep440::core::{LocalSegment, PEP440Version, PreReleaseLabel};
+use crate::version::pep440::core::{LocalSegment, PEP440, PreReleaseLabel};
 use regex::Regex;
 use std::str::FromStr;
 use std::sync::LazyLock;
@@ -64,7 +64,7 @@ pub fn parse_local_segments(local: &str) -> Vec<LocalSegment> {
         .collect()
 }
 
-impl FromStr for PEP440Version {
+impl FromStr for PEP440 {
     type Err = ZervError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -82,7 +82,7 @@ impl FromStr for PEP440Version {
             })
             .unwrap_or_else(|| vec![0]);
 
-        let mut version = PEP440Version::new(release);
+        let mut version = PEP440::new(release);
 
         if let Some(epoch_match) = captures.name("epoch") {
             let epoch = epoch_match.as_str().parse().unwrap_or(0);
@@ -127,8 +127,8 @@ mod tests {
     #[case("0.1.0", vec![0, 1, 0])]
     #[case("10.20.30", vec![10, 20, 30])]
     fn test_parse_simple_versions(#[case] input: &str, #[case] release: Vec<u32>) {
-        let parsed: PEP440Version = input.parse().unwrap();
-        let built = PEP440Version::new(release.clone());
+        let parsed: PEP440 = input.parse().unwrap();
+        let built = PEP440::new(release.clone());
 
         assert_eq!(parsed, built);
         assert_eq!(parsed.epoch, 0);
@@ -145,8 +145,8 @@ mod tests {
     #[case("42!2025.12.31", 42, vec![2025, 12, 31])]
     #[case("0!1.0.0", 0, vec![1, 0, 0])]
     fn test_parse_with_epoch(#[case] input: &str, #[case] epoch: u32, #[case] release: Vec<u32>) {
-        let parsed: PEP440Version = input.parse().unwrap();
-        let built = PEP440Version::new(release.clone()).with_epoch(epoch);
+        let parsed: PEP440 = input.parse().unwrap();
+        let built = PEP440::new(release.clone()).with_epoch(epoch);
 
         assert_eq!(parsed, built);
         assert_eq!(parsed.epoch, epoch);
@@ -170,9 +170,8 @@ mod tests {
         #[case] pre_label: PreReleaseLabel,
         #[case] pre_number: Option<u32>,
     ) {
-        let parsed: PEP440Version = input.parse().unwrap();
-        let built =
-            PEP440Version::new(vec![1, 0, 0]).with_pre_release(pre_label.clone(), pre_number);
+        let parsed: PEP440 = input.parse().unwrap();
+        let built = PEP440::new(vec![1, 0, 0]).with_pre_release(pre_label.clone(), pre_number);
 
         assert_eq!(parsed, built);
         assert_eq!(parsed.pre_label, Some(pre_label));
@@ -186,8 +185,8 @@ mod tests {
     #[case("1.0.0.r4", Some(4))]
     #[case("1.0.0post5", Some(5))]
     fn test_parse_post_release(#[case] input: &str, #[case] post_number: Option<u32>) {
-        let parsed: PEP440Version = input.parse().unwrap();
-        let built = PEP440Version::new(vec![1, 0, 0]).with_post(post_number);
+        let parsed: PEP440 = input.parse().unwrap();
+        let built = PEP440::new(vec![1, 0, 0]).with_post(post_number);
 
         assert_eq!(parsed, built);
         assert_eq!(parsed.post_number, post_number);
@@ -199,8 +198,8 @@ mod tests {
     #[case("1.0.0.dev", Some(0))]
     #[case("1.0.0dev", Some(0))]
     fn test_parse_dev_release(#[case] input: &str, #[case] dev_number: Option<u32>) {
-        let parsed: PEP440Version = input.parse().unwrap();
-        let built = PEP440Version::new(vec![1, 0, 0]).with_dev(dev_number);
+        let parsed: PEP440 = input.parse().unwrap();
+        let built = PEP440::new(vec![1, 0, 0]).with_dev(dev_number);
         assert_eq!(parsed, built);
 
         assert_eq!(parsed.dev_number, dev_number);
@@ -212,10 +211,10 @@ mod tests {
     #[case("1.0.0+123.456")]
     #[case("1.0.0+local")]
     fn test_parse_local_versions(#[case] input: &str) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         // Extract local string from input for with_local
         let local_str = input.split('+').nth(1).unwrap();
-        let built = PEP440Version::new(vec![1, 0, 0]).with_local(local_str);
+        let built = PEP440::new(vec![1, 0, 0]).with_local(local_str);
         let expected_local = parse_local_segments(local_str);
 
         assert_eq!(parsed, built);
@@ -227,7 +226,7 @@ mod tests {
     #[case("1!1.2.3b4.post5.dev6+local.meta")]
     #[case("0!1.0.0rc1.post2.dev3+build.123")]
     fn test_parse_complex_versions(#[case] input: &str) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
 
         // Verify parsing succeeded and all components are present
         assert!(parsed.epoch > 0 || input.starts_with("0!"));
@@ -240,7 +239,7 @@ mod tests {
 
         // Test round-trip: parse -> display -> parse should be equal
         let displayed = parsed.to_string();
-        let reparsed: PEP440Version = displayed.parse().unwrap();
+        let reparsed: PEP440 = displayed.parse().unwrap();
         assert_eq!(parsed, reparsed);
     }
 
@@ -316,7 +315,7 @@ mod tests {
     #[case("1.2.3.stable")]
     #[case("1.2.3.release")]
     fn test_parse_invalid_versions(#[case] input: &str) {
-        let result: Result<PEP440Version, _> = input.parse();
+        let result: Result<PEP440, _> = input.parse();
         assert!(
             result.is_err(),
             "Expected '{input}' to be invalid but it parsed successfully"
@@ -326,7 +325,7 @@ mod tests {
     #[test]
     fn test_parse_very_long_version() {
         // This should be valid as PEP440 doesn't limit release segment count
-        let result: Result<PEP440Version, _> = "1.2.3.4.5.6.7.8.9.10.11.12".parse();
+        let result: Result<PEP440, _> = "1.2.3.4.5.6.7.8.9.10.11.12".parse();
         assert!(result.is_ok());
         let version = result.unwrap();
         assert_eq!(version.release, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
@@ -370,7 +369,7 @@ mod tests {
         #[case] expected_label: PreReleaseLabel,
         #[case] expected_number: Option<u32>,
     ) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         assert_eq!(parsed.pre_label, Some(expected_label));
         assert_eq!(parsed.pre_number, expected_number);
     }
@@ -394,7 +393,7 @@ mod tests {
         #[case] expected_label: PreReleaseLabel,
         #[case] expected_number: Option<u32>,
     ) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         assert_eq!(parsed.pre_label, Some(expected_label));
         assert_eq!(parsed.pre_number, expected_number);
     }
@@ -420,7 +419,7 @@ mod tests {
         #[case] input: &str,
         #[case] expected_number: Option<u32>,
     ) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         assert_eq!(parsed.post_number, expected_number);
         assert_eq!(parsed.post_label, Some(PostLabel::Post));
     }
@@ -439,7 +438,7 @@ mod tests {
         #[case] input: &str,
         #[case] expected_number: Option<u32>,
     ) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         assert_eq!(parsed.dev_number, expected_number);
     }
 
@@ -474,7 +473,7 @@ mod tests {
         #[case] expected_post_number: Option<u32>,
         #[case] expected_dev_number: Option<u32>,
     ) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         assert_eq!(parsed.pre_label, Some(expected_pre_label));
         assert_eq!(parsed.pre_number, expected_pre_number);
         assert_eq!(parsed.post_number, expected_post_number);
@@ -492,7 +491,7 @@ mod tests {
         #[case] input: &str,
         #[case] expected_number: Option<u32>,
     ) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         assert_eq!(parsed.post_number, expected_number);
     }
 
@@ -506,7 +505,7 @@ mod tests {
         #[case] input: &str,
         #[case] expected_number: Option<u32>,
     ) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         assert_eq!(parsed.dev_number, expected_number);
     }
 
@@ -515,7 +514,7 @@ mod tests {
     #[case("1.0.0+ubuntu_20_04")]
     #[case("1.0.0+ubuntu.20.04")]
     fn test_parse_local_version_separators(#[case] input: &str) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         let local_str = input.split('+').nth(1).unwrap();
         let expected_local = parse_local_segments(local_str);
 
@@ -526,7 +525,7 @@ mod tests {
     fn test_parse_comprehensive_unnormalized() {
         // Test a complex version with all unnormalized forms
         let input = "1!2.0.0_ALPHA1-POST2.DEV3+build_123";
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
 
         assert_eq!(parsed.epoch, 1);
         assert_eq!(parsed.release, vec![2, 0, 0]);
@@ -542,7 +541,7 @@ mod tests {
     #[case("4294967295.0.0", vec![4294967295, 0, 0])]
     #[case("1.01.0", vec![1, 1, 0])]
     fn test_parse_edge_cases(#[case] input: &str, #[case] expected_release: Vec<u32>) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
         assert_eq!(parsed.release, expected_release);
     }
 
@@ -567,7 +566,7 @@ mod tests {
     #[case("1.2.post", Some(0))] // post without number normalized to Some(0)
     #[case("1.2.post3", Some(3))] // explicit post number preserved
     fn test_parse_normalization_dev_post(#[case] input: &str, #[case] expected: Option<u32>) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
 
         if input.contains("dev") {
             assert_eq!(parsed.dev_number, expected);
@@ -587,7 +586,7 @@ mod tests {
         #[case] expected_label: PreReleaseLabel,
         #[case] expected_number: Option<u32>,
     ) {
-        let parsed: PEP440Version = input.parse().unwrap();
+        let parsed: PEP440 = input.parse().unwrap();
 
         assert_eq!(parsed.pre_label, Some(expected_label));
         assert_eq!(parsed.pre_number, expected_number);
@@ -596,7 +595,7 @@ mod tests {
     #[test]
     fn test_parse_normalization_comprehensive() {
         // Test version with all implicit numbers - now automatically normalized during parsing
-        let parsed: PEP440Version = "1.2.3a.post.dev".parse().unwrap();
+        let parsed: PEP440 = "1.2.3a.post.dev".parse().unwrap();
 
         assert_eq!(parsed.pre_label, Some(PreReleaseLabel::Alpha));
         assert_eq!(parsed.pre_number, Some(0)); // automatically normalized to Some(0)
