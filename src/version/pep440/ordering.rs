@@ -1,4 +1,5 @@
-use super::core::{LocalSegment, PEP440, PreReleaseLabel};
+use super::core::{LocalSegment, PEP440};
+use crate::version::zerv::PreReleaseLabel;
 use std::cmp::Ordering;
 
 impl PartialOrd for PEP440 {

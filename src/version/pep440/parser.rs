@@ -1,5 +1,6 @@
 use crate::error::ZervError;
-use crate::version::pep440::core::{LocalSegment, PEP440, PreReleaseLabel};
+use crate::version::pep440::core::{LocalSegment, PEP440};
+use crate::version::zerv::PreReleaseLabel;
 use regex::Regex;
 use std::str::FromStr;
 use std::sync::LazyLock;
