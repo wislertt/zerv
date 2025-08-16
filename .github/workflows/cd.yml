@@ -131,6 +131,7 @@ jobs:
                   file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
                   asset_name: ${{ matrix.asset_name }}
                   tag: v${{ needs.versioning.outputs.new_release_version }}
+                  overwrite: true
 
     release-crates:
         name: release-crates
@@ -150,4 +151,14 @@ jobs:
                   sed -i "s/^version = \".*\"/version = \"${{ needs.versioning.outputs.new_release_version }}\"/" Cargo.toml
 
             - name: Release to crates.io
-              run: cargo publish --token ${{ secrets.CARGO_TOKEN }} --allow-dirty || true
+              run: |
+                  set -o pipefail
+                  if cargo publish --token ${{ secrets.CARGO_TOKEN }} --allow-dirty 2>&1 | tee output.log; then
+                      echo "Publish succeeded."
+                  elif grep -q "already exists on crates.io index" output.log; then
+                      echo "Version already exists, skipping publish."
+                      exit 0
+                  else
+                      echo "Publish failed with unexpected error."
+                      exit 1
+                  fi
