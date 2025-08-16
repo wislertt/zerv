@@ -1,4 +1,4 @@
-use super::core::{LocalSegment, PEP440Version};
+use super::core::{LocalSegment, PEP440};
 use std::fmt;
 
 pub fn format_local_segments(segments: &[LocalSegment]) -> String {
@@ -12,7 +12,7 @@ pub fn format_local_segments(segments: &[LocalSegment]) -> String {
         .join(".")
 }
 
-impl fmt::Display for PEP440Version {
+impl fmt::Display for PEP440 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Epoch
         if self.epoch > 0 {
@@ -77,13 +77,13 @@ mod tests {
 
     #[test]
     fn test_display_simple_version() {
-        let version = PEP440Version::new(vec![1, 2, 3]);
+        let version = PEP440::new(vec![1, 2, 3]);
         assert_eq!(version.to_string(), "1.2.3");
     }
 
     #[test]
     fn test_display_complex_version() {
-        let version = PEP440Version::new(vec![2025, 12, 31])
+        let version = PEP440::new(vec![2025, 12, 31])
             .with_epoch(42)
             .with_pre_release(PreReleaseLabel::Alpha, Some(99))
             .with_post(Some(123))
@@ -97,14 +97,13 @@ mod tests {
 
     #[test]
     fn test_display_with_local_mixed() {
-        let version = PEP440Version::new(vec![1, 0, 0]).with_local("ubuntu.20.04");
+        let version = PEP440::new(vec![1, 0, 0]).with_local("ubuntu.20.04");
         assert_eq!(version.to_string(), "1.0.0+ubuntu.20.4"); // "04" becomes "4"
     }
 
     #[test]
     fn test_display_pre_release_only() {
-        let version =
-            PEP440Version::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Beta, Some(2));
+        let version = PEP440::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Beta, Some(2));
         assert_eq!(version.to_string(), "1.2.3b2");
     }
 
@@ -150,45 +149,44 @@ mod tests {
 
     #[test]
     fn test_display_epoch_none() {
-        let version = PEP440Version::new(vec![1, 0, 0]);
+        let version = PEP440::new(vec![1, 0, 0]);
         assert_eq!(version.epoch, 0);
         assert_eq!(version.to_string(), "1.0.0");
     }
 
     #[test]
     fn test_display_epoch_zero() {
-        let version = PEP440Version::new(vec![1, 0, 0]).with_epoch(0);
+        let version = PEP440::new(vec![1, 0, 0]).with_epoch(0);
         assert_eq!(version.to_string(), "1.0.0");
     }
 
     #[test]
     fn test_display_edge_cases() {
-        let mut version = PEP440Version::new(vec![1, 0, 0]);
+        let mut version = PEP440::new(vec![1, 0, 0]);
         version.pre_label = Some(PreReleaseLabel::Alpha);
         version.pre_number = None;
         assert_eq!(version.to_string(), "1.0.0a");
 
-        let mut version = PEP440Version::new(vec![1, 0, 0]);
+        let mut version = PEP440::new(vec![1, 0, 0]);
         version.dev_number = None;
         assert_eq!(version.to_string(), "1.0.0");
     }
 
     #[test]
     fn test_display_with_dev_none() {
-        let version = PEP440Version::new(vec![1, 2, 3]).with_dev(None);
+        let version = PEP440::new(vec![1, 2, 3]).with_dev(None);
         assert_eq!(version.to_string(), "1.2.3.dev");
     }
 
     #[test]
     fn test_display_with_post_none() {
-        let version = PEP440Version::new(vec![1, 2, 3]).with_post(None);
+        let version = PEP440::new(vec![1, 2, 3]).with_post(None);
         assert_eq!(version.to_string(), "1.2.3.post");
     }
 
     #[test]
     fn test_display_with_pre_release_none() {
-        let version =
-            PEP440Version::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Alpha, None);
+        let version = PEP440::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Alpha, None);
         assert_eq!(version.to_string(), "1.2.3a");
     }
 }

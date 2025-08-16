@@ -2,6 +2,10 @@
 
 Dynamic Versioning Cli
 
+## 🚧 Under Active Development 🚧
+
+**⚠️ This project is currently in active development and has not even reached alpha state. It is not usable right now and not recommended for any use.**
+
 ## Installation
 
 ### Quick Install (Recommended)

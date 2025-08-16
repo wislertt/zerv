@@ -1,13 +1,13 @@
-use super::core::{PreReleaseIdentifier, SemVerVersion};
+use super::core::{PreReleaseIdentifier, SemVer};
 use std::cmp::Ordering;
 
-impl PartialOrd for SemVerVersion {
+impl PartialOrd for SemVer {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for SemVerVersion {
+impl Ord for SemVer {
     fn cmp(&self, other: &Self) -> Ordering {
         // Compare major.minor.patch first
         self.major
@@ -29,13 +29,13 @@ impl Ord for SemVerVersion {
     }
 }
 
-impl PartialEq for SemVerVersion {
+impl PartialEq for SemVer {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == Ordering::Equal
     }
 }
 
-impl Eq for SemVerVersion {}
+impl Eq for SemVer {}
 
 impl PartialOrd for PreReleaseIdentifier {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -84,32 +84,32 @@ mod tests {
 
         #[test]
         fn test_major_version_ordering() {
-            let v1 = SemVerVersion::new(1, 0, 0);
-            let v2 = SemVerVersion::new(2, 0, 0);
+            let v1 = SemVer::new(1, 0, 0);
+            let v2 = SemVer::new(2, 0, 0);
             assert!(v1 < v2);
             assert!(v2 > v1);
         }
 
         #[test]
         fn test_minor_version_ordering() {
-            let v1 = SemVerVersion::new(1, 0, 0);
-            let v2 = SemVerVersion::new(1, 1, 0);
+            let v1 = SemVer::new(1, 0, 0);
+            let v2 = SemVer::new(1, 1, 0);
             assert!(v1 < v2);
             assert!(v2 > v1);
         }
 
         #[test]
         fn test_patch_version_ordering() {
-            let v1 = SemVerVersion::new(1, 0, 0);
-            let v2 = SemVerVersion::new(1, 0, 1);
+            let v1 = SemVer::new(1, 0, 0);
+            let v2 = SemVer::new(1, 0, 1);
             assert!(v1 < v2);
             assert!(v2 > v1);
         }
 
         #[test]
         fn test_equal_versions() {
-            let v1 = SemVerVersion::new(1, 2, 3);
-            let v2 = SemVerVersion::new(1, 2, 3);
+            let v1 = SemVer::new(1, 2, 3);
+            let v2 = SemVer::new(1, 2, 3);
             assert_eq!(v1, v2);
             assert!(v1 <= v2);
             assert!(v1 >= v2);
@@ -117,7 +117,7 @@ mod tests {
 
         #[test]
         fn test_reflexivity() {
-            let version = SemVerVersion::new(1, 2, 3);
+            let version = SemVer::new(1, 2, 3);
             assert_eq!(version.cmp(&version), Ordering::Equal);
         }
     }
@@ -127,8 +127,8 @@ mod tests {
 
         #[test]
         fn test_stable_vs_pre_release() {
-            let stable = SemVerVersion::new(1, 0, 0);
-            let pre_release = SemVerVersion::new(1, 0, 0)
+            let stable = SemVer::new(1, 0, 0);
+            let pre_release = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
 
             assert!(pre_release < stable);
@@ -137,9 +137,9 @@ mod tests {
 
         #[test]
         fn test_pre_release_string_ordering() {
-            let alpha = SemVerVersion::new(1, 0, 0)
+            let alpha = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
-            let beta = SemVerVersion::new(1, 0, 0)
+            let beta = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("beta".to_string())]);
 
             assert!(alpha < beta);
@@ -148,10 +148,8 @@ mod tests {
 
         #[test]
         fn test_pre_release_integer_ordering() {
-            let v1 = SemVerVersion::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::Integer(1)]);
-            let v2 = SemVerVersion::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::Integer(2)]);
+            let v1 = SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::Integer(1)]);
+            let v2 = SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::Integer(2)]);
 
             assert!(v1 < v2);
             assert!(v2 > v1);
@@ -159,9 +157,9 @@ mod tests {
 
         #[test]
         fn test_pre_release_mixed_type_ordering() {
-            let integer = SemVerVersion::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::Integer(1)]);
-            let string = SemVerVersion::new(1, 0, 0)
+            let integer =
+                SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::Integer(1)]);
+            let string = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
 
             assert!(integer < string); // integers < strings
@@ -170,9 +168,9 @@ mod tests {
 
         #[test]
         fn test_pre_release_length_ordering() {
-            let shorter = SemVerVersion::new(1, 0, 0)
+            let shorter = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
-            let longer = SemVerVersion::new(1, 0, 0).with_pre_release(vec![
+            let longer = SemVer::new(1, 0, 0).with_pre_release(vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
                 PreReleaseIdentifier::Integer(1),
             ]);
@@ -183,11 +181,11 @@ mod tests {
 
         #[test]
         fn test_complex_pre_release_ordering() {
-            let v1 = SemVerVersion::new(1, 0, 0).with_pre_release(vec![
+            let v1 = SemVer::new(1, 0, 0).with_pre_release(vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
                 PreReleaseIdentifier::Integer(1),
             ]);
-            let v2 = SemVerVersion::new(1, 0, 0).with_pre_release(vec![
+            let v2 = SemVer::new(1, 0, 0).with_pre_release(vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
                 PreReleaseIdentifier::Integer(2),
             ]);
@@ -202,9 +200,9 @@ mod tests {
 
         #[test]
         fn test_build_metadata_ignored_in_comparison() {
-            let v1 = SemVerVersion::new(1, 0, 0)
+            let v1 = SemVer::new(1, 0, 0)
                 .with_build_metadata(vec![BuildMetadata::String("build1".to_string())]);
-            let v2 = SemVerVersion::new(1, 0, 0)
+            let v2 = SemVer::new(1, 0, 0)
                 .with_build_metadata(vec![BuildMetadata::String("build2".to_string())]);
 
             assert_eq!(v1, v2); // build metadata is ignored
@@ -212,10 +210,10 @@ mod tests {
 
         #[test]
         fn test_build_metadata_with_pre_release() {
-            let v1 = SemVerVersion::new(1, 0, 0)
+            let v1 = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())])
                 .with_build_metadata(vec![BuildMetadata::String("build1".to_string())]);
-            let v2 = SemVerVersion::new(1, 0, 0)
+            let v2 = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())])
                 .with_build_metadata(vec![BuildMetadata::String("build2".to_string())]);
 
@@ -224,8 +222,8 @@ mod tests {
 
         #[test]
         fn test_no_build_metadata_vs_with_build_metadata() {
-            let v1 = SemVerVersion::new(1, 0, 0);
-            let v2 = SemVerVersion::new(1, 0, 0)
+            let v1 = SemVer::new(1, 0, 0);
+            let v2 = SemVer::new(1, 0, 0)
                 .with_build_metadata(vec![BuildMetadata::String("build".to_string())]);
 
             assert_eq!(v1, v2); // build metadata is ignored
@@ -290,8 +288,8 @@ mod tests {
         #[case("1.0.0-alpha+build1", "1.0.0-alpha+Build2")] // build metadata ignored
         #[case("1.0.0-alpha+build1", "1.0.0-alpha+BUILD2")] // build metadata ignored
         fn test_semver_version_equality(#[case] left: &str, #[case] right: &str) {
-            let left_version: SemVerVersion = left.parse().unwrap();
-            let right_version: SemVerVersion = right.parse().unwrap();
+            let left_version: SemVer = left.parse().unwrap();
+            let right_version: SemVer = right.parse().unwrap();
             assert_eq!(left_version, right_version);
         }
 
@@ -299,8 +297,8 @@ mod tests {
         // #[case("1.0.0-alpha", "1.0.0-ALPHA")]
         // #[case("1.0.0-Alpha", "1.0.0-alpha")]
         // fn test_case_sensitivity_inequality(#[case] left: &str, #[case] right: &str) {
-        //     let left_version: SemVerVersion = left.parse().unwrap();
-        //     let right_version: SemVerVersion = right.parse().unwrap();
+        //     let left_version: SemVer = left.parse().unwrap();
+        //     let right_version: SemVer = right.parse().unwrap();
         //     assert_ne!(left_version, right_version); // case sensitive
         // }
     }
@@ -323,8 +321,8 @@ mod tests {
         #[case("1.0.0-ALPHA", "1.0.0-alpha")]
         #[case("1.0.0-Alpha", "1.0.0-alpha")]
         fn test_semver_spec_examples(#[case] left: &str, #[case] right: &str) {
-            let left_version: SemVerVersion = left.parse().unwrap();
-            let right_version: SemVerVersion = right.parse().unwrap();
+            let left_version: SemVer = left.parse().unwrap();
+            let right_version: SemVer = right.parse().unwrap();
             assert!(left_version < right_version, "{left} should be < {right}");
             assert!(left_version <= right_version, "{left} should be <= {right}");
             assert!(right_version > left_version, "{left} should be > {right}");
@@ -333,11 +331,11 @@ mod tests {
 
         #[test]
         fn test_transitivity() {
-            let v1 = SemVerVersion::new(1, 0, 0)
+            let v1 = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
-            let v2 = SemVerVersion::new(1, 0, 0)
+            let v2 = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("beta".to_string())]);
-            let v3 = SemVerVersion::new(1, 0, 0);
+            let v3 = SemVer::new(1, 0, 0);
 
             assert!(v1 < v2);
             assert!(v2 < v3);
@@ -346,8 +344,8 @@ mod tests {
 
         #[test]
         fn test_antisymmetry() {
-            let v1 = SemVerVersion::new(1, 0, 0);
-            let v2 = SemVerVersion::new(2, 0, 0);
+            let v1 = SemVer::new(1, 0, 0);
+            let v2 = SemVer::new(2, 0, 0);
 
             assert!(v1 < v2);
             assert!(v2 >= v1);
@@ -359,22 +357,22 @@ mod tests {
 
         #[test]
         fn test_zero_versions() {
-            let v1 = SemVerVersion::new(0, 0, 0);
-            let v2 = SemVerVersion::new(0, 0, 1);
+            let v1 = SemVer::new(0, 0, 0);
+            let v2 = SemVer::new(0, 0, 1);
             assert!(v1 < v2);
         }
 
         #[test]
         fn test_max_values() {
-            let v1 = SemVerVersion::new(u64::MAX - 1, u64::MAX, u64::MAX);
-            let v2 = SemVerVersion::new(u64::MAX, 0, 0);
+            let v1 = SemVer::new(u64::MAX - 1, u64::MAX, u64::MAX);
+            let v2 = SemVer::new(u64::MAX, 0, 0);
             assert!(v1 < v2);
         }
 
         #[test]
         fn test_empty_pre_release() {
-            let v1 = SemVerVersion::new(1, 0, 0).with_pre_release(vec![]);
-            let v2 = SemVerVersion::new(1, 0, 0);
+            let v1 = SemVer::new(1, 0, 0).with_pre_release(vec![]);
+            let v2 = SemVer::new(1, 0, 0);
             assert!(v1 < v2); // empty pre-release still makes it a pre-release
         }
 
@@ -383,17 +381,17 @@ mod tests {
             let long_pre_release = (0..100).map(PreReleaseIdentifier::Integer).collect();
             let short_pre_release = vec![PreReleaseIdentifier::Integer(0)];
 
-            let v1 = SemVerVersion::new(1, 0, 0).with_pre_release(short_pre_release);
-            let v2 = SemVerVersion::new(1, 0, 0).with_pre_release(long_pre_release);
+            let v1 = SemVer::new(1, 0, 0).with_pre_release(short_pre_release);
+            let v2 = SemVer::new(1, 0, 0).with_pre_release(long_pre_release);
 
             assert!(v1 < v2); // fewer identifiers < more identifiers
         }
 
         #[test]
         fn test_numeric_string_comparison() {
-            let v1 = SemVerVersion::new(1, 0, 0)
+            let v1 = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("10".to_string())]);
-            let v2 = SemVerVersion::new(1, 0, 0)
+            let v2 = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("2".to_string())]);
 
             // String comparison: "10" < "2" lexicographically
@@ -402,9 +400,9 @@ mod tests {
 
         #[test]
         fn test_integer_vs_numeric_string() {
-            let integer = SemVerVersion::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::Integer(10)]);
-            let string = SemVerVersion::new(1, 0, 0)
+            let integer =
+                SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::Integer(10)]);
+            let string = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("2".to_string())]);
 
             // Integer < String regardless of numeric value

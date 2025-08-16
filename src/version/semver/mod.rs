@@ -3,4 +3,4 @@ mod display;
 mod ordering;
 mod parser;
 
-pub use core::{BuildMetadata, PreReleaseIdentifier, SemVerVersion};
+pub use core::{BuildMetadata, PreReleaseIdentifier, SemVer};

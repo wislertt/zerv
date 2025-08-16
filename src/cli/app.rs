@@ -1,4 +1,4 @@
-use crate::PEP440Version;
+use crate::version::pep440::PEP440;
 use clap::Command;
 use std::io::Write;
 
@@ -8,7 +8,7 @@ pub fn create_app() -> Command {
         .about("Dynamic versioning CLI")
 }
 
-pub fn format_version(version: &PEP440Version) -> String {
+pub fn format_version(version: &PEP440) -> String {
     format!("{version}")
 }
 
@@ -19,7 +19,7 @@ pub fn run_with_args<W: Write>(
     let app = create_app();
     let _matches = app.try_get_matches_from(args)?;
 
-    let version = PEP440Version::new(vec![1, 2, 3]);
+    let version = PEP440::new(vec![1, 2, 3]);
     let output = format_version(&version);
     writeln!(writer, "{output}")?;
     writeln!(writer, "Debug: {version:?}")?;
@@ -55,7 +55,7 @@ mod tests {
     #[case(vec![2, 5, 10], "2.5.10")]
     #[case(vec![0, 0, 1], "0.0.1")]
     fn test_format_version(#[case] release: Vec<u32>, #[case] expected: &str) {
-        let version = PEP440Version::new(release);
+        let version = PEP440::new(release);
         assert_eq!(format_version(&version), expected);
     }
 
@@ -74,7 +74,7 @@ mod tests {
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("1.2.3"));
-        assert!(output_str.contains("Debug: PEP440Version"));
+        assert!(output_str.contains("Debug: PEP440"));
     }
 
     #[test]

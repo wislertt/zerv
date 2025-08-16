@@ -3,4 +3,4 @@ mod display;
 mod ordering;
 mod parser;
 
-pub use core::{LocalSegment, PEP440Version, PreReleaseLabel};
+pub use core::{LocalSegment, PEP440, PreReleaseLabel};
