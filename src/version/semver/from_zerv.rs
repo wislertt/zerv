@@ -59,6 +59,18 @@ impl From<Zerv> for SemVer {
                         }
                     }
                 }
+                Component::VarField(field) if field == "post" => {
+                    if let Some(post_num) = zerv.vars.post {
+                        identifiers.push(PreReleaseIdentifier::String("post".to_string()));
+                        identifiers.push(PreReleaseIdentifier::Integer(post_num));
+                    }
+                }
+                Component::VarField(field) if field == "dev" => {
+                    if let Some(dev_num) = zerv.vars.dev {
+                        identifiers.push(PreReleaseIdentifier::String("dev".to_string()));
+                        identifiers.push(PreReleaseIdentifier::Integer(dev_num));
+                    }
+                }
                 Component::String(s) => {
                     identifiers.push(PreReleaseIdentifier::String(s.clone()));
                 }
@@ -236,12 +248,114 @@ mod tests {
     )]
     #[case(sem_zerv_1_0_0_foo_1_alpha(), "1.0.0-foo.1.alpha")]
     #[case(sem_zerv_1_0_0_bar_2_beta(), "1.0.0-bar.2.beta")]
-    // CalVer patterns (VarTimestamp examples)
+    // CalVer patterns
     #[case(calver_yy_mm_patch(), "24.3.5")]
     #[case(calver_yyyy_mm_patch(), "2024.3.1")]
     #[case(calver_with_timestamp_build(), "1.0.0+2024.3.16")]
     #[case(sem_zerv_core_overflow_1_2(), "1.2.0")]
     #[case(sem_zerv_core_overflow_1_2_3_4_5(), "1.2.3-4.5")]
+    // Epoch handling
+    #[case(zerv_1_0_0_with_epoch(1), "1.0.0-epoch.1")]
+    #[case(zerv_1_0_0_with_epoch(5), "1.0.0-epoch.5")]
+    #[case(zerv_1_0_0_with_epoch(0), "1.0.0-epoch.0")]
+    #[case(zerv_1_0_0_with_epoch(999), "1.0.0-epoch.999")]
+    // Post handling
+    #[case(zerv_1_0_0_with_post(1), "1.0.0-post.1")]
+    #[case(zerv_1_0_0_with_post(5), "1.0.0-post.5")]
+    #[case(zerv_1_0_0_with_post(0), "1.0.0-post.0")]
+    // Dev handling
+    #[case(zerv_1_0_0_with_dev(1), "1.0.0-dev.1")]
+    #[case(zerv_1_0_0_with_dev(0), "1.0.0-dev.0")]
+    #[case(zerv_1_0_0_with_dev(10), "1.0.0-dev.10")]
+    // Epoch + pre-release combinations
+    #[case(
+        zerv_1_0_0_with_epoch_and_pre_release(2, PreReleaseLabel::Alpha, Some(1)),
+        "1.0.0-epoch.2.alpha.1"
+    )]
+    #[case(
+        zerv_1_0_0_with_epoch_and_pre_release(3, PreReleaseLabel::Beta, Some(2)),
+        "1.0.0-epoch.3.beta.2"
+    )]
+    #[case(
+        zerv_1_0_0_with_epoch_and_pre_release(1, PreReleaseLabel::Rc, Some(5)),
+        "1.0.0-epoch.1.rc.5"
+    )]
+    #[case(
+        zerv_1_0_0_with_epoch_and_pre_release(4, PreReleaseLabel::Alpha, None),
+        "1.0.0-epoch.4.alpha"
+    )]
+    // Post + dev combinations
+    #[case(zerv_1_0_0_with_post_and_dev(1, 2), "1.0.0-post.1.dev.2")]
+    #[case(zerv_1_0_0_with_dev_and_post(3, 4), "1.0.0-dev.3.post.4")]
+    // Pre-release + post combinations
+    #[case(
+        zerv_1_0_0_with_pre_release_and_post(PreReleaseLabel::Alpha, Some(1), 2),
+        "1.0.0-alpha.1.post.2"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release_and_post(PreReleaseLabel::Beta, Some(3), 1),
+        "1.0.0-beta.3.post.1"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release_and_post(PreReleaseLabel::Rc, Some(2), 5),
+        "1.0.0-rc.2.post.5"
+    )]
+    // Pre-release + dev combinations
+    #[case(
+        zerv_1_0_0_with_pre_release_and_dev(PreReleaseLabel::Alpha, Some(1), 2),
+        "1.0.0-alpha.1.dev.2"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release_and_dev(PreReleaseLabel::Beta, Some(2), 1),
+        "1.0.0-beta.2.dev.1"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release_and_dev(PreReleaseLabel::Rc, Some(1), 3),
+        "1.0.0-rc.1.dev.3"
+    )]
+    // Triple combinations
+    #[case(
+        zerv_1_0_0_with_pre_release_post_and_dev(PreReleaseLabel::Alpha, Some(1), 2, 3),
+        "1.0.0-alpha.1.post.2.dev.3"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release_dev_and_post(PreReleaseLabel::Beta, Some(2), 1, 3),
+        "1.0.0-beta.2.dev.1.post.3"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release_post_and_dev(PreReleaseLabel::Rc, Some(1), 1, 1),
+        "1.0.0-rc.1.post.1.dev.1"
+    )]
+    // Epoch + post + dev combinations
+    #[case(
+        zerv_1_0_0_with_epoch_post_and_dev(2, 1, 3),
+        "1.0.0-epoch.2.post.1.dev.3"
+    )]
+    #[case(
+        zerv_1_0_0_with_epoch_dev_and_post(1, 2, 1),
+        "1.0.0-epoch.1.dev.2.post.1"
+    )]
+    // All components together
+    #[case(
+        zerv_1_0_0_with_all_components(3, PreReleaseLabel::Alpha, Some(1), 2, 1),
+        "1.0.0-epoch.3.alpha.1.post.2.dev.1"
+    )]
+    #[case(
+        zerv_1_0_0_with_all_components_reordered(1, PreReleaseLabel::Beta, Some(2), 3, 1),
+        "1.0.0-epoch.1.beta.2.dev.3.post.1"
+    )]
+    // With build metadata
+    #[case(zerv_1_0_0_with_epoch_and_build(1), "1.0.0-epoch.1+build.123")]
+    #[case(zerv_1_0_0_with_post_and_build(1), "1.0.0-post.1+build.456")]
+    #[case(zerv_1_0_0_with_dev_and_build(2), "1.0.0-dev.2+build.789")]
+    #[case(
+        zerv_1_0_0_with_epoch_pre_release_and_build(2, PreReleaseLabel::Alpha, Some(1)),
+        "1.0.0-epoch.2.alpha.1+build.abc"
+    )]
+    // Mixed with other identifiers
+    #[case(zerv_1_0_0_with_foo_epoch_and_alpha(1, 2), "1.0.0-epoch.1.foo.alpha.2")]
+    #[case(zerv_1_0_0_with_epoch_foo_and_post(1, 2), "1.0.0-epoch.1.foo.post.2")]
+    #[case(zerv_1_0_0_with_bar_dev_and_epoch(1, 2), "1.0.0-epoch.2.bar.dev.1")]
     fn test_zerv_to_semver_conversion(#[case] zerv: Zerv, #[case] expected_semver_str: &str) {
         let semver: SemVer = zerv.into();
         assert_eq!(semver.to_string(), expected_semver_str);
