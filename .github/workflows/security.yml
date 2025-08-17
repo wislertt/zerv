@@ -1,6 +1,5 @@
 name: security
 on:
-    pull_request:
     push:
     workflow_dispatch:
     schedule:
