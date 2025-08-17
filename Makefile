@@ -12,8 +12,7 @@ update:
 lint:
 	cargo check
 	cargo fmt -- --check || (cargo fmt && exit 1)
-# 	cargo clippy --all-targets --all-features -- -D warnings
-	cargo clippy --all-targets --all-features --message-format=json > coverage/clippy.json
+	cargo clippy --all-targets --all-features -- -D warnings
 	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
 # Quick testing without external dependencies (Docker, etc.)
