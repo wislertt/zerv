@@ -109,60 +109,6 @@ pub fn zerv_version(major: u64, minor: u64, patch: u64) -> Zerv {
     zerv
 }
 
-// Aliases for backward compatibility
-#[cfg(test)]
-pub fn with_version(major: u64, minor: u64, patch: u64) -> Zerv {
-    zerv_version(major, minor, patch)
-}
-
-#[cfg(test)]
-pub fn with_pre_release(label: PreReleaseLabel, number: Option<u64>) -> Zerv {
-    zerv_1_0_0_with_pre_release(label, number)
-}
-
-#[cfg(test)]
-pub fn with_extra_core(components: Vec<Component>) -> Zerv {
-    zerv_1_0_0_with_extra_core(components)
-}
-
-#[cfg(test)]
-pub fn with_build(components: Vec<Component>) -> Zerv {
-    zerv_1_0_0_with_build(components)
-}
-
-#[cfg(test)]
-pub fn with_pre_release_and_extra(
-    label: PreReleaseLabel,
-    number: Option<u64>,
-    extra: Vec<Component>,
-) -> Zerv {
-    zerv_1_0_0_with_pre_release_and_extra(label, number, extra)
-}
-
-#[cfg(test)]
-pub fn with_pre_release_and_build(
-    label: PreReleaseLabel,
-    number: Option<u64>,
-    build: Vec<Component>,
-) -> Zerv {
-    zerv_1_0_0_with_pre_release_and_build(label, number, build)
-}
-
-#[cfg(test)]
-pub fn with_epoch(epoch: u64) -> Zerv {
-    zerv_1_0_0_with_epoch(epoch)
-}
-
-#[cfg(test)]
-pub fn with_post(post: u64) -> Zerv {
-    zerv_1_0_0_with_post(post)
-}
-
-#[cfg(test)]
-pub fn with_dev(dev: u64) -> Zerv {
-    zerv_1_0_0_with_dev(dev)
-}
-
 // PEP440-specific Zerv builders
 #[cfg(test)]
 pub fn pep_zerv_1_2_3() -> Zerv {
