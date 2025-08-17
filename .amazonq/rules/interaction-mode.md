@@ -1,16 +1,33 @@
 # Interaction Mode Rules
 
-## CRITICAL: D: PREFIX ENFORCEMENT
+## CRITICAL: STICKY DISCUSSION MODE
 
 **ABSOLUTE RULE - NO EXCEPTIONS:**
 
-When user message starts with `D:` → **DISCUSSION ONLY MODE**
+**ENTRY TRIGGERS (Enter Discussion Mode):**
+
+- `D:` at start of message → Enter **DISCUSSION ONLY MODE**
+- Mode persists across ALL subsequent messages
+
+**EXIT TRIGGER (Return to Implementation Mode):**
+
+- `XD:` at start of message → Exit discussion mode, return to implementation
+
+**DISCUSSION MODE BEHAVIOR:**
 
 - NO code changes or modifications
 - NO file writing (fsWrite, fsReplace)
 - NO modification bash commands (rm, mv, cp, git commit, etc.)
 - Reading tools OK (fsRead, listDirectory, executeBash for info) for context
 - ONLY provide discussion, advice, and explanations
+- **MUST include `[discussion mode]` tag in ALL responses**
+
+**PROTECTION AGAINST ACCIDENTAL IMPLEMENTATION:**
+If user requests implementation while in discussion mode (without using `XD:`), DO NOT implement. Instead:
+
+- Remind user they are in discussion mode
+- Tell them to use `XD:` to exit first
+- Do not perform any code changes
 
 **IMPLEMENTATION MODE (Default):**
 
@@ -18,24 +35,24 @@ When user message starts with `D:` → **DISCUSSION ONLY MODE**
 
 ## Examples
 
-**Discussion Mode:**
+**Entering Discussion Mode:**
 
-- `D: How should we handle error cases?` → Only discuss approaches
-- `D: What do you think about this design?` → Only provide opinions
+- `D: How should we handle error cases?` → Enter discussion mode
+- Next message: `What about performance?` → Still in discussion mode
+- Next message: `XD: Implement the solution` → Exit and implement
 
-**Implementation Mode:**
+**Accidental Implementation Request:**
 
-- `Add error handling to the git function` → Make actual code changes
-- `Fix the bug in main.rs` → Use tools to implement fix
+- In discussion mode: `Add error handling to main.rs`
+- Response: `[discussion mode] You're currently in discussion mode. Use XD: to exit first if you want me to implement changes.`
 
 ## ENFORCEMENT
 
-The user is "tedious" about D: prefix compliance. Breaking this rule is unacceptable.
+The user is "tedious" about mode compliance. Breaking this rule is unacceptable.
 
-**IF MESSAGE STARTS WITH `D:`:**
+**WORKFLOW:**
 
-1. Check first - does message start with `D:`?
-2. If YES → No code changes, only discussion
-3. Reading for context is allowed
-4. **MUST include `[discussion mode]` tag in response**
-5. Never break this rule
+1. Track conversation state - am I in discussion mode?
+2. If in discussion mode: ONLY discuss, never implement
+3. If implementation requested without `XD:`: Remind about exit trigger
+4. Always show `[discussion mode]` tag when active

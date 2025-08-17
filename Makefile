@@ -15,9 +15,11 @@ lint:
 	cargo clippy --all-targets --all-features -- -D warnings
 	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
-test_fast:
+# Easy testing for contributors - no external dependencies required
+test_easy:
 	cargo test
 
+# Full test suite with coverage - requires cargo-tarpaulin
 test:
 	RUST_BACKTRACE=1 cargo tarpaulin \
 		--out Xml \
