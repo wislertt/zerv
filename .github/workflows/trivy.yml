@@ -1,0 +1,36 @@
+name: security
+on:
+    pull_request:
+    push:
+    workflow_dispatch:
+    schedule:
+        - cron: "0 4 * * *" # run once a day at 4 AM
+
+jobs:
+    trivy-scan:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v3
+
+            - name: Run Trivy dependency scan
+              uses: aquasecurity/trivy-action@v1
+              with:
+                  scan-type: fs
+                  format: table
+                  exit-code: "1"
+                  vuln-type: "os,library"
+
+    gitleaks:
+        name: gitleaks
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - uses: gitleaks/gitleaks-action@v2
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
