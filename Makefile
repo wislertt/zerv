@@ -24,6 +24,7 @@ test:
 	RUST_BACKTRACE=1 cargo tarpaulin \
 		--out Xml \
 		--out Html \
+		--out Lcov \
 		--output-dir coverage \
 		--include-tests \
 		--exclude-files src/main.rs \
