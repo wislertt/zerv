@@ -15,10 +15,15 @@ repos:
           - id: check-yaml
           - id: check-added-large-files
             args: ["--maxkb=2000"]
+    - repo: https://github.com/gitleaks/gitleaks
+      rev: v8.28.0
+      hooks:
+          - name: gitleaks
+            id: gitleaks
     - repo: local
       hooks:
           - id: lint
-            name: Run linting
+            name: lint
             entry: make lint
             language: system
             pass_filenames: false

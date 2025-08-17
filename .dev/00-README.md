@@ -27,7 +27,6 @@ Development documentation for zerv - Dynamic Versioning CLI
 
 ```bash
 # Fast development cycle (no Docker required)
-make test_fast    # Run unit tests only
 make lint         # Format and check code
 make run          # Test CLI binary
 

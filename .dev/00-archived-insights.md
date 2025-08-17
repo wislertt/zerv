@@ -48,7 +48,6 @@
 
 - Fast local tests without external dependencies
 - Docker-based integration tests for real VCS operations
-- Separate test commands (`make test_fast` vs `make test`)
 
 **Status**: ✅ Successfully implemented and working
 

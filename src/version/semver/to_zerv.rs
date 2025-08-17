@@ -3,6 +3,113 @@ use crate::version::zerv::{
     Component, PreReleaseVar, Zerv, ZervSchema, ZervVars, normalize_pre_release_label,
 };
 
+type ProcessResult = (
+    Option<PreReleaseVar>,
+    Vec<Component>,
+    Option<u64>,
+    Option<u64>,
+    Option<u64>,
+);
+
+struct PreReleaseProcessor {
+    pre_release: Option<PreReleaseVar>,
+    extra_core: Vec<Component>,
+    epoch: Option<u64>,
+    post: Option<u64>,
+    dev: Option<u64>,
+}
+
+impl PreReleaseProcessor {
+    fn new() -> Self {
+        Self {
+            pre_release: None,
+            extra_core: Vec::new(),
+            epoch: None,
+            post: None,
+            dev: None,
+        }
+    }
+
+    fn try_special_pattern(&mut self, pr: &[PreReleaseIdentifier], i: usize) -> bool {
+        if i + 1 >= pr.len() {
+            return false;
+        }
+
+        if let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::Integer(num)) =
+            (&pr[i], &pr[i + 1])
+        {
+            match label.as_str() {
+                "epoch" if self.epoch.is_none() => {
+                    self.epoch = Some(*num);
+                    self.extra_core
+                        .push(Component::VarField("epoch".to_string()));
+                    true
+                }
+                "dev" if self.dev.is_none() => {
+                    self.dev = Some(*num);
+                    self.extra_core.push(Component::VarField("dev".to_string()));
+                    true
+                }
+                "post" if self.post.is_none() => {
+                    self.post = Some(*num);
+                    self.extra_core
+                        .push(Component::VarField("post".to_string()));
+                    true
+                }
+                _ => self.try_pre_release_pattern(label, Some(*num)),
+            }
+        } else {
+            false
+        }
+    }
+
+    fn try_pre_release_pattern(&mut self, label: &str, number: Option<u64>) -> bool {
+        if let Some(normalized_label) = normalize_pre_release_label(label)
+            && self.pre_release.is_none()
+        {
+            self.pre_release = Some(PreReleaseVar {
+                label: normalized_label,
+                number,
+            });
+            self.extra_core
+                .push(Component::VarField("pre_release".to_string()));
+            return true;
+        }
+        false
+    }
+
+    fn add_regular_component(&mut self, item: &PreReleaseIdentifier) {
+        self.extra_core.push(match item {
+            PreReleaseIdentifier::String(s) => Component::String(s.clone()),
+            PreReleaseIdentifier::Integer(n) => Component::Integer(*n),
+        });
+    }
+
+    fn process(mut self, pr: &[PreReleaseIdentifier]) -> ProcessResult {
+        let mut i = 0;
+        while i < pr.len() {
+            if self.try_special_pattern(pr, i) {
+                i += 2;
+            } else if let PreReleaseIdentifier::String(label) = &pr[i] {
+                if !self.try_pre_release_pattern(label, None) {
+                    self.add_regular_component(&pr[i]);
+                }
+                i += 1;
+            } else {
+                self.add_regular_component(&pr[i]);
+                i += 1;
+            }
+        }
+        (
+            self.pre_release,
+            self.extra_core,
+            self.epoch,
+            self.post,
+            self.dev,
+        )
+    }
+}
+
 impl From<SemVer> for Zerv {
     fn from(semver: SemVer) -> Self {
         let build = semver
@@ -19,99 +126,11 @@ impl From<SemVer> for Zerv {
             })
             .unwrap_or_default();
 
-        let (pre_release, extra_core, epoch, post, dev) = if let Some(pr) = &semver.pre_release {
-            let mut pre_release = None;
-            let mut extra_core = Vec::new();
-            let mut epoch = None;
-            let mut post = None;
-            let mut dev = None;
-            let mut skip_next = false;
-
-            for (i, item) in pr.iter().enumerate() {
-                if skip_next {
-                    skip_next = false;
-                    continue;
-                }
-
-                // Check for epoch+number pattern
-                if i + 1 < pr.len()
-                    && let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::Integer(num)) =
-                        (item, &pr[i + 1])
-                    && label == "epoch"
-                    && epoch.is_none()
-                {
-                    epoch = Some(*num);
-                    extra_core.push(Component::VarField("epoch".to_string()));
-                    skip_next = true;
-                    continue;
-                }
-
-                // Check for dev+number pattern
-                if i + 1 < pr.len()
-                    && let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::Integer(num)) =
-                        (item, &pr[i + 1])
-                    && label == "dev"
-                    && dev.is_none()
-                {
-                    dev = Some(*num);
-                    extra_core.push(Component::VarField("dev".to_string()));
-                    skip_next = true;
-                    continue;
-                }
-
-                // Check for post+number pattern
-                if i + 1 < pr.len()
-                    && let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::Integer(num)) =
-                        (item, &pr[i + 1])
-                    && label == "post"
-                    && post.is_none()
-                {
-                    post = Some(*num);
-                    extra_core.push(Component::VarField("post".to_string()));
-                    skip_next = true;
-                    continue;
-                }
-
-                // Check for keyword+number pattern
-                if i + 1 < pr.len()
-                    && let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::Integer(num)) =
-                        (item, &pr[i + 1])
-                    && let Some(normalized_label) = normalize_pre_release_label(label)
-                    && pre_release.is_none()
-                {
-                    pre_release = Some(PreReleaseVar {
-                        label: normalized_label,
-                        number: Some(*num),
-                    });
-                    extra_core.push(Component::VarField("pre_release".to_string()));
-                    skip_next = true;
-                    continue;
-                }
-
-                // Check for keyword-only pattern
-                if let PreReleaseIdentifier::String(label) = item
-                    && let Some(normalized_label) = normalize_pre_release_label(label)
-                    && pre_release.is_none()
-                {
-                    pre_release = Some(PreReleaseVar {
-                        label: normalized_label,
-                        number: None,
-                    });
-                    extra_core.push(Component::VarField("pre_release".to_string()));
-                    continue;
-                }
-
-                // Regular component
-                extra_core.push(match item {
-                    PreReleaseIdentifier::String(s) => Component::String(s.clone()),
-                    PreReleaseIdentifier::Integer(n) => Component::Integer(*n),
-                });
-            }
-
-            (pre_release, extra_core, epoch, post, dev)
-        } else {
-            (None, Vec::new(), None, None, None)
-        };
+        let (pre_release, extra_core, epoch, post, dev): ProcessResult = semver
+            .pre_release
+            .as_ref()
+            .map(|pr| PreReleaseProcessor::new().process(pr))
+            .unwrap_or_default();
 
         Zerv {
             schema: ZervSchema {
