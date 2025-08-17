@@ -1,4 +1,25 @@
-use crate::version::zerv::PreReleaseLabel;
+use crate::version::zerv::{Component, PreReleaseLabel, Zerv};
+
+pub fn extract_core_values(zerv: &Zerv) -> Vec<u64> {
+    let mut core_values = Vec::new();
+    for comp in &zerv.schema.core {
+        let val = match comp {
+            Component::VarField(field) => match field.as_str() {
+                "major" => zerv.vars.major.unwrap_or(0),
+                "minor" => zerv.vars.minor.unwrap_or(0),
+                "patch" => zerv.vars.patch.unwrap_or(0),
+                _ => 0,
+            },
+            Component::VarTimestamp(pattern) => {
+                resolve_timestamp(pattern, zerv.vars.tag_timestamp).unwrap_or(0)
+            }
+            Component::Integer(n) => *n,
+            _ => 0,
+        };
+        core_values.push(val);
+    }
+    core_values
+}
 
 pub fn normalize_pre_release_label(label: &str) -> Option<PreReleaseLabel> {
     match label.to_lowercase().as_str() {
