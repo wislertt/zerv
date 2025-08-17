@@ -19,14 +19,28 @@ impl From<SemVer> for Zerv {
             })
             .unwrap_or_default();
 
-        let (pre_release, extra_core) = if let Some(pr) = &semver.pre_release {
+        let (pre_release, extra_core, epoch) = if let Some(pr) = &semver.pre_release {
             let mut pre_release = None;
             let mut extra_core = Vec::new();
+            let mut epoch = None;
             let mut skip_next = false;
 
             for (i, item) in pr.iter().enumerate() {
                 if skip_next {
                     skip_next = false;
+                    continue;
+                }
+
+                // Check for epoch+number pattern
+                if i + 1 < pr.len()
+                    && let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::Integer(num)) =
+                        (item, &pr[i + 1])
+                    && label == "epoch"
+                    && epoch.is_none()
+                {
+                    epoch = Some(*num);
+                    extra_core.push(Component::VarField("epoch".to_string()));
+                    skip_next = true;
                     continue;
                 }
 
@@ -66,9 +80,9 @@ impl From<SemVer> for Zerv {
                 });
             }
 
-            (pre_release, extra_core)
+            (pre_release, extra_core, epoch)
         } else {
-            (None, Vec::new())
+            (None, Vec::new(), None)
         };
 
         Zerv {
@@ -85,6 +99,7 @@ impl From<SemVer> for Zerv {
                 major: Some(semver.major),
                 minor: Some(semver.minor),
                 patch: Some(semver.patch),
+                epoch,
                 pre_release,
                 ..Default::default()
             },

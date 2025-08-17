@@ -38,8 +38,14 @@ impl From<Zerv> for SemVer {
             Vec::new()
         };
 
-        // Build pre-release: overflow from core (at front) + extra_core components
+        // Build pre-release: overflow from core (at front) + epoch (if present) + extra_core components
         let mut identifiers = overflow_identifiers;
+
+        // Add epoch to pre-release if present
+        if let Some(epoch) = zerv.vars.epoch {
+            identifiers.push(PreReleaseIdentifier::String("epoch".to_string()));
+            identifiers.push(PreReleaseIdentifier::Integer(epoch));
+        }
 
         for comp in &zerv.schema.extra_core {
             match comp {

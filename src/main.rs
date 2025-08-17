@@ -1,4 +1,4 @@
-use zerv::run;
+use zerv::cli::run;
 
 fn main() {
     run();

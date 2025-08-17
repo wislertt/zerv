@@ -13,9 +13,9 @@ lint:
 	cargo check
 	cargo fmt -- --check || (cargo fmt && exit 1)
 	cargo clippy --all-targets --all-features -- -D warnings
-	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
+	-npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}" 2>/dev/null || true
 
-# Easy testing for contributors - no external dependencies required
+# Easy testing for contributors - minimal dependencies required
 test_easy:
 	cargo test
 
