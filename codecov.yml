@@ -1,0 +1,22 @@
+coverage:
+    status:
+        project:
+            default:
+                target: 85%
+                threshold: 2%
+        patch:
+            default:
+                target: 80%
+                threshold: 5%
+
+    ignore:
+        - "src/main.rs"
+        - "tests/"
+        - "target/"
+        - ".dev/"
+        - "scripts/"
+
+comment:
+    layout: "reach,diff,flags,tree"
+    behavior: default
+    require_changes: false

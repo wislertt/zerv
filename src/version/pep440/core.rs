@@ -97,36 +97,40 @@ impl PEP440 {
 
     /// Normalize the version by setting implicit 0 values for dev, post, and pre-release numbers
     pub fn normalize(mut self) -> Self {
-        // If pre-release label exists but number is None, set to 0
+        self.normalize_implicit_numbers();
+        self.normalize_local_segments();
+        self
+    }
+
+    fn normalize_implicit_numbers(&mut self) {
         if self.pre_label.is_some() && self.pre_number.is_none() {
             self.pre_number = Some(0);
         }
-
-        // If post label exists but number is None, set to 0
         if self.post_label.is_some() && self.post_number.is_none() {
             self.post_number = Some(0);
         }
-
-        // If dev label exists but number is None, set to 0
         if self.dev_label.is_some() && self.dev_number.is_none() {
             self.dev_number = Some(0);
         }
+    }
 
-        // Convert local segment strings to lowercase and to integers if possible
+    fn normalize_local_segments(&mut self) {
         if let Some(ref mut local_segments) = self.local {
             for segment in local_segments {
-                if let LocalSegment::String(s) = segment {
-                    let lowercase = s.to_lowercase();
-                    if let Ok(num) = lowercase.parse::<u32>() {
-                        *segment = LocalSegment::Integer(num);
-                    } else {
-                        *s = lowercase;
-                    }
-                }
+                Self::normalize_local_segment(segment);
             }
         }
+    }
 
-        self
+    fn normalize_local_segment(segment: &mut LocalSegment) {
+        if let LocalSegment::String(s) = segment {
+            let lowercase = s.to_lowercase();
+            if let Ok(num) = lowercase.parse::<u32>() {
+                *segment = LocalSegment::Integer(num);
+            } else {
+                *s = lowercase;
+            }
+        }
     }
 }
 
