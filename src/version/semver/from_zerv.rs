@@ -6,7 +6,7 @@ impl From<Zerv> for SemVer {
     fn from(zerv: Zerv) -> Self {
         // Extract values from core components
         let mut core_values = Vec::new();
-        for comp in &zerv.format.core {
+        for comp in &zerv.schema.core {
             let val = match comp {
                 Component::VarField(field) => match field.as_str() {
                     "major" => zerv.vars.major.unwrap_or(0),
@@ -41,7 +41,7 @@ impl From<Zerv> for SemVer {
         // Build pre-release: overflow from core (at front) + extra_core components
         let mut identifiers = overflow_identifiers;
 
-        for comp in &zerv.format.extra_core {
+        for comp in &zerv.schema.extra_core {
             match comp {
                 Component::VarField(field) if field == "pre_release" => {
                     if let Some(pr) = &zerv.vars.pre_release {
@@ -69,11 +69,11 @@ impl From<Zerv> for SemVer {
             Some(identifiers)
         };
 
-        let build_metadata = if zerv.format.build.is_empty() {
+        let build_metadata = if zerv.schema.build.is_empty() {
             None
         } else {
             Some(
-                zerv.format
+                zerv.schema
                     .build
                     .iter()
                     .map(|comp| match comp {
@@ -101,16 +101,16 @@ impl From<Zerv> for SemVer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::zerv::PreReleaseLabel;
-    use crate::version::zerv::{Component, ZervFormat, ZervVars};
+
     use rstest::rstest;
 
     use crate::version::zerv::test_utils::*;
+    use crate::version::zerv::{PreReleaseLabel, ZervSchema, ZervVars};
 
     // CalVer helper functions (demonstrating VarTimestamp usage)
     fn calver_yy_mm_patch() -> Zerv {
         Zerv {
-            format: ZervFormat {
+            schema: ZervSchema {
                 core: vec![
                     Component::VarTimestamp("YY".to_string()),
                     Component::VarTimestamp("MM".to_string()),
@@ -129,7 +129,7 @@ mod tests {
 
     fn calver_yyyy_mm_patch() -> Zerv {
         Zerv {
-            format: ZervFormat {
+            schema: ZervSchema {
                 core: vec![
                     Component::VarTimestamp("YYYY".to_string()),
                     Component::VarTimestamp("MM".to_string()),
@@ -148,7 +148,7 @@ mod tests {
 
     fn calver_with_timestamp_build() -> Zerv {
         Zerv {
-            format: ZervFormat {
+            schema: ZervSchema {
                 core: vec![
                     Component::VarField("major".to_string()),
                     Component::VarField("minor".to_string()),
@@ -172,153 +172,70 @@ mod tests {
     }
 
     #[rstest]
-    // Basic version
-    #[case({
-        let mut zerv = base_zerv();
-        zerv.vars.major = Some(1);
-        zerv.vars.minor = Some(2);
-        zerv.vars.patch = Some(3);
-        zerv
-    }, "1.2.3")]
-    // Simple pre-release
-    #[case(with_pre_release(PreReleaseLabel::Alpha, Some(1)), "1.0.0-alpha.1")]
-    // Non-keyword pre-release
-    #[case(with_extra_core(vec![
-        Component::String("something".to_string()),
-        Component::Integer(1)
-    ]), "1.0.0-something.1")]
-    // Build only
-    #[case(with_build(vec![
-        Component::String("build".to_string()),
-        Component::Integer(123)
-    ]), "1.0.0+build.123")]
-    // Pre-release with build
-    #[case(with_pre_release_and_build(
-        PreReleaseLabel::Alpha, Some(1),
-        vec![Component::String("build".to_string()), Component::Integer(123)]
-    ), "1.0.0-alpha.1+build.123")]
-    // Complex pre-release with extra and build
-    #[case({
-        let mut zerv = with_pre_release_and_build(
-            PreReleaseLabel::Alpha, Some(1),
-            vec![Component::String("build".to_string()), Component::Integer(123)]
-        );
-        zerv.format.extra_core = vec![
-            Component::VarField("pre_release".to_string()),
-            Component::String("lowercase".to_string()),
-            Component::Integer(4),
-            Component::String("UPPERCASE".to_string()),
-            Component::Integer(5)
-        ];
-        zerv
-    }, "1.0.0-alpha.1.lowercase.4.UPPERCASE.5+build.123")]
-    // Keyword in middle
-    #[case({
-        let mut zerv = with_pre_release(PreReleaseLabel::Beta, Some(2));
-        zerv.format.extra_core = vec![
-            Component::String("foo".to_string()),
-            Component::String("bar".to_string()),
-            Component::VarField("pre_release".to_string()),
-            Component::String("baz".to_string())
-        ];
-        zerv
-    }, "1.0.0-foo.bar.beta.2.baz")]
-    // Multiple keywords - first wins
-    #[case(with_pre_release_and_extra(
-        PreReleaseLabel::Alpha, Some(1),
-        vec![Component::String("beta".to_string()), Component::Integer(2)]
-    ), "1.0.0-alpha.1.beta.2")]
-    #[case(with_pre_release_and_extra(
-        PreReleaseLabel::Rc, Some(1),
-        vec![
-            Component::String("alpha".to_string()),
-            Component::Integer(2),
-            Component::String("beta".to_string()),
-            Component::Integer(3)
-        ]
-    ), "1.0.0-rc.1.alpha.2.beta.3")]
-    // Keyword without number
-    #[case(with_pre_release_and_extra(
-        PreReleaseLabel::Rc, None,
-        vec![Component::String("alpha".to_string()), Component::Integer(1)]
-    ), "1.0.0-rc.alpha.1")]
-    #[case({
-        let mut zerv = with_pre_release(PreReleaseLabel::Alpha, None);
-        zerv.format.extra_core = vec![
-            Component::String("test".to_string()),
-            Component::VarField("pre_release".to_string()),
-            Component::String("beta".to_string()),
-            Component::String("rc".to_string()),
-            Component::Integer(1)
-        ];
-        zerv
-    }, "1.0.0-test.alpha.beta.rc.1")]
-    // Uppercase keywords
-    #[case(with_pre_release(PreReleaseLabel::Alpha, Some(1)), "1.0.0-alpha.1")]
-    #[case(with_pre_release(PreReleaseLabel::Beta, Some(2)), "1.0.0-beta.2")]
-    #[case(with_pre_release(PreReleaseLabel::Rc, Some(3)), "1.0.0-rc.3")]
-    #[case(with_pre_release(PreReleaseLabel::Rc, Some(4)), "1.0.0-rc.4")]
-    // Single-letter aliases
-    #[case(with_pre_release(PreReleaseLabel::Alpha, Some(1)), "1.0.0-alpha.1")]
-    #[case(with_pre_release(PreReleaseLabel::Beta, Some(2)), "1.0.0-beta.2")]
-    #[case(with_pre_release(PreReleaseLabel::Rc, Some(3)), "1.0.0-rc.3")]
-    // Keywords without numbers
-    #[case(with_pre_release(PreReleaseLabel::Alpha, None), "1.0.0-alpha")]
-    #[case(with_pre_release(PreReleaseLabel::Beta, None), "1.0.0-beta")]
-    #[case(with_pre_release(PreReleaseLabel::Rc, None), "1.0.0-rc")]
-    // Zero numbers
-    #[case(with_pre_release(PreReleaseLabel::Alpha, Some(0)), "1.0.0-alpha.0")]
-    #[case(with_pre_release(PreReleaseLabel::Beta, Some(0)), "1.0.0-beta.0")]
-    // Keywords at end
-    #[case({
-        let mut zerv = with_pre_release(PreReleaseLabel::Alpha, None);
-        zerv.format.extra_core = vec![
-            Component::String("foo".to_string()),
-            Component::Integer(1),
-            Component::VarField("pre_release".to_string())
-        ];
-        zerv
-    }, "1.0.0-foo.1.alpha")]
-    #[case({
-        let mut zerv = with_pre_release(PreReleaseLabel::Beta, None);
-        zerv.format.extra_core = vec![
-            Component::String("bar".to_string()),
-            Component::Integer(2),
-            Component::VarField("pre_release".to_string())
-        ];
-        zerv
-    }, "1.0.0-bar.2.beta")]
+    #[case(sem_zerv_1_2_3(), "1.2.3")]
+    #[case(sem_zerv_1_0_0_alpha_1(), "1.0.0-alpha.1")]
+    #[case(sem_zerv_1_0_0_something_1(), "1.0.0-something.1")]
+    #[case(sem_zerv_1_0_0_build_123(), "1.0.0+build.123")]
+    #[case(sem_zerv_1_0_0_alpha_1_build_123(), "1.0.0-alpha.1+build.123")]
+    #[case(
+        sem_zerv_1_0_0_alpha_1_lowercase_4_uppercase_5_build_123(),
+        "1.0.0-alpha.1.lowercase.4.UPPERCASE.5+build.123"
+    )]
+    #[case(sem_zerv_1_0_0_foo_bar_beta_2_baz(), "1.0.0-foo.bar.beta.2.baz")]
+    #[case(sem_zerv_1_0_0_alpha_1_beta_2(), "1.0.0-alpha.1.beta.2")]
+    #[case(sem_zerv_1_0_0_rc_1_alpha_2_beta_3(), "1.0.0-rc.1.alpha.2.beta.3")]
+    #[case(sem_zerv_1_0_0_rc_alpha_1(), "1.0.0-rc.alpha.1")]
+    #[case(sem_zerv_1_0_0_test_alpha_beta_rc_1(), "1.0.0-test.alpha.beta.rc.1")]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(1)),
+        "1.0.0-alpha.1"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, Some(2)),
+        "1.0.0-beta.2"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Rc, Some(3)),
+        "1.0.0-rc.3"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Rc, Some(4)),
+        "1.0.0-rc.4"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(1)),
+        "1.0.0-alpha.1"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, Some(2)),
+        "1.0.0-beta.2"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Rc, Some(3)),
+        "1.0.0-rc.3"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, None),
+        "1.0.0-alpha"
+    )]
+    #[case(zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, None), "1.0.0-beta")]
+    #[case(zerv_1_0_0_with_pre_release(PreReleaseLabel::Rc, None), "1.0.0-rc")]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(0)),
+        "1.0.0-alpha.0"
+    )]
+    #[case(
+        zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, Some(0)),
+        "1.0.0-beta.0"
+    )]
+    #[case(sem_zerv_1_0_0_foo_1_alpha(), "1.0.0-foo.1.alpha")]
+    #[case(sem_zerv_1_0_0_bar_2_beta(), "1.0.0-bar.2.beta")]
     // CalVer patterns (VarTimestamp examples)
     #[case(calver_yy_mm_patch(), "24.3.5")]
     #[case(calver_yyyy_mm_patch(), "2024.3.1")]
     #[case(calver_with_timestamp_build(), "1.0.0+2024.3.16")]
-    // Core overflow tests
-    #[case({
-        Zerv {
-            format: ZervFormat {
-                core: vec![Component::Integer(1), Component::Integer(2)], // Only 2 components
-                extra_core: vec![],
-                build: vec![],
-            },
-            vars: ZervVars::default(),
-        }
-    }, "1.2.0")] // Pad with 0
-    #[case({
-        Zerv {
-            format: ZervFormat {
-                core: vec![
-                    Component::Integer(1),
-                    Component::Integer(2),
-                    Component::Integer(3),
-                    Component::Integer(4),
-                    Component::Integer(5)
-                ], // 5 components - overflow 4,5 to pre-release
-                extra_core: vec![],
-                build: vec![],
-            },
-            vars: ZervVars::default(),
-        }
-    }, "1.2.3-4.5")] // Overflow to pre-release
+    #[case(sem_zerv_core_overflow_1_2(), "1.2.0")]
+    #[case(sem_zerv_core_overflow_1_2_3_4_5(), "1.2.3-4.5")]
     fn test_zerv_to_semver_conversion(#[case] zerv: Zerv, #[case] expected_semver_str: &str) {
         let semver: SemVer = zerv.into();
         assert_eq!(semver.to_string(), expected_semver_str);

@@ -11,9 +11,9 @@ Before performing ANY coding task, **read `.dev/00-README.md`** for complete pro
 
 ## Testing Strategy
 
-- Use `make test_fast` for quick tests (no Docker needed)
-- Use `make test` for full validation (requires Docker)
-- If Docker isn't running, stick with `make test_fast`
+**For Amazon Q (AI Assistant):**
+
+- ALWAYS use `make lint` and `make test` for validation
 
 ## Error Handling Standards
 

@@ -6,7 +6,7 @@ impl From<Zerv> for PEP440 {
     fn from(zerv: Zerv) -> Self {
         // Extract values from core components
         let mut core_values = Vec::new();
-        for comp in &zerv.format.core {
+        for comp in &zerv.schema.core {
             let val = match comp {
                 Component::VarField(field) => match field.as_str() {
                     "major" => zerv.vars.major.unwrap_or(0),
@@ -45,7 +45,7 @@ impl From<Zerv> for PEP440 {
         let mut dev_label = None;
         let mut dev_number = None;
 
-        for comp in &zerv.format.extra_core {
+        for comp in &zerv.schema.extra_core {
             match comp {
                 Component::VarField(field) => match field.as_str() {
                     "pre_release" => {
@@ -85,7 +85,7 @@ impl From<Zerv> for PEP440 {
         }
 
         // Process build components - they go to local
-        for comp in &zerv.format.build {
+        for comp in &zerv.schema.build {
             match comp {
                 Component::String(s) => {
                     local_overflow.push(LocalSegment::String(s.clone()));
@@ -133,75 +133,20 @@ impl From<Zerv> for PEP440 {
 mod tests {
     use super::*;
     use crate::version::zerv::test_utils::*;
-    use crate::version::zerv::{Component, PreReleaseLabel};
+
     use rstest::rstest;
 
     #[rstest]
-    // Basic version
-    #[case(with_version(1, 2, 3), "1.2.3")]
-    // With epoch
-    #[case({
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core.push(Component::VarField("epoch".to_string()));
-        zerv.vars.epoch = Some(2);
-        zerv
-    }, "2!1.2.3")]
-    // With pre-release
-    #[case({
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core.push(Component::VarField("pre_release".to_string()));
-        zerv.vars.pre_release = Some(crate::version::zerv::PreReleaseVar {
-            label: PreReleaseLabel::Alpha,
-            number: Some(1),
-        });
-        zerv
-    }, "1.2.3a1")]
-    // With post
-    #[case({
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core.push(Component::VarField("post".to_string()));
-        zerv.vars.post = Some(1);
-        zerv
-    }, "1.2.3.post1")]
-    // With dev
-    #[case({
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core.push(Component::VarField("dev".to_string()));
-        zerv.vars.dev = Some(1);
-        zerv
-    }, "1.2.3.dev1")]
-    // With local from build
-    #[case({
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.build = vec![
-            Component::String("ubuntu".to_string()),
-            Component::Integer(20),
-            Component::Integer(4),
-        ];
-        zerv
-    }, "1.2.3+ubuntu.20.4")]
-    // Complex version with all components
-    #[case({
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core = vec![
-            Component::VarField("epoch".to_string()),
-            Component::VarField("pre_release".to_string()),
-            Component::VarField("post".to_string()),
-            Component::VarField("dev".to_string()),
-        ];
-        zerv.format.build = vec![
-            Component::String("local".to_string()),
-            Component::Integer(1),
-        ];
-        zerv.vars.epoch = Some(2);
-        zerv.vars.pre_release = Some(crate::version::zerv::PreReleaseVar {
-            label: PreReleaseLabel::Alpha,
-            number: Some(1),
-        });
-        zerv.vars.post = Some(1);
-        zerv.vars.dev = Some(1);
-        zerv
-    }, "2!1.2.3a1.post1.dev1+local.1")]
+    #[case(pep_zerv_1_2_3(), "1.2.3")]
+    #[case(pep_zerv_1_2_3_epoch_2(), "2!1.2.3")]
+    #[case(pep_zerv_1_2_3_alpha_1(), "1.2.3a1")]
+    #[case(pep_zerv_1_2_3_post_1(), "1.2.3.post1")]
+    #[case(pep_zerv_1_2_3_dev_1(), "1.2.3.dev1")]
+    #[case(pep_zerv_1_2_3_ubuntu_build(), "1.2.3+ubuntu.20.4")]
+    #[case(
+        pep_zerv_complex_2_1_2_3_alpha_1_post_1_dev_1_local_1(),
+        "2!1.2.3a1.post1.dev1+local.1"
+    )]
     fn test_zerv_to_pep440_conversion(#[case] zerv: Zerv, #[case] expected_pep440_str: &str) {
         let pep440: PEP440 = zerv.into();
         assert_eq!(pep440.to_string(), expected_pep440_str);

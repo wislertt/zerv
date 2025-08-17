@@ -9,12 +9,12 @@ pub enum PreReleaseLabel {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Zerv {
-    pub format: ZervFormat,
+    pub schema: ZervSchema,
     pub vars: ZervVars,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ZervFormat {
+pub struct ZervSchema {
     pub core: Vec<Component>,
     pub extra_core: Vec<Component>,
     pub build: Vec<Component>,
@@ -62,8 +62,8 @@ pub enum VarValue {
 }
 
 impl Zerv {
-    pub fn new(format: ZervFormat, vars: ZervVars) -> Self {
-        Self { format, vars }
+    pub fn new(schema: ZervSchema, vars: ZervVars) -> Self {
+        Self { schema, vars }
     }
 }
 
@@ -76,15 +76,15 @@ mod tests {
 
         #[test]
         fn test_zerv_new() {
-            let format = ZervFormat {
+            let schema = ZervSchema {
                 core: vec![Component::VarField("major".to_string())],
                 extra_core: vec![],
                 build: vec![],
             };
             let vars = ZervVars::default();
-            let zerv = Zerv::new(format.clone(), vars.clone());
+            let zerv = Zerv::new(schema.clone(), vars.clone());
 
-            assert_eq!(zerv.format, format);
+            assert_eq!(zerv.schema, schema);
             assert_eq!(zerv.vars, vars);
         }
 
@@ -234,18 +234,18 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_empty_format() {
-            let format = ZervFormat {
+        fn test_empty_schema() {
+            let schema = ZervSchema {
                 core: vec![],
                 extra_core: vec![],
                 build: vec![],
             };
             let vars = ZervVars::default();
-            let zerv = Zerv::new(format, vars);
+            let zerv = Zerv::new(schema, vars);
 
-            assert!(zerv.format.core.is_empty());
-            assert!(zerv.format.extra_core.is_empty());
-            assert!(zerv.format.build.is_empty());
+            assert!(zerv.schema.core.is_empty());
+            assert!(zerv.schema.extra_core.is_empty());
+            assert!(zerv.schema.build.is_empty());
         }
 
         #[test]
@@ -289,7 +289,7 @@ mod tests {
 
         #[test]
         fn test_semver_like_structure() {
-            let format = ZervFormat {
+            let schema = ZervSchema {
                 core: vec![
                     Component::VarField("major".to_string()),
                     Component::VarField("minor".to_string()),
@@ -313,7 +313,7 @@ mod tests {
                 ..Default::default()
             };
 
-            let zerv = Zerv::new(format, vars);
+            let zerv = Zerv::new(schema, vars);
             assert_eq!(zerv.vars.major, Some(1));
             assert_eq!(
                 zerv.vars.pre_release.as_ref().unwrap().label,
@@ -323,7 +323,7 @@ mod tests {
 
         #[test]
         fn test_calver_like_structure() {
-            let format = ZervFormat {
+            let schema = ZervSchema {
                 core: vec![
                     Component::VarTimestamp("YYYY".to_string()),
                     Component::VarTimestamp("MM".to_string()),
@@ -340,7 +340,7 @@ mod tests {
                 ..Default::default()
             };
 
-            let zerv = Zerv::new(format, vars);
+            let zerv = Zerv::new(schema, vars);
             assert_eq!(zerv.vars.patch, Some(1));
             assert_eq!(zerv.vars.tag_timestamp, Some(1710547200));
         }
