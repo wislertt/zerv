@@ -1,15 +1,41 @@
 # Interaction Mode Rules
 
-## MANDATORY: Prefix-Based Behavior Control
+## CRITICAL: D: PREFIX ENFORCEMENT
 
-**STRICT RULE-BASED PREFIXES:**
+**ABSOLUTE RULE - NO EXCEPTIONS:**
 
-- `D:` at start of message = Discussion only, no code changes, no tool calls
-- No prefix = Default IMPLEMENT mode (make code changes and use tools as needed)
+When user message starts with `D:` → **DISCUSSION ONLY MODE**
 
-**Examples:**
+- NO code changes or modifications
+- NO file writing (fsWrite, fsReplace)
+- NO modification bash commands (rm, mv, cp, git commit, etc.)
+- Reading tools OK (fsRead, listDirectory, executeBash for info) for context
+- ONLY provide discussion, advice, and explanations
 
-- `D: How should we handle error cases in the git utilities?`
-- `Add error handling to the git init function` (default IMPLEMENT mode)
+**IMPLEMENTATION MODE (Default):**
 
-This ensures predictable behavior and gives user precise control over whether code changes are made.
+- No prefix = Use tools and make code changes as needed
+
+## Examples
+
+**Discussion Mode:**
+
+- `D: How should we handle error cases?` → Only discuss approaches
+- `D: What do you think about this design?` → Only provide opinions
+
+**Implementation Mode:**
+
+- `Add error handling to the git function` → Make actual code changes
+- `Fix the bug in main.rs` → Use tools to implement fix
+
+## ENFORCEMENT
+
+The user is "tedious" about D: prefix compliance. Breaking this rule is unacceptable.
+
+**IF MESSAGE STARTS WITH `D:`:**
+
+1. Check first - does message start with `D:`?
+2. If YES → No code changes, only discussion
+3. Reading for context is allowed
+4. **MUST include `[discussion mode]` tag in response**
+5. Never break this rule
