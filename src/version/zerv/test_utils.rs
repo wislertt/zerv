@@ -69,3 +69,42 @@ pub fn with_pre_release_and_build(
     zerv.format.build = build;
     zerv
 }
+
+#[cfg(test)]
+pub fn with_epoch(epoch: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.format
+        .extra_core
+        .push(Component::VarField("epoch".to_string()));
+    zerv.vars.epoch = Some(epoch);
+    zerv
+}
+
+#[cfg(test)]
+pub fn with_post(post: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.format
+        .extra_core
+        .push(Component::VarField("post".to_string()));
+    zerv.vars.post = Some(post);
+    zerv
+}
+
+#[cfg(test)]
+pub fn with_dev(dev: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.format
+        .extra_core
+        .push(Component::VarField("dev".to_string()));
+    zerv.vars.dev = Some(dev);
+    zerv
+}
+
+#[cfg(test)]
+pub fn with_version(major: u64, minor: u64, patch: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.vars.major = Some(major);
+    zerv.vars.minor = Some(minor);
+    zerv.vars.patch = Some(patch);
+    zerv
+}

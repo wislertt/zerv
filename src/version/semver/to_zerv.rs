@@ -222,4 +222,13 @@ mod tests {
         let zerv: Zerv = semver.into();
         assert_eq!(zerv, expected);
     }
+
+    #[test]
+    fn test_round_trip_conversion() {
+        let original: SemVer = "2.1.0-beta.1+build.123".parse().unwrap();
+        let zerv: Zerv = original.clone().into();
+        let converted: SemVer = zerv.into();
+
+        assert_eq!(original.to_string(), converted.to_string());
+    }
 }
