@@ -15,7 +15,7 @@ lint:
 	cargo clippy --all-targets --all-features -- -D warnings
 	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
-# Easy testing for contributors - no external dependencies required
+# Quick testing without external dependencies (Docker, etc.)
 test_easy:
 	cargo test
 

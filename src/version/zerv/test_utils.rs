@@ -416,3 +416,760 @@ pub fn sem_zerv_core_overflow_1_2_3_4_5() -> Zerv {
         vars: ZervVars::default(),
     }
 }
+
+// Additional helper functions for epoch, post, dev combinations
+#[cfg(test)]
+pub fn zerv_1_0_0_with_epoch_and_pre_release(
+    epoch: u64,
+    label: PreReleaseLabel,
+    number: Option<u64>,
+) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv.vars.pre_release = Some(PreReleaseVar { label, number });
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_post_and_dev(post: u64, dev: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.post = Some(post);
+    zerv.vars.dev = Some(dev);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_dev_and_post(dev: u64, post: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("dev".to_string()),
+        Component::VarField("post".to_string()),
+    ];
+    zerv.vars.dev = Some(dev);
+    zerv.vars.post = Some(post);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_pre_release_and_post(
+    label: PreReleaseLabel,
+    number: Option<u64>,
+    post: u64,
+) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar { label, number });
+    zerv.vars.post = Some(post);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_pre_release_and_dev(
+    label: PreReleaseLabel,
+    number: Option<u64>,
+    dev: u64,
+) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar { label, number });
+    zerv.vars.dev = Some(dev);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_pre_release_post_and_dev(
+    label: PreReleaseLabel,
+    number: Option<u64>,
+    post: u64,
+    dev: u64,
+) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar { label, number });
+    zerv.vars.post = Some(post);
+    zerv.vars.dev = Some(dev);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_pre_release_dev_and_post(
+    label: PreReleaseLabel,
+    number: Option<u64>,
+    dev: u64,
+    post: u64,
+) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("dev".to_string()),
+        Component::VarField("post".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar { label, number });
+    zerv.vars.dev = Some(dev);
+    zerv.vars.post = Some(post);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_epoch_post_and_dev(epoch: u64, post: u64, dev: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv.vars.post = Some(post);
+    zerv.vars.dev = Some(dev);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_epoch_dev_and_post(epoch: u64, dev: u64, post: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("dev".to_string()),
+        Component::VarField("post".to_string()),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv.vars.dev = Some(dev);
+    zerv.vars.post = Some(post);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_all_components(
+    epoch: u64,
+    label: PreReleaseLabel,
+    number: Option<u64>,
+    post: u64,
+    dev: u64,
+) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv.vars.pre_release = Some(PreReleaseVar { label, number });
+    zerv.vars.post = Some(post);
+    zerv.vars.dev = Some(dev);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_all_components_reordered(
+    epoch: u64,
+    label: PreReleaseLabel,
+    number: Option<u64>,
+    dev: u64,
+    post: u64,
+) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("dev".to_string()),
+        Component::VarField("post".to_string()),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv.vars.pre_release = Some(PreReleaseVar { label, number });
+    zerv.vars.dev = Some(dev);
+    zerv.vars.post = Some(post);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_epoch_and_build(epoch: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![Component::VarField("epoch".to_string())];
+    zerv.schema.build = vec![
+        Component::String("build".to_string()),
+        Component::Integer(123),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_post_and_build(post: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![Component::VarField("post".to_string())];
+    zerv.schema.build = vec![
+        Component::String("build".to_string()),
+        Component::Integer(456),
+    ];
+    zerv.vars.post = Some(post);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_dev_and_build(dev: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![Component::VarField("dev".to_string())];
+    zerv.schema.build = vec![
+        Component::String("build".to_string()),
+        Component::Integer(789),
+    ];
+    zerv.vars.dev = Some(dev);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_epoch_pre_release_and_build(
+    epoch: u64,
+    label: PreReleaseLabel,
+    number: Option<u64>,
+) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+    ];
+    zerv.schema.build = vec![
+        Component::String("build".to_string()),
+        Component::String("abc".to_string()),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv.vars.pre_release = Some(PreReleaseVar { label, number });
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_foo_epoch_and_alpha(epoch: u64, alpha_num: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::String("foo".to_string()),
+        Component::VarField("pre_release".to_string()),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(alpha_num),
+    });
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_epoch_foo_and_post(epoch: u64, post: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::String("foo".to_string()),
+        Component::VarField("post".to_string()),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv.vars.post = Some(post);
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_bar_dev_and_epoch(dev: u64, epoch: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::String("bar".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.dev = Some(dev);
+    zerv.vars.epoch = Some(epoch);
+    zerv
+}
+
+// Additional PEP440 helper functions
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_1() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("epoch".to_string()));
+    zerv.vars.epoch = Some(1);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_5() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("epoch".to_string()));
+    zerv.vars.epoch = Some(5);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_999() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("epoch".to_string()));
+    zerv.vars.epoch = Some(999);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_post_5() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("post".to_string()));
+    zerv.vars.post = Some(5);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_post_0() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("post".to_string()));
+    zerv.vars.post = Some(0);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_dev_0() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("dev".to_string()));
+    zerv.vars.dev = Some(0);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_dev_10() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("dev".to_string()));
+    zerv.vars.dev = Some(10);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_2_alpha_1() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+    ];
+    zerv.vars.epoch = Some(2);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(1),
+    });
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_3_beta_2() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+    ];
+    zerv.vars.epoch = Some(3);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Beta,
+        number: Some(2),
+    });
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_1_rc_5() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+    ];
+    zerv.vars.epoch = Some(1);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Rc,
+        number: Some(5),
+    });
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_4_alpha() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+    ];
+    zerv.vars.epoch = Some(4);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(0),
+    });
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_post_1_dev_2() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.post = Some(1);
+    zerv.vars.dev = Some(2);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_alpha_1_post_2() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(1),
+    });
+    zerv.vars.post = Some(2);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_beta_3_post_1() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Beta,
+        number: Some(3),
+    });
+    zerv.vars.post = Some(1);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_rc_2_post_5() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Rc,
+        number: Some(2),
+    });
+    zerv.vars.post = Some(5);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_alpha_1_dev_2() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(1),
+    });
+    zerv.vars.dev = Some(2);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_beta_2_dev_1() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Beta,
+        number: Some(2),
+    });
+    zerv.vars.dev = Some(1);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_rc_1_dev_3() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Rc,
+        number: Some(1),
+    });
+    zerv.vars.dev = Some(3);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_alpha_1_post_2_dev_3() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(1),
+    });
+    zerv.vars.post = Some(2);
+    zerv.vars.dev = Some(3);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_beta_2_post_3_dev_1() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Beta,
+        number: Some(2),
+    });
+    zerv.vars.post = Some(3);
+    zerv.vars.dev = Some(1);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_rc_1_post_1_dev_1() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Rc,
+        number: Some(1),
+    });
+    zerv.vars.post = Some(1);
+    zerv.vars.dev = Some(1);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_2_post_1_dev_3() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.epoch = Some(2);
+    zerv.vars.post = Some(1);
+    zerv.vars.dev = Some(3);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_1_post_1_dev_2() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.epoch = Some(1);
+    zerv.vars.post = Some(1);
+    zerv.vars.dev = Some(2);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_3_alpha_1_post_2_dev_1() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.epoch = Some(3);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(1),
+    });
+    zerv.vars.post = Some(2);
+    zerv.vars.dev = Some(1);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_1_beta_2_post_1_dev_3() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.vars.epoch = Some(1);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Beta,
+        number: Some(2),
+    });
+    zerv.vars.post = Some(1);
+    zerv.vars.dev = Some(3);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_1_build() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("epoch".to_string()));
+    zerv.schema.build = vec![
+        Component::String("build".to_string()),
+        Component::Integer(123),
+    ];
+    zerv.vars.epoch = Some(1);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_post_1_build() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("post".to_string()));
+    zerv.schema.build = vec![
+        Component::String("build".to_string()),
+        Component::Integer(456),
+    ];
+    zerv.vars.post = Some(1);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_dev_2_build() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema
+        .extra_core
+        .push(Component::VarField("dev".to_string()));
+    zerv.schema.build = vec![
+        Component::String("build".to_string()),
+        Component::Integer(789),
+    ];
+    zerv.vars.dev = Some(2);
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_epoch_2_alpha_1_build() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+    ];
+    zerv.schema.build = vec![
+        Component::String("build".to_string()),
+        Component::String("abc".to_string()),
+    ];
+    zerv.vars.epoch = Some(2);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(1),
+    });
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_complex_local() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.build = vec![
+        Component::String("foo".to_string()),
+        Component::String("bar".to_string()),
+        Component::Integer(123),
+    ];
+    zerv
+}
+
+#[cfg(test)]
+pub fn pep_zerv_1_0_0_all_components_complex_local() -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ];
+    zerv.schema.build = vec![
+        Component::String("complex".to_string()),
+        Component::String("local".to_string()),
+        Component::Integer(456),
+    ];
+    zerv.vars.epoch = Some(1);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(1),
+    });
+    zerv.vars.post = Some(1);
+    zerv.vars.dev = Some(1);
+    zerv
+}
+
+// Helper functions that preserve original SemVer component order
+#[cfg(test)]
+pub fn zerv_1_0_0_with_foo_epoch_and_alpha_original_order(epoch: u64, alpha_num: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::String("foo".to_string()),
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+    ];
+    zerv.vars.epoch = Some(epoch);
+    zerv.vars.pre_release = Some(PreReleaseVar {
+        label: PreReleaseLabel::Alpha,
+        number: Some(alpha_num),
+    });
+    zerv
+}
+
+#[cfg(test)]
+pub fn zerv_1_0_0_with_bar_dev_and_epoch_original_order(dev: u64, epoch: u64) -> Zerv {
+    let mut zerv = base_zerv();
+    zerv.schema.extra_core = vec![
+        Component::String("bar".to_string()),
+        Component::VarField("dev".to_string()),
+        Component::VarField("epoch".to_string()),
+    ];
+    zerv.vars.dev = Some(dev);
+    zerv.vars.epoch = Some(epoch);
+    zerv
+}
