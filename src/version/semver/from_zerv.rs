@@ -1,110 +1,113 @@
 use super::{BuildMetadata, PreReleaseIdentifier, SemVer};
 use crate::version::semver::utils::pre_release_label_to_semver_string;
-use crate::version::zerv::{Component, Zerv, resolve_timestamp};
+use crate::version::zerv::{Component, Zerv, resolve_timestamp, utils::extract_core_values};
+
+fn extract_version_numbers(core_values: &[u64]) -> (u64, u64, u64) {
+    let major = core_values.first().copied().unwrap_or(0);
+    let minor = core_values.get(1).copied().unwrap_or(0);
+    let patch = core_values.get(2).copied().unwrap_or(0);
+    (major, minor, patch)
+}
+
+fn extract_overflow_identifiers(core_values: &[u64]) -> Vec<PreReleaseIdentifier> {
+    if core_values.len() > 3 {
+        core_values[3..]
+            .iter()
+            .map(|&val| PreReleaseIdentifier::Integer(val))
+            .collect()
+    } else {
+        Vec::new()
+    }
+}
+
+fn add_epoch_identifiers(identifiers: &mut Vec<PreReleaseIdentifier>, epoch: Option<u64>) {
+    if let Some(epoch) = epoch {
+        identifiers.push(PreReleaseIdentifier::String("epoch".to_string()));
+        identifiers.push(PreReleaseIdentifier::Integer(epoch));
+    }
+}
+
+fn process_var_field(identifiers: &mut Vec<PreReleaseIdentifier>, field: &str, zerv: &Zerv) {
+    match field {
+        "pre_release" => {
+            if let Some(pr) = &zerv.vars.pre_release {
+                identifiers.push(PreReleaseIdentifier::String(
+                    pre_release_label_to_semver_string(&pr.label).to_string(),
+                ));
+                if let Some(num) = pr.number {
+                    identifiers.push(PreReleaseIdentifier::Integer(num));
+                }
+            }
+        }
+        "post" => {
+            if let Some(post_num) = zerv.vars.post {
+                identifiers.push(PreReleaseIdentifier::String("post".to_string()));
+                identifiers.push(PreReleaseIdentifier::Integer(post_num));
+            }
+        }
+        "dev" => {
+            if let Some(dev_num) = zerv.vars.dev {
+                identifiers.push(PreReleaseIdentifier::String("dev".to_string()));
+                identifiers.push(PreReleaseIdentifier::Integer(dev_num));
+            }
+        }
+        _ => {}
+    }
+}
+
+fn build_pre_release_identifiers(
+    zerv: &Zerv,
+    core_values: &[u64],
+) -> Option<Vec<PreReleaseIdentifier>> {
+    let mut identifiers = extract_overflow_identifiers(core_values);
+    add_epoch_identifiers(&mut identifiers, zerv.vars.epoch);
+
+    for comp in &zerv.schema.extra_core {
+        match comp {
+            Component::VarField(field) => process_var_field(&mut identifiers, field, zerv),
+            Component::String(s) => identifiers.push(PreReleaseIdentifier::String(s.clone())),
+            Component::Integer(n) => identifiers.push(PreReleaseIdentifier::Integer(*n)),
+            _ => {}
+        }
+    }
+
+    if identifiers.is_empty() {
+        None
+    } else {
+        Some(identifiers)
+    }
+}
+
+fn build_metadata_from_components(
+    components: &[Component],
+    tag_timestamp: Option<u64>,
+) -> Option<Vec<BuildMetadata>> {
+    if components.is_empty() {
+        None
+    } else {
+        Some(
+            components
+                .iter()
+                .map(|comp| match comp {
+                    Component::String(s) => BuildMetadata::String(s.clone()),
+                    Component::Integer(i) => BuildMetadata::Integer(*i),
+                    Component::VarTimestamp(pattern) => BuildMetadata::Integer(
+                        resolve_timestamp(pattern, tag_timestamp).unwrap_or(0),
+                    ),
+                    _ => BuildMetadata::String("unknown".to_string()),
+                })
+                .collect(),
+        )
+    }
+}
 
 impl From<Zerv> for SemVer {
     fn from(zerv: Zerv) -> Self {
-        // Extract values from core components
-        let mut core_values = Vec::new();
-        for comp in &zerv.schema.core {
-            let val = match comp {
-                Component::VarField(field) => match field.as_str() {
-                    "major" => zerv.vars.major.unwrap_or(0),
-                    "minor" => zerv.vars.minor.unwrap_or(0),
-                    "patch" => zerv.vars.patch.unwrap_or(0),
-                    _ => 0,
-                },
-                Component::VarTimestamp(pattern) => {
-                    resolve_timestamp(pattern, zerv.vars.tag_timestamp).unwrap_or(0)
-                }
-                Component::Integer(n) => *n,
-                _ => 0,
-            };
-            core_values.push(val);
-        }
-
-        // First 3 indices become major.minor.patch, pad with 0 if less than 3
-        let major = core_values.first().copied().unwrap_or(0);
-        let minor = core_values.get(1).copied().unwrap_or(0);
-        let patch = core_values.get(2).copied().unwrap_or(0);
-
-        // If core has more than 3 components, overflow goes to pre-release (at front)
-        let overflow_identifiers = if core_values.len() > 3 {
-            core_values[3..]
-                .iter()
-                .map(|&val| PreReleaseIdentifier::Integer(val))
-                .collect::<Vec<_>>()
-        } else {
-            Vec::new()
-        };
-
-        // Build pre-release: overflow from core (at front) + epoch (if present) + extra_core components
-        let mut identifiers = overflow_identifiers;
-
-        // Add epoch to pre-release if present
-        if let Some(epoch) = zerv.vars.epoch {
-            identifiers.push(PreReleaseIdentifier::String("epoch".to_string()));
-            identifiers.push(PreReleaseIdentifier::Integer(epoch));
-        }
-
-        for comp in &zerv.schema.extra_core {
-            match comp {
-                Component::VarField(field) if field == "pre_release" => {
-                    if let Some(pr) = &zerv.vars.pre_release {
-                        identifiers.push(PreReleaseIdentifier::String(
-                            pre_release_label_to_semver_string(&pr.label).to_string(),
-                        ));
-                        if let Some(num) = pr.number {
-                            identifiers.push(PreReleaseIdentifier::Integer(num));
-                        }
-                    }
-                }
-                Component::VarField(field) if field == "post" => {
-                    if let Some(post_num) = zerv.vars.post {
-                        identifiers.push(PreReleaseIdentifier::String("post".to_string()));
-                        identifiers.push(PreReleaseIdentifier::Integer(post_num));
-                    }
-                }
-                Component::VarField(field) if field == "dev" => {
-                    if let Some(dev_num) = zerv.vars.dev {
-                        identifiers.push(PreReleaseIdentifier::String("dev".to_string()));
-                        identifiers.push(PreReleaseIdentifier::Integer(dev_num));
-                    }
-                }
-                Component::String(s) => {
-                    identifiers.push(PreReleaseIdentifier::String(s.clone()));
-                }
-                Component::Integer(n) => {
-                    identifiers.push(PreReleaseIdentifier::Integer(*n));
-                }
-                _ => {}
-            }
-        }
-
-        let pre_release = if identifiers.is_empty() {
-            None
-        } else {
-            Some(identifiers)
-        };
-
-        let build_metadata = if zerv.schema.build.is_empty() {
-            None
-        } else {
-            Some(
-                zerv.schema
-                    .build
-                    .iter()
-                    .map(|comp| match comp {
-                        Component::String(s) => BuildMetadata::String(s.clone()),
-                        Component::Integer(i) => BuildMetadata::Integer(*i),
-                        Component::VarTimestamp(pattern) => BuildMetadata::Integer(
-                            resolve_timestamp(pattern, zerv.vars.tag_timestamp).unwrap_or(0),
-                        ),
-                        _ => BuildMetadata::String("unknown".to_string()),
-                    })
-                    .collect(),
-            )
-        };
+        let core_values = extract_core_values(&zerv);
+        let (major, minor, patch) = extract_version_numbers(&core_values);
+        let pre_release = build_pre_release_identifiers(&zerv, &core_values);
+        let build_metadata =
+            build_metadata_from_components(&zerv.schema.build, zerv.vars.tag_timestamp);
 
         SemVer {
             major,
