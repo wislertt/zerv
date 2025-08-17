@@ -1,5 +1,5 @@
 use super::{LocalSegment, PEP440};
-use crate::version::zerv::{Component, PreReleaseVar, Zerv, ZervFormat, ZervVars};
+use crate::version::zerv::{Component, PreReleaseVar, Zerv, ZervSchema, ZervVars};
 
 impl From<PEP440> for Zerv {
     fn from(pep440: PEP440) -> Self {
@@ -58,7 +58,7 @@ impl From<PEP440> for Zerv {
         let patch = pep440.release.get(2).copied().map(|n| n as u64);
 
         Zerv {
-            format: ZervFormat {
+            schema: ZervSchema {
                 core: vec![
                     Component::VarField("major".to_string()),
                     Component::VarField("minor".to_string()),
@@ -89,75 +89,20 @@ impl From<PEP440> for Zerv {
 mod tests {
     use super::*;
     use crate::version::zerv::test_utils::*;
-    use crate::version::zerv::{Component, PreReleaseLabel};
+
     use rstest::rstest;
 
     #[rstest]
-    // Basic version
-    #[case("1.2.3", with_version(1, 2, 3))]
-    // With epoch
-    #[case("2!1.2.3", {
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core.push(Component::VarField("epoch".to_string()));
-        zerv.vars.epoch = Some(2);
-        zerv
-    })]
-    // With pre-release
-    #[case("1.2.3a1", {
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core.push(Component::VarField("pre_release".to_string()));
-        zerv.vars.pre_release = Some(crate::version::zerv::PreReleaseVar {
-            label: PreReleaseLabel::Alpha,
-            number: Some(1),
-        });
-        zerv
-    })]
-    // With post
-    #[case("1.2.3.post1", {
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core.push(Component::VarField("post".to_string()));
-        zerv.vars.post = Some(1);
-        zerv
-    })]
-    // With dev
-    #[case("1.2.3.dev1", {
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core.push(Component::VarField("dev".to_string()));
-        zerv.vars.dev = Some(1);
-        zerv
-    })]
-    // With local
-    #[case("1.2.3+ubuntu.20.4", {
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.build = vec![
-            Component::String("ubuntu".to_string()),
-            Component::Integer(20),
-            Component::Integer(4),
-        ];
-        zerv
-    })]
-    // Complex version with all components
-    #[case("2!1.2.3a1.post1.dev1+local.1", {
-        let mut zerv = with_version(1, 2, 3);
-        zerv.format.extra_core = vec![
-            Component::VarField("epoch".to_string()),
-            Component::VarField("pre_release".to_string()),
-            Component::VarField("post".to_string()),
-            Component::VarField("dev".to_string()),
-        ];
-        zerv.format.build = vec![
-            Component::String("local".to_string()),
-            Component::Integer(1),
-        ];
-        zerv.vars.epoch = Some(2);
-        zerv.vars.pre_release = Some(crate::version::zerv::PreReleaseVar {
-            label: PreReleaseLabel::Alpha,
-            number: Some(1),
-        });
-        zerv.vars.post = Some(1);
-        zerv.vars.dev = Some(1);
-        zerv
-    })]
+    #[case("1.2.3", pep_zerv_1_2_3())]
+    #[case("2!1.2.3", pep_zerv_1_2_3_epoch_2())]
+    #[case("1.2.3a1", pep_zerv_1_2_3_alpha_1())]
+    #[case("1.2.3.post1", pep_zerv_1_2_3_post_1())]
+    #[case("1.2.3.dev1", pep_zerv_1_2_3_dev_1())]
+    #[case("1.2.3+ubuntu.20.4", pep_zerv_1_2_3_ubuntu_build())]
+    #[case(
+        "2!1.2.3a1.post1.dev1+local.1",
+        pep_zerv_complex_2_1_2_3_alpha_1_post_1_dev_1_local_1()
+    )]
     fn test_pep440_to_zerv_conversion(#[case] pep440_str: &str, #[case] expected: Zerv) {
         let pep440: PEP440 = pep440_str.parse().unwrap();
         let zerv: Zerv = pep440.into();
