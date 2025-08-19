@@ -33,3 +33,20 @@ jobs:
             - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    cargo-audit:
+        name: cargo-audit
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+            - name: Setup Rust
+              uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+
+            - name: Install cargo-audit
+              run: cargo install cargo-audit
+
+            - name: Run cargo audit
+              run: cargo audit
