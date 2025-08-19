@@ -33,3 +33,46 @@ jobs:
             - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    cargo-audit:
+        name: cargo-audit
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+            - name: Setup Rust
+              uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+              with:
+                  toolchain: stable
+
+            - name: Restore cache
+              uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                  key: cargo-audit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+                  restore-keys: |
+                      cargo-audit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                      cargo-audit-${{ runner.os }}-
+
+            - name: Install cargo-audit
+              run: cargo install cargo-audit --locked || true
+
+            - name: Run cargo audit
+              run: cargo audit
+
+            - name: Save cache
+              uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+              if: always()
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                  key: cargo-audit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
