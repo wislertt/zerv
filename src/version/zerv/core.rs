@@ -31,9 +31,16 @@ pub enum Component {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ZervVars {
+    // from version string
     pub major: Option<u64>,
     pub minor: Option<u64>,
     pub patch: Option<u64>,
+    pub epoch: Option<u64>,
+    pub pre_release: Option<PreReleaseVar>,
+    pub post: Option<u64>,
+    pub dev: Option<u64>,
+
+    // from vcs
     pub tag_timestamp: Option<u64>,
     pub tag_branch: Option<String>,
     pub current_branch: Option<String>,
@@ -41,10 +48,7 @@ pub struct ZervVars {
     pub dirty: Option<bool>,
     pub tag_commit_hash: Option<String>,
     pub current_commit_hash: Option<String>,
-    pub epoch: Option<u64>,
-    pub pre_release: Option<PreReleaseVar>,
-    pub post: Option<u64>,
-    pub dev: Option<u64>,
+
     pub custom: HashMap<String, VarValue>,
 }
 
