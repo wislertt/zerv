@@ -80,8 +80,8 @@
 
 ### Enhanced VCS Support
 
-- [ ] Archive support (`.git_archival.json`)
 - [ ] Shallow repository handling
+- [ ] Archive support (`.git_archival.json`) - _if requested by users_
 - [ ] Multiple VCS systems (Mercurial, SVN)
 
 ### Configuration System
@@ -107,8 +107,7 @@ zerv/
 ├── src/
 │   ├── vcs/
 │   │   ├── mod.rs           # VCS trait and detection
-│   │   ├── git.rs           # Git implementation
-│   │   └── archive.rs       # Archive support
+│   │   └── git.rs           # Git implementation (includes archive support)
 │   ├── cli/
 │   │   ├── mod.rs           # CLI framework
 │   │   ├── commands.rs      # Command implementations
@@ -180,10 +179,10 @@ zerv version --schema zerv-default --output-format pep440
 - Multiple VCS support (Mercurial, SVN, Darcs)
 - Advanced configuration system
 - Version bumping and manipulation
-- Archive format support
 
 **1.0 Features**:
 
+- Archive support (if user demand exists)
 - Complete dunamai feature parity
 - Performance optimizations
 - Comprehensive documentation
