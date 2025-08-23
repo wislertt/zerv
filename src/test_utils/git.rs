@@ -39,10 +39,7 @@ impl DockerGit {
     }
 
     pub fn run_git_command(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
-        let mut git_args = vec!["--git-dir=.git"];
-        git_args.extend(args);
-
-        let git_command = git_args
+        let git_command = args
             .iter()
             .map(|arg| {
                 if arg.contains(' ') {
@@ -61,7 +58,7 @@ impl DockerGit {
         // Create initial file and setup repo in single command to avoid race conditions
         test_dir.create_file("README.md", "# Test Repository")?;
         let init_script = [
-            "git init",
+            "git init -b main",
             "git config user.name 'Test User'",
             "git config user.email 'test@example.com'",
             "git add .",
@@ -180,6 +177,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "docker"]
     fn test_setup_initialized_repo_without_docker() {
         let result = std::panic::catch_unwind(|| {
             let (_dir, _docker_git) = setup_initialized_repo();
@@ -188,6 +186,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "docker"]
     fn test_setup_repo_with_commit_without_docker() {
         let result = std::panic::catch_unwind(|| {
             let (_dir, _docker_git) = setup_repo_with_commit();

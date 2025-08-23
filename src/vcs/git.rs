@@ -236,7 +236,7 @@ mod tests {
                 &init_script,
             ])
             .output()
-            .unwrap();
+            .expect("should execute docker command");
         assert!(
             output.status.success(),
             "Docker git setup with tag failed: {}",
@@ -265,7 +265,7 @@ mod tests {
     #[ignore = "docker"]
     fn test_is_available() {
         let temp_dir = setup_git_repo();
-        let git_vcs = GitVcs::new(temp_dir.path()).unwrap();
+        let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         assert!(git_vcs.is_available(temp_dir.path()));
     }
 
@@ -282,8 +282,8 @@ mod tests {
     #[ignore = "docker"]
     fn test_get_vcs_data_with_commit() {
         let temp_dir = setup_git_repo_with_commit();
-        let git_vcs = GitVcs::new(temp_dir.path()).unwrap();
-        let data = git_vcs.get_vcs_data().unwrap();
+        let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
+        let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
         assert!(!data.commit_hash.is_empty());
         assert!(!data.commit_hash_short.is_empty());
@@ -296,8 +296,8 @@ mod tests {
     #[ignore = "docker"]
     fn test_get_vcs_data_with_tag() {
         let temp_dir = setup_git_repo_with_tag("v1.0.0");
-        let git_vcs = GitVcs::new(temp_dir.path()).unwrap();
-        let data = git_vcs.get_vcs_data().unwrap();
+        let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
+        let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
         assert!(!data.commit_hash.is_empty());
         assert!(!data.commit_hash_short.is_empty());
@@ -328,15 +328,15 @@ mod tests {
                 "echo 'test content 2' > test2.txt && git add . && git commit -m 'second commit'",
             ])
             .output()
-            .unwrap();
+            .expect("should execute docker command");
         assert!(
             output.status.success(),
             "Docker git second commit failed: {}",
             String::from_utf8_lossy(&output.stderr)
         );
 
-        let git_vcs = GitVcs::new(temp_dir.path()).unwrap();
-        let data = git_vcs.get_vcs_data().unwrap();
+        let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
+        let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
         assert_eq!(data.tag_version, Some("v1.0.0".to_string()));
         assert_eq!(data.distance, 1);
@@ -361,8 +361,8 @@ mod tests {
     #[ignore = "docker"]
     fn test_clean_working_directory() {
         let temp_dir = setup_git_repo();
-        let git_vcs = GitVcs::new(temp_dir.path()).unwrap();
-        let data = git_vcs.get_vcs_data().unwrap();
+        let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
+        let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
         assert!(!data.is_dirty);
     }
