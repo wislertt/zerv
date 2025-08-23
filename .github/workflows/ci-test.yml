@@ -42,7 +42,7 @@ jobs:
                   mkdir -p /tmp/test-git
                   echo "test content" > /tmp/test-git/README.md
                   echo "=== Test Docker volume mount ==="
-                  docker run --rm -v /tmp/test-git:/workspace -w /workspace --user root alpine:latest sh -c "apk add --no-cache git && pwd && ls -la && git init -b main && git config user.name 'Test' && git config user.email 'test@example.com' && git add . && git commit -m 'test'"
+                  docker run --rm -v /tmp/test-git:/workspace -w /workspace --user root alpine:latest sh -c "apk add --no-cache git && pwd && ls -la && git init -b main && git config user.name 'Test' && git config user.email 'test@example.com' && git status && git add . && git status && git commit -m 'test'"
                   echo "=== Verify git repo created ==="
                   ls -la /tmp/test-git/
 
