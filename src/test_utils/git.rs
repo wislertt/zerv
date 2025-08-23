@@ -22,6 +22,8 @@ impl DockerGit {
                 &format!("{}:/workspace", test_dir.path().display()),
                 "-w",
                 "/workspace",
+                "--user",
+                "root",
                 "alpine/git:latest",
                 "-c",
                 script,
