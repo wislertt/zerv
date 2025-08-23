@@ -20,3 +20,45 @@ Before performing ANY coding task, **read `.dev/00-README.md`** for complete pro
 - Use `zerv::error::ZervError` for all custom errors
 - Implement proper error propagation with `?` operator
 - Include context in error messages for debugging
+- Use `io::Error::other()` instead of `io::Error::new(io::ErrorKind::Other, ...)`
+
+**Error Standard Violations Check:**
+
+When user mentions:
+
+- "check error standards"
+- "find error violations"
+- "audit error handling"
+- "error compliance check"
+
+→ Search codebase for violations:
+
+- `io::Error::new(io::ErrorKind::Other` patterns
+- Missing `ZervError` usage in custom error cases
+- Direct `unwrap()` or `expect()` in production code
+- Error messages without context
+
+## Code Reuse Standards
+
+**ALWAYS check existing utilities first:**
+
+- Check `src/test_utils/` before creating new test utilities
+- Reuse `TestDir`, `DockerGit`, and other existing infrastructure
+- Avoid duplicating code across different files
+- Look for existing helper functions before implementing new ones
+
+**Code Reuse Violations Check:**
+
+When user mentions:
+
+- "check code reuse"
+- "find duplicated code"
+- "audit code duplication"
+- "redundant code check"
+
+→ Search codebase for violations:
+
+- Duplicated test setup patterns
+- Reimplemented utility functions
+- Similar helper functions across files
+- Unused existing utilities in `src/test_utils/`

@@ -21,6 +21,9 @@ exclude = [
   "/.amazonq/",
 ]
 
+[features]
+test-utils = ["tempfile"]
+
 [[bin]]
 name = "zerv"
 path = "src/main.rs"
@@ -29,6 +32,9 @@ path = "src/main.rs"
 chrono = "^0.4.41"
 clap = { version = "^4.4", features = ["derive"] }
 regex = "^1.11"
+tempfile = { version = "^3.0", optional = true }
 
 [dev-dependencies]
 rstest = "^0.26.0"
+tempfile = "^3.0"
+zerv = { path = ".", features = ["test-utils"] }

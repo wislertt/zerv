@@ -66,15 +66,16 @@ mod tests {
     }
 
     #[test]
-    fn test_run_with_args() {
+    fn test_run_with_args() -> Result<(), Box<dyn std::error::Error>> {
         let mut output = Vec::new();
         let args = vec!["zerv".to_string()];
 
-        run_with_args(args, &mut output).unwrap();
+        run_with_args(args, &mut output)?;
 
-        let output_str = String::from_utf8(output).unwrap();
+        let output_str = String::from_utf8(output)?;
         assert!(output_str.contains("1.2.3"));
         assert!(output_str.contains("Debug: PEP440"));
+        Ok(())
     }
 
     #[test]

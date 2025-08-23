@@ -22,6 +22,7 @@ test_easy:
 # Full test suite with coverage - requires cargo-tarpaulin
 test:
 	RUST_BACKTRACE=1 cargo tarpaulin \
+		--features test-utils \
 		--out Xml \
 		--out Html \
 		--out Lcov \

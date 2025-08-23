@@ -1,3 +1,4 @@
+use crate::error::{Result, ZervError};
 use crate::version::zerv::{Component, PreReleaseLabel, Zerv};
 
 pub fn extract_core_values(zerv: &Zerv) -> Vec<u64> {
@@ -30,26 +31,44 @@ pub fn normalize_pre_release_label(label: &str) -> Option<PreReleaseLabel> {
     }
 }
 
-pub fn resolve_timestamp(pattern: &str, timestamp: Option<u64>) -> Result<u64, &'static str> {
-    let ts = timestamp.ok_or("Timestamp is required but was None")?;
-    let dt = chrono::DateTime::from_timestamp(ts as i64, 0).ok_or("Invalid timestamp")?;
+fn parse_timestamp_component(
+    dt: &chrono::DateTime<chrono::Utc>,
+    format_str: &str,
+    component_type: &str,
+) -> Result<u64> {
+    dt.format(format_str)
+        .to_string()
+        .parse()
+        .map_err(|_| ZervError::InvalidFormat(format!("Failed to parse {component_type}")))
+}
+
+pub fn resolve_timestamp(pattern: &str, timestamp: Option<u64>) -> Result<u64> {
+    let ts = timestamp.ok_or_else(|| {
+        ZervError::InvalidFormat("Timestamp is required but was None".to_string())
+    })?;
+    let dt = chrono::DateTime::from_timestamp(ts as i64, 0)
+        .ok_or_else(|| ZervError::InvalidFormat("Invalid timestamp".to_string()))?;
 
     let result = match pattern {
-        "YYYY" => dt.format("%Y").to_string().parse().unwrap_or(0),
-        "YY" => dt.format("%y").to_string().parse().unwrap_or(0),
-        "MM" => dt.format("%-m").to_string().parse().unwrap_or(0),
-        "0M" => dt.format("%m").to_string().parse().unwrap_or(0),
-        "WW" => dt.format("%-W").to_string().parse().unwrap_or(0),
-        "0W" => dt.format("%W").to_string().parse().unwrap_or(0),
-        "DD" => dt.format("%-d").to_string().parse().unwrap_or(0),
-        "0D" => dt.format("%d").to_string().parse().unwrap_or(0),
-        "HH" => dt.format("%-H").to_string().parse().unwrap_or(0),
-        "0H" => dt.format("%H").to_string().parse().unwrap_or(0),
-        "mm" => dt.format("%-M").to_string().parse().unwrap_or(0),
-        "0m" => dt.format("%M").to_string().parse().unwrap_or(0),
-        "SS" => dt.format("%-S").to_string().parse().unwrap_or(0),
-        "0S" => dt.format("%S").to_string().parse().unwrap_or(0),
-        _ => return Err("Unknown timestamp pattern"),
+        "YYYY" => parse_timestamp_component(&dt, "%Y", "year")?,
+        "YY" => parse_timestamp_component(&dt, "%y", "year")?,
+        "MM" => parse_timestamp_component(&dt, "%-m", "month")?,
+        "0M" => parse_timestamp_component(&dt, "%m", "month")?,
+        "WW" => parse_timestamp_component(&dt, "%-W", "week")?,
+        "0W" => parse_timestamp_component(&dt, "%W", "week")?,
+        "DD" => parse_timestamp_component(&dt, "%-d", "day")?,
+        "0D" => parse_timestamp_component(&dt, "%d", "day")?,
+        "HH" => parse_timestamp_component(&dt, "%-H", "hour")?,
+        "0H" => parse_timestamp_component(&dt, "%H", "hour")?,
+        "mm" => parse_timestamp_component(&dt, "%-M", "minute")?,
+        "0m" => parse_timestamp_component(&dt, "%M", "minute")?,
+        "SS" => parse_timestamp_component(&dt, "%-S", "second")?,
+        "0S" => parse_timestamp_component(&dt, "%S", "second")?,
+        _ => {
+            return Err(ZervError::InvalidFormat(format!(
+                "Unknown timestamp pattern: {pattern}"
+            )));
+        }
     };
 
     Ok(result)
@@ -64,7 +83,9 @@ mod tests {
     fn test_resolve_timestamp_none() {
         assert_eq!(
             resolve_timestamp("YYYY", None),
-            Err("Timestamp is required but was None")
+            Err(ZervError::InvalidFormat(
+                "Timestamp is required but was None".to_string()
+            ))
         );
     }
 
@@ -106,7 +127,8 @@ mod tests {
         #[case] expected: u64,
     ) {
         assert_eq!(
-            resolve_timestamp(pattern, Some(timestamp)).unwrap(),
+            resolve_timestamp(pattern, Some(timestamp))
+                .expect("timestamp resolution should succeed"),
             expected
         );
     }
@@ -116,7 +138,9 @@ mod tests {
         let timestamp = Some(1710511845);
         assert_eq!(
             resolve_timestamp("INVALID", timestamp),
-            Err("Unknown timestamp pattern")
+            Err(ZervError::InvalidFormat(
+                "Unknown timestamp pattern: INVALID".to_string()
+            ))
         );
     }
 }
