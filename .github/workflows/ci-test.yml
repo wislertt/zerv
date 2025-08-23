@@ -32,24 +32,6 @@ jobs:
 
             - run: cargo install cargo-tarpaulin --locked || true
 
-            - name: Debug Docker setup
-              run: |
-                  echo "=== Docker version ==="
-                  docker --version
-                  echo "=== Test working pattern from previous version ==="
-                  mkdir -p /tmp/test-git-working
-                  echo "test content" > /tmp/test-git-working/README.md
-                  echo "=== Test alpine/git with entrypoint sh ==="
-                  docker run --rm -v /tmp/test-git-working:/workspace -w /workspace --entrypoint sh alpine/git:latest -c "git init && git --git-dir=.git config user.name 'Test User' && git --git-dir=.git config user.email 'test@example.com' && git --git-dir=.git add . && git --git-dir=.git commit -m 'test'"
-                  echo "=== Verify working pattern ==="
-                  ls -la /tmp/test-git-working/
-                  echo "=== Compare with current failing pattern ==="
-                  mkdir -p /tmp/test-git-failing
-                  echo "test content" > /tmp/test-git-failing/README.md
-                  docker run --rm -v /tmp/test-git-failing:/workspace -w /workspace --user root alpine:latest sh -c "apk add --no-cache git && git init -b main && git config user.name 'Test' && git config user.email 'test@example.com' && git add . && git commit -m 'test'" || echo "FAILED as expected"
-                  echo "=== Verify failing pattern ==="
-                  ls -la /tmp/test-git-failing/
-
             - run: make test
 
             - name: Save cache

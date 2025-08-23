@@ -168,14 +168,7 @@ mod tests {
 
         // Initialize git repo and create commit in single Docker command to avoid race conditions
         fs::write(path.join("README.md"), "# Test Repo").expect("should write README");
-        let init_script = [
-            "git init -b main",
-            "git config user.name 'Test User'",
-            "git config user.email 'test@example.com'",
-            "git add .",
-            "git commit -m 'Initial commit'",
-        ]
-        .join(" && ");
+        let init_script = "git init && git --git-dir=.git config user.name 'Test User' && git --git-dir=.git config user.email 'test@example.com' && git --git-dir=.git add . && git --git-dir=.git commit -m 'Initial commit'";
         let output = Command::new("docker")
             .args([
                 "run",
@@ -188,7 +181,7 @@ mod tests {
                 "/workspace",
                 "alpine/git:latest",
                 "-c",
-                &init_script,
+                init_script,
             ])
             .output()
             .expect("should execute docker command");
@@ -212,15 +205,9 @@ mod tests {
 
         // Create repo, commit, and tag in single Docker command to avoid race conditions
         fs::write(path.join("README.md"), "# Test Repo").expect("should write README");
-        let init_script = [
-            "git init -b main",
-            "git config user.name 'Test User'",
-            "git config user.email 'test@example.com'",
-            "git add .",
-            "git commit -m 'Initial commit'",
-            &format!("git tag {tag}"),
-        ]
-        .join(" && ");
+        let init_script = format!(
+            "git init && git --git-dir=.git config user.name 'Test User' && git --git-dir=.git config user.email 'test@example.com' && git --git-dir=.git add . && git --git-dir=.git commit -m 'Initial commit' && git --git-dir=.git tag {tag}"
+        );
         let output = Command::new("docker")
             .args([
                 "run",
@@ -325,7 +312,7 @@ mod tests {
                 "/workspace",
                 "alpine/git:latest",
                 "-c",
-                "echo 'test content 2' > test2.txt && git add . && git commit -m 'second commit'",
+                "echo 'test content 2' > test2.txt && git --git-dir=.git add . && git --git-dir=.git commit -m 'second commit'",
             ])
             .output()
             .expect("should execute docker command");

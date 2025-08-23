@@ -16,16 +16,15 @@ impl DockerGit {
             .args([
                 "run",
                 "--rm",
+                "--entrypoint",
+                "sh",
                 "-v",
                 &format!("{}:/workspace", test_dir.path().display()),
                 "-w",
                 "/workspace",
-                "--user",
-                "root",
-                "alpine:latest",
-                "sh",
+                "alpine/git:latest",
                 "-c",
-                &format!("apk add --no-cache git && {script}"),
+                script,
             ])
             .output()?;
 
@@ -52,32 +51,27 @@ impl DockerGit {
             .collect::<Vec<_>>()
             .join(" ");
 
-        self.run_docker_command(test_dir, &format!("git {git_command}"))
+        self.run_docker_command(test_dir, &format!("git --git-dir=.git {git_command}"))
     }
 
     pub fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
-        // Create initial file and setup repo in single command to avoid race conditions
+        // Create initial file and setup repo with initial commit using working pattern
         test_dir.create_file("README.md", "# Test Repository")?;
-        let init_script = [
-            "git init -b main",
-            "git config user.name 'Test User'",
-            "git config user.email 'test@example.com'",
-            "git add .",
-            "git commit -m 'Initial commit'",
-        ]
-        .join(" && ");
-
-        self.run_docker_command(test_dir, &init_script)?;
+        let init_script = "git init && git --git-dir=.git config user.name 'Test User' && git --git-dir=.git config user.email 'test@example.com' && git --git-dir=.git add . && git --git-dir=.git commit -m 'Initial commit'";
+        self.run_docker_command(test_dir, init_script)?;
         Ok(())
     }
 
     pub fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()> {
-        self.run_docker_command(test_dir, &format!("git add . && git commit -m '{message}'"))?;
+        self.run_docker_command(
+            test_dir,
+            &format!("git --git-dir=.git add . && git --git-dir=.git commit -m '{message}'"),
+        )?;
         Ok(())
     }
 
     pub fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
-        self.run_docker_command(test_dir, &format!("git tag {tag}"))?;
+        self.run_docker_command(test_dir, &format!("git --git-dir=.git tag {tag}"))?;
         Ok(())
     }
 }
@@ -134,14 +128,7 @@ mod tests {
 
     fn is_docker_available() -> bool {
         Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "alpine:latest",
-                "sh",
-                "-c",
-                "apk add --no-cache git && git --version",
-            ])
+            .args(["run", "--rm", "alpine/git:latest", "--version"])
             .output()
             .map(|output| output.status.success())
             .unwrap_or(false)
