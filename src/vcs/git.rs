@@ -166,30 +166,42 @@ mod tests {
         let temp_dir = TestDir::new().expect("should create temp dir");
         let path = temp_dir.path();
 
-        // Initialize git repo and create commit in single Docker command to avoid race conditions
+        // Create initial file
         fs::write(path.join("README.md"), "# Test Repo").expect("should write README");
-        let init_script = "git init && git --git-dir=.git config user.name 'Test User' && git --git-dir=.git config user.email 'test@example.com' && git --git-dir=.git add . && git --git-dir=.git commit -m 'Initial commit'";
-        let output = Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "--entrypoint",
-                "sh",
-                "-v",
-                &format!("{}:/workspace", path.display()),
-                "-w",
-                "/workspace",
-                "alpine/git:latest",
-                "-c",
-                init_script,
-            ])
-            .output()
-            .expect("should execute docker command");
-        assert!(
-            output.status.success(),
-            "Docker git setup failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+
+        // Run git setup commands separately for better error handling
+        let commands = [
+            "git init",
+            "git --git-dir=.git config user.name 'Test User'",
+            "git --git-dir=.git config user.email 'test@example.com'",
+            "git --git-dir=.git add .",
+            "git --git-dir=.git commit -m 'Initial commit'",
+        ];
+
+        for cmd in commands {
+            let output = Command::new("docker")
+                .args([
+                    "run",
+                    "--rm",
+                    "--entrypoint",
+                    "sh",
+                    "-v",
+                    &format!("{}:/workspace", path.display()),
+                    "-w",
+                    "/workspace",
+                    "alpine/git:latest",
+                    "-c",
+                    cmd,
+                ])
+                .output()
+                .expect("should execute docker command");
+            assert!(
+                output.status.success(),
+                "Docker git command '{}' failed: {}",
+                cmd,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
 
         temp_dir
     }
@@ -203,32 +215,43 @@ mod tests {
         let temp_dir = TestDir::new().expect("should create temp dir");
         let path = temp_dir.path();
 
-        // Create repo, commit, and tag in single Docker command to avoid race conditions
+        // Create initial file
         fs::write(path.join("README.md"), "# Test Repo").expect("should write README");
-        let init_script = format!(
-            "git init && git --git-dir=.git config user.name 'Test User' && git --git-dir=.git config user.email 'test@example.com' && git --git-dir=.git add . && git --git-dir=.git commit -m 'Initial commit' && git --git-dir=.git tag {tag}"
-        );
-        let output = Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "--entrypoint",
-                "sh",
-                "-v",
-                &format!("{}:/workspace", path.display()),
-                "-w",
-                "/workspace",
-                "alpine/git:latest",
-                "-c",
-                &init_script,
-            ])
-            .output()
-            .expect("should execute docker command");
-        assert!(
-            output.status.success(),
-            "Docker git setup with tag failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+
+        // Run git setup commands separately for better error handling
+        let commands = [
+            "git init",
+            "git --git-dir=.git config user.name 'Test User'",
+            "git --git-dir=.git config user.email 'test@example.com'",
+            "git --git-dir=.git add .",
+            "git --git-dir=.git commit -m 'Initial commit'",
+            &format!("git --git-dir=.git tag {tag}"),
+        ];
+
+        for cmd in commands {
+            let output = Command::new("docker")
+                .args([
+                    "run",
+                    "--rm",
+                    "--entrypoint",
+                    "sh",
+                    "-v",
+                    &format!("{}:/workspace", path.display()),
+                    "-w",
+                    "/workspace",
+                    "alpine/git:latest",
+                    "-c",
+                    cmd,
+                ])
+                .output()
+                .expect("should execute docker command");
+            assert!(
+                output.status.success(),
+                "Docker git command '{}' failed: {}",
+                cmd,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
 
         temp_dir
     }

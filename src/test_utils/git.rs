@@ -57,8 +57,21 @@ impl DockerGit {
     pub fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
         // Create initial file and setup repo with initial commit using working pattern
         test_dir.create_file("README.md", "# Test Repository")?;
-        let init_script = "git init && git --git-dir=.git config user.name 'Test User' && git --git-dir=.git config user.email 'test@example.com' && git --git-dir=.git add . && git --git-dir=.git commit -m 'Initial commit'";
-        self.run_docker_command(test_dir, init_script)?;
+
+        // Initialize git repository
+        self.run_docker_command(test_dir, "git init")?;
+
+        // Configure git user (required for commits)
+        self.run_docker_command(test_dir, "git --git-dir=.git config user.name 'Test User'")?;
+        self.run_docker_command(
+            test_dir,
+            "git --git-dir=.git config user.email 'test@example.com'",
+        )?;
+
+        // Create initial commit (required for tags)
+        self.run_docker_command(test_dir, "git --git-dir=.git add .")?;
+        self.run_docker_command(test_dir, "git --git-dir=.git commit -m 'Initial commit'")?;
+
         Ok(())
     }
 
