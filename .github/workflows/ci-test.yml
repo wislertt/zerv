@@ -32,6 +32,20 @@ jobs:
 
             - run: cargo install cargo-tarpaulin --locked || true
 
+            - name: Debug Docker setup
+              run: |
+                  echo "=== Docker version ==="
+                  docker --version
+                  echo "=== Test simple Docker command ==="
+                  docker run --rm alpine/git:latest git --version
+                  echo "=== Create test directory ==="
+                  mkdir -p /tmp/test-git
+                  echo "test content" > /tmp/test-git/README.md
+                  echo "=== Test Docker volume mount ==="
+                  docker run --rm -v /tmp/test-git:/workspace -w /workspace --user root alpine/git:latest sh -c "pwd && ls -la && git init -b main && git config user.name 'Test' && git config user.email 'test@example.com' && git add . && git commit -m 'test'"
+                  echo "=== Verify git repo created ==="
+                  ls -la /tmp/test-git/
+
             - run: make test
 
             - name: Save cache
