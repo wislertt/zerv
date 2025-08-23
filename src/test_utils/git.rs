@@ -29,6 +29,13 @@ impl DockerGit {
     }
 
     fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
+        // DockerGit should not be used in CI - fail early
+        if std::env::var("CI").is_ok() {
+            return Err(io::Error::other(
+                "DockerGit not supported in CI - use native Git setup functions",
+            ));
+        }
+
         // Check if Docker is available
         if Command::new("docker").arg("--version").output().is_err() {
             return Err(io::Error::other(
