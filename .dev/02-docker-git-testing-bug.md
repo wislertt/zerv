@@ -9,10 +9,49 @@
 
 ## Root Cause
 
-**Docker Image Entrypoint Issue**: `alpine/git:latest` has `git` as the default entrypoint, not `sh`. This means:
+**Docker Image Entrypoint Issue**: `alpine/git:latest` has `git` as the default entrypoint, not `sh`.
 
-- Local Docker might behave differently than CI
-- Commands like `docker run alpine/git:latest "git init"` try to execute `git "git init"` instead of `sh -c "git init"`
+### Why Local vs CI Behaves Differently
+
+**Docker Runtime Environment Differences:**
+
+- **Local (Docker Desktop)**: More permissive, has compatibility layers that can "fix" some incorrect commands
+- **CI (Docker Engine)**: Stricter, follows Docker specifications exactly
+
+**Entrypoint Handling Differences:**
+
+```bash
+# What we were doing (WRONG):
+docker run alpine/git:latest "git init"
+
+# Local Docker Desktop might interpret this as:
+# -> Run git with argument "git init"
+# -> Sometimes works due to shell interpretation
+
+# CI Docker Engine interprets this as:
+# -> Run git "git init" (literally passes "git init" as argument to git)
+# -> Always fails: git doesn't understand "git init" as a single argument
+```
+
+**Environment Masking:**
+
+- **Local**: Your shell might have different PATH, git configs, or environment variables that mask issues
+- **CI**: Clean, minimal environment exposes the exact Docker behavior
+
+**The Core Issue:**
+`alpine/git:latest` has `ENTRYPOINT ["git"]`, so:
+
+```bash
+# Without --entrypoint sh:
+docker run alpine/git:latest "some command"
+# Actually executes: git "some command"
+# ❌ This tries to run git with "some command" as a single argument
+
+# With --entrypoint sh:
+docker run --entrypoint sh alpine/git:latest -c "some command"
+# Actually executes: sh -c "some command"
+# ✅ This runs the command in shell properly
+```
 
 ## Complete Fix Pattern
 
@@ -159,5 +198,12 @@ cargo test git --include-ignored
 # Verify CI will pass
 git push # Check GitHub Actions
 ```
+
+## Why This Bug Repeats
+
+1. **Local testing masks the issue** - Docker Desktop is more forgiving
+2. **The error is subtle** - Commands might partially work locally
+3. **CI environment is different** - Only fails in the strict CI environment
+4. **Git directory context** - After `git init`, subsequent commands need `--git-dir=.git` in containers
 
 This bug has occurred multiple times - always refer to this guide when Docker git tests fail in CI but pass locally.
