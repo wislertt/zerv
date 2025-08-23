@@ -29,11 +29,16 @@ impl DockerGit {
     }
 
     fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
+        let uid = unsafe { libc::getuid() };
+        let gid = unsafe { libc::getgid() };
+
         let args = [
             "run",
             "--rm",
             "--security-opt=no-new-privileges", // Strict mode: remove permissive layers
             "--cap-drop=ALL",                   // Strict mode: drop all capabilities
+            "--user",
+            &format!("{uid}:{gid}"), // Fix permission issues
             "--entrypoint",
             "sh",
             "-v",
