@@ -163,11 +163,11 @@ mod tests {
     use std::process::Command;
 
     fn setup_git_repo() -> TestDir {
-        let temp_dir = TestDir::new().unwrap();
+        let temp_dir = TestDir::new().expect("should create temp dir");
         let path = temp_dir.path();
 
         // Initialize git repo and create commit in single Docker command to avoid race conditions
-        fs::write(path.join("README.md"), "# Test Repo").unwrap();
+        fs::write(path.join("README.md"), "# Test Repo").expect("should write README");
         let init_script = [
             "git init -b main",
             "git config user.name 'Test User'",
@@ -191,7 +191,7 @@ mod tests {
                 &init_script,
             ])
             .output()
-            .unwrap();
+            .expect("should execute docker command");
         assert!(
             output.status.success(),
             "Docker git setup failed: {}",
@@ -207,11 +207,11 @@ mod tests {
     }
 
     fn setup_git_repo_with_tag(tag: &str) -> TestDir {
-        let temp_dir = TestDir::new().unwrap();
+        let temp_dir = TestDir::new().expect("should create temp dir");
         let path = temp_dir.path();
 
         // Create repo, commit, and tag in single Docker command to avoid race conditions
-        fs::write(path.join("README.md"), "# Test Repo").unwrap();
+        fs::write(path.join("README.md"), "# Test Repo").expect("should write README");
         let init_script = [
             "git init -b main",
             "git config user.name 'Test User'",
@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn test_git_vcs_new_no_repo() {
-        let temp_dir = TestDir::new().unwrap();
+        let temp_dir = TestDir::new().expect("should create temp dir");
         let result = GitVcs::new(temp_dir.path());
         assert!(result.is_err());
     }
@@ -271,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_is_available_no_repo() {
-        let temp_dir = TestDir::new().unwrap();
+        let temp_dir = TestDir::new().expect("should create temp dir");
         let git_vcs = GitVcs {
             repo_path: temp_dir.path().to_path_buf(),
         };

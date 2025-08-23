@@ -320,7 +320,11 @@ mod tests {
             let zerv = Zerv::new(schema, vars);
             assert_eq!(zerv.vars.major, Some(1));
             assert_eq!(
-                zerv.vars.pre_release.as_ref().unwrap().label,
+                zerv.vars
+                    .pre_release
+                    .as_ref()
+                    .expect("pre_release should be Some")
+                    .label,
                 PreReleaseLabel::Alpha
             );
         }
