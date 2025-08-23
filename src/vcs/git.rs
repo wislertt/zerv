@@ -162,7 +162,112 @@ mod tests {
     use std::fs;
     use std::process::Command;
 
-    fn setup_git_repo() -> TestDir {
+    /// Check if we should use native Git (CI only) or Docker (local development)
+    fn should_use_native_git() -> bool {
+        std::env::var("CI").is_ok()
+    }
+
+    /// Setup Git repo - uses native Git in CI, Docker locally
+    fn setup_test_git_repo() -> TestDir {
+        if should_use_native_git() {
+            setup_native_git_repo()
+        } else {
+            setup_docker_git_repo()
+        }
+    }
+
+    /// Setup Git repo with tag - uses native Git in CI, Docker locally
+    fn setup_test_git_repo_with_tag(tag: &str) -> TestDir {
+        if should_use_native_git() {
+            setup_native_git_repo_with_tag(tag)
+        } else {
+            setup_docker_git_repo_with_tag(tag)
+        }
+    }
+
+    /// Setup Git repo using native Git commands (CI only)
+    fn setup_native_git_repo() -> TestDir {
+        let temp_dir = TestDir::new().expect("should create temp dir");
+        let path = temp_dir.path();
+
+        // Create initial file
+        fs::write(path.join("README.md"), "# Test Repo").expect("should write README");
+
+        // Use isolated Git config to avoid affecting user's settings
+        let git_cmd = |args: &[&str]| {
+            Command::new("git")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_SYSTEM", "/dev/null")
+                .args(args)
+                .current_dir(path)
+                .output()
+                .expect("should execute git command")
+        };
+
+        let commands = [
+            &["init"][..],
+            &["config", "user.name", "Test User"],
+            &["config", "user.email", "test@example.com"],
+            &["add", "."],
+            &["commit", "-m", "Initial commit"],
+        ];
+
+        for args in commands {
+            let output = git_cmd(args);
+            assert!(
+                output.status.success(),
+                "Git command '{:?}' failed: {}",
+                args,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        temp_dir
+    }
+
+    /// Setup Git repo with tag using native Git commands (CI only)
+    fn setup_native_git_repo_with_tag(tag: &str) -> TestDir {
+        let temp_dir = TestDir::new().expect("should create temp dir");
+        let path = temp_dir.path();
+
+        // Create initial file
+        fs::write(path.join("README.md"), "# Test Repo").expect("should write README");
+
+        // Use isolated Git config
+        let git_cmd = |args: &[&str]| {
+            Command::new("git")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_SYSTEM", "/dev/null")
+                .args(args)
+                .current_dir(path)
+                .output()
+                .expect("should execute git command")
+        };
+
+        let commands = [
+            &["init"][..],
+            &["config", "user.name", "Test User"],
+            &["config", "user.email", "test@example.com"],
+            &["add", "."],
+            &["commit", "-m", "Initial commit"],
+            &["tag", tag],
+        ];
+
+        for args in commands {
+            let output = git_cmd(args);
+            assert!(
+                output.status.success(),
+                "Git command '{:?}' failed: {}",
+                args,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        temp_dir
+    }
+
+    /// Setup Git repo using Docker (local development)
+    fn setup_docker_git_repo() -> TestDir {
         let temp_dir = TestDir::new().expect("should create temp dir");
         let path = temp_dir.path();
 
@@ -206,12 +311,7 @@ mod tests {
         temp_dir
     }
 
-    fn setup_git_repo_with_commit() -> TestDir {
-        // Just return the basic repo since it already has a commit
-        setup_git_repo()
-    }
-
-    fn setup_git_repo_with_tag(tag: &str) -> TestDir {
+    fn setup_docker_git_repo_with_tag(tag: &str) -> TestDir {
         let temp_dir = TestDir::new().expect("should create temp dir");
         let path = temp_dir.path();
 
@@ -257,9 +357,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_git_vcs_new() {
-        let temp_dir = setup_git_repo();
+        let temp_dir = setup_test_git_repo();
         let result = GitVcs::new(temp_dir.path());
         assert!(result.is_ok());
     }
@@ -272,9 +371,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_is_available() {
-        let temp_dir = setup_git_repo();
+        let temp_dir = setup_test_git_repo();
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         assert!(git_vcs.is_available(temp_dir.path()));
     }
@@ -289,9 +387,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_get_vcs_data_with_commit() {
-        let temp_dir = setup_git_repo_with_commit();
+        let temp_dir = setup_test_git_repo();
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
@@ -303,9 +400,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_get_vcs_data_with_tag() {
-        let temp_dir = setup_git_repo_with_tag("v1.0.0");
+        let temp_dir = setup_test_git_repo_with_tag("v1.0.0");
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
@@ -317,33 +413,64 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_get_vcs_data_with_distance() {
-        let temp_dir = setup_git_repo_with_tag("v1.0.0");
+        let temp_dir = setup_test_git_repo_with_tag("v1.0.0");
         let path = temp_dir.path();
 
-        // Add another commit after tag using Docker
-        let output = Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "--entrypoint",
-                "sh",
-                "-v",
-                &format!("{}:/workspace", path.display()),
-                "-w",
-                "/workspace",
-                "alpine/git:latest",
-                "-c",
-                "echo 'test content 2' > test2.txt && git --git-dir=.git add . && git --git-dir=.git commit -m 'second commit'",
-            ])
-            .output()
-            .expect("should execute docker command");
-        assert!(
-            output.status.success(),
-            "Docker git second commit failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        // Add another commit after tag
+        fs::write(path.join("test2.txt"), "test content 2").expect("should write file");
+
+        if should_use_native_git() {
+            // Use native Git
+            let output = Command::new("git")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_SYSTEM", "/dev/null")
+                .args(["add", "."])
+                .current_dir(path)
+                .output()
+                .expect("should execute git add");
+            assert!(
+                output.status.success(),
+                "Git add failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+
+            let output = Command::new("git")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_SYSTEM", "/dev/null")
+                .args(["commit", "-m", "second commit"])
+                .current_dir(path)
+                .output()
+                .expect("should execute git commit");
+            assert!(
+                output.status.success(),
+                "Git commit failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        } else {
+            // Use Docker
+            let output = Command::new("docker")
+                .args([
+                    "run",
+                    "--rm",
+                    "--entrypoint",
+                    "sh",
+                    "-v",
+                    &format!("{}:/workspace", path.display()),
+                    "-w",
+                    "/workspace",
+                    "alpine/git:latest",
+                    "-c",
+                    "git --git-dir=.git add . && git --git-dir=.git commit -m 'second commit'",
+                ])
+                .output()
+                .expect("should execute docker command");
+            assert!(
+                output.status.success(),
+                "Docker git second commit failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
 
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         let data = git_vcs.get_vcs_data().expect("should get vcs data");
@@ -353,9 +480,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_dirty_working_directory() {
-        let temp_dir = setup_git_repo_with_commit();
+        let temp_dir = setup_test_git_repo();
         let path = temp_dir.path();
 
         // Create untracked file
@@ -368,12 +494,21 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_clean_working_directory() {
-        let temp_dir = setup_git_repo();
+        let temp_dir = setup_test_git_repo();
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
         assert!(!data.is_dirty);
+    }
+
+    // Keep Docker-specific tests for local development
+    #[test]
+    #[ignore = "docker"]
+    fn test_docker_git_integration() {
+        let temp_dir = setup_docker_git_repo();
+        let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
+        let data = git_vcs.get_vcs_data().expect("should get vcs data");
+        assert!(!data.commit_hash.is_empty());
     }
 }
