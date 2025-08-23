@@ -18,6 +18,10 @@ Main version processing pipeline with composable operations.
 
 Validation-only command for version strings.
 
+### `zerv compare <version1> <op> <version2> --format <format>`
+
+Version comparison command with format-specific ordering rules.
+
 ## Pipeline Stages
 
 ### 1. Input Sources (`--source`)
@@ -66,6 +70,10 @@ zerv version
 
 # Validate version
 zerv check 1.2.3
+
+# Compare versions (format required due to different ordering rules)
+zerv compare 1.2.3 gt 1.2.2 --format semver
+zerv compare 2.0.0a1 lt 2.0.0 --format pep440
 
 # Standard format output
 zerv version --output-format pep440
@@ -195,7 +203,61 @@ zerv version --output-format pep440 > VERSION.txt
 
 # Jenkins
 zerv version --output-template "{{major}}.{{minor}}.{{patch}}" > version.properties
+
+# Version comparison in CI
+CURRENT=$(git describe --tags --abbrev=0)
+NEW=$(zerv version --output-format semver)
+if zerv compare "$NEW" gt "$CURRENT" --format semver; then
+    echo "Deploying new version: $NEW"
+else
+    echo "Version $NEW is not newer than $CURRENT"
+    exit 1
+fi
 ```
+
+## Version Comparison Command
+
+### `zerv compare <version1> <op> <version2> --format <format>`
+
+**Operators** (following `dpkg --compare-versions` pattern):
+
+- `gt` - greater than
+- `lt` - less than
+- `eq` - equal
+- `ge` - greater than or equal
+- `le` - less than or equal
+
+**Format Required**: Version ordering differs significantly between standards:
+
+- **PEP440**: `2.0.0a1 < 2.0.0b1 < 2.0.0rc1 < 2.0.0`
+- **SemVer**: `2.0.0-alpha.1 < 2.0.0-beta.1 < 2.0.0-rc.1 < 2.0.0`
+
+**Examples**:
+
+```bash
+# SemVer comparison
+zerv compare 1.2.3 gt 1.2.2 --format semver     # exit 0 (true)
+zerv compare 1.2.3 lt 1.2.2 --format semver     # exit 1 (false)
+zerv compare 2.0.0-alpha.1 lt 2.0.0 --format semver  # exit 0 (true)
+
+# PEP440 comparison
+zerv compare 1.2.3 eq 1.2.3 --format pep440     # exit 0 (true)
+zerv compare 2.0.0a1 lt 2.0.0 --format pep440   # exit 0 (true)
+zerv compare 1.2.3 ge 1.2.2 --format pep440     # exit 0 (true)
+```
+
+**Use Cases**:
+
+- CI/CD pipeline version validation
+- Release automation scripts
+- Version constraint checking
+- Deployment safety checks
+
+**Exit Codes**:
+
+- `0` - Comparison is true
+- `1` - Comparison is false
+- `2` - Error (invalid version, unknown format, etc.)
 
 ## Benefits
 
