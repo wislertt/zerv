@@ -1,32 +1,30 @@
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::process::Command;
+use tempfile::TempDir;
 
 /// Temporary directory utility for testing
 pub struct TestDir {
-    path: PathBuf,
+    inner: TempDir,
 }
 
 impl TestDir {
     /// Create a new temporary directory
     pub fn new() -> io::Result<Self> {
-        use std::sync::atomic::{AtomicU64, Ordering};
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let path = std::env::temp_dir().join(format!("zerv-test-{}-{}", std::process::id(), id));
-        fs::create_dir_all(&path)?;
-        Ok(Self { path })
+        Ok(Self {
+            inner: TempDir::new()?,
+        })
     }
 
     /// Get the path to the temporary directory
     pub fn path(&self) -> &Path {
-        &self.path
+        self.inner.path()
     }
 
     /// Create a file with content
     pub fn create_file<P: AsRef<Path>>(&self, path: P, content: &str) -> io::Result<()> {
-        let file_path = self.path.join(path);
+        let file_path = self.path().join(path);
         if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent)?;
         }
@@ -35,13 +33,31 @@ impl TestDir {
 
     /// Create a directory
     pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        fs::create_dir_all(self.path.join(path))
+        fs::create_dir_all(self.path().join(path))
     }
-}
 
-impl Drop for TestDir {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
+    /// Initialize a git repository
+    pub fn init_git(&self) -> io::Result<()> {
+        let output = Command::new("git")
+            .arg("init")
+            .current_dir(self.path())
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "git init failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        Ok(())
+    }
+
+    /// Create git repository with initial files for testing
+    pub fn create_dummy_git_files(&self) -> io::Result<()> {
+        self.init_git()?;
+        self.create_file("README.md", "# Test Repository")?;
+        Ok(())
     }
 }
 
@@ -55,8 +71,6 @@ mod tests {
         let dir = TestDir::new().unwrap();
         assert!(dir.path().exists());
         assert!(dir.path().is_dir());
-        // Keep dir alive until end of test
-        drop(dir);
     }
 
     #[rstest]
@@ -78,8 +92,6 @@ mod tests {
         let sub_path = dir.path().join("subdir");
         assert!(sub_path.exists());
         assert!(sub_path.is_dir());
-        // Keep dir alive until end of test
-        drop(dir);
     }
 
     #[test]
@@ -88,7 +100,21 @@ mod tests {
         let path = dir.path();
         assert!(path.exists());
         assert!(path.is_absolute());
-        // Keep dir alive until end of test
-        drop(dir);
+    }
+
+    #[test]
+    fn test_git_init() {
+        let dir = TestDir::new().unwrap();
+        dir.init_git().unwrap();
+        assert!(dir.path().join(".git").exists());
+        assert!(dir.path().join(".git/HEAD").exists());
+    }
+
+    #[test]
+    fn test_git_files() {
+        let dir = TestDir::new().unwrap();
+        dir.create_dummy_git_files().unwrap();
+        assert!(dir.path().join(".git").exists());
+        assert!(dir.path().join("README.md").exists());
     }
 }
