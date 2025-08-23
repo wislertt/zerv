@@ -29,6 +29,13 @@ impl DockerGit {
     }
 
     fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
+        // Check if Docker is available
+        if Command::new("docker").arg("--version").output().is_err() {
+            return Err(io::Error::other(
+                "Docker not available - use native Git in CI",
+            ));
+        }
+
         let uid = unsafe { libc::getuid() };
         let gid = unsafe { libc::getgid() };
 

@@ -158,14 +158,9 @@ impl Vcs for GitVcs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::TestDir;
+    use crate::test_utils::{TestDir, should_use_native_git};
     use std::fs;
     use std::process::Command;
-
-    /// Check if we should use native Git (CI only) or Docker (local development)
-    fn should_use_native_git() -> bool {
-        std::env::var("CI").is_ok()
-    }
 
     /// Setup Git repo - uses native Git in CI, Docker locally
     fn setup_test_git_repo() -> TestDir {

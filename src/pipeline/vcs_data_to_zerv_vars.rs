@@ -32,7 +32,6 @@ mod tests {
     use crate::test_utils::{get_real_pep440_vcs_data, get_real_semver_vcs_data};
 
     #[test]
-    #[ignore = "docker"]
     fn test_vcs_data_to_zerv_vars_real_semver() {
         let vcs_data = get_real_semver_vcs_data().clone();
         let vars = vcs_data_to_zerv_vars(vcs_data).unwrap();
@@ -47,7 +46,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_vcs_data_to_zerv_vars_real_pep440() {
         let vcs_data = get_real_pep440_vcs_data().clone();
         let vars = vcs_data_to_zerv_vars(vcs_data).unwrap();
