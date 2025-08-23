@@ -16,17 +16,16 @@ impl DockerGit {
             .args([
                 "run",
                 "--rm",
-                "--entrypoint",
-                "sh",
                 "-v",
                 &format!("{}:/workspace", test_dir.path().display()),
                 "-w",
                 "/workspace",
                 "--user",
                 "root",
-                "alpine/git:latest",
+                "alpine:latest",
+                "sh",
                 "-c",
-                script,
+                &format!("apk add --no-cache git && {script}"),
             ])
             .output()?;
 
@@ -135,7 +134,14 @@ mod tests {
 
     fn is_docker_available() -> bool {
         Command::new("docker")
-            .args(["run", "--rm", "alpine/git:latest", "--version"])
+            .args([
+                "run",
+                "--rm",
+                "alpine:latest",
+                "sh",
+                "-c",
+                "apk add --no-cache git && git --version",
+            ])
             .output()
             .map(|output| output.status.success())
             .unwrap_or(false)

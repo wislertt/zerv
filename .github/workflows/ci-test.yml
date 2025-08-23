@@ -37,12 +37,12 @@ jobs:
                   echo "=== Docker version ==="
                   docker --version
                   echo "=== Test simple Docker command ==="
-                  docker run --rm alpine/git:latest git --version
+                  docker run --rm alpine:latest sh -c "apk add --no-cache git && git --version"
                   echo "=== Create test directory ==="
                   mkdir -p /tmp/test-git
                   echo "test content" > /tmp/test-git/README.md
                   echo "=== Test Docker volume mount ==="
-                  docker run --rm -v /tmp/test-git:/workspace -w /workspace --user root alpine/git:latest sh -c "pwd && ls -la && git init -b main && git config user.name 'Test' && git config user.email 'test@example.com' && git add . && git commit -m 'test'"
+                  docker run --rm -v /tmp/test-git:/workspace -w /workspace --user root alpine:latest sh -c "apk add --no-cache git && pwd && ls -la && git init -b main && git config user.name 'Test' && git config user.email 'test@example.com' && git add . && git commit -m 'test'"
                   echo "=== Verify git repo created ==="
                   ls -la /tmp/test-git/
 
