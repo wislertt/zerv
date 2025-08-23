@@ -2,6 +2,23 @@ use super::TestDir;
 use std::io;
 use std::process::Command;
 
+#[cfg(test)]
+fn validate_docker_args(args: &[&str]) -> Result<(), String> {
+    // Check for alpine/git without --entrypoint
+    if args.contains(&"alpine/git:latest") && !args.contains(&"--entrypoint") {
+        return Err(
+            "❌ Missing --entrypoint sh for alpine/git:latest (will fail in CI)".to_string(),
+        );
+    }
+
+    // Check for git commands without proper entrypoint
+    if args.iter().any(|&arg| arg.starts_with("git ")) && !args.contains(&"--entrypoint") {
+        return Err("❌ Git commands need --entrypoint sh (will fail in CI)".to_string());
+    }
+
+    Ok(())
+}
+
 /// Docker-based git operations for integration testing
 #[derive(Default)]
 pub struct DockerGit;
@@ -12,21 +29,28 @@ impl DockerGit {
     }
 
     fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
-        let output = Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "--entrypoint",
-                "sh",
-                "-v",
-                &format!("{}:/workspace", test_dir.path().display()),
-                "-w",
-                "/workspace",
-                "alpine/git:latest",
-                "-c",
-                script,
-            ])
-            .output()?;
+        let args = [
+            "run",
+            "--rm",
+            "--security-opt=no-new-privileges", // Strict mode: remove permissive layers
+            "--cap-drop=ALL",                   // Strict mode: drop all capabilities
+            "--entrypoint",
+            "sh",
+            "-v",
+            &format!("{}:/workspace", test_dir.path().display()),
+            "-w",
+            "/workspace",
+            "alpine/git:latest",
+            "-c",
+            script,
+        ];
+
+        #[cfg(test)]
+        if let Err(e) = validate_docker_args(&args) {
+            return Err(io::Error::other(e));
+        }
+
+        let output = Command::new("docker").args(args).output()?;
 
         if !output.status.success() {
             return Err(io::Error::other(format!(
@@ -243,5 +267,40 @@ mod tests {
         assert!(dir.path().join(".git").exists());
         assert!(dir.path().join("README.md").exists());
         assert!(dir.path().join("feature.txt").exists());
+    }
+
+    #[test]
+    fn test_docker_validation_catches_missing_entrypoint() {
+        let bad_args = ["run", "--rm", "alpine/git:latest", "git", "init"];
+        let result = validate_docker_args(&bad_args);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Missing --entrypoint"));
+    }
+
+    #[test]
+    fn test_docker_validation_passes_correct_args() {
+        let good_args = [
+            "run",
+            "--rm",
+            "--entrypoint",
+            "sh",
+            "alpine/git:latest",
+            "-c",
+            "git init",
+        ];
+        let result = validate_docker_args(&good_args);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_docker_validation_catches_git_without_entrypoint() {
+        let bad_args = ["run", "--rm", "alpine:latest", "git status"];
+        let result = validate_docker_args(&bad_args);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .contains("Git commands need --entrypoint")
+        );
     }
 }

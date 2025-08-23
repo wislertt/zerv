@@ -180,6 +180,18 @@ make test
 - [ ] Verify all git operations work in isolated containers
 - [ ] Check that temp directories are properly mounted
 
+## Local Strict Mode (IMPLEMENTED)
+
+**Automatic Prevention**: The codebase now includes:
+
+1. **Strict Docker Flags**: All Docker commands use `--security-opt=no-new-privileges --cap-drop=ALL` to behave like CI
+2. **Validation Helper**: `validate_docker_args()` catches common anti-patterns:
+    - Missing `--entrypoint sh` with `alpine/git:latest`
+    - Git commands without proper entrypoint
+3. **Fail Fast**: Invalid Docker commands fail locally with clear error messages
+
+**Result**: You'll now get errors like `❌ Missing --entrypoint sh for alpine/git:latest (will fail in CI)` locally instead of discovering issues in CI.
+
 ## Files to Update When Fixing
 
 1. `src/test_utils/git.rs` - Docker git utility functions
@@ -189,13 +201,16 @@ make test
 ## Testing Verification
 
 ```bash
-# Local test
+# Local test (now includes strict mode)
 make test
+
+# Test validation works
+cargo test test_docker_validation --lib
 
 # Check specific git tests
 cargo test git --include-ignored
 
-# Verify CI will pass
+# Verify CI will pass (should be consistent now)
 git push # Check GitHub Actions
 ```
 
