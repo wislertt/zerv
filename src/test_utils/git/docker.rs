@@ -1,4 +1,4 @@
-use super::TestDir;
+use super::{GitOperations, TestDir};
 use std::io;
 use std::process::Command;
 
@@ -82,39 +82,11 @@ impl DockerGit {
 
         self.run_docker_command(test_dir, &format!("git --git-dir=.git {git_command}"))
     }
+}
 
-    pub fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
-        // Create initial file and setup repo with initial commit using working pattern
-        test_dir.create_file("README.md", "# Test Repository")?;
-
-        // Initialize git repository
-        self.run_docker_command(test_dir, "git init")?;
-
-        // Configure git user (required for commits)
-        self.run_docker_command(test_dir, "git --git-dir=.git config user.name 'Test User'")?;
-        self.run_docker_command(
-            test_dir,
-            "git --git-dir=.git config user.email 'test@example.com'",
-        )?;
-
-        // Create initial commit (required for tags)
-        self.run_docker_command(test_dir, "git --git-dir=.git add .")?;
-        self.run_docker_command(test_dir, "git --git-dir=.git commit -m 'Initial commit'")?;
-
-        Ok(())
-    }
-
-    pub fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()> {
-        self.run_docker_command(
-            test_dir,
-            &format!("git --git-dir=.git add . && git --git-dir=.git commit -m '{message}'"),
-        )?;
-        Ok(())
-    }
-
-    pub fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
-        self.run_docker_command(test_dir, &format!("git --git-dir=.git tag {tag}"))?;
-        Ok(())
+impl GitOperations for DockerGit {
+    fn execute_git(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
+        self.run_git_command(test_dir, args)
     }
 }
 

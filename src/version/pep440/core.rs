@@ -267,7 +267,7 @@ mod tests {
     #[test]
     fn test_empty_release_vector() {
         let version = PEP440::new(vec![]);
-        assert_eq!(version.release, vec![]);
+        assert_eq!(version.release, Vec::<u32>::new());
     }
 
     #[test]
