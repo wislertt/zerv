@@ -61,7 +61,8 @@ mod tests {
         #[case] expected_str: &str,
         #[case] expected_format: &str,
     ) {
-        let version = parse_version_from_tag(tag, None).unwrap();
+        let version = parse_version_from_tag(tag, None)
+            .unwrap_or_else(|| panic!("Failed to parse tag: {tag}"));
 
         // Direct comparison - no conversion needed!
         assert_eq!(version.format_str(), expected_format);
@@ -69,7 +70,9 @@ mod tests {
         match expected_format {
             "semver" => {
                 if let VersionObject::SemVer(semver) = version {
-                    let expected: SemVer = expected_str.parse().unwrap();
+                    let expected: SemVer = expected_str.parse().unwrap_or_else(|_| {
+                        panic!("Failed to parse expected SemVer: {expected_str}")
+                    });
                     assert_eq!(semver, expected);
                 } else {
                     panic!("Expected SemVer, got {version:?}");
@@ -77,7 +80,9 @@ mod tests {
             }
             "pep440" => {
                 if let VersionObject::PEP440(pep440) = version {
-                    let expected: PEP440 = expected_str.parse().unwrap();
+                    let expected: PEP440 = expected_str.parse().unwrap_or_else(|_| {
+                        panic!("Failed to parse expected PEP440: {expected_str}")
+                    });
                     assert_eq!(pep440, expected);
                 } else {
                     panic!("Expected PEP440, got {version:?}");
@@ -94,10 +99,13 @@ mod tests {
     #[case("2!1.2.3.post1.dev1", "2!1.2.3.post1.dev1")]
     #[case("1.2.3_alpha1", "1.2.3a1")] // unnormalized
     fn test_parse_version_from_tag_explicit_pep440(#[case] tag: &str, #[case] expected_str: &str) {
-        let version = parse_version_from_tag(tag, Some("pep440")).unwrap();
+        let version = parse_version_from_tag(tag, Some("pep440"))
+            .unwrap_or_else(|| panic!("Failed to parse PEP440 tag: {tag}"));
 
         if let VersionObject::PEP440(pep440) = version {
-            let expected: PEP440 = expected_str.parse().unwrap();
+            let expected: PEP440 = expected_str
+                .parse()
+                .unwrap_or_else(|_| panic!("Failed to parse expected PEP440: {expected_str}"));
             assert_eq!(pep440, expected);
         } else {
             panic!("Expected PEP440, got {version:?}");
@@ -111,10 +119,13 @@ mod tests {
     #[case("1.0.0+build.123", "1.0.0+build.123")]
     #[case("1.0.0-alpha.1+build.123", "1.0.0-alpha.1+build.123")]
     fn test_parse_version_from_tag_explicit_semver(#[case] tag: &str, #[case] expected_str: &str) {
-        let version = parse_version_from_tag(tag, Some("semver")).unwrap();
+        let version = parse_version_from_tag(tag, Some("semver"))
+            .unwrap_or_else(|| panic!("Failed to parse SemVer tag: {tag}"));
 
         if let VersionObject::SemVer(semver) = version {
-            let expected: SemVer = expected_str.parse().unwrap();
+            let expected: SemVer = expected_str
+                .parse()
+                .unwrap_or_else(|_| panic!("Failed to parse expected SemVer: {expected_str}"));
             assert_eq!(semver, expected);
         } else {
             panic!("Expected SemVer, got {version:?}");

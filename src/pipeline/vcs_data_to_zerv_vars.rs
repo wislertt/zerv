@@ -8,10 +8,14 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
     // Parse version from tag_version
     let version = if let Some(ref tag_version) = vcs_data.tag_version {
         parse_version_from_tag(tag_version, None).ok_or_else(|| {
-            ZervError::Io(std::io::Error::other("Failed to parse version from tag"))
+            ZervError::Io(std::io::Error::other(format!(
+                "Failed to parse version from tag: {tag_version}"
+            )))
         })?
     } else {
-        return Err(ZervError::Io(std::io::Error::other("No version tag found")));
+        return Err(ZervError::Io(std::io::Error::other(
+            "No version tag found in VCS data",
+        )));
     };
 
     let mut vars: ZervVars = version.into();
@@ -39,7 +43,8 @@ mod tests {
             return;
         }
         let vcs_data = get_real_semver_vcs_data().clone();
-        let vars = vcs_data_to_zerv_vars(vcs_data).unwrap();
+        let vars =
+            vcs_data_to_zerv_vars(vcs_data).expect("Failed to convert SemVer VCS data to ZervVars");
 
         assert_eq!(
             (vars.major, vars.minor, vars.patch),
@@ -56,7 +61,8 @@ mod tests {
             return;
         }
         let vcs_data = get_real_pep440_vcs_data().clone();
-        let vars = vcs_data_to_zerv_vars(vcs_data).unwrap();
+        let vars =
+            vcs_data_to_zerv_vars(vcs_data).expect("Failed to convert PEP440 VCS data to ZervVars");
 
         assert_eq!(
             (vars.major, vars.minor, vars.patch),

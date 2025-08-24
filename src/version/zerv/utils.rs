@@ -127,8 +127,9 @@ mod tests {
         #[case] expected: u64,
     ) {
         assert_eq!(
-            resolve_timestamp(pattern, Some(timestamp))
-                .expect("timestamp resolution should succeed"),
+            resolve_timestamp(pattern, Some(timestamp)).unwrap_or_else(|_| panic!(
+                "Failed to resolve timestamp pattern '{pattern}' for timestamp {timestamp}"
+            )),
             expected
         );
     }

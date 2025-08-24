@@ -75,7 +75,7 @@ mod tests {
             env::remove_var("ZERV_TEST_DOCKER");
         }
 
-        let config = ZervConfig::load().unwrap();
+        let config = ZervConfig::load().expect("Failed to load default config");
         assert!(!config.should_use_native_git());
         assert!(config.should_run_docker_tests());
     }
@@ -89,7 +89,7 @@ mod tests {
             env::set_var("ZERV_TEST_NATIVE_GIT", "true");
         }
 
-        let config = ZervConfig::load().unwrap();
+        let config = ZervConfig::load().expect("Failed to load config with native git enabled");
         assert!(config.should_use_native_git());
         assert!(config.should_run_docker_tests());
     }
@@ -103,7 +103,7 @@ mod tests {
             env::set_var("ZERV_TEST_DOCKER", "true");
         }
 
-        let config = ZervConfig::load().unwrap();
+        let config = ZervConfig::load().expect("Failed to load config with docker tests enabled");
         assert!(!config.should_use_native_git());
         assert!(config.should_run_docker_tests());
     }
@@ -117,7 +117,7 @@ mod tests {
             env::set_var("ZERV_TEST_DOCKER", "true");
         }
 
-        let config = ZervConfig::load().unwrap();
+        let config = ZervConfig::load().expect("Failed to load config with both env vars set");
         assert!(config.should_use_native_git());
         assert!(config.should_run_docker_tests());
     }
@@ -131,7 +131,7 @@ mod tests {
             env::set_var("ZERV_TEST_DOCKER", "false");
         }
 
-        let config = ZervConfig::load().unwrap();
+        let config = ZervConfig::load().expect("Failed to load config with false values");
         assert!(!config.should_use_native_git());
         assert!(!config.should_run_docker_tests());
     }
