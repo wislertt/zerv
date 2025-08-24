@@ -20,11 +20,12 @@
 1. Create `src/schema/` module
 2. Implement RON parsing for `ZervFormat`
 3. Add `zerv-default` preset with tier-aware logic
-4. Unit tests for schema parsing
+4. Implement `create_zerv_version` function - Takes `ZervVars` + schema and produces `Zerv` object
+5. Unit tests for schema parsing and version creation
 
 **Files**:
 
-- `src/schema/mod.rs` - Schema parsing
+- `src/schema/mod.rs` - Schema parsing and `create_zerv_version` function
 - `src/schema/presets.rs` - Built-in schemas
 
 ### Step 3: CLI Pipeline (1-2 days)
@@ -48,11 +49,14 @@ pub fn run_version_pipeline(args: VersionArgs) -> Result<String> {
     // 2. Convert to ZervVars
     let vars = vcs_data_to_zerv_vars(vcs_data)?;
 
-    // 3. Apply schema and output format
+    // 3. Create Zerv version object from vars and schema
+    let zerv = create_zerv_version(vars, &args.schema, args.schema_ron.as_deref())?;
+
+    // 4. Apply output format
     match args.output_format.as_deref() {
-        Some("pep440") => Ok(PEP440::from_zerv(&vars)?.to_string()),
-        Some("semver") => Ok(SemVer::from_zerv(&vars)?.to_string()),
-        _ => Ok(vars.to_string()),
+        Some("pep440") => Ok(PEP440::from(zerv).to_string()),
+        Some("semver") => Ok(SemVer::from(zerv).to_string()),
+        _ => Ok(zerv.to_string()),
     }
 }
 ```

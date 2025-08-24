@@ -17,6 +17,12 @@ pub enum ZervError {
     Io(io::Error),
     /// Regex error
     Regex(String),
+    /// Schema parsing error
+    SchemaParseError(String),
+    /// Unknown schema name
+    UnknownSchema(String),
+    /// Conflicting schema parameters
+    ConflictingSchemas(String),
 }
 
 impl std::fmt::Display for ZervError {
@@ -29,6 +35,9 @@ impl std::fmt::Display for ZervError {
             ZervError::CommandFailed(msg) => write!(f, "Command execution failed: {msg}"),
             ZervError::Io(err) => write!(f, "IO error: {err}"),
             ZervError::Regex(msg) => write!(f, "Regex error: {msg}"),
+            ZervError::SchemaParseError(msg) => write!(f, "Schema parse error: {msg}"),
+            ZervError::UnknownSchema(name) => write!(f, "Unknown schema: {name}"),
+            ZervError::ConflictingSchemas(msg) => write!(f, "Conflicting schemas: {msg}"),
         }
     }
 }
@@ -60,6 +69,9 @@ impl PartialEq for ZervError {
                 a.kind() == b.kind() && a.to_string() == b.to_string()
             }
             (ZervError::Regex(a), ZervError::Regex(b)) => a == b,
+            (ZervError::SchemaParseError(a), ZervError::SchemaParseError(b)) => a == b,
+            (ZervError::UnknownSchema(a), ZervError::UnknownSchema(b)) => a == b,
+            (ZervError::ConflictingSchemas(a), ZervError::ConflictingSchemas(b)) => a == b,
             _ => false,
         }
     }
