@@ -165,7 +165,17 @@ mod tests {
 
     #[test]
     fn test_is_docker_available() {
-        let _result = is_docker_available();
+        if should_run_docker_tests() {
+            assert!(
+                is_docker_available(),
+                "ZERV_TEST_DOCKER is enabled but Docker is not available - install Docker or disable ZERV_TEST_DOCKER"
+            );
+        } else {
+            assert!(
+                !is_docker_available(),
+                "Docker is available but ZERV_TEST_DOCKER is disabled - enable ZERV_TEST_DOCKER to test Docker functionality"
+            );
+        }
     }
 
     #[rstest]
@@ -174,7 +184,7 @@ mod tests {
     #[case(&["log", "--oneline"])]
     fn test_docker_git_commands_without_docker(#[case] args: &[&str]) {
         if !should_run_docker_tests() {
-            return; // Skip when Docker tests are disabled
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
         let (dir, docker_git) = setup_docker_git();
         let result = docker_git.run_git_command(&dir, args);
@@ -184,7 +194,7 @@ mod tests {
     #[test]
     fn test_docker_git_init_repo_without_docker() {
         if !should_run_docker_tests() {
-            return; // Skip when Docker tests are disabled
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
         let (dir, docker_git) = setup_docker_git();
         let result = docker_git.init_repo(&dir);
@@ -194,7 +204,7 @@ mod tests {
     #[test]
     fn test_docker_git_create_commit_without_docker() {
         if !should_run_docker_tests() {
-            return; // Skip when Docker tests are disabled
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
         let (dir, docker_git) = setup_docker_git();
         dir.create_file("test.txt", "content").unwrap();
@@ -205,7 +215,7 @@ mod tests {
     #[test]
     fn test_docker_git_create_tag_without_docker() {
         if !should_run_docker_tests() {
-            return; // Skip when Docker tests are disabled
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
         let (dir, docker_git) = setup_docker_git();
         let result = docker_git.create_tag(&dir, "v1.0.0");
@@ -215,7 +225,7 @@ mod tests {
     #[test]
     fn test_setup_initialized_repo_without_docker() {
         if !should_run_docker_tests() {
-            return; // Skip when Docker tests are disabled
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
         let (_dir, _docker_git) = setup_initialized_repo();
     }
@@ -223,7 +233,7 @@ mod tests {
     #[test]
     fn test_setup_repo_with_commit_without_docker() {
         if !should_run_docker_tests() {
-            return; // Skip when Docker tests are disabled
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
         let (_dir, _docker_git) = setup_repo_with_commit();
     }
