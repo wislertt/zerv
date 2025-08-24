@@ -35,6 +35,20 @@ Always verify against actual codebase - higher numbered docs are more likely to 
 - Include context in error messages for debugging
 - Use `io::Error::other()` instead of `io::Error::new(io::ErrorKind::Other, ...)`
 
+## Performance Standards
+
+- Parse 1000+ versions in <100ms
+- Minimal VCS command calls (batch when possible)
+- Use compiled regex patterns for speed
+- Zero-copy string operations where possible
+
+## Architecture Patterns
+
+- **Universal Format**: Component-based system with variable references
+- **Multi-Format Support**: PEP440, SemVer, template-based custom formats
+- **State-Based Tiers**: Tagged/Distance/Dirty states determine version components
+- **Pipeline Architecture**: Input → Parse → Transform → Output
+
 **Error Standard Violations Check:**
 
 When user mentions:
