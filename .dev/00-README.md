@@ -1,58 +1,40 @@
-# .dev/
+# Zerv Development Guide
 
-Development documentation for zerv - Dynamic Versioning CLI
+## Quick Start
 
-## Project Status
+1. **Check current state**: Read `00-current-state.md`
+2. **Key files**: Reference `00-key-files.md`
+3. **Run tests**: `make test_easy` (quick) or `make test` (full)
+4. **Check rules**: `.amazonq/rules/` for coding standards
 
-**Current State**: Version parsing system implemented
-**Next Step**: Building Git VCS integration
-**Target**: Alpha release with Git support
+## Current Priority
 
-## What's Implemented
+**CLI Implementation** - Core functionality exists, need CLI interface.
 
-✅ **Core Version System**
-
-- Universal `Zerv` format with component-based structure
-- PEP440 version parsing, display, and conversion
-- SemVer version parsing, display, and conversion
-- Comprehensive test coverage (91.40%)
-
-✅ **Development Infrastructure**
-
-- Docker-based testing for Git integration
-- Fast local tests without external dependencies
-- Makefile workflow with linting and formatting
-
-## Development Workflow
-
-```bash
-# Fast development cycle (no Docker required)
-make lint         # Format and check code
-make run          # Test CLI binary
-
-# Full validation (includes Docker tests)
-make test         # Run all tests including Docker integration
-make setup_dev    # Install development dependencies
-```
-
-## Architecture
+## Architecture Overview
 
 ```
-src/version/
-├── zerv/         # Universal version format
-├── pep440/       # PEP440 implementation
-├── semver/       # SemVer implementation
-└── mod.rs        # Public API
+CLI → VCS Detection → Tag Parsing → Format Output
 ```
 
-## Files
+**Key Components:**
 
-- `current-state.md` - Detailed implementation status
-- `new-cli-design.md` - Pipeline CLI architecture design
-- `roadmap.md` - Development roadmap to alpha release
-- `archived-insights.md` - Valuable concepts from old documentation
-- `.cache/` - Archived old documentation (preserved for reference)
+- **VCS Layer**: Extract git metadata (`src/vcs/`)
+- **Version System**: Parse/convert formats (`src/version/`)
+- **Pipeline**: Transform data (`src/pipeline/`)
+- **CLI**: User interface (`src/cli/` - needs work)
 
-## Next Phase
+## Testing Strategy
 
-Git VCS integration + pipeline CLI (`zerv version` with `zerv-default` schema)
+- **Local**: Docker Git for isolation
+- **CI**: Native Git for platform testing
+- **237 tests** with multi-platform coverage
+
+## Environment Variables
+
+- `ZERV_TEST_NATIVE_GIT=true` - Use native Git (CI only)
+- `ZERV_TEST_DOCKER=true` - Enable Docker tests (Linux only)
+
+## Next Steps
+
+Focus on `src/cli/app.rs` implementation to wire existing components together.

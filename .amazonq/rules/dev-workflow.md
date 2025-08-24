@@ -4,6 +4,19 @@
 
 Before performing ANY coding task, **read `.dev/00-README.md`** for complete project context and workflow.
 
+## .dev Document Numbering
+
+**Rule**: All .dev documents use sequential numbering to indicate creation order:
+
+- `00-***.md`: Created at same point in time (current state)
+- `01-***.md`: Next development phase
+- `02-***.md`: Following phase
+- etc.
+
+**Higher numbers = more recent/updated plans**
+
+Always verify against actual codebase - higher numbered docs are more likely to be current.
+
 ## Essential Commands
 
 ✅ Use `make` commands (defined in `.dev/00-README.md`)
