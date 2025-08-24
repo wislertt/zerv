@@ -29,8 +29,15 @@ impl DockerGit {
     }
 
     fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
-        let uid = unsafe { libc::getuid() };
-        let gid = unsafe { libc::getgid() };
+        #[cfg(unix)]
+        let (uid, gid) = {
+            let uid = unsafe { libc::getuid() };
+            let gid = unsafe { libc::getgid() };
+            (uid, gid)
+        };
+
+        #[cfg(windows)]
+        let (uid, gid) = (1000u32, 1000u32); // Default user on most Docker containers
 
         let args = [
             "run",
