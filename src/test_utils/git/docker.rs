@@ -212,6 +212,7 @@ mod tests {
 
     #[test]
     #[ignore = "docker"]
+    #[cfg(not(windows))]
     fn test_docker_git_init() {
         let (dir, _docker_git) = setup_initialized_repo();
         assert!(dir.path().join(".git").exists());
@@ -219,6 +220,7 @@ mod tests {
 
     #[test]
     #[ignore = "docker"]
+    #[cfg(not(windows))]
     fn test_docker_git_commit() {
         let (dir, docker_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
@@ -229,6 +231,7 @@ mod tests {
 
     #[test]
     #[ignore = "docker"]
+    #[cfg(not(windows))]
     fn test_docker_git_tag() {
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
@@ -238,6 +241,7 @@ mod tests {
 
     #[test]
     #[ignore = "docker"]
+    #[cfg(not(windows))]
     fn test_docker_git_integration() {
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
