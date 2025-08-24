@@ -83,47 +83,48 @@ pub type Result<T> = std::result::Result<T, ZervError>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
     use std::error::Error;
 
-    #[test]
-    fn test_error_display() {
-        assert_eq!(
-            ZervError::VcsNotFound("git".to_string()).to_string(),
-            "VCS not found: git"
-        );
-        assert_eq!(
-            ZervError::NoTagsFound.to_string(),
-            "No tags found matching pattern"
-        );
-        assert_eq!(
-            ZervError::InvalidFormat("bad".to_string()).to_string(),
-            "Invalid version format: bad"
-        );
-        assert_eq!(
-            ZervError::CommandFailed("exit 1".to_string()).to_string(),
-            "Command execution failed: exit 1"
-        );
-        assert_eq!(
-            ZervError::Regex("invalid".to_string()).to_string(),
-            "Regex error: invalid"
-        );
+    #[rstest]
+    #[case(ZervError::VcsNotFound("git".to_string()), "VCS not found: git")]
+    #[case(ZervError::NoTagsFound, "No tags found matching pattern")]
+    #[case(ZervError::InvalidFormat("bad".to_string()), "Invalid version format: bad")]
+    #[case(ZervError::InvalidVersion("1.0.0-invalid".to_string()), "Invalid version: 1.0.0-invalid")]
+    #[case(ZervError::CommandFailed("exit 1".to_string()), "Command execution failed: exit 1")]
+    #[case(ZervError::Regex("invalid".to_string()), "Regex error: invalid")]
+    #[case(ZervError::SchemaParseError("bad ron".to_string()), "Schema parse error: bad ron")]
+    #[case(ZervError::UnknownSchema("unknown".to_string()), "Unknown schema: unknown")]
+    #[case(ZervError::ConflictingSchemas("both provided".to_string()), "Conflicting schemas: both provided")]
+    fn test_error_display(#[case] error: ZervError, #[case] expected: &str) {
+        assert_eq!(error.to_string(), expected);
     }
 
-    #[test]
-    fn test_io_error_conversion() {
-        let io_err = io::Error::new(io::ErrorKind::NotFound, "file not found");
+    #[rstest]
+    #[case(io::ErrorKind::NotFound, "file not found")]
+    #[case(io::ErrorKind::PermissionDenied, "access denied")]
+    #[case(io::ErrorKind::ConnectionRefused, "connection refused")]
+    #[case(io::ErrorKind::TimedOut, "timed out")]
+    fn test_io_error_conversion(#[case] kind: io::ErrorKind, #[case] message: &str) {
+        let io_err = io::Error::new(kind, message);
         let zerv_err: ZervError = io_err.into();
         assert!(matches!(zerv_err, ZervError::Io(_)));
-        assert!(zerv_err.to_string().contains("file not found"));
+        assert!(zerv_err.to_string().contains(message));
     }
 
-    #[test]
-    fn test_error_source() {
-        let io_err = io::Error::new(io::ErrorKind::PermissionDenied, "access denied");
-        let zerv_err = ZervError::Io(io_err);
-        assert!(zerv_err.source().is_some());
-
-        assert!(ZervError::NoTagsFound.source().is_none());
+    #[rstest]
+    #[case(ZervError::Io(io::Error::new(io::ErrorKind::NotFound, "test")), true)]
+    #[case(ZervError::VcsNotFound("git".to_string()), false)]
+    #[case(ZervError::NoTagsFound, false)]
+    #[case(ZervError::InvalidFormat("bad".to_string()), false)]
+    #[case(ZervError::InvalidVersion("bad".to_string()), false)]
+    #[case(ZervError::CommandFailed("exit 1".to_string()), false)]
+    #[case(ZervError::Regex("invalid".to_string()), false)]
+    #[case(ZervError::SchemaParseError("bad".to_string()), false)]
+    #[case(ZervError::UnknownSchema("unknown".to_string()), false)]
+    #[case(ZervError::ConflictingSchemas("conflict".to_string()), false)]
+    fn test_error_source(#[case] error: ZervError, #[case] has_source: bool) {
+        assert_eq!(error.source().is_some(), has_source);
     }
 
     #[test]
@@ -135,55 +136,73 @@ mod tests {
         assert!(err_result.is_err());
     }
 
+    #[rstest]
+    #[case(
+        ZervError::VcsNotFound("git".to_string()),
+        ZervError::VcsNotFound("git".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::VcsNotFound("git".to_string()),
+        ZervError::VcsNotFound("hg".to_string()),
+        false
+    )]
+    #[case(ZervError::NoTagsFound, ZervError::NoTagsFound, true)]
+    #[case(
+        ZervError::InvalidFormat("bad".to_string()),
+        ZervError::InvalidFormat("bad".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::InvalidFormat("bad".to_string()),
+        ZervError::InvalidFormat("worse".to_string()),
+        false
+    )]
+    #[case(
+        ZervError::InvalidVersion("1.0".to_string()),
+        ZervError::InvalidVersion("1.0".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::CommandFailed("exit 1".to_string()),
+        ZervError::CommandFailed("exit 1".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::Regex("invalid".to_string()),
+        ZervError::Regex("invalid".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::SchemaParseError("bad".to_string()),
+        ZervError::SchemaParseError("bad".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::UnknownSchema("unknown".to_string()),
+        ZervError::UnknownSchema("unknown".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::ConflictingSchemas("conflict".to_string()),
+        ZervError::ConflictingSchemas("conflict".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::NoTagsFound,
+        ZervError::VcsNotFound("git".to_string()),
+        false
+    )]
+    fn test_error_equality(
+        #[case] error1: ZervError,
+        #[case] error2: ZervError,
+        #[case] should_equal: bool,
+    ) {
+        assert_eq!(error1 == error2, should_equal);
+    }
+
     #[test]
-    fn test_error_equality() {
-        // Same variants with same values should be equal
-        assert_eq!(
-            ZervError::VcsNotFound("git".to_string()),
-            ZervError::VcsNotFound("git".to_string())
-        );
-        assert_eq!(ZervError::NoTagsFound, ZervError::NoTagsFound);
-        assert_eq!(
-            ZervError::InvalidFormat("bad".to_string()),
-            ZervError::InvalidFormat("bad".to_string())
-        );
-        assert_eq!(
-            ZervError::CommandFailed("exit 1".to_string()),
-            ZervError::CommandFailed("exit 1".to_string())
-        );
-        assert_eq!(
-            ZervError::Regex("invalid".to_string()),
-            ZervError::Regex("invalid".to_string())
-        );
-
-        // Same variants with different values should not be equal
-        assert_ne!(
-            ZervError::VcsNotFound("git".to_string()),
-            ZervError::VcsNotFound("hg".to_string())
-        );
-        assert_ne!(
-            ZervError::InvalidFormat("bad".to_string()),
-            ZervError::InvalidFormat("worse".to_string())
-        );
-        assert_ne!(
-            ZervError::CommandFailed("exit 1".to_string()),
-            ZervError::CommandFailed("exit 2".to_string())
-        );
-        assert_ne!(
-            ZervError::Regex("invalid".to_string()),
-            ZervError::Regex("bad".to_string())
-        );
-
-        // Different variants should not be equal
-        assert_ne!(
-            ZervError::NoTagsFound,
-            ZervError::VcsNotFound("git".to_string())
-        );
-        assert_ne!(
-            ZervError::InvalidFormat("bad".to_string()),
-            ZervError::CommandFailed("bad".to_string())
-        );
-
+    fn test_io_error_equality() {
         // IO errors with same kind and message should be equal
         let io_err1 = io::Error::new(io::ErrorKind::NotFound, "file not found");
         let io_err2 = io::Error::new(io::ErrorKind::NotFound, "file not found");
@@ -193,5 +212,19 @@ mod tests {
         let io_err3 = io::Error::new(io::ErrorKind::NotFound, "file not found");
         let io_err4 = io::Error::new(io::ErrorKind::PermissionDenied, "file not found");
         assert_ne!(ZervError::Io(io_err3), ZervError::Io(io_err4));
+    }
+
+    #[test]
+    fn test_debug_trait() {
+        let error = ZervError::VcsNotFound("git".to_string());
+        let debug_str = format!("{error:?}");
+        assert!(debug_str.contains("VcsNotFound"));
+        assert!(debug_str.contains("git"));
+    }
+
+    #[test]
+    fn test_error_trait_implementation() {
+        let error = ZervError::NoTagsFound;
+        let _: &dyn Error = &error; // Ensure Error trait is implemented
     }
 }
