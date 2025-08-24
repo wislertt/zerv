@@ -71,7 +71,7 @@ mod tests {
         let cmd_output = Command::new("/bin/echo").arg(output).output().unwrap();
         #[cfg(windows)]
         let cmd_output = Command::new("cmd")
-            .args(["/C", "echo", output])
+            .args(["/C", &format!("echo {}", output)])
             .output()
             .unwrap();
         let test_output = TestOutput::new(cmd_output);
@@ -111,7 +111,7 @@ mod tests {
             .unwrap();
         #[cfg(windows)]
         let output = Command::new("cmd")
-            .args(["/C", "echo", "hello world test"])
+            .args(["/C", "echo hello world test"])
             .output()
             .unwrap();
         let test_output = TestOutput::new(output);
@@ -143,7 +143,7 @@ mod tests {
             .unwrap();
         #[cfg(windows)]
         let output = Command::new("cmd")
-            .args(["/C", "echo", "exact match"])
+            .args(["/C", "echo exact match"])
             .output()
             .unwrap();
         let test_output = TestOutput::new(output);
