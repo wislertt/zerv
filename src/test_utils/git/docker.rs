@@ -1,4 +1,4 @@
-use super::TestDir;
+use super::{GitOperations, TestDir};
 use std::io;
 use std::process::Command;
 
@@ -29,26 +29,40 @@ impl DockerGit {
     }
 
     fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
-        let uid = unsafe { libc::getuid() };
-        let gid = unsafe { libc::getgid() };
+        // Use current user on Unix systems, root on others
+        #[cfg(unix)]
+        let user_args = {
+            let uid = unsafe { libc::getuid() };
+            let gid = unsafe { libc::getgid() };
+            vec!["--user".to_string(), format!("{uid}:{gid}")]
+        };
+        #[cfg(not(unix))]
+        let user_args: Vec<String> = vec![];
 
-        let args = [
+        let mut args = vec![
             "run",
             "--rm",
             "--security-opt=no-new-privileges", // Strict mode: remove permissive layers
             "--cap-drop=ALL",                   // Strict mode: drop all capabilities
-            "--user",
-            &format!("{uid}:{gid}"), // Fix permission issues
+        ];
+
+        // Add user args if present
+        for arg in &user_args {
+            args.push(arg);
+        }
+
+        let volume_mount = format!("{}:/workspace", test_dir.path().display());
+        args.extend([
             "--entrypoint",
             "sh",
             "-v",
-            &format!("{}:/workspace", test_dir.path().display()),
+            &volume_mount,
             "-w",
             "/workspace",
             "alpine/git:latest",
             "-c",
             script,
-        ];
+        ]);
 
         #[cfg(test)]
         if let Err(e) = validate_docker_args(&args) {
@@ -82,45 +96,18 @@ impl DockerGit {
 
         self.run_docker_command(test_dir, &format!("git --git-dir=.git {git_command}"))
     }
+}
 
-    pub fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
-        // Create initial file and setup repo with initial commit using working pattern
-        test_dir.create_file("README.md", "# Test Repository")?;
-
-        // Initialize git repository
-        self.run_docker_command(test_dir, "git init")?;
-
-        // Configure git user (required for commits)
-        self.run_docker_command(test_dir, "git --git-dir=.git config user.name 'Test User'")?;
-        self.run_docker_command(
-            test_dir,
-            "git --git-dir=.git config user.email 'test@example.com'",
-        )?;
-
-        // Create initial commit (required for tags)
-        self.run_docker_command(test_dir, "git --git-dir=.git add .")?;
-        self.run_docker_command(test_dir, "git --git-dir=.git commit -m 'Initial commit'")?;
-
-        Ok(())
-    }
-
-    pub fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()> {
-        self.run_docker_command(
-            test_dir,
-            &format!("git --git-dir=.git add . && git --git-dir=.git commit -m '{message}'"),
-        )?;
-        Ok(())
-    }
-
-    pub fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
-        self.run_docker_command(test_dir, &format!("git --git-dir=.git tag {tag}"))?;
-        Ok(())
+impl GitOperations for DockerGit {
+    fn execute_git(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
+        self.run_git_command(test_dir, args)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::should_run_docker_tests;
     use rstest::rstest;
 
     // Error message constants
@@ -178,7 +165,17 @@ mod tests {
 
     #[test]
     fn test_is_docker_available() {
-        let _result = is_docker_available();
+        if should_run_docker_tests() {
+            assert!(
+                is_docker_available(),
+                "ZERV_TEST_DOCKER is enabled but Docker is not available - install Docker or disable ZERV_TEST_DOCKER"
+            );
+        } else {
+            assert!(
+                !is_docker_available(),
+                "Docker is available but ZERV_TEST_DOCKER is disabled - enable ZERV_TEST_DOCKER to test Docker functionality"
+            );
+        }
     }
 
     #[rstest]
@@ -186,6 +183,9 @@ mod tests {
     #[case(&["status"])]
     #[case(&["log", "--oneline"])]
     fn test_docker_git_commands_without_docker(#[case] args: &[&str]) {
+        if !should_run_docker_tests() {
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
+        }
         let (dir, docker_git) = setup_docker_git();
         let result = docker_git.run_git_command(&dir, args);
         let _ = result;
@@ -193,6 +193,9 @@ mod tests {
 
     #[test]
     fn test_docker_git_init_repo_without_docker() {
+        if !should_run_docker_tests() {
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
+        }
         let (dir, docker_git) = setup_docker_git();
         let result = docker_git.init_repo(&dir);
         let _ = result;
@@ -200,6 +203,9 @@ mod tests {
 
     #[test]
     fn test_docker_git_create_commit_without_docker() {
+        if !should_run_docker_tests() {
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
+        }
         let (dir, docker_git) = setup_docker_git();
         dir.create_file("test.txt", "content").unwrap();
         let result = docker_git.create_commit(&dir, "test commit");
@@ -208,39 +214,44 @@ mod tests {
 
     #[test]
     fn test_docker_git_create_tag_without_docker() {
+        if !should_run_docker_tests() {
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
+        }
         let (dir, docker_git) = setup_docker_git();
         let result = docker_git.create_tag(&dir, "v1.0.0");
         let _ = result;
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_setup_initialized_repo_without_docker() {
-        let result = std::panic::catch_unwind(|| {
-            let (_dir, _docker_git) = setup_initialized_repo();
-        });
-        let _ = result;
+        if !should_run_docker_tests() {
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
+        }
+        let (_dir, _docker_git) = setup_initialized_repo();
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_setup_repo_with_commit_without_docker() {
-        let result = std::panic::catch_unwind(|| {
-            let (_dir, _docker_git) = setup_repo_with_commit();
-        });
-        let _ = result;
+        if !should_run_docker_tests() {
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
+        }
+        let (_dir, _docker_git) = setup_repo_with_commit();
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_docker_git_init() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let (dir, _docker_git) = setup_initialized_repo();
         assert!(dir.path().join(".git").exists());
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_docker_git_commit() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let (dir, docker_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
         docker_git
@@ -249,8 +260,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_docker_git_tag() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")
@@ -258,8 +271,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_docker_git_integration() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")

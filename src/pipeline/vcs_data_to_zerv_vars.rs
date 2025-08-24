@@ -29,11 +29,15 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{get_real_pep440_vcs_data, get_real_semver_vcs_data};
+    use crate::test_utils::{
+        get_real_pep440_vcs_data, get_real_semver_vcs_data, should_run_docker_tests,
+    };
 
     #[test]
-    #[ignore = "docker"]
     fn test_vcs_data_to_zerv_vars_real_semver() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let vcs_data = get_real_semver_vcs_data().clone();
         let vars = vcs_data_to_zerv_vars(vcs_data).unwrap();
 
@@ -47,8 +51,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_vcs_data_to_zerv_vars_real_pep440() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let vcs_data = get_real_pep440_vcs_data().clone();
         let vars = vcs_data_to_zerv_vars(vcs_data).unwrap();
 

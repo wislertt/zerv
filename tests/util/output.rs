@@ -67,7 +67,13 @@ mod tests {
         #[case] search: &str,
         #[case] should_contain: bool,
     ) {
+        #[cfg(unix)]
         let cmd_output = Command::new("/bin/echo").arg(output).output().unwrap();
+        #[cfg(windows)]
+        let cmd_output = Command::new("cmd")
+            .args(["/C", &format!("echo {}", output)])
+            .output()
+            .unwrap();
         let test_output = TestOutput::new(cmd_output);
 
         if should_contain {
@@ -82,8 +88,14 @@ mod tests {
 
     #[test]
     fn test_output_stderr() {
+        #[cfg(unix)]
         let output = Command::new("/bin/sh")
             .args(["-c", "echo 'error output' >&2"])
+            .output()
+            .unwrap();
+        #[cfg(windows)]
+        let output = Command::new("cmd")
+            .args(["/C", "echo error output 1>&2"])
             .output()
             .unwrap();
         let test_output = TestOutput::new(output);
@@ -92,8 +104,14 @@ mod tests {
 
     #[test]
     fn test_output_assert_stdout_contains() {
+        #[cfg(unix)]
         let output = Command::new("/bin/echo")
             .arg("hello world test")
+            .output()
+            .unwrap();
+        #[cfg(windows)]
+        let output = Command::new("cmd")
+            .args(["/C", "echo hello world test"])
             .output()
             .unwrap();
         let test_output = TestOutput::new(output);
@@ -102,8 +120,14 @@ mod tests {
 
     #[test]
     fn test_output_assert_stderr_contains() {
+        #[cfg(unix)]
         let output = Command::new("/bin/sh")
             .args(["-c", "echo 'error: something failed' >&2"])
+            .output()
+            .unwrap();
+        #[cfg(windows)]
+        let output = Command::new("cmd")
+            .args(["/C", "echo error: something failed 1>&2"])
             .output()
             .unwrap();
         let test_output = TestOutput::new(output);
@@ -112,8 +136,14 @@ mod tests {
 
     #[test]
     fn test_output_assert_stdout_eq() {
+        #[cfg(unix)]
         let output = Command::new("/bin/echo")
             .arg("exact match")
+            .output()
+            .unwrap();
+        #[cfg(windows)]
+        let output = Command::new("cmd")
+            .args(["/C", "echo exact match"])
             .output()
             .unwrap();
         let test_output = TestOutput::new(output);

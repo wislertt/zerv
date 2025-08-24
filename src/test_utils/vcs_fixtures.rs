@@ -1,26 +1,32 @@
-use super::{DockerGit, TestDir};
+use super::git::{DockerGit, NativeGit};
+use super::{GitOperations, TestDir, should_use_native_git};
 use crate::vcs::{Vcs, VcsData, git::GitVcs};
 use std::sync::OnceLock;
 
 static SEMVER_VCS_DATA: OnceLock<VcsData> = OnceLock::new();
 static PEP440_VCS_DATA: OnceLock<VcsData> = OnceLock::new();
 
+fn get_git_impl() -> Box<dyn GitOperations> {
+    if should_use_native_git() {
+        Box::new(NativeGit::new())
+    } else {
+        Box::new(DockerGit::new())
+    }
+}
+
 fn create_vcs_data_with_tag(tag: &str, filename: &str, content: &str, commit_msg: &str) -> VcsData {
     let test_dir = TestDir::new().expect("Failed to create test dir");
-    let docker_git = DockerGit::new();
+    let git = get_git_impl();
 
-    docker_git
-        .init_repo(&test_dir)
-        .expect("Failed to init repo");
-    docker_git
-        .create_tag(&test_dir, tag)
+    git.init_repo(&test_dir).expect("Failed to init repo");
+    git.create_tag(&test_dir, tag)
         .expect("Failed to create tag");
 
+    // Add file and commit
     test_dir
         .create_file(filename, content)
         .expect("Failed to create file");
-    docker_git
-        .create_commit(&test_dir, commit_msg)
+    git.create_commit(&test_dir, commit_msg)
         .expect("Failed to create commit");
 
     let git_vcs = GitVcs::new(test_dir.path()).expect("Failed to create GitVcs");

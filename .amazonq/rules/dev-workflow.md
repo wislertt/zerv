@@ -43,7 +43,9 @@ When user mentions:
 **ALWAYS check existing utilities first:**
 
 - Check `src/test_utils/` before creating new test utilities
-- Reuse `TestDir`, `DockerGit`, and other existing infrastructure
+- Reuse `TestDir`, `GitOperations` trait, and other existing infrastructure
+- Use `get_git_impl()` for environment-aware Git operations
+- Prefer `GitOperations` trait methods over direct Docker/Native calls
 - Avoid duplicating code across different files
 - Look for existing helper functions before implementing new ones
 
@@ -59,6 +61,7 @@ When user mentions:
 → Search codebase for violations:
 
 - Duplicated test setup patterns
-- Reimplemented utility functions
+- Direct `DockerGit`/`NativeGit` usage instead of `get_git_impl()`
+- Reimplemented Git operations instead of using `GitOperations` trait
 - Similar helper functions across files
-- Unused existing utilities in `src/test_utils/`
+- Unused existing utilities in `src/test_utils/git/`

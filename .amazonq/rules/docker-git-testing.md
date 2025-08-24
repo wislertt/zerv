@@ -1,4 +1,14 @@
-# Docker Git Testing Bug - Complete Fix Guide
+# Docker Git Testing Guide - Multi-Platform Architecture
+
+## ✅ CURRENT STATUS: Multi-Platform CI Implemented
+
+**Architecture Update**: The project now uses environment-aware Git testing:
+
+- **Local Development**: Uses `DockerGit` for isolation
+- **CI Environment**: Uses `NativeGit` for real platform testing
+- **Platform Coverage**: Linux, macOS, Windows all tested with native Git
+
+## Legacy Docker Git Testing Bug - Historical Reference
 
 ## Bug Symptoms
 
@@ -192,33 +202,57 @@ make test
 
 **Result**: You'll now get errors like `❌ Missing --entrypoint sh for alpine/git:latest (will fail in CI)` locally instead of discovering issues in CI.
 
-## Files to Update When Fixing
+## Current Architecture Files
 
-1. `src/test_utils/git.rs` - Docker git utility functions
-2. `src/vcs/git.rs` - Git VCS implementation test helpers
-3. Any other files using Docker git commands
+1. `src/test_utils/git/mod.rs` - GitOperations trait and exports
+2. `src/test_utils/git/docker.rs` - DockerGit implementation (local development)
+3. `src/test_utils/git/native.rs` - NativeGit implementation (CI testing)
+4. `src/config.rs` - Environment detection via `ZERV_CI` variable
+5. `src/test_utils/mod.rs` - `should_use_native_git()` helper function
 
-## Testing Verification
+## Current Testing Verification
 
 ```bash
-# Local test (now includes strict mode)
+# Local test (uses DockerGit for isolation)
 make test
 
 # Test validation works
 cargo test test_docker_validation --lib
 
-# Check specific git tests
+# Check specific git tests (Docker tests only run on Linux)
 cargo test git --include-ignored
 
-# Verify CI will pass (should be consistent now)
-git push # Check GitHub Actions
+# Verify multi-platform CI passes
+git push # Check GitHub Actions on Linux, macOS, Windows
 ```
 
-## Why This Bug Repeats
+## Multi-Platform CI Benefits
 
-1. **Local testing masks the issue** - Docker Desktop is more forgiving
-2. **The error is subtle** - Commands might partially work locally
-3. **CI environment is different** - Only fails in the strict CI environment
-4. **Git directory context** - After `git init`, subsequent commands need `--git-dir=.git` in containers
+**Real Platform Testing Achieved**:
 
-This bug has occurred multiple times - always refer to this guide when Docker git tests fail in CI but pass locally.
+- ✅ **Windows CI**: Tests actual Windows Git behavior, CRLF line endings, Windows paths
+- ✅ **macOS CI**: Tests actual macOS Git behavior, case-insensitive filesystem
+- ✅ **Linux CI**: Tests actual Linux Git behavior, permissions
+
+**Local Safety Maintained**:
+
+- ✅ **Docker Isolation**: Protects personal git config during local development
+- ✅ **Environment Detection**: Automatic switching via `ZERV_CI=true`
+- ✅ **Consistent API**: Same `GitOperations` trait for both implementations
+
+## Architecture Evolution
+
+**Problem Solved**: The original Docker CI issues are resolved by using native Git in CI:
+
+1. **No more Docker in CI** - Windows/macOS/Linux CI all use native Git
+2. **Real platform testing** - Catches actual platform-specific issues
+3. **Local isolation maintained** - Docker still used for local development safety
+4. **Consistent behavior** - GitOperations trait ensures same API across implementations
+
+**When to Use This Guide**:
+
+- Reference for understanding DockerGit implementation details
+- Debugging local Docker-based tests
+- Historical context for architecture decisions
+
+**Current Best Practice**: Use `get_git_impl()` helper function for environment-aware Git operations instead of direct Docker commands.

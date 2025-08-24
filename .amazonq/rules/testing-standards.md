@@ -1,20 +1,44 @@
 # Testing Standards
 
-## Docker Isolation for VCS Tests
+## Environment-Aware Git Testing
 
-**MANDATORY: Use Docker for VCS operations that modify state**
+**MANDATORY: Use appropriate Git implementation based on environment**
 
-- Use Docker for all Git/VCS tests to avoid interfering with local machine state
+**Local Development:**
+
+- Use `DockerGit` for isolation to avoid interfering with local machine state
 - Isolate test environment completely from host git config and repositories
-- Use `DockerGit` utility from `src/test_utils/git.rs` for git operations in tests
+- Use `get_git_impl()` helper function for environment-aware selection
+
+**CI Environment:**
+
+- Use `NativeGit` for real platform testing (Windows/macOS/Linux)
+- Enabled automatically via `ZERV_CI=true` environment variable
+- Tests actual platform-specific Git behavior, paths, line endings
+
+**Implementation Pattern:**
+
+```rust
+use crate::test_utils::{GitOperations, should_use_native_git};
+use crate::test_utils::git::{DockerGit, NativeGit};
+
+fn get_git_impl() -> Box<dyn GitOperations> {
+    if should_use_native_git() {
+        Box::new(NativeGit::new())
+    } else {
+        Box::new(DockerGit::new())
+    }
+}
+```
 
 ## Race Condition Prevention
 
 **Atomic Operations Required:**
 
-- Use single Docker commands with shell scripts instead of multiple separate commands
-- Combine git operations like `git init && git add . && git commit` in one Docker call
-- Avoid multi-step Docker operations that can cause filesystem race conditions
+- Use `GitOperations` trait methods for consistent behavior across implementations
+- Prefer trait methods like `init_repo()`, `create_tag()`, `create_commit()` over raw commands
+- Avoid multi-step operations that can cause filesystem race conditions
+- Use shared logic in trait implementations for consistency
 
 **Flaky Test Detection:**
 
@@ -31,7 +55,8 @@ When user mentions:
 
 **Before committing:**
 
-- All tests must pass consistently
+- All tests must pass consistently on all platforms (Linux, macOS, Windows)
 - Use `make test` multiple times to verify stability
 - Fix any intermittent failures before proceeding
-- Document any Docker or environment dependencies
+- Ensure tests work in both local (Docker) and CI (Native) environments
+- Use `#[cfg(target_os = "linux")]` for Docker-specific tests
