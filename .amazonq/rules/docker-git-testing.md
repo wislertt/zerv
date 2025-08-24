@@ -207,20 +207,63 @@ make test
 1. `src/test_utils/git/mod.rs` - GitOperations trait and exports
 2. `src/test_utils/git/docker.rs` - DockerGit implementation (local development)
 3. `src/test_utils/git/native.rs` - NativeGit implementation (CI testing)
-4. `src/config.rs` - Environment detection via `ZERV_CI` variable
-5. `src/test_utils/mod.rs` - `should_use_native_git()` helper function
+4. `src/config.rs` - Centralized environment variable loading via `ZERV_TEST_NATIVE_GIT` and `ZERV_TEST_DOCKER`
+5. `src/test_utils/mod.rs` - `should_use_native_git()` and `should_run_docker_tests()` helper functions
+
+## Environment Variable Matrix
+
+| Scenario         | `ZERV_TEST_NATIVE_GIT` | `ZERV_TEST_DOCKER` | Git Implementation | Docker Tests | Result             |
+| ---------------- | ---------------------- | ------------------ | ------------------ | ------------ | ------------------ |
+| Local Easy       | `false`                | `false`            | Docker Git         | Skipped      | Coverage with gaps |
+| Local Full       | `false`                | `true`             | Docker Git         | Run          | Full coverage      |
+| CI Linux         | `true`                 | `true`             | Native Git         | Run          | Platform coverage  |
+| CI macOS/Windows | `true`                 | `false`            | Native Git         | Skipped      | Platform coverage  |
+
+## Centralized Configuration
+
+**All environment variable loading centralized in `src/config.rs`:**
+
+```rust
+#[derive(Debug, Clone, Default)]
+pub struct ZervConfig {
+    pub test_native_git: bool,  // ZERV_TEST_NATIVE_GIT
+    pub test_docker: bool,      // ZERV_TEST_DOCKER
+}
+
+impl ZervConfig {
+    pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
+        let test_native_git = Self::parse_bool_env("ZERV_TEST_NATIVE_GIT")?;
+        let test_docker = Self::parse_bool_env("ZERV_TEST_DOCKER")?;
+        Ok(ZervConfig { test_native_git, test_docker })
+    }
+
+    fn parse_bool_env(var_name: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        match env::var(var_name) {
+            Ok(val) => Ok(val == "true" || val == "1"),
+            Err(_) => Ok(false),
+        }
+    }
+}
+```
+
+**Key Behavior Changes:**
+
+- Docker tests **fail** with clear error messages when `ZERV_TEST_DOCKER=true` but Docker unavailable
+- Policy enforcement: If Docker is available, tests must be enabled
+- Proper test separation between Docker-dependent and Docker-independent tests
 
 ## Current Testing Verification
 
 ```bash
 # Local test (uses DockerGit for isolation)
-make test
+make test_easy  # Docker tests skipped
+make test       # Docker tests enabled
 
 # Test validation works
 cargo test test_docker_validation --lib
 
-# Check specific git tests (Docker tests only run on Linux)
-cargo test git --include-ignored
+# Check specific git tests
+cargo test git
 
 # Verify multi-platform CI passes
 git push # Check GitHub Actions on Linux, macOS, Windows
@@ -237,7 +280,7 @@ git push # Check GitHub Actions on Linux, macOS, Windows
 **Local Safety Maintained**:
 
 - ✅ **Docker Isolation**: Protects personal git config during local development
-- ✅ **Environment Detection**: Automatic switching via `ZERV_CI=true`
+- ✅ **Environment Detection**: Automatic switching via `ZERV_TEST_NATIVE_GIT=true`
 - ✅ **Consistent API**: Same `GitOperations` trait for both implementations
 
 ## Architecture Evolution

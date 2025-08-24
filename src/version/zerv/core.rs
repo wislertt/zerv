@@ -323,7 +323,7 @@ mod tests {
                 zerv.vars
                     .pre_release
                     .as_ref()
-                    .expect("pre_release should be Some")
+                    .expect("Test setup error: pre_release should be Some")
                     .label,
                 PreReleaseLabel::Alpha
             );

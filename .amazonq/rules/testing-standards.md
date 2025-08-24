@@ -13,7 +13,7 @@
 **CI Environment:**
 
 - Use `NativeGit` for real platform testing (Windows/macOS/Linux)
-- Enabled automatically via `ZERV_CI=true` environment variable
+- Enabled automatically via `ZERV_TEST_NATIVE_GIT=true` environment variable
 - Tests actual platform-specific Git behavior, paths, line endings
 
 **Implementation Pattern:**
@@ -30,6 +30,41 @@ fn get_git_impl() -> Box<dyn GitOperations> {
     }
 }
 ```
+
+## Docker Test Control
+
+**MANDATORY: Use `should_run_docker_tests()` for all Docker-dependent tests**
+
+**Environment Variables:**
+
+- `ZERV_TEST_DOCKER=true`: Enable Docker tests (requires Docker to be available)
+- `ZERV_TEST_DOCKER=false`: Skip Docker tests (default)
+
+**Policy Enforcement:**
+
+- If Docker is available on system, Docker tests MUST be enabled
+- Only skip Docker tests when Docker is genuinely unavailable
+- Tests will fail if `ZERV_TEST_DOCKER=true` but Docker is not available
+
+**Implementation Pattern:**
+
+```rust
+use crate::test_utils::should_run_docker_tests;
+
+#[test]
+fn test_docker_functionality() {
+    if !should_run_docker_tests() {
+        return; // Skip when Docker tests are disabled
+    }
+    // Docker-dependent test code
+}
+```
+
+**Make Commands:**
+
+- `make test_easy`: Docker Git + Docker tests skipped (fast, coverage gaps)
+- `make test`: Docker Git + Docker tests enabled (full coverage)
+- CI: Native Git + Docker tests on Linux only
 
 ## Race Condition Prevention
 
