@@ -29,21 +29,40 @@ impl DockerGit {
     }
 
     fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
-        let args = [
+        // Use current user on Unix systems, root on others
+        #[cfg(unix)]
+        let user_args = {
+            let uid = unsafe { libc::getuid() };
+            let gid = unsafe { libc::getgid() };
+            vec!["--user".to_string(), format!("{uid}:{gid}")]
+        };
+        #[cfg(not(unix))]
+        let user_args: Vec<String> = vec![];
+
+        let mut args = vec![
             "run",
             "--rm",
             "--security-opt=no-new-privileges", // Strict mode: remove permissive layers
             "--cap-drop=ALL",                   // Strict mode: drop all capabilities
+        ];
+
+        // Add user args if present
+        for arg in &user_args {
+            args.push(arg);
+        }
+
+        let volume_mount = format!("{}:/workspace", test_dir.path().display());
+        args.extend([
             "--entrypoint",
             "sh",
             "-v",
-            &format!("{}:/workspace", test_dir.path().display()),
+            &volume_mount,
             "-w",
             "/workspace",
             "alpine/git:latest",
             "-c",
             script,
-        ];
+        ]);
 
         #[cfg(test)]
         if let Err(e) = validate_docker_args(&args) {
@@ -200,7 +219,6 @@ mod tests {
 
     #[test]
     #[ignore = "docker"]
-    #[cfg(target_os = "linux")]
     fn test_docker_git_init() {
         let (dir, _docker_git) = setup_initialized_repo();
         assert!(dir.path().join(".git").exists());
@@ -208,7 +226,6 @@ mod tests {
 
     #[test]
     #[ignore = "docker"]
-    #[cfg(target_os = "linux")]
     fn test_docker_git_commit() {
         let (dir, docker_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
@@ -219,7 +236,6 @@ mod tests {
 
     #[test]
     #[ignore = "docker"]
-    #[cfg(target_os = "linux")]
     fn test_docker_git_tag() {
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
@@ -229,7 +245,6 @@ mod tests {
 
     #[test]
     #[ignore = "docker"]
-    #[cfg(target_os = "linux")]
     fn test_docker_git_integration() {
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
