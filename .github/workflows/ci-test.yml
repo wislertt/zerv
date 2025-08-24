@@ -15,7 +15,8 @@ jobs:
                 os: [ubuntu-latest, macos-latest, windows-latest]
         runs-on: ${{ matrix.os }}
         env:
-            ZERV_CI: true # Enables native Git testing via config crate
+            ZERV_TEST_NATIVE_GIT: true
+            ZERV_TEST_DOCKER: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
         steps:
             - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
@@ -38,7 +39,7 @@ jobs:
 
             - run: cargo install cargo-tarpaulin --locked || true
 
-            - run: make test
+            - run: make _test
               shell: bash
 
             - name: Save cache

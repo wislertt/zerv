@@ -1,26 +1,138 @@
-use config::{Config, Environment};
-use serde::Deserialize;
+use std::env;
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ZervConfig {
-    pub ci: bool,
+    pub test_native_git: bool,
+    pub test_docker: bool,
 }
 
 impl ZervConfig {
-    pub fn load() -> Result<Self, config::ConfigError> {
-        let builder = Config::builder()
-            .add_source(Environment::with_prefix("ZERV").separator("_"))
-            .add_source(Environment::default().try_parsing(true));
+    pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
+        let test_native_git = Self::parse_bool_env("ZERV_TEST_NATIVE_GIT", false)?;
+        let test_docker = Self::parse_bool_env("ZERV_TEST_DOCKER", true)?;
 
-        // Future: Add zerv.toml support in Phase 4
-        // if Path::new("zerv.toml").exists() {
-        //     builder = builder.add_source(File::with_name("zerv.toml"));
-        // }
+        Ok(ZervConfig {
+            test_native_git,
+            test_docker,
+        })
+    }
 
-        builder.build()?.try_deserialize()
+    fn parse_bool_env(var_name: &str, default: bool) -> Result<bool, Box<dyn std::error::Error>> {
+        match env::var(var_name) {
+            Ok(val) => Ok(val == "true" || val == "1"),
+            Err(_) => Ok(default),
+        }
     }
 
     pub fn should_use_native_git(&self) -> bool {
-        self.ci
+        self.test_native_git
+    }
+
+    pub fn should_run_docker_tests(&self) -> bool {
+        self.test_docker
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+    use std::env;
+
+    struct EnvGuard {
+        vars: Vec<(String, Option<String>)>,
+    }
+
+    impl EnvGuard {
+        fn new(var_names: &[&str]) -> Self {
+            let vars = var_names
+                .iter()
+                .map(|&name| (name.to_string(), env::var(name).ok()))
+                .collect();
+            Self { vars }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for (name, value) in &self.vars {
+                unsafe {
+                    match value {
+                        Some(val) => env::set_var(name, val),
+                        None => env::remove_var(name),
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_default_config() {
+        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        unsafe {
+            env::remove_var("ZERV_TEST_NATIVE_GIT");
+            env::remove_var("ZERV_TEST_DOCKER");
+        }
+
+        let config = ZervConfig::load().unwrap();
+        assert!(!config.should_use_native_git());
+        assert!(config.should_run_docker_tests());
+    }
+
+    #[test]
+    #[serial]
+    fn test_native_git_env_var() {
+        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        unsafe {
+            env::remove_var("ZERV_TEST_DOCKER");
+            env::set_var("ZERV_TEST_NATIVE_GIT", "true");
+        }
+
+        let config = ZervConfig::load().unwrap();
+        assert!(config.should_use_native_git());
+        assert!(config.should_run_docker_tests());
+    }
+
+    #[test]
+    #[serial]
+    fn test_docker_tests_env_var() {
+        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        unsafe {
+            env::remove_var("ZERV_TEST_NATIVE_GIT");
+            env::set_var("ZERV_TEST_DOCKER", "true");
+        }
+
+        let config = ZervConfig::load().unwrap();
+        assert!(!config.should_use_native_git());
+        assert!(config.should_run_docker_tests());
+    }
+
+    #[test]
+    #[serial]
+    fn test_both_env_vars() {
+        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        unsafe {
+            env::set_var("ZERV_TEST_NATIVE_GIT", "true");
+            env::set_var("ZERV_TEST_DOCKER", "true");
+        }
+
+        let config = ZervConfig::load().unwrap();
+        assert!(config.should_use_native_git());
+        assert!(config.should_run_docker_tests());
+    }
+
+    #[test]
+    #[serial]
+    fn test_false_values() {
+        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        unsafe {
+            env::set_var("ZERV_TEST_NATIVE_GIT", "false");
+            env::set_var("ZERV_TEST_DOCKER", "false");
+        }
+
+        let config = ZervConfig::load().unwrap();
+        assert!(!config.should_use_native_git());
+        assert!(!config.should_run_docker_tests());
     }
 }

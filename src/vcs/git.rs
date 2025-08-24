@@ -159,7 +159,9 @@ impl Vcs for GitVcs {
 mod tests {
     use super::*;
     use crate::test_utils::git::{DockerGit, NativeGit};
-    use crate::test_utils::{GitOperations, TestDir, should_use_native_git};
+    use crate::test_utils::{
+        GitOperations, TestDir, should_run_docker_tests, should_use_native_git,
+    };
     use std::fs;
 
     fn get_git_impl() -> Box<dyn GitOperations> {
@@ -190,8 +192,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_git_vcs_new() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let temp_dir = setup_git_repo();
         let result = GitVcs::new(temp_dir.path());
         assert!(result.is_ok());
@@ -205,8 +209,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_is_available() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let temp_dir = setup_git_repo();
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         assert!(git_vcs.is_available(temp_dir.path()));
@@ -222,8 +228,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_get_vcs_data_with_commit() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let temp_dir = setup_git_repo_with_commit();
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         let data = git_vcs.get_vcs_data().expect("should get vcs data");
@@ -236,8 +244,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_get_vcs_data_with_tag() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let temp_dir = setup_git_repo_with_tag("v1.0.0");
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         let data = git_vcs.get_vcs_data().expect("should get vcs data");
@@ -250,8 +260,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_get_vcs_data_with_distance() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let temp_dir = setup_git_repo_with_tag("v1.0.0");
 
         // Add another commit after tag
@@ -270,8 +282,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_dirty_working_directory() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let temp_dir = setup_git_repo_with_commit();
         let path = temp_dir.path();
 
@@ -285,8 +299,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_clean_working_directory() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let temp_dir = setup_git_repo();
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
         let data = git_vcs.get_vcs_data().expect("should get vcs data");

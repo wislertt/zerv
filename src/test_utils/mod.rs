@@ -13,3 +13,9 @@ pub fn should_use_native_git() -> bool {
         .map(|config| config.should_use_native_git())
         .unwrap_or(false)
 }
+
+pub fn should_run_docker_tests() -> bool {
+    ZervConfig::load()
+        .map(|config| config.should_run_docker_tests())
+        .unwrap_or(false)
+}

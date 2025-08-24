@@ -107,6 +107,7 @@ impl GitOperations for DockerGit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::should_run_docker_tests;
     use rstest::rstest;
 
     // Error message constants
@@ -172,6 +173,9 @@ mod tests {
     #[case(&["status"])]
     #[case(&["log", "--oneline"])]
     fn test_docker_git_commands_without_docker(#[case] args: &[&str]) {
+        if !should_run_docker_tests() {
+            return; // Skip when Docker tests are disabled
+        }
         let (dir, docker_git) = setup_docker_git();
         let result = docker_git.run_git_command(&dir, args);
         let _ = result;
@@ -179,6 +183,9 @@ mod tests {
 
     #[test]
     fn test_docker_git_init_repo_without_docker() {
+        if !should_run_docker_tests() {
+            return; // Skip when Docker tests are disabled
+        }
         let (dir, docker_git) = setup_docker_git();
         let result = docker_git.init_repo(&dir);
         let _ = result;
@@ -186,6 +193,9 @@ mod tests {
 
     #[test]
     fn test_docker_git_create_commit_without_docker() {
+        if !should_run_docker_tests() {
+            return; // Skip when Docker tests are disabled
+        }
         let (dir, docker_git) = setup_docker_git();
         dir.create_file("test.txt", "content").unwrap();
         let result = docker_git.create_commit(&dir, "test commit");
@@ -194,39 +204,44 @@ mod tests {
 
     #[test]
     fn test_docker_git_create_tag_without_docker() {
+        if !should_run_docker_tests() {
+            return; // Skip when Docker tests are disabled
+        }
         let (dir, docker_git) = setup_docker_git();
         let result = docker_git.create_tag(&dir, "v1.0.0");
         let _ = result;
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_setup_initialized_repo_without_docker() {
-        let result = std::panic::catch_unwind(|| {
-            let (_dir, _docker_git) = setup_initialized_repo();
-        });
-        let _ = result;
+        if !should_run_docker_tests() {
+            return; // Skip when Docker tests are disabled
+        }
+        let (_dir, _docker_git) = setup_initialized_repo();
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_setup_repo_with_commit_without_docker() {
-        let result = std::panic::catch_unwind(|| {
-            let (_dir, _docker_git) = setup_repo_with_commit();
-        });
-        let _ = result;
+        if !should_run_docker_tests() {
+            return; // Skip when Docker tests are disabled
+        }
+        let (_dir, _docker_git) = setup_repo_with_commit();
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_docker_git_init() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let (dir, _docker_git) = setup_initialized_repo();
         assert!(dir.path().join(".git").exists());
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_docker_git_commit() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let (dir, docker_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
         docker_git
@@ -235,8 +250,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_docker_git_tag() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")
@@ -244,8 +261,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "docker"]
     fn test_docker_git_integration() {
+        if !should_run_docker_tests() {
+            return;
+        }
         let (dir, docker_git) = setup_repo_with_commit();
         docker_git
             .create_tag(&dir, "v1.0.0")
