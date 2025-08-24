@@ -6,7 +6,7 @@ pub use standard::{
     get_standard_schema, zerv_standard_tier_1, zerv_standard_tier_2, zerv_standard_tier_3,
 };
 
-use crate::version::zerv::{ZervSchema, ZervVars};
+use crate::version::zerv::{Component, ZervSchema, ZervVars};
 
 fn determine_tier(vars: &ZervVars) -> u8 {
     if vars.dirty.unwrap_or(false) {
@@ -16,6 +16,38 @@ fn determine_tier(vars: &ZervVars) -> u8 {
     } else {
         1 // Tagged, clean
     }
+}
+
+fn tier_2_extra_core() -> Vec<Component> {
+    vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+    ]
+}
+
+fn tier_2_build() -> Vec<Component> {
+    vec![
+        Component::VarField("current_branch".to_string()),
+        Component::VarField("current_commit_hash".to_string()),
+    ]
+}
+
+fn tier_3_extra_core() -> Vec<Component> {
+    vec![
+        Component::VarField("epoch".to_string()),
+        Component::VarField("pre_release".to_string()),
+        Component::VarField("post".to_string()),
+        Component::VarField("dev".to_string()),
+    ]
+}
+
+fn tier_3_build() -> Vec<Component> {
+    vec![
+        Component::VarField("current_branch".to_string()),
+        Component::VarField("distance".to_string()),
+        Component::VarField("current_commit_hash".to_string()),
+    ]
 }
 
 pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {
