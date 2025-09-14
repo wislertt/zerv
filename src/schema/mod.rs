@@ -138,11 +138,11 @@ mod tests {
         let ron_schema = r#"
             SchemaConfig(
                 core: [
-                    (type: "VarField", field: "major"),
-                    (type: "VarField", field: "minor"),
+                    VarField(field: "major"),
+                    VarField(field: "minor"),
                 ],
                 extra_core: [],
-                build: [(type: "String", value: "custom")]
+                build: [String(value: "custom")]
             )
         "#;
 

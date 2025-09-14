@@ -11,7 +11,6 @@ pub struct SchemaConfig {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(tag = "type")]
 pub enum ComponentConfig {
     String { value: String },
     Integer { value: u64 },
@@ -55,9 +54,9 @@ mod tests {
         let ron_str = r#"
             SchemaConfig(
                 core: [
-                    (type: "VarField", field: "major"),
-                    (type: "VarField", field: "minor"),
-                    (type: "VarField", field: "patch"),
+                    VarField(field: "major"),
+                    VarField(field: "minor"),
+                    VarField(field: "patch"),
                 ],
                 extra_core: [],
                 build: []
@@ -75,16 +74,16 @@ mod tests {
         let ron_str = r#"
             SchemaConfig(
                 core: [
-                    (type: "VarTimestamp", pattern: "YYYY"),
-                    (type: "VarTimestamp", pattern: "MM"),
-                    (type: "VarField", field: "patch"),
+                    VarTimestamp(pattern: "YYYY"),
+                    VarTimestamp(pattern: "MM"),
+                    VarField(field: "patch"),
                 ],
                 extra_core: [
-                    (type: "VarField", field: "post"),
+                    VarField(field: "post"),
                 ],
                 build: [
-                    (type: "String", value: "build"),
-                    (type: "Integer", value: 123),
+                    String(value: "build"),
+                    Integer(value: 123),
                 ]
             )
         "#;
