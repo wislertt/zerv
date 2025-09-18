@@ -9,26 +9,17 @@
 - Real VCS data fixtures with comprehensive testing
 - 1131 tests passing, 97.38% coverage maintained
 
+✅ **Step 2 COMPLETE**: Schema System (1-2 days)
+
+- `src/schema/` module with RON parsing
+- `create_zerv_version` function implemented
+- `zerv-standard` and `zerv-calver` presets with tier-aware logic
+- 29 comprehensive unit tests added
+- 1198 tests passing, schema system fully functional
+
 ## Next Steps
 
-### Step 2: Schema System (1-2 days) 🔄 NEXT
-
-**Goal**: RON schema parsing and `zerv-default` preset
-
-**Tasks**:
-
-1. Create `src/schema/` module
-2. Implement RON parsing for `ZervFormat`
-3. Add `zerv-default` preset with tier-aware logic
-4. Implement `create_zerv_version` function - Takes `ZervVars` + schema and produces `Zerv` object
-5. Unit tests for schema parsing and version creation
-
-**Files**:
-
-- `src/schema/mod.rs` - Schema parsing and `create_zerv_version` function
-- `src/schema/presets.rs` - Built-in schemas
-
-### Step 3: CLI Pipeline (1-2 days)
+### Step 3: CLI Pipeline (1-2 days) 🔄 NEXT
 
 **Goal**: `zerv version` command implementation
 
@@ -101,7 +92,7 @@ pub fn run_version_pipeline(args: VersionArgs) -> Result<String> {
 
 ```toml
 [dependencies]
-ron = "0.8"  # RON schema parsing
+ron = "0.11.0"  # RON schema parsing ✅ ADDED
 ```
 
 ## CLI Implementation Details
