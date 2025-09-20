@@ -12,7 +12,7 @@ fn test_check_pep440_format(#[case] version: &str) {
         .arg("--format")
         .arg("pep440")
         .assert_success()
-        .assert_stdout_contains("Valid PEP440 version");
+        .assert_stdout_contains("Valid PEP440 format");
 }
 
 #[rstest]
@@ -26,7 +26,7 @@ fn test_check_semver_format(#[case] version: &str) {
         .arg("--format")
         .arg("semver")
         .assert_success()
-        .assert_stdout_contains("Valid SemVer version");
+        .assert_stdout_contains("Valid SemVer format");
 }
 
 #[test]

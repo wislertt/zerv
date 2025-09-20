@@ -14,7 +14,7 @@ fn test_check_auto_detect_both_formats(#[case] version: &str) {
 
     // Should detect both PEP440 and SemVer for simple versions
     assert!(
-        stdout.contains("Valid PEP440 version") && stdout.contains("Valid SemVer version"),
+        stdout.contains("Valid PEP440 format") && stdout.contains("Valid SemVer format"),
         "Auto-detect should identify both formats for {version}: {stdout}"
     );
 }
@@ -31,7 +31,7 @@ fn test_check_auto_detect_pep440_only() {
 
     // Should detect PEP440 only
     assert!(
-        stdout.contains("Valid PEP440 version"),
+        stdout.contains("Valid PEP440 format"),
         "Should detect PEP440 format: {stdout}"
     );
 }
@@ -48,7 +48,7 @@ fn test_check_auto_detect_semver_only() {
 
     // Should detect SemVer only
     assert!(
-        stdout.contains("Valid SemVer version"),
+        stdout.contains("Valid SemVer format"),
         "Should detect SemVer format: {stdout}"
     );
 }

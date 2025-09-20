@@ -2,8 +2,8 @@ use super::TestCommand;
 use rstest::rstest;
 
 #[rstest]
-#[case("1.2.3", "Valid PEP440 version")]
-#[case("1.2.3", "Valid SemVer version")]
+#[case("1.2.3", "Valid PEP440 format")]
+#[case("1.2.3", "Valid SemVer format")]
 fn test_check_command_valid_versions(#[case] version: &str, #[case] expected_text: &str) {
     TestCommand::new()
         .arg("check")
