@@ -60,11 +60,21 @@ Version: 1.2.3-alpha
 
 ### Error Cases
 
-#### Invalid Version
+#### Invalid Version (Auto-detect)
 
 ```bash
 $ zerv check invalid
-✗ Invalid version: invalid
+✗ Invalid version: invalid - Invalid for all supported formats (PEP440, SemVer)
+```
+
+#### Invalid Version (Specific Format)
+
+```bash
+$ zerv check invalid --format pep440
+✗ Invalid version: invalid - Invalid PEP440 format
+
+$ zerv check invalid --format semver
+✗ Invalid version: invalid - Invalid SemVer format
 ```
 
 #### Unknown Format
