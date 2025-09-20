@@ -336,9 +336,14 @@ mod tests {
         assert_eq!(zerv, expected);
     }
 
-    #[test]
-    fn test_round_trip_conversion() {
-        let original: SemVer = "2.1.0-beta.1+build.123".parse().unwrap();
+    #[rstest]
+    #[case("1.0.0")]
+    #[case("2.1.0-beta.1")]
+    #[case("1.0.0+build.123")]
+    #[case("2.1.0-beta.1+build.123")]
+    #[case("1.0.0-alpha.1.post.2.dev.3")]
+    fn test_round_trip_conversion(#[case] version_str: &str) {
+        let original: SemVer = version_str.parse().unwrap();
         let zerv: Zerv = original.clone().into();
         let converted: SemVer = zerv.into();
 

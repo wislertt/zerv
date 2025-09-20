@@ -2,9 +2,11 @@ use super::TestDir;
 use std::io;
 
 mod docker;
+mod fixtures;
 mod native;
 
 pub use docker::DockerGit;
+pub use fixtures::GitRepoFixture;
 pub use native::NativeGit;
 
 /// Common Git operations trait for both Docker and Native implementations
@@ -15,7 +17,7 @@ pub trait GitOperations {
     /// Initialize a git repository with initial commit (shared logic)
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
         test_dir.create_file("README.md", "# Test Repository")?;
-        self.execute_git(test_dir, &["init"])?;
+        self.execute_git(test_dir, &["init", "-b", "main"])?;
         self.execute_git(test_dir, &["config", "user.name", "Test User"])?;
         self.execute_git(test_dir, &["config", "user.email", "test@example.com"])?;
         self.execute_git(test_dir, &["add", "."])?;
@@ -33,6 +35,12 @@ pub trait GitOperations {
     fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()> {
         self.execute_git(test_dir, &["add", "."])?;
         self.execute_git(test_dir, &["commit", "-m", message])?;
+        Ok(())
+    }
+
+    /// Create and checkout a new branch (shared logic)
+    fn create_branch(&self, test_dir: &TestDir, branch_name: &str) -> io::Result<()> {
+        self.execute_git(test_dir, &["checkout", "-b", branch_name])?;
         Ok(())
     }
 }

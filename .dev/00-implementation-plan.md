@@ -17,61 +17,37 @@
 - 29 comprehensive unit tests added
 - 1198 tests passing, schema system fully functional
 
+✅ **Step 3 COMPLETE**: CLI Pipeline (1-2 days)
+
+- `zerv version` command implemented with full pipeline
+- `zerv check <version>` command with auto-detection
+- `--output-format pep440|semver` working correctly
+- CLI args structure with clap subcommands
+- 12 new CLI tests + updated integration tests
+- 1206 tests passing, CLI fully functional
+
+✅ **Step 4 COMPLETE**: Check Command (0.5 days)
+
+- `zerv check <version>` validation implemented
+- Auto-detection of PEP440/SemVer formats
+- Format-specific validation with `--format` flag
+- Comprehensive error handling and user feedback
+- Integrated as part of Step 3 CLI implementation
+
 ## Next Steps
 
-### Step 3: CLI Pipeline (1-2 days) 🔄 NEXT
-
-**Goal**: `zerv version` command implementation
-
-**Tasks**:
-
-1. Update `src/cli/app.rs` with new args
-2. Implement `run_version_pipeline` function
-3. Connect VCS → Schema → Output pipeline
-4. Add format validation and error handling
-
-**Core Pipeline**:
-
-```rust
-pub fn run_version_pipeline(args: VersionArgs) -> Result<String> {
-    // 1. Get VCS data
-    let vcs_data = detect_vcs(current_dir())?.get_vcs_data()?;
-
-    // 2. Convert to ZervVars
-    let vars = vcs_data_to_zerv_vars(vcs_data)?;
-
-    // 3. Create Zerv version object from vars and schema
-    let zerv = create_zerv_version(vars, &args.schema, args.schema_ron.as_deref())?;
-
-    // 4. Apply output format
-    match args.output_format.as_deref() {
-        Some("pep440") => Ok(PEP440::from(zerv).to_string()),
-        Some("semver") => Ok(SemVer::from(zerv).to_string()),
-        _ => Ok(zerv.to_string()),
-    }
-}
-```
-
-### Step 4: Check Command (0.5 days)
-
-**Goal**: `zerv check <version>` validation
-
-**Tasks**:
-
-1. Implement `run_check_command` with auto-detection
-2. Add format-specific validation
-3. Unit tests for validation logic
-
-### Step 5: Integration Testing (1 day)
+### Step 5: Integration Testing (1 day) 🔄 NEXT
 
 **Goal**: End-to-end testing
 
 **Tasks**:
 
-1. Create `tests/integration/version_command.rs`
-2. Test full pipeline with real Git repos
-3. Error case validation
-4. Output format verification
+1. ✅ Integration tests updated for new CLI structure
+2. ✅ Test full pipeline with real Git repos
+3. ✅ Error case validation
+4. ✅ Output format verification
+
+**Status**: Most integration testing already complete. Additional comprehensive testing may be added if needed.
 
 ## Success Criteria
 

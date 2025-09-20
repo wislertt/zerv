@@ -1,4 +1,4 @@
-use super::{determine_tier, tier_2_build, tier_2_extra_core, tier_3_build, tier_3_extra_core};
+use super::{determine_tier, tier_1_extra_core, tier_2_build, tier_3_build, tier_3_extra_core};
 use crate::version::zerv::{Component, ZervSchema, ZervVars};
 
 // Tier 1: Tagged, clean - YYYY-MM-DD-PATCH
@@ -10,7 +10,7 @@ pub fn zerv_calver_tier_1() -> ZervSchema {
             Component::VarTimestamp("DD".to_string()),
             Component::VarField("patch".to_string()),
         ],
-        extra_core: vec![],
+        extra_core: tier_1_extra_core(),
         build: vec![],
     }
 }
@@ -24,7 +24,7 @@ pub fn zerv_calver_tier_2() -> ZervSchema {
             Component::VarTimestamp("DD".to_string()),
             Component::VarField("patch".to_string()),
         ],
-        extra_core: tier_2_extra_core(),
+        extra_core: tier_1_extra_core(),
         build: tier_2_build(),
     }
 }

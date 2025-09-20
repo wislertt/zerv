@@ -3,13 +3,19 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-use super::TestOutput;
+use zerv::test_utils::TestOutput;
 
 /// Test command utility for running zerv CLI with assertions
 pub struct TestCommand {
     cmd: Command,
     #[allow(dead_code)]
     current_dir: Option<PathBuf>,
+}
+
+impl Default for TestCommand {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TestCommand {

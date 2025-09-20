@@ -81,23 +81,42 @@ fn build_pre_release_identifiers(
 fn build_metadata_from_components(
     components: &[Component],
     tag_timestamp: Option<u64>,
+    zerv: &Zerv,
 ) -> Option<Vec<BuildMetadata>> {
     if components.is_empty() {
         None
     } else {
-        Some(
-            components
-                .iter()
-                .map(|comp| match comp {
-                    Component::String(s) => BuildMetadata::String(s.clone()),
-                    Component::Integer(i) => BuildMetadata::Integer(*i),
-                    Component::VarTimestamp(pattern) => BuildMetadata::Integer(
-                        resolve_timestamp(pattern, tag_timestamp).unwrap_or(0),
-                    ),
-                    _ => BuildMetadata::String("unknown".to_string()),
-                })
-                .collect(),
-        )
+        let metadata: Vec<BuildMetadata> = components
+            .iter()
+            .filter_map(|comp| match comp {
+                Component::String(s) => Some(BuildMetadata::String(s.clone())),
+                Component::Integer(i) => Some(BuildMetadata::Integer(*i)),
+                Component::VarTimestamp(pattern) => Some(BuildMetadata::Integer(
+                    resolve_timestamp(pattern, tag_timestamp).unwrap_or(0),
+                )),
+                Component::VarField(field) => match field.as_str() {
+                    "current_branch" => zerv
+                        .vars
+                        .current_branch
+                        .as_ref()
+                        .map(|s| BuildMetadata::String(s.clone())),
+                    "distance" => zerv.vars.distance.map(BuildMetadata::Integer),
+                    "current_commit_hash" => zerv
+                        .vars
+                        .current_commit_hash
+                        .as_ref()
+                        .map(|s| BuildMetadata::String(s.clone())),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect();
+
+        if metadata.is_empty() {
+            None
+        } else {
+            Some(metadata)
+        }
     }
 }
 
@@ -107,7 +126,7 @@ impl From<Zerv> for SemVer {
         let (major, minor, patch) = extract_version_numbers(&core_values);
         let pre_release = build_pre_release_identifiers(&zerv, &core_values);
         let build_metadata =
-            build_metadata_from_components(&zerv.schema.build, zerv.vars.tag_timestamp);
+            build_metadata_from_components(&zerv.schema.build, zerv.vars.tag_timestamp, &zerv);
 
         SemVer {
             major,
@@ -359,17 +378,14 @@ mod tests {
     #[case(zerv_1_0_0_with_foo_epoch_and_alpha(1, 2), "1.0.0-epoch.1.foo.alpha.2")]
     #[case(zerv_1_0_0_with_epoch_foo_and_post(1, 2), "1.0.0-epoch.1.foo.post.2")]
     #[case(zerv_1_0_0_with_bar_dev_and_epoch(1, 2), "1.0.0-epoch.2.bar.dev.1")]
+    // VarField build metadata tests
+    #[case(sem_zerv_1_0_0_with_branch(), "1.0.0+dev")]
+    #[case(sem_zerv_1_0_0_with_distance(), "1.0.0+5")]
+    #[case(sem_zerv_1_0_0_with_commit_hash(), "1.0.0+abc123")]
+    #[case(sem_zerv_1_0_0_with_branch_distance_hash(), "1.0.0+dev.3.def456")]
+    #[case(sem_zerv_1_0_0_with_none_varfields(), "1.0.0")]
     fn test_zerv_to_semver_conversion(#[case] zerv: Zerv, #[case] expected_semver_str: &str) {
         let semver: SemVer = zerv.into();
         assert_eq!(semver.to_string(), expected_semver_str);
-    }
-
-    #[test]
-    fn test_round_trip_conversion() {
-        let original: SemVer = "2.1.0-beta.1".parse().unwrap();
-        let zerv: Zerv = original.clone().into();
-        let converted: SemVer = zerv.into();
-
-        assert_eq!(original.to_string(), converted.to_string());
     }
 }
