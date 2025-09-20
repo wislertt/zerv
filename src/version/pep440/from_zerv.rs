@@ -33,12 +33,16 @@ fn process_var_field_pep440(field: &str, zerv: &Zerv, components: &mut PEP440Com
             components.epoch = zerv.vars.epoch.unwrap_or(0) as u32;
         }
         "post" => {
-            components.post_label = Some(PostLabel::Post);
-            components.post_number = zerv.vars.post.map(|n| n as u32);
+            if let Some(post_num) = zerv.vars.post {
+                components.post_label = Some(PostLabel::Post);
+                components.post_number = Some(post_num as u32);
+            }
         }
         "dev" => {
-            components.dev_label = Some(DevLabel::Dev);
-            components.dev_number = zerv.vars.dev.map(|n| n as u32);
+            if let Some(dev_num) = zerv.vars.dev {
+                components.dev_label = Some(DevLabel::Dev);
+                components.dev_number = Some(dev_num as u32);
+            }
         }
         _ => {
             components
@@ -48,29 +52,54 @@ fn process_var_field_pep440(field: &str, zerv: &Zerv, components: &mut PEP440Com
     }
 }
 
+fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
+    if value <= u32::MAX as u64 {
+        local_overflow.push(LocalSegment::Integer(value as u32));
+    } else {
+        local_overflow.push(LocalSegment::String(value.to_string()));
+    }
+}
+
+fn add_var_field_to_local(field: &str, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
+    match field {
+        "current_branch" => {
+            if let Some(branch) = &zerv.vars.current_branch {
+                local_overflow.push(LocalSegment::String(branch.clone()));
+            }
+        }
+        "distance" => {
+            if let Some(distance) = zerv.vars.distance {
+                local_overflow.push(LocalSegment::Integer(distance as u32));
+            }
+        }
+        "current_commit_hash" => {
+            if let Some(hash) = &zerv.vars.current_commit_hash {
+                local_overflow.push(LocalSegment::String(hash.clone()));
+            }
+        }
+        _ => {}
+    }
+}
+
 fn add_component_to_local(
     comp: &Component,
     local_overflow: &mut Vec<LocalSegment>,
     tag_timestamp: Option<u64>,
+    zerv: &Zerv,
 ) {
     match comp {
         Component::String(s) => {
             local_overflow.push(LocalSegment::String(s.clone()));
         }
         Component::Integer(n) => {
-            if *n <= u32::MAX as u64 {
-                local_overflow.push(LocalSegment::Integer(*n as u32));
-            } else {
-                local_overflow.push(LocalSegment::String(n.to_string()));
-            }
+            add_integer_to_local(*n, local_overflow);
         }
         Component::VarTimestamp(pattern) => {
             let val = resolve_timestamp(pattern, tag_timestamp).unwrap_or(0);
-            if val <= u32::MAX as u64 {
-                local_overflow.push(LocalSegment::Integer(val as u32));
-            } else {
-                local_overflow.push(LocalSegment::String(val.to_string()));
-            }
+            add_integer_to_local(val, local_overflow);
+        }
+        Component::VarField(field) => {
+            add_var_field_to_local(field, zerv, local_overflow);
         }
         _ => {}
     }
@@ -95,6 +124,7 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
                 comp,
                 &mut components.local_overflow,
                 zerv.vars.tag_timestamp,
+                zerv,
             ),
         }
     }
@@ -105,10 +135,11 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
 fn process_build_components(
     components: &[Component],
     tag_timestamp: Option<u64>,
+    zerv: &Zerv,
 ) -> Vec<LocalSegment> {
     let mut local_overflow = Vec::new();
     for comp in components {
-        add_component_to_local(comp, &mut local_overflow, tag_timestamp);
+        add_component_to_local(comp, &mut local_overflow, tag_timestamp, zerv);
     }
     local_overflow
 }
@@ -122,6 +153,7 @@ impl From<Zerv> for PEP440 {
         components.local_overflow.extend(process_build_components(
             &zerv.schema.build,
             zerv.vars.tag_timestamp,
+            &zerv,
         ));
 
         let local = if components.local_overflow.is_empty() {
@@ -209,6 +241,12 @@ mod tests {
         pep_zerv_1_0_0_all_components_complex_local(),
         "1!1.0.0a1.post1.dev1+complex.local.456"
     )]
+    // VarField build metadata tests
+    #[case(sem_zerv_1_0_0_with_branch(), "1.0.0+dev")]
+    #[case(pep_zerv_1_0_0_with_distance(), "1.0.0+5")]
+    #[case(pep_zerv_1_0_0_with_commit_hash(), "1.0.0+abc123")]
+    #[case(pep_zerv_1_0_0_with_branch_distance_hash(), "1.0.0+dev.3.def456")]
+    #[case(pep_zerv_1_0_0_with_none_varfields(), "1.0.0")]
     fn test_zerv_to_pep440_conversion(#[case] zerv: Zerv, #[case] expected_pep440_str: &str) {
         let pep440: PEP440 = zerv.into();
         assert_eq!(pep440.to_string(), expected_pep440_str);

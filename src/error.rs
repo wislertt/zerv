@@ -23,6 +23,8 @@ pub enum ZervError {
     UnknownSchema(String),
     /// Conflicting schema parameters
     ConflictingSchemas(String),
+    /// Unknown format specified
+    UnknownFormat(String),
 }
 
 impl std::fmt::Display for ZervError {
@@ -38,6 +40,7 @@ impl std::fmt::Display for ZervError {
             ZervError::SchemaParseError(msg) => write!(f, "Schema parse error: {msg}"),
             ZervError::UnknownSchema(name) => write!(f, "Unknown schema: {name}"),
             ZervError::ConflictingSchemas(msg) => write!(f, "Conflicting schemas: {msg}"),
+            ZervError::UnknownFormat(format) => write!(f, "Unknown format: {format}"),
         }
     }
 }
@@ -72,6 +75,7 @@ impl PartialEq for ZervError {
             (ZervError::SchemaParseError(a), ZervError::SchemaParseError(b)) => a == b,
             (ZervError::UnknownSchema(a), ZervError::UnknownSchema(b)) => a == b,
             (ZervError::ConflictingSchemas(a), ZervError::ConflictingSchemas(b)) => a == b,
+            (ZervError::UnknownFormat(a), ZervError::UnknownFormat(b)) => a == b,
             _ => false,
         }
     }
@@ -96,6 +100,7 @@ mod tests {
     #[case(ZervError::SchemaParseError("bad ron".to_string()), "Schema parse error: bad ron")]
     #[case(ZervError::UnknownSchema("unknown".to_string()), "Unknown schema: unknown")]
     #[case(ZervError::ConflictingSchemas("both provided".to_string()), "Conflicting schemas: both provided")]
+    #[case(ZervError::UnknownFormat("unknown".to_string()), "Unknown format: unknown")]
     fn test_error_display(#[case] error: ZervError, #[case] expected: &str) {
         assert_eq!(error.to_string(), expected);
     }
@@ -123,6 +128,7 @@ mod tests {
     #[case(ZervError::SchemaParseError("bad".to_string()), false)]
     #[case(ZervError::UnknownSchema("unknown".to_string()), false)]
     #[case(ZervError::ConflictingSchemas("conflict".to_string()), false)]
+    #[case(ZervError::UnknownFormat("unknown".to_string()), false)]
     fn test_error_source(#[case] error: ZervError, #[case] has_source: bool) {
         assert_eq!(error.source().is_some(), has_source);
     }
@@ -186,6 +192,11 @@ mod tests {
     #[case(
         ZervError::ConflictingSchemas("conflict".to_string()),
         ZervError::ConflictingSchemas("conflict".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::UnknownFormat("unknown".to_string()),
+        ZervError::UnknownFormat("unknown".to_string()),
         true
     )]
     #[case(

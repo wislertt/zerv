@@ -156,9 +156,16 @@ mod tests {
         assert_eq!(zerv, expected);
     }
 
-    #[test]
-    fn test_round_trip_conversion() {
-        let original: PEP440 = "2!1.2.3a1.post1.dev1+local.1".parse().unwrap();
+    #[rstest]
+    #[case("1.0.0")]
+    #[case("2!1.2.3")]
+    #[case("1.0.0a1")]
+    #[case("1.0.0.post1")]
+    #[case("1.0.0.dev1")]
+    #[case("1.0.0+local.1")]
+    #[case("2!1.2.3a1.post1.dev1+local.1")]
+    fn test_round_trip_conversion(#[case] version_str: &str) {
+        let original: PEP440 = version_str.parse().unwrap();
         let zerv: Zerv = original.clone().into();
         let converted: PEP440 = zerv.into();
 

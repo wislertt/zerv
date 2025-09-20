@@ -18,7 +18,15 @@ fn determine_tier(vars: &ZervVars) -> u8 {
     }
 }
 
-fn tier_2_extra_core() -> Vec<Component> {
+fn tier_1_core() -> Vec<Component> {
+    vec![
+        Component::VarField("major".to_string()),
+        Component::VarField("minor".to_string()),
+        Component::VarField("patch".to_string()),
+    ]
+}
+
+fn tier_1_extra_core() -> Vec<Component> {
     vec![
         Component::VarField("epoch".to_string()),
         Component::VarField("pre_release".to_string()),

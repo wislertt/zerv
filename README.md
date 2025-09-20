@@ -1,9 +1,11 @@
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=wisarootl_zerv&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=wisarootl_zerv)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=wisarootl_zerv&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=wisarootl_zerv)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=wisarootl_zerv&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=wisarootl_zerv)
-[![codecov](https://img.shields.io/codecov/c/github/wisarootl/zerv?token=549GL6LQBX&label=codecov&logo=codecov)](https://codecov.io/gh/wisarootl/zerv)
 [![tests](https://img.shields.io/github/actions/workflow/status/wisarootl/zerv/ci-test.yml?branch=main&label=tests&logo=github)](https://github.com/wisarootl/zerv/actions/workflows/ci-test.yml)
 [![release](https://img.shields.io/github/actions/workflow/status/wisarootl/zerv/cd.yml?branch=main&label=release&logo=github)](https://github.com/wisarootl/zerv/actions/workflows/cd.yml)
+[![quality gate status](https://sonarcloud.io/api/project_badges/measure?project=wisarootl_zerv&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=wisarootl_zerv)
+[![security rating](https://sonarcloud.io/api/project_badges/measure?project=wisarootl_zerv&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=wisarootl_zerv)
+[![vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=wisarootl_zerv&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=wisarootl_zerv)
+[![codecov](https://img.shields.io/codecov/c/github/wisarootl/zerv?token=549GL6LQBX&label=codecov&logo=codecov)](https://codecov.io/gh/wisarootl/zerv)
+[![crates.io](https://img.shields.io/crates/v/zerv?color=green)](https://crates.io/crates/zerv)
+[![downloads](https://img.shields.io/crates/d/zerv?label=downloads&color=green)](https://crates.io/crates/zerv)
 
 # zerv
 

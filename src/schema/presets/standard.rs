@@ -1,15 +1,13 @@
-use super::{determine_tier, tier_2_build, tier_2_extra_core, tier_3_build, tier_3_extra_core};
-use crate::version::zerv::{Component, ZervSchema, ZervVars};
+use super::{
+    determine_tier, tier_1_core, tier_1_extra_core, tier_2_build, tier_3_build, tier_3_extra_core,
+};
+use crate::version::zerv::{ZervSchema, ZervVars};
 
 // Tier 1: Tagged, clean - major.minor.patch
 pub fn zerv_standard_tier_1() -> ZervSchema {
     ZervSchema {
-        core: vec![
-            Component::VarField("major".to_string()),
-            Component::VarField("minor".to_string()),
-            Component::VarField("patch".to_string()),
-        ],
-        extra_core: vec![],
+        core: tier_1_core(),
+        extra_core: tier_1_extra_core(),
         build: vec![],
     }
 }
@@ -17,12 +15,8 @@ pub fn zerv_standard_tier_1() -> ZervSchema {
 // Tier 2: Distance, clean - major.minor.patch.post<distance>+branch.<commit>
 pub fn zerv_standard_tier_2() -> ZervSchema {
     ZervSchema {
-        core: vec![
-            Component::VarField("major".to_string()),
-            Component::VarField("minor".to_string()),
-            Component::VarField("patch".to_string()),
-        ],
-        extra_core: tier_2_extra_core(),
+        core: tier_1_core(),
+        extra_core: tier_1_extra_core(),
         build: tier_2_build(),
     }
 }
@@ -30,16 +24,13 @@ pub fn zerv_standard_tier_2() -> ZervSchema {
 // Tier 3: Dirty - major.minor.patch.dev<timestamp>+branch.<distance>.<commit>
 pub fn zerv_standard_tier_3() -> ZervSchema {
     ZervSchema {
-        core: vec![
-            Component::VarField("major".to_string()),
-            Component::VarField("minor".to_string()),
-            Component::VarField("patch".to_string()),
-        ],
+        core: tier_1_core(),
         extra_core: tier_3_extra_core(),
         build: tier_3_build(),
     }
 }
 
+// TODO: XXXXXXXXXXX
 pub fn get_standard_schema(vars: &ZervVars) -> ZervSchema {
     let tier = determine_tier(vars);
     match tier {
