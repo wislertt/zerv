@@ -1,4 +1,4 @@
-use crate::constants::*;
+use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, SUPPORTED_FORMATS};
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
 use crate::schema::create_zerv_version;
@@ -55,6 +55,7 @@ pub fn run_version_pipeline(args: VersionArgs) -> Result<String, ZervError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::SCHEMA_ZERV_STANDARD;
     use crate::test_utils::{GitRepoFixture, VersionTestUtils, should_run_docker_tests};
     use clap::Parser;
     use rstest::rstest;

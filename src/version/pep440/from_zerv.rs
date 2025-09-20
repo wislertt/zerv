@@ -52,6 +52,35 @@ fn process_var_field_pep440(field: &str, zerv: &Zerv, components: &mut PEP440Com
     }
 }
 
+fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
+    if value <= u32::MAX as u64 {
+        local_overflow.push(LocalSegment::Integer(value as u32));
+    } else {
+        local_overflow.push(LocalSegment::String(value.to_string()));
+    }
+}
+
+fn add_var_field_to_local(field: &str, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
+    match field {
+        "current_branch" => {
+            if let Some(branch) = &zerv.vars.current_branch {
+                local_overflow.push(LocalSegment::String(branch.clone()));
+            }
+        }
+        "distance" => {
+            if let Some(distance) = zerv.vars.distance {
+                local_overflow.push(LocalSegment::Integer(distance as u32));
+            }
+        }
+        "current_commit_hash" => {
+            if let Some(hash) = &zerv.vars.current_commit_hash {
+                local_overflow.push(LocalSegment::String(hash.clone()));
+            }
+        }
+        _ => {}
+    }
+}
+
 fn add_component_to_local(
     comp: &Component,
     local_overflow: &mut Vec<LocalSegment>,
@@ -63,38 +92,15 @@ fn add_component_to_local(
             local_overflow.push(LocalSegment::String(s.clone()));
         }
         Component::Integer(n) => {
-            if *n <= u32::MAX as u64 {
-                local_overflow.push(LocalSegment::Integer(*n as u32));
-            } else {
-                local_overflow.push(LocalSegment::String(n.to_string()));
-            }
+            add_integer_to_local(*n, local_overflow);
         }
         Component::VarTimestamp(pattern) => {
             let val = resolve_timestamp(pattern, tag_timestamp).unwrap_or(0);
-            if val <= u32::MAX as u64 {
-                local_overflow.push(LocalSegment::Integer(val as u32));
-            } else {
-                local_overflow.push(LocalSegment::String(val.to_string()));
-            }
+            add_integer_to_local(val, local_overflow);
         }
-        Component::VarField(field) => match field.as_str() {
-            "current_branch" => {
-                if let Some(branch) = &zerv.vars.current_branch {
-                    local_overflow.push(LocalSegment::String(branch.clone()));
-                }
-            }
-            "distance" => {
-                if let Some(distance) = zerv.vars.distance {
-                    local_overflow.push(LocalSegment::Integer(distance as u32));
-                }
-            }
-            "current_commit_hash" => {
-                if let Some(hash) = &zerv.vars.current_commit_hash {
-                    local_overflow.push(LocalSegment::String(hash.clone()));
-                }
-            }
-            _ => {}
-        },
+        Component::VarField(field) => {
+            add_var_field_to_local(field, zerv, local_overflow);
+        }
         _ => {}
     }
 }

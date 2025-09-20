@@ -1,4 +1,4 @@
-use crate::constants::*;
+use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, SUPPORTED_FORMATS};
 use crate::error::ZervError;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
