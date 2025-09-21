@@ -1,4 +1,4 @@
-use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, SUPPORTED_FORMATS};
+use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, FORMAT_ZERV, SUPPORTED_FORMATS};
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
 use crate::schema::create_zerv_version;
@@ -30,20 +30,30 @@ pub struct VersionArgs {
     pub output_format: String,
 }
 
-pub fn run_version_pipeline(args: VersionArgs) -> Result<String, ZervError> {
-    // 1. Get VCS data
-    let vcs_data = detect_vcs(&current_dir()?)?.get_vcs_data()?;
+pub fn run_version_pipeline(
+    args: VersionArgs,
+    directory: Option<&str>,
+) -> Result<String, ZervError> {
+    // 1. Determine working directory
+    let work_dir = match directory {
+        Some(dir) => std::path::PathBuf::from(dir),
+        None => current_dir()?,
+    };
 
-    // 2. Convert to ZervVars
+    // 2. Get VCS data
+    let vcs_data = detect_vcs(&work_dir)?.get_vcs_data()?;
+
+    // 3. Convert to ZervVars
     let vars = vcs_data_to_zerv_vars(vcs_data)?;
 
-    // 3. Create Zerv version object from vars and schema
+    // 4. Create Zerv version object from vars and schema
     let zerv = create_zerv_version(vars, args.schema.as_deref(), args.schema_ron.as_deref())?;
 
-    // 4. Apply output format
+    // 5. Apply output format
     match args.output_format.as_str() {
         FORMAT_PEP440 => Ok(PEP440::from(zerv).to_string()),
         FORMAT_SEMVER => Ok(SemVer::from(zerv).to_string()),
+        FORMAT_ZERV => Ok(zerv.to_string()),
         format => {
             eprintln!("Unknown output format: {format}");
             eprintln!("Supported formats: {}", SUPPORTED_FORMATS.join(", "));
@@ -59,7 +69,6 @@ mod tests {
     use crate::test_utils::{GitRepoFixture, VersionTestUtils, should_run_docker_tests};
     use clap::Parser;
     use rstest::rstest;
-    use std::env;
 
     #[test]
     fn test_version_args_defaults() {
@@ -71,7 +80,6 @@ mod tests {
         assert_eq!(args.output_format, FORMAT_SEMVER);
     }
 
-    // TODO: XXXXXXXXXXX
     #[rstest]
     #[case("tagged_clean", "v1.0.0", 0, None, "1.0.0")]
     #[case("tagged_with_distance_1", "v1.0.0", 1, None, "1.0.0+main.<commit>")]
@@ -111,9 +119,6 @@ mod tests {
                 .expect("Failed to create branch");
         }
 
-        let original_dir = env::current_dir().expect("Failed to get current dir");
-        env::set_current_dir(fixture.path()).expect("Failed to change dir");
-
         let args = VersionArgs {
             version: None,
             source: "git".to_string(),
@@ -122,11 +127,7 @@ mod tests {
             output_format: FORMAT_SEMVER.to_string(),
         };
 
-        let result = run_version_pipeline(args);
-
-        // Restore directory (ignore errors if original dir was deleted)
-        let _ = env::set_current_dir(&original_dir);
-
+        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
         let version = result.unwrap_or_else(|_| panic!("Pipeline should succeed for {scenario}"));
         println!("Scenario {scenario}: Generated version: {version}");
 
@@ -145,9 +146,6 @@ mod tests {
 
         let fixture = GitRepoFixture::tagged("v1.0.0").expect("Failed to create tagged repo");
 
-        let original_dir = env::current_dir().expect("Failed to get current dir");
-        env::set_current_dir(fixture.path()).expect("Failed to change dir");
-
         let args = VersionArgs {
             version: None,
             source: "git".to_string(),
@@ -156,9 +154,7 @@ mod tests {
             output_format: "unknown".to_string(),
         };
 
-        let result = run_version_pipeline(args);
-        env::set_current_dir(original_dir).expect("Failed to restore dir");
-
+        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
         assert!(result.is_err(), "Pipeline should fail for unknown format");
         assert!(matches!(result, Err(ZervError::UnknownFormat(_))));
     }

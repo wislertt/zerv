@@ -1,4 +1,7 @@
-use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, SUPPORTED_FORMATS};
+use crate::constants::{
+    FORMAT_NAME_PEP440, FORMAT_NAME_SEMVER, FORMAT_PEP440, FORMAT_SEMVER, SUPPORTED_FORMAT_NAMES,
+    SUPPORTED_FORMATS,
+};
 use crate::error::ZervError;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
@@ -27,16 +30,24 @@ fn print_format_validation<T: Display>(original: &str, parsed: &T, format_name: 
 pub fn run_check_command(args: CheckArgs) -> Result<(), ZervError> {
     match args.format.as_deref() {
         Some(FORMAT_PEP440) => {
-            let parsed = PEP440::from_str(&args.version)
-                .map_err(|_| ZervError::InvalidVersion(args.version.clone()))?;
+            let parsed = PEP440::from_str(&args.version).map_err(|_| {
+                ZervError::InvalidVersion(format!(
+                    "{} - Invalid {} format",
+                    args.version, FORMAT_NAME_PEP440
+                ))
+            })?;
             println!("Version: {}", args.version);
-            print_format_validation(&args.version, &parsed, "PEP440");
+            print_format_validation(&args.version, &parsed, FORMAT_NAME_PEP440);
         }
         Some(FORMAT_SEMVER) => {
-            let parsed = SemVer::from_str(&args.version)
-                .map_err(|_| ZervError::InvalidVersion(args.version.clone()))?;
+            let parsed = SemVer::from_str(&args.version).map_err(|_| {
+                ZervError::InvalidVersion(format!(
+                    "{} - Invalid {} format",
+                    args.version, FORMAT_NAME_SEMVER
+                ))
+            })?;
             println!("Version: {}", args.version);
-            print_format_validation(&args.version, &parsed, "SemVer");
+            print_format_validation(&args.version, &parsed, FORMAT_NAME_SEMVER);
         }
         None => {
             // Auto-detect format
@@ -44,16 +55,20 @@ pub fn run_check_command(args: CheckArgs) -> Result<(), ZervError> {
             let semver_result = SemVer::from_str(&args.version);
 
             if pep440_result.is_err() && semver_result.is_err() {
-                return Err(ZervError::InvalidVersion(args.version));
+                return Err(ZervError::InvalidVersion(format!(
+                    "{} - Invalid for all supported formats ({})",
+                    args.version,
+                    SUPPORTED_FORMAT_NAMES.join(", ")
+                )));
             }
 
             println!("Version: {}", args.version);
 
             if let Ok(ref parsed) = pep440_result {
-                print_format_validation(&args.version, parsed, "PEP440");
+                print_format_validation(&args.version, parsed, FORMAT_NAME_PEP440);
             }
             if let Ok(ref parsed) = semver_result {
-                print_format_validation(&args.version, parsed, "SemVer");
+                print_format_validation(&args.version, parsed, FORMAT_NAME_SEMVER);
             }
         }
         Some(format) => {

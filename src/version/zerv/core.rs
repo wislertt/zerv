@@ -1,26 +1,28 @@
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PreReleaseLabel {
     Alpha,
     Beta,
     Rc,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Zerv {
     pub schema: ZervSchema,
     pub vars: ZervVars,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZervSchema {
     pub core: Vec<Component>,
     pub extra_core: Vec<Component>,
     pub build: Vec<Component>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Component {
     String(String),
     Integer(u64),
@@ -29,7 +31,7 @@ pub enum Component {
     VarCustom(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ZervVars {
     // from version string
     pub major: Option<u64>,
@@ -52,13 +54,13 @@ pub struct ZervVars {
     pub custom: HashMap<String, VarValue>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PreReleaseVar {
     pub label: PreReleaseLabel,
     pub number: Option<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum VarValue {
     String(String),
     Integer(u64),
