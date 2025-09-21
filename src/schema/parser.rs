@@ -1,16 +1,16 @@
 use crate::error::ZervError;
 use crate::version::zerv::{Component, ZervSchema};
 use ron::de::from_str;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SchemaConfig {
     pub core: Vec<ComponentConfig>,
     pub extra_core: Vec<ComponentConfig>,
     pub build: Vec<ComponentConfig>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ComponentConfig {
     String { value: String },
     Integer { value: u64 },

@@ -7,6 +7,10 @@ use clap::{Parser, Subcommand};
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Dynamic versioning CLI")]
 pub struct Cli {
+    /// Change to directory before running command
+    #[arg(short = 'C', global = true)]
+    pub directory: Option<String>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -29,9 +33,18 @@ mod tests {
         // Test that CLI can be parsed
         let cli = Cli::try_parse_from(["zerv", "version"]).unwrap();
         assert!(matches!(cli.command, Commands::Version(_)));
+        assert!(cli.directory.is_none());
 
         let cli = Cli::try_parse_from(["zerv", "check", "1.0.0"]).unwrap();
         assert!(matches!(cli.command, Commands::Check(_)));
+        assert!(cli.directory.is_none());
+    }
+
+    #[test]
+    fn test_cli_with_directory() {
+        let cli = Cli::try_parse_from(["zerv", "-C", "/tmp", "version"]).unwrap();
+        assert_eq!(cli.directory, Some("/tmp".to_string()));
+        assert!(matches!(cli.command, Commands::Version(_)));
     }
 
     #[rstest]
