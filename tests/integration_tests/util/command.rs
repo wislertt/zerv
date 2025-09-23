@@ -21,16 +21,48 @@ impl Default for TestCommand {
 impl TestCommand {
     /// Create a new test command for zerv binary
     pub fn new() -> Self {
-        // Try to use built binary first, fallback to cargo run
-        let binary_path = std::env::current_dir().unwrap().join("target/debug/zerv");
+        // Get the workspace root directory
+        let workspace_root = std::env::var("CARGO_MANIFEST_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| {
+                // Fallback: find workspace root by looking for Cargo.toml
+                let mut current = std::env::current_dir().unwrap();
+                while !current.join("Cargo.toml").exists() {
+                    if let Some(parent) = current.parent() {
+                        current = parent.to_path_buf();
+                    } else {
+                        // If we can't find Cargo.toml, use current dir
+                        return std::env::current_dir().unwrap();
+                    }
+                }
+                current
+            });
 
-        let cmd = if binary_path.exists() {
-            Command::new(binary_path)
+        // Try multiple binary locations
+        let binary_paths = [
+            workspace_root.join("target/debug/zerv"),
+            workspace_root.join("target/debug/zerv.exe"), // Windows
+            workspace_root.join("target/release/zerv"),
+            workspace_root.join("target/release/zerv.exe"), // Windows
+        ];
+
+        let binary_path = binary_paths.iter().find(|path| path.exists());
+
+        let mut cmd = if let Some(path) = binary_path {
+            Command::new(path)
         } else {
+            // Fallback to cargo run from workspace root
             let mut cmd = Command::new("cargo");
             cmd.args(["run", "--bin", "zerv", "--"]);
+            cmd.current_dir(&workspace_root);
             cmd
         };
+
+        // Ensure we don't inherit the current directory for cargo run
+        // This prevents cargo from looking for Cargo.toml in test directories
+        if binary_path.is_none() {
+            cmd.current_dir(&workspace_root);
+        }
 
         Self {
             cmd,

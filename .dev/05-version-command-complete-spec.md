@@ -203,14 +203,41 @@ When using `--source stdin`, Zerv **only accepts Zerv RON format**:
 
 ```bash
 $ zerv version
-✗ Error: Not in a git repository
+✗ Error: VCS not found: No VCS repository found
+```
+
+**Current Issue**: Error message mentions "VCS" instead of the specific source (git). Should be:
+
+```bash
+✗ Error: Not in a git repository (--source git)
 ```
 
 ### No Tags Found
 
 ```bash
 $ zerv version
-✗ Error: No version tags found in repository
+✗ Error: IO error: No version tag found in VCS data
+```
+
+**Current Issue**: Error message mentions "VCS data" instead of the specific source. Should be:
+
+```bash
+✗ Error: No version tags found in git repository
+```
+
+### No Commits (Empty Repository)
+
+```bash
+$ zerv version
+✗ Error: Command execution failed: Git command failed: fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+```
+
+**Current Issue**: Shows raw git error. Should be:
+
+```bash
+✗ Error: No commits found in git repository
 ```
 
 ### Simple Version String (Not Supported)
@@ -238,7 +265,7 @@ $ echo "invalid ron" | zerv version --source stdin
 
 ```bash
 $ zerv version --output-format unknown
-✗ Error: Unknown output format: unknown
+✗ Error: Unknown format: unknown
 Supported formats: pep440, semver, zerv
 ```
 
@@ -258,6 +285,22 @@ $ zerv version --clean --distance 5
 $ zerv version --clean --dirty true
 ✗ Error: Cannot use --clean with --distance or --dirty (conflicting options)
 ```
+
+## Error Handling Issues to Fix
+
+**Priority Issues**:
+
+1. **Source-Aware Error Messages**: All error messages should mention the specific source (git) instead of generic "VCS"
+2. **User-Friendly Git Errors**: Raw git command errors should be translated to readable messages
+3. **Empty Repository Handling**: "No commits" should be handled gracefully
+4. **Consistent Error Format**: All errors should follow same format pattern
+
+**Additional Error Cases to Consider**:
+
+- **Shallow Clone**: Warning about inaccurate distance calculations
+- **Detached HEAD**: Handle gracefully with appropriate messaging
+- **Permission Denied**: Clear message when git commands fail due to permissions
+- **Git Not Installed**: Clear message when git command is not available
 
 ## Implementation Details
 

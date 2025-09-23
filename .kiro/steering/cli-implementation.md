@@ -1,3 +1,8 @@
+---
+inclusion: fileMatch
+fileMatchPattern: "src/cli/**/*.rs"
+---
+
 # CLI Implementation Standards
 
 ## Core Commands

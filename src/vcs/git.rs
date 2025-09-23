@@ -17,22 +17,61 @@ impl GitVcs {
         Ok(Self { repo_path })
     }
 
+    /// Create new Git VCS instance for testing (bypasses VCS root detection)
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn new_for_test(repo_path: PathBuf) -> Self {
+        Self { repo_path }
+    }
+
     /// Run git command and return output
     fn run_git_command(&self, args: &[&str]) -> Result<String> {
         let output = Command::new("git")
             .args(args)
             .current_dir(&self.repo_path)
             .output()
-            .map_err(|e| ZervError::CommandFailed(format!("Failed to execute git: {e}")))?;
+            .map_err(|e| self.translate_command_error(e))?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(ZervError::CommandFailed(format!(
-                "Git command failed: {stderr}"
-            )));
+            return Err(self.translate_git_error(&output.stderr));
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+
+    /// Translate std::io::Error from git command execution to user-friendly messages
+    pub fn translate_command_error(&self, error: std::io::Error) -> ZervError {
+        match error.kind() {
+            std::io::ErrorKind::NotFound => ZervError::CommandFailed(
+                "Git command not found. Please install git and try again.".to_string(),
+            ),
+            std::io::ErrorKind::PermissionDenied => {
+                ZervError::CommandFailed("Permission denied accessing git repository".to_string())
+            }
+            _ => ZervError::CommandFailed(format!("Failed to execute git: {error}")),
+        }
+    }
+
+    /// Parse stderr and map common git errors to user-friendly messages
+    pub fn translate_git_error(&self, stderr: &[u8]) -> ZervError {
+        let stderr_str = String::from_utf8_lossy(stderr);
+
+        // Pattern matching for common git errors
+        if stderr_str.contains("fatal: ambiguous argument 'HEAD'") {
+            return ZervError::CommandFailed("No commits found in git repository".to_string());
+        }
+
+        if stderr_str.contains("not a git repository") {
+            return ZervError::VcsNotFound("Not in a git repository (--source git)".to_string());
+        }
+
+        if stderr_str.contains("Permission denied") {
+            return ZervError::CommandFailed(
+                "Permission denied accessing git repository".to_string(),
+            );
+        }
+
+        // Generic git command failure with cleaned up message
+        ZervError::CommandFailed(format!("Git command failed: {stderr_str}"))
     }
 
     /// Get latest version tag
@@ -162,6 +201,7 @@ mod tests {
     use crate::test_utils::{
         GitOperations, TestDir, should_run_docker_tests, should_use_native_git,
     };
+    use rstest::rstest;
     use std::fs;
 
     fn get_git_impl() -> Box<dyn GitOperations> {
@@ -221,9 +261,7 @@ mod tests {
     #[test]
     fn test_is_available_no_repo() {
         let temp_dir = TestDir::new().expect("should create temp dir");
-        let git_vcs = GitVcs {
-            repo_path: temp_dir.path().to_path_buf(),
-        };
+        let git_vcs = GitVcs::new_for_test(temp_dir.path().to_path_buf());
         assert!(!git_vcs.is_available(temp_dir.path()));
     }
 
@@ -308,5 +346,109 @@ mod tests {
         let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
         assert!(!data.is_dirty);
+    }
+
+    #[rstest]
+    #[case(
+        std::io::ErrorKind::NotFound,
+        "git not found",
+        "Git command not found. Please install git and try again."
+    )]
+    #[case(
+        std::io::ErrorKind::PermissionDenied,
+        "access denied",
+        "Permission denied accessing git repository"
+    )]
+    #[case(
+        std::io::ErrorKind::TimedOut,
+        "timeout",
+        "Failed to execute git: timeout"
+    )]
+    fn test_translate_command_error(
+        #[case] error_kind: std::io::ErrorKind,
+        #[case] error_msg: &str,
+        #[case] expected_msg: &str,
+    ) {
+        let temp_dir = TestDir::new().expect("should create temp dir");
+        let git_vcs = GitVcs::new_for_test(temp_dir.path().to_path_buf());
+
+        let io_error = std::io::Error::new(error_kind, error_msg);
+        let zerv_error = git_vcs.translate_command_error(io_error);
+
+        match zerv_error {
+            ZervError::CommandFailed(msg) => {
+                assert_eq!(msg, expected_msg);
+            }
+            _ => panic!("Expected CommandFailed error"),
+        }
+    }
+
+    #[rstest]
+    #[case(
+        b"fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.",
+        ZervError::CommandFailed("No commits found in git repository".to_string())
+    )]
+    #[case(
+        b"fatal: not a git repository (or any of the parent directories): .git",
+        ZervError::VcsNotFound("Not in a git repository (--source git)".to_string())
+    )]
+    #[case(
+        b"Permission denied (publickey).",
+        ZervError::CommandFailed("Permission denied accessing git repository".to_string())
+    )]
+    #[case(
+        b"fatal: some other git error",
+        ZervError::CommandFailed("Git command failed: fatal: some other git error".to_string())
+    )]
+    fn test_translate_git_error(#[case] stderr: &[u8], #[case] expected_error: ZervError) {
+        let temp_dir = TestDir::new().expect("should create temp dir");
+        let git_vcs = GitVcs::new_for_test(temp_dir.path().to_path_buf());
+
+        let zerv_error = git_vcs.translate_git_error(stderr);
+        assert_eq!(zerv_error, expected_error);
+    }
+
+    /// Comprehensive tests for git error pattern matching
+    #[rstest]
+    #[case(
+        b"fatal: ambiguous argument 'HEAD'",
+        "No commits found in git repository"
+    )]
+    #[case(
+        b"fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'",
+        "No commits found in git repository"
+    )]
+    #[case(
+        b"fatal: not a git repository",
+        "Not in a git repository (--source git)"
+    )]
+    #[case(
+        b"fatal: not a git repository (or any of the parent directories): .git",
+        "Not in a git repository (--source git)"
+    )]
+    #[case(b"Permission denied", "Permission denied accessing git repository")]
+    #[case(
+        b"Permission denied (publickey).\r\nfatal: Could not read from remote repository.",
+        "Permission denied accessing git repository"
+    )]
+    #[case(
+        b"fatal: unknown git command",
+        "Git command failed: fatal: unknown git command"
+    )]
+    #[case(
+        b"error: pathspec 'nonexistent' did not match any file(s) known to git",
+        "Git command failed: error: pathspec 'nonexistent' did not match any file(s) known to git"
+    )]
+    fn test_git_error_pattern_matching(#[case] stderr: &[u8], #[case] expected_msg: &str) {
+        let temp_dir = TestDir::new().expect("should create temp dir");
+        let git_vcs = GitVcs::new_for_test(temp_dir.path().to_path_buf());
+
+        let zerv_error = git_vcs.translate_git_error(stderr);
+
+        match zerv_error {
+            ZervError::CommandFailed(msg) => assert_eq!(msg, expected_msg),
+            ZervError::VcsNotFound(msg) => assert_eq!(msg, expected_msg),
+            _ => panic!("Unexpected error type: {zerv_error:?}"),
+        }
     }
 }

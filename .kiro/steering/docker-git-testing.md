@@ -1,3 +1,8 @@
+---
+inclusion: fileMatch
+fileMatchPattern: "src/test_utils/git/**/*.rs"
+---
+
 # Docker Git Testing Guide - Multi-Platform Architecture
 
 ## ✅ CURRENT STATUS: Multi-Platform CI Implemented

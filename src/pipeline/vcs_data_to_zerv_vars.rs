@@ -8,14 +8,10 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
     // Parse version from tag_version
     let version = if let Some(ref tag_version) = vcs_data.tag_version {
         parse_version_from_tag(tag_version, None).ok_or_else(|| {
-            ZervError::Io(std::io::Error::other(format!(
-                "Failed to parse version from tag: {tag_version}"
-            )))
+            ZervError::InvalidFormat(format!("Failed to parse version from tag: {tag_version}"))
         })?
     } else {
-        return Err(ZervError::Io(std::io::Error::other(
-            "No version tag found in VCS data",
-        )));
+        return Err(ZervError::NoTagsFound);
     };
 
     let mut vars: ZervVars = version.into();
@@ -36,41 +32,45 @@ mod tests {
     use crate::test_utils::{
         get_real_pep440_vcs_data, get_real_semver_vcs_data, should_run_docker_tests,
     };
+    use rstest::rstest;
 
-    #[test]
-    fn test_vcs_data_to_zerv_vars_real_semver() {
+    #[rstest]
+    #[case::semver(get_real_semver_vcs_data(), (1, 2, 3), "SemVer")]
+    #[case::pep440(get_real_pep440_vcs_data(), (2, 0, 1), "PEP440")]
+    fn test_vcs_data_to_zerv_vars_real_formats(
+        #[case] vcs_data: &VcsData,
+        #[case] expected_version: (u64, u64, u64),
+        #[case] format_name: &str,
+    ) {
         if !should_run_docker_tests() {
             return;
         }
-        let vcs_data = get_real_semver_vcs_data().clone();
-        let vars =
-            vcs_data_to_zerv_vars(vcs_data).expect("Failed to convert SemVer VCS data to ZervVars");
+
+        let vars = vcs_data_to_zerv_vars(vcs_data.clone())
+            .unwrap_or_else(|_| panic!("Failed to convert {format_name} VCS data to ZervVars"));
 
         assert_eq!(
             (vars.major, vars.minor, vars.patch),
-            (Some(1), Some(2), Some(3))
+            (
+                Some(expected_version.0),
+                Some(expected_version.1),
+                Some(expected_version.2)
+            ),
+            "Version mismatch for {format_name}"
         );
-        assert_eq!(vars.distance, Some(1)); // 1 commit after tag
-        assert!(vars.current_commit_hash.is_some());
-        assert!(vars.tag_timestamp.is_some());
-    }
-
-    #[test]
-    fn test_vcs_data_to_zerv_vars_real_pep440() {
-        if !should_run_docker_tests() {
-            return;
-        }
-        let vcs_data = get_real_pep440_vcs_data().clone();
-        let vars =
-            vcs_data_to_zerv_vars(vcs_data).expect("Failed to convert PEP440 VCS data to ZervVars");
-
         assert_eq!(
-            (vars.major, vars.minor, vars.patch),
-            (Some(2), Some(0), Some(1))
+            vars.distance,
+            Some(1),
+            "Distance should be 1 commit after tag for {format_name}"
         );
-        assert_eq!(vars.distance, Some(1)); // 1 commit after tag
-        assert!(vars.current_commit_hash.is_some());
-        assert!(vars.tag_timestamp.is_some());
+        assert!(
+            vars.current_commit_hash.is_some(),
+            "Commit hash should be present for {format_name}"
+        );
+        assert!(
+            vars.tag_timestamp.is_some(),
+            "Tag timestamp should be present for {format_name}"
+        );
     }
 
     #[test]
@@ -81,5 +81,41 @@ mod tests {
         };
         let result = vcs_data_to_zerv_vars(vcs_data);
         assert!(result.is_err());
+
+        match result {
+            Err(ZervError::NoTagsFound) => {
+                assert_eq!(
+                    ZervError::NoTagsFound.to_string(),
+                    "No version tags found in git repository"
+                );
+            }
+            _ => panic!("Expected NoTagsFound error"),
+        }
+    }
+
+    #[rstest]
+    #[case("invalid")]
+    #[case("")]
+    #[case("abc.def.ghi")]
+    #[case("invalid-tag-format")]
+    #[case("not-a-version")]
+    #[case("v")]
+    #[case("1.2.v")]
+    fn test_vcs_data_to_zerv_vars_invalid_tag_formats(#[case] invalid_tag: &str) {
+        let vcs_data = VcsData {
+            tag_version: Some(invalid_tag.to_string()),
+            ..Default::default()
+        };
+        let result = vcs_data_to_zerv_vars(vcs_data);
+
+        match result {
+            Err(ZervError::InvalidFormat(msg)) => {
+                assert_eq!(
+                    msg,
+                    format!("Failed to parse version from tag: {invalid_tag}")
+                );
+            }
+            _ => panic!("Expected InvalidFormat error for tag: {invalid_tag}"),
+        }
     }
 }
