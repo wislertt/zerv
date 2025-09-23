@@ -16,12 +16,17 @@ pub trait GitOperations {
 
     /// Initialize a git repository with initial commit (shared logic)
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
+        self.init_repo_no_commit(test_dir)?;
         test_dir.create_file("README.md", "# Test Repository")?;
+        self.create_commit(test_dir, "Initial commit")?;
+        Ok(())
+    }
+
+    /// Initialize an empty git repository without any commits (shared logic)
+    fn init_repo_no_commit(&self, test_dir: &TestDir) -> io::Result<()> {
         self.execute_git(test_dir, &["init", "-b", "main"])?;
         self.execute_git(test_dir, &["config", "user.name", "Test User"])?;
         self.execute_git(test_dir, &["config", "user.email", "test@example.com"])?;
-        self.execute_git(test_dir, &["add", "."])?;
-        self.execute_git(test_dir, &["commit", "-m", "Initial commit"])?;
         Ok(())
     }
 

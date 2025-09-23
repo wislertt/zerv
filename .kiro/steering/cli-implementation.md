@@ -40,13 +40,43 @@ struct VersionArgs {
 }
 ```
 
-### State-Based Versioning Tiers
+### Check Command Args Structure
+
+```rust
+#[derive(Parser)]
+struct CheckArgs {
+    version: String,
+    #[arg(long)]
+    format: Option<String>,  // pep440, semver, auto-detect (default)
+}
+```
+
+### Core Pipeline Function
+
+```rust
+pub fn run_version_pipeline(args: VersionArgs) -> Result<String> {
+    // 1. Get VCS data
+    let vcs_data = detect_vcs(current_dir())?.get_vcs_data()?;
+
+    // 2. Convert to ZervVars
+    let vars = vcs_data_to_zerv_vars(vcs_data)?;
+
+    // 3. Apply schema and output format
+    match args.output_format.as_deref() {
+        Some("pep440") => Ok(PEP440::from_zerv(&vars)?.to_string()),
+        Some("semver") => Ok(SemVer::from_zerv(&vars)?.to_string()),
+        _ => Ok(vars.to_string()),
+    }
+}
+```
+
+## State-Based Versioning Tiers
 
 **Tier 1** (Tagged, clean): `major.minor.patch`
 **Tier 2** (Distance, clean): `major.minor.patch.post<distance>+branch.<commit>`
 **Tier 3** (Dirty): `major.minor.patch.dev<timestamp>+branch.<commit>`
 
-### Format Flag Validation Pattern
+## Format Flag Validation Pattern
 
 ```rust
 // Error if conflicting format flags used
@@ -56,3 +86,55 @@ if args.format.is_some() && (args.input_format.is_some() || args.output_format.i
     ));
 }
 ```
+
+## Check Command Auto-Detection Pattern
+
+```rust
+fn run_check_command(args: CheckArgs) -> Result<()> {
+    match args.format.as_deref() {
+        Some("pep440") => {
+            PEP440::parse(&args.version)?;
+            println!("✓ Valid PEP440 version");
+        }
+        Some("semver") => {
+            SemVer::parse(&args.version)?;
+            println!("✓ Valid SemVer version");
+        }
+        None => {
+            // Auto-detect format
+            let pep440_valid = PEP440::parse(&args.version).is_ok();
+            let semver_valid = SemVer::parse(&args.version).is_ok();
+
+            match (pep440_valid, semver_valid) {
+                (true, false) => println!("✓ Valid PEP440 version"),
+                (false, true) => println!("✓ Valid SemVer version"),
+                (true, true) => {
+                    println!("✓ Valid PEP440 version");
+                    println!("✓ Valid SemVer version");
+                }
+                (false, false) => return Err(ZervError::InvalidVersion(args.version)),
+            }
+        }
+        Some(format) => return Err(ZervError::UnknownFormat(format.to_string())),
+    }
+    Ok(())
+}
+```
+
+## Essential CLI Options
+
+### Input Sources
+
+- `--source git` (default) - Auto-detect Git
+- `--source string <version>` - Parse version string
+
+### Schema Control
+
+- `--schema zerv-default` (default) - Tier-aware schema
+- `--schema-ron <ron>` - Custom RON schema
+
+### Output Control
+
+- `--output-format <format>` - Target format: pep440, semver
+- `--output-template <template>` - Custom template string
+- `--output-prefix [prefix]` - Add prefix (defaults to "v")

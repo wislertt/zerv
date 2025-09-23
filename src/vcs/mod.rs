@@ -53,7 +53,9 @@ pub fn detect_vcs(path: &Path) -> Result<Box<dyn Vcs>> {
         return Ok(Box::new(git_vcs));
     }
 
-    Err(ZervError::VcsNotFound("No supported VCS found".to_string()))
+    Err(ZervError::VcsNotFound(
+        "Not in a git repository (--source git)".to_string(),
+    ))
 }
 
 /// Find the root directory of the VCS repository
@@ -74,7 +76,7 @@ pub fn find_vcs_root(start_path: &Path) -> Result<PathBuf> {
     }
 
     Err(ZervError::VcsNotFound(
-        "No VCS repository found".to_string(),
+        "Not in a git repository (--source git)".to_string(),
     ))
 }
 
@@ -110,6 +112,32 @@ mod tests {
         let result = find_vcs_root(temp_dir.path());
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), ZervError::VcsNotFound(_)));
+    }
+
+    #[test]
+    fn test_find_vcs_root_error_message() {
+        let temp_dir = TempDir::new().unwrap();
+        let result = find_vcs_root(temp_dir.path());
+
+        match result {
+            Err(ZervError::VcsNotFound(msg)) => {
+                assert_eq!(msg, "Not in a git repository (--source git)");
+            }
+            _ => panic!("Expected VcsNotFound error with specific message"),
+        }
+    }
+
+    #[test]
+    fn test_detect_vcs_error_message() {
+        let temp_dir = TempDir::new().unwrap();
+        let result = detect_vcs(temp_dir.path());
+
+        match result {
+            Err(ZervError::VcsNotFound(msg)) => {
+                assert_eq!(msg, "Not in a git repository (--source git)");
+            }
+            _ => panic!("Expected VcsNotFound error with specific message"),
+        }
     }
 
     #[test]

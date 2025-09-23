@@ -4,8 +4,6 @@
 
 Before performing ANY coding task, **read `.dev/00-README.md`** for complete project context and workflow.
 
-Reference the project documentation: #[[file:../../.dev/00-README.md]]
-
 ## .dev Document Numbering
 
 **Rule**: All .dev documents use sequential numbering to indicate creation order:
@@ -13,13 +11,22 @@ Reference the project documentation: #[[file:../../.dev/00-README.md]]
 - `00-***.md`: Created at same point in time (current state)
 - `01-***.md`: Next development phase
 - `02-***.md`: Following phase
+- etc.
 
 **Higher numbers = more recent/updated plans**
+
+Always verify against actual codebase - higher numbered docs are more likely to be current.
 
 ## Essential Commands
 
 ✅ Use `make` commands (defined in `.dev/00-README.md`)
 ⚠️ Ensure `make lint` and `make test` always pass before committing
+
+## Testing Strategy
+
+**For Amazon Q (AI Assistant):**
+
+- ALWAYS use `make lint` and `make test` for validation
 
 ## Error Handling Standards
 
@@ -27,6 +34,36 @@ Reference the project documentation: #[[file:../../.dev/00-README.md]]
 - Implement proper error propagation with `?` operator
 - Include context in error messages for debugging
 - Use `io::Error::other()` instead of `io::Error::new(io::ErrorKind::Other, ...)`
+
+## Performance Standards
+
+- Parse 1000+ versions in <100ms
+- Minimal VCS command calls (batch when possible)
+- Use compiled regex patterns for speed
+- Zero-copy string operations where possible
+
+## Architecture Patterns
+
+- **Universal Format**: Component-based system with variable references
+- **Multi-Format Support**: PEP440, SemVer, template-based custom formats
+- **State-Based Tiers**: Tagged/Distance/Dirty states determine version components
+- **Pipeline Architecture**: Input → Parse → Transform → Output
+
+**Error Standard Violations Check:**
+
+When user mentions:
+
+- "check error standards"
+- "find error violations"
+- "audit error handling"
+- "error compliance check"
+
+→ Search codebase for violations:
+
+- `io::Error::new(io::ErrorKind::Other` patterns
+- Missing `ZervError` usage in custom error cases
+- Direct `unwrap()` or `expect()` in production code
+- Error messages without context
 
 ## Code Reuse Standards
 
@@ -36,3 +73,22 @@ Reference the project documentation: #[[file:../../.dev/00-README.md]]
 - Reuse `TestDir`, `GitOperations` trait, and other existing infrastructure
 - Use `get_git_impl()` for environment-aware Git operations
 - Prefer `GitOperations` trait methods over direct Docker/Native calls
+- Avoid duplicating code across different files
+- Look for existing helper functions before implementing new ones
+
+**Code Reuse Violations Check:**
+
+When user mentions:
+
+- "check code reuse"
+- "find duplicated code"
+- "audit code duplication"
+- "redundant code check"
+
+→ Search codebase for violations:
+
+- Duplicated test setup patterns
+- Direct `DockerGit`/`NativeGit` usage instead of `get_git_impl()`
+- Reimplemented Git operations instead of using `GitOperations` trait
+- Similar helper functions across files
+- Unused existing utilities in `src/test_utils/git/`
