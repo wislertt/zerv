@@ -86,6 +86,14 @@ When user mentions:
 
 → Run `make test` in a loop (default 10 iterations) to detect instability
 
+**Flaky Test Prevention Patterns:**
+
+1. **Detailed Error Context**: Include specific error messages with context about what failed and why
+2. **State Verification**: Verify intermediate states (e.g., `.git` directory exists) before proceeding
+3. **Atomic Operations**: Use `GitOperations` trait methods that combine multiple Git operations atomically
+4. **Error Propagation**: Use `.unwrap_or_else()` with detailed panic messages instead of `.expect()`
+5. **Resource Isolation**: Each test gets its own `TestDir` and `GitRepoFixture` to prevent interference
+
 ## Test Stability Requirements
 
 **Before committing:**

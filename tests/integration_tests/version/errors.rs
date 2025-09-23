@@ -16,13 +16,20 @@ impl TestSetup {
     fn create(&self) -> TestFixture {
         match self {
             TestSetup::NoTags => {
-                let fixture = GitRepoFixture::with_distance("v0.0.0", 1)
-                    .expect("should create git fixture with commits");
-                // Remove the tag to simulate a repo with commits but no tags
-                fixture
-                    .git_impl
-                    .execute_git(&fixture.test_dir, &["tag", "-d", "v0.0.0"])
-                    .expect("should remove tag");
+                // Create a repo with commits but no tags (atomic operation)
+                let test_dir = TestDir::new().expect("should create temp dir");
+                let git_impl = zerv::test_utils::get_git_impl();
+
+                // Initialize repo and create commits without any tags
+                git_impl.init_repo(&test_dir).expect("should init repo");
+                test_dir
+                    .create_file("file1.txt", "content1")
+                    .expect("should create file");
+                git_impl
+                    .create_commit(&test_dir, "Additional commit")
+                    .expect("should create commit");
+
+                let fixture = GitRepoFixture { test_dir, git_impl };
                 TestFixture::GitRepo(fixture)
             }
             TestSetup::NotInGitRepo => {
@@ -31,10 +38,10 @@ impl TestSetup {
             }
             TestSetup::EmptyGitRepo => {
                 let test_dir = TestDir::new().expect("should create temp dir");
-                let fixture = GitRepoFixture::tagged("v1.0.0").expect("should create fixture");
-                // Initialize a new empty repo in a different directory
-                fixture
-                    .git_impl
+                // Create a fresh git implementation for the empty repo (avoid race conditions)
+                let git_impl = zerv::test_utils::get_git_impl();
+                // Initialize a new empty repo (no commits, no tags)
+                git_impl
                     .init_repo_no_commit(&test_dir)
                     .expect("should init empty repo");
                 TestFixture::PlainDir(test_dir)

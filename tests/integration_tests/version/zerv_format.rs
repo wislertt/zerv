@@ -8,7 +8,21 @@ fn test_zerv_format_output() {
         return;
     }
 
-    let fixture = GitRepoFixture::tagged("v1.2.3").expect("Failed to create tagged repo");
+    // Use atomic GitRepoFixture creation with better error context
+    let fixture = GitRepoFixture::tagged("v1.2.3")
+        .expect("Failed to create tagged repo - check Docker availability and Git operations");
+
+    // Verify Git repository state before proceeding
+    assert!(
+        fixture.path().join(".git").exists(),
+        "Git repository should exist at: {}",
+        fixture.path().display()
+    );
+    assert!(
+        fixture.path().join("README.md").exists(),
+        "Initial commit should create README.md at: {}",
+        fixture.path().display()
+    );
 
     let args = VersionArgs {
         version: None,
@@ -18,37 +32,85 @@ fn test_zerv_format_output() {
         output_format: FORMAT_ZERV.to_string(),
     };
 
+    // Run pipeline with detailed error context
     let result = zerv::cli::run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+    let output = result.unwrap_or_else(|e| {
+        panic!(
+            "Pipeline should succeed for tagged repo at {}: {}",
+            fixture.path().display(),
+            e
+        );
+    });
 
-    let output = result.expect("Pipeline should succeed");
+    // Verify it's valid RON format with detailed assertions
+    assert!(
+        output.contains("schema"),
+        "Output should contain 'schema' field. Got: {output}"
+    );
+    assert!(
+        output.contains("vars"),
+        "Output should contain 'vars' field. Got: {output}"
+    );
+    assert!(
+        output.contains("major"),
+        "Output should contain 'major' field. Got: {output}"
+    );
+    assert!(
+        output.contains("minor"),
+        "Output should contain 'minor' field. Got: {output}"
+    );
+    assert!(
+        output.contains("patch"),
+        "Output should contain 'patch' field. Got: {output}"
+    );
 
-    // Verify it's valid RON format
-    assert!(output.contains("schema"));
-    assert!(output.contains("vars"));
-    assert!(output.contains("major"));
-    assert!(output.contains("minor"));
-    assert!(output.contains("patch"));
+    // Verify it can be parsed back with detailed error context
+    let parsed: zerv::version::zerv::Zerv = output
+        .parse()
+        .unwrap_or_else(|e| panic!("Should parse back to Zerv. Output: {output}\nError: {e}"));
 
-    // Verify it can be parsed back
-    let parsed: zerv::version::zerv::Zerv = output.parse().expect("Should parse back to Zerv");
-    assert_eq!(parsed.vars.major, Some(1));
-    assert_eq!(parsed.vars.minor, Some(2));
-    assert_eq!(parsed.vars.patch, Some(3));
+    // Verify parsed values with detailed assertions
+    assert_eq!(
+        parsed.vars.major,
+        Some(1),
+        "Major version should be 1, got: {:?}",
+        parsed.vars.major
+    );
+    assert_eq!(
+        parsed.vars.minor,
+        Some(2),
+        "Minor version should be 2, got: {:?}",
+        parsed.vars.minor
+    );
+    assert_eq!(
+        parsed.vars.patch,
+        Some(3),
+        "Patch version should be 3, got: {:?}",
+        parsed.vars.patch
+    );
 
-    // Verify schema structure
+    // Verify schema structure with detailed assertions
     use zerv::version::zerv::Component;
-    assert_eq!(parsed.schema.core.len(), 3);
+    assert_eq!(
+        parsed.schema.core.len(),
+        3,
+        "Schema should have 3 core components, got: {}",
+        parsed.schema.core.len()
+    );
     assert_eq!(
         parsed.schema.core[0],
-        Component::VarField("major".to_string())
+        Component::VarField("major".to_string()),
+        "First schema component should be major field"
     );
     assert_eq!(
         parsed.schema.core[1],
-        Component::VarField("minor".to_string())
+        Component::VarField("minor".to_string()),
+        "Second schema component should be minor field"
     );
     assert_eq!(
         parsed.schema.core[2],
-        Component::VarField("patch".to_string())
+        Component::VarField("patch".to_string()),
+        "Third schema component should be patch field"
     );
 }
 

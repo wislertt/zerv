@@ -13,8 +13,19 @@ impl GitRepoFixture {
         let test_dir = TestDir::new()?;
         let git_impl = get_git_impl();
 
-        git_impl.init_repo(&test_dir)?;
-        git_impl.create_tag(&test_dir, tag)?;
+        // Perform atomic Git operations in sequence with error context
+        git_impl
+            .init_repo(&test_dir)
+            .map_err(|e| format!("Failed to initialize Git repo: {e}"))?;
+
+        // Verify repository was created properly before tagging
+        if !test_dir.path().join(".git").exists() {
+            return Err("Git repository was not properly initialized".into());
+        }
+
+        git_impl
+            .create_tag(&test_dir, tag)
+            .map_err(|e| format!("Failed to create tag '{tag}': {e}"))?;
 
         Ok(Self { test_dir, git_impl })
     }
