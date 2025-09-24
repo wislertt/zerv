@@ -595,3 +595,4 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/go,ssh,java,node,macos,python,windows,terraform,terragrunt,intellij+all,visualstudiocode,rust,rust-analyzer
 
 .vscode/*
+*.profraw

@@ -18,7 +18,7 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Generate version from VCS data
-    Version(VersionArgs),
+    Version(Box<VersionArgs>),
     /// Validate version string format
     Check(CheckArgs),
 }

@@ -29,7 +29,16 @@ fn test_zerv_format_output() {
         source: "git".to_string(),
         schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
         schema_ron: None,
+        input_format: "auto".to_string(),
         output_format: FORMAT_ZERV.to_string(),
+        tag_version: None,
+        distance: None,
+        dirty: None,
+        clean: false,
+        current_branch: None,
+        commit_hash: None,
+        output_template: None,
+        output_prefix: None,
     };
 
     // Run pipeline with detailed error context
@@ -170,7 +179,16 @@ fn test_zerv_format_roundtrip() {
         source: "git".to_string(),
         schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
         schema_ron: None,
+        input_format: "auto".to_string(),
         output_format: FORMAT_ZERV.to_string(),
+        tag_version: None,
+        distance: None,
+        dirty: None,
+        clean: false,
+        current_branch: None,
+        commit_hash: None,
+        output_template: None,
+        output_prefix: None,
     };
 
     let zerv_output =

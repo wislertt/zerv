@@ -1,5 +1,6 @@
 pub mod basic;
 mod command_utils;
+pub mod end_to_end;
 pub mod errors;
 pub mod formats;
 pub mod git_states;
