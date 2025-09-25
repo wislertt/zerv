@@ -1,74 +1,136 @@
 use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::utils::fuzzy_bool::FuzzyBool;
+use crate::cli::utils::output_formatter::OutputFormatter;
 use crate::cli::utils::vcs_override::VcsOverrideProcessor;
-use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, FORMAT_ZERV, SUPPORTED_FORMATS};
+use crate::constants::FORMAT_SEMVER;
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
 use crate::schema::create_zerv_version;
 use crate::vcs::detect_vcs;
 use crate::version::Zerv;
-use crate::version::pep440::PEP440;
-use crate::version::semver::SemVer;
 use clap::Parser;
 use std::env::current_dir;
 
 #[derive(Parser)]
+#[command(about = "Generate version from VCS data")]
+#[command(
+    long_about = "Generate version strings from version control system data using configurable schemas.
+
+INPUT SOURCES:
+  --source git     Extract version data from git repository (default)
+  --source stdin   Read Zerv RON format from stdin for piping workflows
+
+OUTPUT FORMATS:
+  --output-format semver   Semantic Versioning format (default)
+  --output-format pep440   Python PEP440 format
+  --output-format zerv     Zerv RON format for piping
+
+VCS OVERRIDES:
+  Override detected VCS values for testing and simulation:
+  --tag-version <TAG>      Override detected tag version
+  --distance <NUM>         Override distance from tag
+  --dirty <BOOL>           Override dirty state (true/false, yes/no, 1/0, etc.)
+  --clean                  Force clean state (distance=0, dirty=false)
+  --current-branch <NAME>  Override branch name
+  --commit-hash <HASH>     Override commit hash
+
+EXAMPLES:
+  # Basic version generation
+  zerv version
+
+  # Generate PEP440 format with calver schema
+  zerv version --output-format pep440 --schema calver
+
+  # Override VCS values for testing
+  zerv version --tag-version v2.0.0 --distance 5 --dirty yes
+
+  # Force clean release state
+  zerv version --clean
+
+  # Pipe between commands with full data preservation
+  zerv version --output-format zerv | zerv version --source stdin --input-format zerv --schema calver
+
+  # Parse specific input format
+  zerv version --tag-version 2.0.0-alpha.1 --input-format semver"
+)]
 pub struct VersionArgs {
-    /// Version string (when using string source)
+    /// Version string (deprecated - use --tag-version instead)
+    #[arg(help = "Version string (deprecated - use --tag-version instead)")]
     pub version: Option<String>,
 
-    /// Source type
-    #[arg(long, default_value = "git")]
+    /// Input source for version data
+    #[arg(long, default_value = "git", value_parser = ["git", "stdin"],
+          help = "Input source: 'git' (extract from repository) or 'stdin' (read Zerv RON format)")]
     pub source: String,
 
     /// Schema preset name
-    #[arg(long)]
+    #[arg(long, help = "Schema preset name (standard, calver, etc.)")]
     pub schema: Option<String>,
 
-    /// Custom RON schema
-    #[arg(long)]
+    /// Custom RON schema definition
+    #[arg(long, help = "Custom schema in RON format")]
     pub schema_ron: Option<String>,
 
-    /// Input format for version parsing (semver, pep440, auto)
-    #[arg(long, default_value = "auto")]
+    /// Input format for version string parsing
+    #[arg(long, default_value = "auto", value_parser = ["auto", "semver", "pep440", "zerv"],
+          help = "Input format: 'auto' (detect), 'semver', 'pep440', or 'zerv' (for stdin RON input)")]
     pub input_format: String,
 
-    /// Output format
-    #[arg(long, default_value = FORMAT_SEMVER)]
+    /// Output format for generated version
+    #[arg(long, default_value = FORMAT_SEMVER, value_parser = ["semver", "pep440", "zerv"],
+          help = "Output format: 'semver' (default), 'pep440', or 'zerv' (RON format for piping)")]
     pub output_format: String,
 
     // VCS override options
     /// Override the detected tag version
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Override detected tag version (e.g., 'v2.0.0', '1.5.0-beta.1')"
+    )]
     pub tag_version: Option<String>,
 
     /// Override the calculated distance from tag
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Override distance from tag (number of commits since tag)"
+    )]
     pub distance: Option<u32>,
 
     /// Override the detected dirty state
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Override dirty state. Accepts: true/false, yes/no, y/n, 1/0, on/off (case-insensitive)"
+    )]
     pub dirty: Option<FuzzyBool>,
 
     /// Set distance=0 and dirty=false (clean release state)
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Force clean release state (sets distance=0, dirty=false). Conflicts with --distance and --dirty"
+    )]
     pub clean: bool,
 
     /// Override the detected current branch name
-    #[arg(long)]
+    #[arg(long, help = "Override current branch name")]
     pub current_branch: Option<String>,
 
     /// Override the detected commit hash
-    #[arg(long)]
+    #[arg(long, help = "Override commit hash (full or short form)")]
     pub commit_hash: Option<String>,
 
     // Output options for future extension
     /// Output template for custom formatting (future extension)
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Output template for custom formatting (future extension)"
+    )]
     pub output_template: Option<String>,
 
-    /// Prefix to add to output (future extension)
-    #[arg(long)]
+    /// Prefix to add to output
+    #[arg(
+        long,
+        help = "Prefix to add to version output (e.g., 'v' for 'v1.0.0')"
+    )]
     pub output_prefix: Option<String>,
 }
 
@@ -149,22 +211,13 @@ pub fn run_version_pipeline(
         )?;
     }
 
-    // 4. Apply output formatting with prefix support
-    let mut output = match args.output_format.as_str() {
-        FORMAT_PEP440 => PEP440::from(zerv_object).to_string(),
-        FORMAT_SEMVER => SemVer::from(zerv_object).to_string(),
-        FORMAT_ZERV => zerv_object.to_string(),
-        format => {
-            eprintln!("Unknown output format: {format}");
-            eprintln!("Supported formats: {}", SUPPORTED_FORMATS.join(", "));
-            return Err(ZervError::UnknownFormat(format.to_string()));
-        }
-    };
-
-    // 5. Apply output prefix if specified
-    if let Some(ref prefix) = args.output_prefix {
-        output = format!("{prefix}{output}");
-    }
+    // 4. Apply output formatting with enhanced options
+    let output = OutputFormatter::format_output(
+        &zerv_object,
+        &args.output_format,
+        args.output_prefix.as_deref(),
+        args.output_template.as_deref(),
+    )?;
 
     Ok(output)
 }
@@ -207,7 +260,7 @@ fn zerv_to_vcs_data(zerv: &Zerv) -> Result<crate::vcs::VcsData, ZervError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::SCHEMA_ZERV_STANDARD;
+    use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, FORMAT_ZERV, SCHEMA_ZERV_STANDARD};
     use crate::test_utils::{GitRepoFixture, VersionTestUtils, should_run_docker_tests};
     use clap::Parser;
     use rstest::rstest;

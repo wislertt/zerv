@@ -330,7 +330,7 @@ fn test_piping_workflows() {
 #[rstest]
 #[case::invalid_tag_version_format("invalid-version", "semver", "Invalid version")]
 #[case::invalid_pep440_format("invalid.version", "pep440", "Invalid version")]
-#[case::unknown_input_format("v1.0.0", "unknown", "Unknown format")]
+#[case::unknown_input_format("v1.0.0", "unknown", "invalid value 'unknown'")]
 fn test_error_scenarios_with_overrides(
     #[case] tag_version: &str,
     #[case] input_format: &str,

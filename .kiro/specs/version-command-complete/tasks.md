@@ -69,7 +69,7 @@
     - Test performance requirements with large repositories
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 10.1, 10.2, 10.3, 10.4, 10.5_
 
-- [ ]   10. Add CLI help and documentation updates
+- [x]   10. Add CLI help and documentation updates
     - Update command help text with new options and examples
     - Add usage examples for override options and piping workflows
     - Document input format behavior and supported values

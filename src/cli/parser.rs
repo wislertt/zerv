@@ -5,10 +5,38 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "zerv")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
-#[command(about = "Dynamic versioning CLI")]
+#[command(about = "Dynamic versioning CLI - Generate versions from VCS data with flexible schemas")]
+#[command(
+    long_about = "Zerv is a dynamic versioning tool that generates version strings from version control \
+system (VCS) data using configurable schemas. It supports multiple input sources, output formats, \
+and advanced override capabilities for CI/CD workflows.
+
+EXAMPLES:
+  # Basic version generation from git
+  zerv version
+
+  # Generate PEP440 format with custom schema
+  zerv version --output-format pep440 --schema calver
+
+  # Override VCS values for testing
+  zerv version --tag-version v2.0.0 --distance 5 --dirty true
+
+  # Force clean release state
+  zerv version --clean
+
+  # Pipe Zerv RON between commands
+  zerv version --output-format zerv | zerv version --source stdin --schema calver
+
+  # Use in different directory
+  zerv -C /path/to/repo version"
+)]
 pub struct Cli {
     /// Change to directory before running command
-    #[arg(short = 'C', global = true)]
+    #[arg(
+        short = 'C',
+        global = true,
+        help = "Change to directory before running command"
+    )]
     pub directory: Option<String>,
 
     #[command(subcommand)]
@@ -17,9 +45,18 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Generate version from VCS data
+    /// Generate version from VCS data with configurable schemas and overrides
+    #[command(
+        long_about = "Generate version strings from version control system data using configurable schemas.
+Supports multiple input sources (git, stdin), output formats (semver, pep440, zerv), and VCS overrides
+for testing and CI/CD workflows."
+    )]
     Version(Box<VersionArgs>),
-    /// Validate version string format
+    /// Validate version string format compliance
+    #[command(
+        long_about = "Validate that version strings conform to specific format requirements.
+Supports SemVer, PEP440, and other version format validation."
+    )]
     Check(CheckArgs),
 }
 
