@@ -28,9 +28,6 @@ impl OutputFormatter {
             output = format!("{prefix}{output}");
         }
 
-        // 4. Ensure clean single-line output
-        output = Self::ensure_clean_output(output);
-
         Ok(output)
     }
 
@@ -62,15 +59,6 @@ impl OutputFormatter {
             // This allows for simple prefix/suffix templates
             Ok(template.to_string())
         }
-    }
-
-    /// Ensure output is clean and single-line
-    fn ensure_clean_output(output: String) -> String {
-        // Remove any trailing whitespace and newlines
-        let cleaned = output.trim().to_string();
-
-        // Replace any internal newlines with spaces (shouldn't happen with current formats)
-        cleaned.replace(['\n', '\r'], " ")
     }
 
     /// Validate that the output format is supported
@@ -202,21 +190,6 @@ mod tests {
         let result = OutputFormatter::validate_output_format("invalid");
         assert!(result.is_err());
         assert!(matches!(result, Err(ZervError::UnknownFormat(_))));
-    }
-
-    #[test]
-    fn test_ensure_clean_output() {
-        // Test with trailing whitespace
-        let output = OutputFormatter::ensure_clean_output("1.2.3  \n".to_string());
-        assert_eq!(output, "1.2.3");
-
-        // Test with internal newlines
-        let output = OutputFormatter::ensure_clean_output("1.2.3\ntest".to_string());
-        assert_eq!(output, "1.2.3 test");
-
-        // Test with carriage returns
-        let output = OutputFormatter::ensure_clean_output("1.2.3\r\ntest".to_string());
-        assert_eq!(output, "1.2.3  test");
     }
 
     #[test]

@@ -39,10 +39,11 @@ fn test_zerv_format_output() {
         commit_hash: None,
         output_template: None,
         output_prefix: None,
+        directory: Some(fixture.path().to_str().unwrap().to_string()),
     };
 
     // Run pipeline with detailed error context
-    let result = zerv::cli::run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+    let result = zerv::cli::run_version_pipeline(args);
     let output = result.unwrap_or_else(|e| {
         panic!(
             "Pipeline should succeed for tagged repo at {}: {}",
@@ -189,11 +190,11 @@ fn test_zerv_format_roundtrip() {
         commit_hash: None,
         output_template: None,
         output_prefix: None,
+        directory: Some(fixture.path().to_str().unwrap().to_string()),
     };
 
     let zerv_output =
-        zerv::cli::run_version_pipeline(args1, Some(fixture.path().to_str().unwrap()))
-            .expect("First pipeline should succeed");
+        zerv::cli::run_version_pipeline(args1).expect("First pipeline should succeed");
 
     // Parse it back and convert to PEP440
     let parsed: zerv::version::zerv::Zerv = zerv_output.parse().expect("Should parse Zerv format");

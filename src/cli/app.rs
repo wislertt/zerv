@@ -12,7 +12,7 @@ pub fn run_with_args<W: Write>(
 
     match cli.command {
         Commands::Version(version_args) => {
-            let output = run_version_pipeline(*version_args, cli.directory.as_deref())?;
+            let output = run_version_pipeline(*version_args)?;
             writeln!(writer, "{output}")?;
         }
         Commands::Check(check_args) => {

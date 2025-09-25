@@ -117,6 +117,7 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: None,
         }
     }
 

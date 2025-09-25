@@ -13,7 +13,12 @@ pub struct GitVcs {
 impl GitVcs {
     /// Create new Git VCS instance
     pub fn new(path: &Path) -> Result<Self> {
-        let repo_path = crate::vcs::find_vcs_root(path)?;
+        Self::new_with_limit(path, None)
+    }
+
+    /// Create new Git VCS instance with optional depth limit
+    pub fn new_with_limit(path: &Path, max_depth: Option<usize>) -> Result<Self> {
+        let repo_path = crate::vcs::find_vcs_root_with_limit(path, max_depth)?;
         Ok(Self { repo_path })
     }
 
