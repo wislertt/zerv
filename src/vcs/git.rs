@@ -55,7 +55,7 @@ impl GitVcs {
     pub fn translate_git_error(&self, stderr: &[u8]) -> ZervError {
         let stderr_str = String::from_utf8_lossy(stderr);
 
-        // Pattern matching for common git errors
+        // Pattern matching for common git errors with source-aware messages
         if stderr_str.contains("fatal: ambiguous argument 'HEAD'") {
             return ZervError::CommandFailed("No commits found in git repository".to_string());
         }
@@ -64,9 +64,41 @@ impl GitVcs {
             return ZervError::VcsNotFound("Not in a git repository (--source git)".to_string());
         }
 
+        // Handle authentication errors (check before generic permission denied)
+        if stderr_str.contains("Authentication failed") || stderr_str.contains("publickey") {
+            return ZervError::CommandFailed(
+                "Authentication failed accessing git repository. Check your credentials."
+                    .to_string(),
+            );
+        }
+
+        // Handle network-related errors
+        if stderr_str.contains("Could not resolve hostname")
+            || stderr_str.contains("Network is unreachable")
+        {
+            return ZervError::CommandFailed(
+                "Network error accessing git repository. Check your internet connection."
+                    .to_string(),
+            );
+        }
+
+        // Handle generic permission errors (after more specific authentication errors)
         if stderr_str.contains("Permission denied") {
             return ZervError::CommandFailed(
                 "Permission denied accessing git repository".to_string(),
+            );
+        }
+
+        // Handle shallow clone warnings
+        if stderr_str.contains("shallow") {
+            eprintln!("Warning: Shallow clone detected - distance calculations may be inaccurate");
+        }
+
+        // Handle corrupted repository errors
+        if stderr_str.contains("corrupt") || stderr_str.contains("bad object") {
+            return ZervError::CommandFailed(
+                "Git repository appears to be corrupted. Try running 'git fsck' to diagnose."
+                    .to_string(),
             );
         }
 
@@ -394,7 +426,7 @@ mod tests {
     )]
     #[case(
         b"Permission denied (publickey).",
-        ZervError::CommandFailed("Permission denied accessing git repository".to_string())
+        ZervError::CommandFailed("Authentication failed accessing git repository. Check your credentials.".to_string())
     )]
     #[case(
         b"fatal: some other git error",
@@ -429,7 +461,27 @@ mod tests {
     #[case(b"Permission denied", "Permission denied accessing git repository")]
     #[case(
         b"Permission denied (publickey).\r\nfatal: Could not read from remote repository.",
-        "Permission denied accessing git repository"
+        "Authentication failed accessing git repository. Check your credentials."
+    )]
+    #[case(
+        b"Authentication failed for 'https://github.com/user/repo.git'",
+        "Authentication failed accessing git repository. Check your credentials."
+    )]
+    #[case(
+        b"Could not resolve hostname github.com",
+        "Network error accessing git repository. Check your internet connection."
+    )]
+    #[case(
+        b"Network is unreachable",
+        "Network error accessing git repository. Check your internet connection."
+    )]
+    #[case(
+        b"error: corrupt loose object",
+        "Git repository appears to be corrupted. Try running 'git fsck' to diagnose."
+    )]
+    #[case(
+        b"fatal: bad object HEAD",
+        "Git repository appears to be corrupted. Try running 'git fsck' to diagnose."
     )]
     #[case(
         b"fatal: unknown git command",
@@ -449,6 +501,65 @@ mod tests {
             ZervError::CommandFailed(msg) => assert_eq!(msg, expected_msg),
             ZervError::VcsNotFound(msg) => assert_eq!(msg, expected_msg),
             _ => panic!("Unexpected error type: {zerv_error:?}"),
+        }
+    }
+
+    /// Test enhanced error handling for network and authentication issues
+    #[rstest]
+    #[case(
+        b"Could not resolve hostname github.com: Name or service not known",
+        "Network error accessing git repository. Check your internet connection."
+    )]
+    #[case(
+        b"ssh: connect to host github.com port 22: Network is unreachable",
+        "Network error accessing git repository. Check your internet connection."
+    )]
+    #[case(
+        b"fatal: Authentication failed for 'https://github.com/user/repo.git/'",
+        "Authentication failed accessing git repository. Check your credentials."
+    )]
+    #[case(
+        b"Permission denied (publickey).\r\nfatal: Could not read from remote repository.\r\n\r\nPlease make sure you have the correct access rights\r\nand the repository exists.",
+        "Authentication failed accessing git repository. Check your credentials."
+    )]
+    fn test_enhanced_git_error_handling(#[case] stderr: &[u8], #[case] expected_msg: &str) {
+        let temp_dir = TestDir::new().expect("should create temp dir");
+        let git_vcs = GitVcs::new_for_test(temp_dir.path().to_path_buf());
+
+        let zerv_error = git_vcs.translate_git_error(stderr);
+
+        match zerv_error {
+            ZervError::CommandFailed(msg) => assert_eq!(msg, expected_msg),
+            _ => panic!("Expected CommandFailed error, got: {zerv_error:?}"),
+        }
+    }
+
+    /// Test repository corruption error handling
+    #[rstest]
+    #[case(
+        b"error: corrupt loose object 1234567890abcdef",
+        "Git repository appears to be corrupted. Try running 'git fsck' to diagnose."
+    )]
+    #[case(
+        b"fatal: bad object HEAD",
+        "Git repository appears to be corrupted. Try running 'git fsck' to diagnose."
+    )]
+    #[case(
+        b"error: object file .git/objects/12/34567890abcdef is corrupt",
+        "Git repository appears to be corrupted. Try running 'git fsck' to diagnose."
+    )]
+    fn test_repository_corruption_error_handling(
+        #[case] stderr: &[u8],
+        #[case] expected_msg: &str,
+    ) {
+        let temp_dir = TestDir::new().expect("should create temp dir");
+        let git_vcs = GitVcs::new_for_test(temp_dir.path().to_path_buf());
+
+        let zerv_error = git_vcs.translate_git_error(stderr);
+
+        match zerv_error {
+            ZervError::CommandFailed(msg) => assert_eq!(msg, expected_msg),
+            _ => panic!("Expected CommandFailed error, got: {zerv_error:?}"),
         }
     }
 }
