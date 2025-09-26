@@ -6,7 +6,6 @@ use crate::constants::FORMAT_SEMVER;
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
 use crate::schema::create_zerv_version;
-use crate::vcs::detect_vcs;
 use crate::version::Zerv;
 use clap::Parser;
 use std::env::current_dir;
@@ -46,6 +45,9 @@ EXAMPLES:
 
   # Force clean release state
   zerv version --clean
+
+  # Use in different directory
+  zerv version -C /path/to/repo
 
   # Pipe between commands with full data preservation
   zerv version --output-format zerv | zerv version --source stdin --input-format zerv --schema calver
@@ -132,6 +134,10 @@ pub struct VersionArgs {
         help = "Prefix to add to version output (e.g., 'v' for 'v1.0.0')"
     )]
     pub output_prefix: Option<String>,
+
+    /// Change to directory before running command
+    #[arg(short = 'C', help = "Change to directory before running command")]
+    pub directory: Option<String>,
 }
 
 impl VersionArgs {
@@ -146,12 +152,9 @@ impl VersionArgs {
     }
 }
 
-pub fn run_version_pipeline(
-    args: VersionArgs,
-    directory: Option<&str>,
-) -> Result<String, ZervError> {
+pub fn run_version_pipeline(args: VersionArgs) -> Result<String, ZervError> {
     // 1. Determine working directory
-    let work_dir = match directory {
+    let work_dir = match args.directory.as_deref() {
         Some(dir) => std::path::PathBuf::from(dir),
         None => current_dir()?,
     };
@@ -160,7 +163,15 @@ pub fn run_version_pipeline(
     let mut zerv_object = match args.source.as_str() {
         "git" => {
             // Get git VCS data
-            let mut vcs_data = detect_vcs(&work_dir)?.get_vcs_data()?;
+            // If directory was specified via -C, only look in that directory (depth 0)
+            // If no directory specified, allow unlimited depth search
+            let max_depth = if args.directory.is_some() {
+                Some(0)
+            } else {
+                None
+            };
+            let mut vcs_data =
+                crate::vcs::detect_vcs_with_limit(&work_dir, max_depth)?.get_vcs_data()?;
 
             // Parse git tag with input format if available and validate it
             if let Some(ref tag_version) = vcs_data.tag_version {
@@ -409,9 +420,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args);
         let version = result.unwrap_or_else(|_| panic!("Pipeline should succeed for {scenario}"));
         println!("Scenario {scenario}: Generated version: {version}");
 
@@ -445,9 +457,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args);
         assert!(result.is_err(), "Pipeline should fail for unknown format");
         assert!(matches!(result, Err(ZervError::UnknownFormat(_))));
     }
@@ -475,9 +488,10 @@ mod tests {
             commit_hash: Some("abc123def456".to_string()),
             output_template: None,
             output_prefix: None,
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args);
         assert!(result.is_ok(), "Pipeline should succeed with overrides");
 
         let version = result.unwrap();
@@ -512,9 +526,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args);
         assert!(result.is_ok(), "Pipeline should succeed with clean flag");
 
         let version = result.unwrap();
@@ -545,9 +560,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: Some("version:".to_string()),
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args);
         assert!(result.is_ok(), "Pipeline should succeed with output prefix");
 
         let version = result.unwrap();
@@ -572,9 +588,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: None,
         };
 
-        let result = run_version_pipeline(args, None);
+        let result = run_version_pipeline(args);
         assert!(result.is_err(), "Pipeline should fail for unknown source");
         assert!(matches!(result, Err(ZervError::UnknownSource(_))));
     }
@@ -603,9 +620,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args);
         assert!(
             result.is_err(),
             "Pipeline should fail for invalid tag version"
@@ -637,9 +655,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args);
         assert!(
             result.is_err(),
             "Pipeline should fail for conflicting options"
@@ -671,9 +690,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args_semver, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args_semver);
         assert!(
             result.is_ok(),
             "Pipeline should succeed with SemVer input format"
@@ -695,9 +715,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args_pep440, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args_pep440);
         assert!(
             result.is_ok(),
             "Pipeline should succeed with PEP440 input format"
@@ -727,9 +748,10 @@ mod tests {
             commit_hash: None,
             output_template: None,
             output_prefix: None,
+            directory: Some(fixture.path().to_str().unwrap().to_string()),
         };
 
-        let result = run_version_pipeline(args, Some(fixture.path().to_str().unwrap()));
+        let result = run_version_pipeline(args);
         assert!(
             result.is_ok(),
             "Pipeline should succeed with Zerv output format"

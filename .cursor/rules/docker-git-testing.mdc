@@ -1,0 +1,307 @@
+---
+description: Guide for Docker-based Git testing with multi-platform architecture, environment control, and CI/CD integration
+globs: **/*.rs,**/test*.rs,**/tests/**/*.rs,**/integration_tests/**/*.rs
+alwaysApply: true
+---
+
+# Docker Git Testing Guide - Multi-Platform Architecture
+
+## ✅ CURRENT STATUS: Multi-Platform CI Implemented
+
+**Architecture Update**: The project now uses environment-aware Git testing:
+
+- **Local Development**: Uses `DockerGit` for isolation
+- **CI Environment**: Uses `NativeGit` for real platform testing
+- **Platform Coverage**: Linux, macOS, Windows all tested with native Git
+
+## Legacy Docker Git Testing Bug - Historical Reference
+
+## Bug Symptoms
+
+- Tests pass locally but fail in GitHub Actions CI
+- Error: `fatal: not in a git directory`
+- Multiple git-related test failures (typically 11+ tests)
+- Docker commands work locally but not in CI environment
+
+## Root Cause
+
+**Docker Image Entrypoint Issue**: `alpine/git:latest` has `git` as the default entrypoint, not `sh`.
+
+### Why Local vs CI Behaves Differently
+
+**Docker Runtime Environment Differences:**
+
+- **Local (Docker Desktop)**: More permissive, has compatibility layers that can "fix" some incorrect commands
+- **CI (Docker Engine)**: Stricter, follows Docker specifications exactly
+
+**Entrypoint Handling Differences:**
+
+```bash
+# What we were doing (WRONG):
+docker run alpine/git:latest "git init"
+
+# Local Docker Desktop might interpret this as:
+# -> Run git with argument "git init"
+# -> Sometimes works due to shell interpretation
+
+# CI Docker Engine interprets this as:
+# -> Run git "git init" (literally passes "git init" as argument to git)
+# -> Always fails: git doesn't understand "git init" as a single argument
+```
+
+**Environment Masking:**
+
+- **Local**: Your shell might have different PATH, git configs, or environment variables that mask issues
+- **CI**: Clean, minimal environment exposes the exact Docker behavior
+
+**The Core Issue:**
+`alpine/git:latest` has `ENTRYPOINT ["git"]`, so:
+
+```bash
+# Without --entrypoint sh:
+docker run alpine/git:latest "some command"
+# Actually executes: git "some command"
+# ❌ This tries to run git with "some command" as a single argument
+
+# With --entrypoint sh:
+docker run --entrypoint sh alpine/git:latest -c "some command"
+# Actually executes: sh -c "some command"
+# ✅ This runs the command in shell properly
+```
+
+## Complete Fix Pattern
+
+### 1. Use Correct Docker Image and Entrypoint
+
+```rust
+// WRONG - Will fail in CI
+let output = Command::new("docker")
+    .args(["run", "--rm", "-v", &mount, "alpine/git:latest", "git", "init"])
+    .output()?;
+
+// CORRECT - Works everywhere
+let output = Command::new("docker")
+    .args([
+        "run", "--rm", "-v", &mount,
+        "--entrypoint", "sh",
+        "alpine/git:latest",
+        "-c", "git init"
+    ])
+    .output()?;
+```
+
+### 2. Git Commands After Init Need --git-dir Flag
+
+```rust
+// WRONG - Will fail after git init
+let output = Command::new("docker")
+    .args([
+        "run", "--rm", "-v", &mount,
+        "--entrypoint", "sh",
+        "alpine/git:latest",
+        "-c", "git add ."
+    ])
+    .output()?;
+
+// CORRECT - Include --git-dir=.git
+let output = Command::new("docker")
+    .args([
+        "run", "--rm", "-v", &mount,
+        "--entrypoint", "sh",
+        "alpine/git:latest",
+        "-c", "git --git-dir=.git add ."
+    ])
+    .output()?;
+```
+
+### 3. Initial Commit Required for Tags
+
+```rust
+// Git tags need HEAD reference, so init_repo must create initial commit
+pub fn init_repo(&self) -> Result<(), ZervError> {
+    // 1. Git init
+    self.run_git_command("git init")?;
+
+    // 2. Configure user (required for commits)
+    self.run_git_command("git config user.name 'Test User'")?;
+    self.run_git_command("git config user.email 'test@example.com'")?;
+
+    // 3. Create initial commit (REQUIRED for tags)
+    self.run_git_command("echo 'initial' > README.md")?;
+    self.run_git_command("git --git-dir=.git add .")?;
+    self.run_git_command("git --git-dir=.git commit -m 'Initial commit'")?;
+
+    Ok(())
+}
+```
+
+## Complete Working Pattern
+
+```rust
+fn run_git_command(&self, command: &str) -> Result<String, ZervError> {
+    let mount = format!("{}:/repo", self.temp_dir.path().display());
+
+    let output = Command::new("docker")
+        .args([
+            "run", "--rm", "-v", &mount,
+            "-w", "/repo",
+            "--entrypoint", "sh",
+            "alpine/git:latest",
+            "-c", command
+        ])
+        .output()
+        .map_err(|e| ZervError::Io(io::Error::other(format!("Docker command failed: {}", e))))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(ZervError::Io(io::Error::other(format!(
+            "Git command failed: {}\nCommand: {}", stderr, command
+        ))));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+```
+
+## Debugging Steps
+
+### 1. Test Docker Locally First
+
+```bash
+# Test the exact Docker command
+docker run --rm -v $(pwd):/repo -w /repo --entrypoint sh alpine/git:latest -c "git init"
+```
+
+### 2. Check CI Logs for Exact Error
+
+- Look for "fatal: not in a git directory"
+- Check if Docker commands are being executed correctly
+- Verify mount paths and working directories
+
+### 3. Verify Test Isolation
+
+```bash
+# Run tests multiple times to check for race conditions
+make test
+make test
+make test
+```
+
+## Prevention Checklist
+
+- [ ] Use `--entrypoint sh` with `alpine/git:latest`
+- [ ] Include `--git-dir=.git` for git commands after init
+- [ ] Create initial commit in `init_repo()`
+- [ ] Test Docker commands locally before CI
+- [ ] Verify all git operations work in isolated containers
+- [ ] Check that temp directories are properly mounted
+
+## Local Strict Mode (IMPLEMENTED)
+
+**Automatic Prevention**: The codebase now includes:
+
+1. **Strict Docker Flags**: All Docker commands use `--security-opt=no-new-privileges --cap-drop=ALL` to behave like CI
+2. **Validation Helper**: `validate_docker_args()` catches common anti-patterns:
+    - Missing `--entrypoint sh` with `alpine/git:latest`
+    - Git commands without proper entrypoint
+3. **Fail Fast**: Invalid Docker commands fail locally with clear error messages
+
+**Result**: You'll now get errors like `❌ Missing --entrypoint sh for alpine/git:latest (will fail in CI)` locally instead of discovering issues in CI.
+
+## Current Architecture Files
+
+1. `src/test_utils/git/mod.rs` - GitOperations trait and exports
+2. `src/test_utils/git/docker.rs` - DockerGit implementation (local development)
+3. `src/test_utils/git/native.rs` - NativeGit implementation (CI testing)
+4. `src/config.rs` - Centralized environment variable loading via `ZERV_TEST_NATIVE_GIT` and `ZERV_TEST_DOCKER`
+5. `src/test_utils/mod.rs` - `should_use_native_git()` and `should_run_docker_tests()` helper functions
+
+## Environment Variable Matrix
+
+| Scenario         | `ZERV_TEST_NATIVE_GIT` | `ZERV_TEST_DOCKER` | Git Implementation | Docker Tests | Result             |
+| ---------------- | ---------------------- | ------------------ | ------------------ | ------------ | ------------------ |
+| Local Easy       | `false`                | `false`            | Docker Git         | Skipped      | Coverage with gaps |
+| Local Full       | `false`                | `true`             | Docker Git         | Run          | Full coverage      |
+| CI Linux         | `true`                 | `true`             | Native Git         | Run          | Platform coverage  |
+| CI macOS/Windows | `true`                 | `false`            | Native Git         | Skipped      | Platform coverage  |
+
+## Centralized Configuration
+
+**All environment variable loading centralized in `src/config.rs`:**
+
+```rust
+#[derive(Debug, Clone, Default)]
+pub struct ZervConfig {
+    pub test_native_git: bool,  // ZERV_TEST_NATIVE_GIT
+    pub test_docker: bool,      // ZERV_TEST_DOCKER
+}
+
+impl ZervConfig {
+    pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
+        let test_native_git = Self::parse_bool_env("ZERV_TEST_NATIVE_GIT")?;
+        let test_docker = Self::parse_bool_env("ZERV_TEST_DOCKER")?;
+        Ok(ZervConfig { test_native_git, test_docker })
+    }
+
+    fn parse_bool_env(var_name: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        match env::var(var_name) {
+            Ok(val) => Ok(val == "true" || val == "1"),
+            Err(_) => Ok(false),
+        }
+    }
+}
+```
+
+**Key Behavior Changes:**
+
+- Docker tests **fail** with clear error messages when `ZERV_TEST_DOCKER=true` but Docker unavailable
+- Policy enforcement: If Docker is available, tests must be enabled
+- Proper test separation between Docker-dependent and Docker-independent tests
+
+## Current Testing Verification
+
+```bash
+# Local test (uses DockerGit for isolation)
+make test_easy  # Docker tests skipped
+make test       # Docker tests enabled
+
+# Test validation works
+cargo test test_docker_validation --lib
+
+# Check specific git tests
+cargo test git
+
+# Verify multi-platform CI passes
+git push # Check GitHub Actions on Linux, macOS, Windows
+```
+
+## Multi-Platform CI Benefits
+
+**Real Platform Testing Achieved**:
+
+- ✅ **Windows CI**: Tests actual Windows Git behavior, CRLF line endings, Windows paths
+- ✅ **macOS CI**: Tests actual macOS Git behavior, case-insensitive filesystem
+- ✅ **Linux CI**: Tests actual Linux Git behavior, permissions
+
+**Local Safety Maintained**:
+
+- ✅ **Docker Isolation**: Protects personal git config during local development
+- ✅ **Environment Detection**: Automatic switching via `ZERV_TEST_NATIVE_GIT=true`
+- ✅ **Consistent API**: Same `GitOperations` trait for both implementations
+
+## Architecture Evolution
+
+**Problem Solved**: The original Docker CI issues are resolved by using native Git in CI:
+
+1. **No more Docker in CI** - Windows/macOS/Linux CI all use native Git
+2. **Real platform testing** - Catches actual platform-specific issues
+3. **Local isolation maintained** - Docker still used for local development safety
+4. **Consistent behavior** - GitOperations trait ensures same API across implementations
+
+**When to Use This Guide**:
+
+- Reference for understanding DockerGit implementation details
+- Debugging local Docker-based tests
+- Historical context for architecture decisions
+
+**Current Best Practice**: Use `get_git_impl()` helper function for environment-aware Git operations instead of direct Docker commands.

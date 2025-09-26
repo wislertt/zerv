@@ -449,22 +449,6 @@ fn test_short_help_vs_long_help() {
 }
 
 #[test]
-fn test_global_directory_option() {
-    let result = run_zerv_command(&["--help"]);
-    assert!(result.success, "Help should succeed");
-
-    let output = result.stdout;
-    assert!(
-        output.contains("-C <DIRECTORY>"),
-        "Should show directory option"
-    );
-    assert!(
-        output.contains("Change to directory before running command"),
-        "Should explain directory option"
-    );
-}
-
-#[test]
 fn test_help_mentions_all_supported_formats() {
     let result = run_zerv_command(&["version", "--help"]);
     assert!(result.success, "Help should succeed");
