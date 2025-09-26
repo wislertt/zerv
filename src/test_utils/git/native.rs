@@ -1,4 +1,4 @@
-use super::{GitOperations, TestDir};
+use super::{GitOperations, GitTestConstants, TestDir};
 use std::io;
 use std::process::Command;
 
@@ -27,5 +27,34 @@ impl GitOperations for NativeGit {
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+
+    fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
+        self.init_repo_no_commit(test_dir)?;
+        test_dir.create_file(
+            GitTestConstants::INITIAL_FILE_NAME,
+            GitTestConstants::INITIAL_FILE_CONTENT,
+        )?;
+        self.create_commit(test_dir, GitTestConstants::INITIAL_COMMIT_MESSAGE)?;
+        Ok(())
+    }
+
+    fn init_repo_no_commit(&self, test_dir: &TestDir) -> io::Result<()> {
+        self.execute_git(test_dir, &["init", "-b", GitTestConstants::DEFAULT_BRANCH])?;
+        self.execute_git(
+            test_dir,
+            &["config", "user.name", GitTestConstants::TEST_USER_NAME],
+        )?;
+        self.execute_git(
+            test_dir,
+            &["config", "user.email", GitTestConstants::TEST_USER_EMAIL],
+        )?;
+        Ok(())
+    }
+
+    fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()> {
+        self.execute_git(test_dir, &["add", "."])?;
+        self.execute_git(test_dir, &["commit", "-m", message])?;
+        Ok(())
     }
 }

@@ -1,8 +1,11 @@
-use super::{GitOperations, TestDir};
+use super::{GitOperations, GitTestConstants, TestDir};
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
+
+#[cfg(unix)]
+use libc;
 
 #[cfg(test)]
 fn validate_docker_args(args: &[&str]) -> Result<(), String> {
@@ -184,9 +187,7 @@ impl DockerGit {
 
         self.run_docker_command(test_dir, &format!("git --git-dir=.git {git_command}"))
     }
-}
 
-impl DockerGit {
     /// Execute multiple git commands in a single Docker call for better performance
     #[allow(dead_code)]
     fn run_batch_git_commands(
@@ -225,67 +226,6 @@ impl DockerGit {
         let results: Vec<String> = output_str.lines().map(|line| line.to_string()).collect();
 
         Ok(results)
-    }
-
-    /// Initialize repository with batch operations (faster than individual commands)
-    fn init_repo_batch(&self, test_dir: &TestDir) -> io::Result<()> {
-        self.ensure_container_running(test_dir)?;
-
-        let container_id = {
-            let container_id_guard = self.container_id.lock().unwrap();
-            container_id_guard.as_ref().unwrap().clone()
-        };
-
-        // Batch script for repository initialization
-        let init_script = r#"
-            git init -b main &&
-            git config user.name 'Test User' &&
-            git config user.email 'test@example.com' &&
-            echo '# Test Repository' > README.md &&
-            git add . &&
-            git commit -m 'Initial commit'
-        "#;
-
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", init_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker batch init failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
-
-        Ok(())
-    }
-
-    /// Create commit with batch operations (add + commit in one call)
-    fn create_commit_batch(&self, test_dir: &TestDir, message: &str) -> io::Result<()> {
-        self.ensure_container_running(test_dir)?;
-
-        let container_id = {
-            let container_id_guard = self.container_id.lock().unwrap();
-            container_id_guard.as_ref().unwrap().clone()
-        };
-
-        // Escape the commit message for shell
-        let escaped_message = message.replace('\'', "'\"'\"'");
-        let commit_script =
-            format!("git --git-dir=.git add . && git --git-dir=.git commit -m '{escaped_message}'");
-
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", &commit_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker batch commit failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
-
-        Ok(())
     }
 
     /// Create tag and commit in batch (useful for tagged repos)
@@ -331,13 +271,104 @@ impl GitOperations for DockerGit {
     }
 
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
-        // Use batch operations for better performance
-        self.init_repo_batch(test_dir)
+        self.ensure_container_running(test_dir)?;
+
+        let container_id = {
+            let container_id_guard = self.container_id.lock().unwrap();
+            container_id_guard.as_ref().unwrap().clone()
+        };
+
+        // Batch script for repository initialization
+        let init_script = format!(
+            r#"
+            git init -b {} &&
+            git config user.name '{}' &&
+            git config user.email '{}' &&
+            echo '{}' > {} &&
+            git add . &&
+            git commit -m '{}'
+        "#,
+            GitTestConstants::DEFAULT_BRANCH,
+            GitTestConstants::TEST_USER_NAME,
+            GitTestConstants::TEST_USER_EMAIL,
+            GitTestConstants::INITIAL_FILE_CONTENT,
+            GitTestConstants::INITIAL_FILE_NAME,
+            GitTestConstants::INITIAL_COMMIT_MESSAGE
+        );
+
+        let output = Command::new("docker")
+            .args(["exec", &container_id, "sh", "-c", &init_script])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker batch init failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        Ok(())
+    }
+
+    fn init_repo_no_commit(&self, test_dir: &TestDir) -> io::Result<()> {
+        self.ensure_container_running(test_dir)?;
+
+        let container_id = {
+            let container_id_guard = self.container_id.lock().unwrap();
+            container_id_guard.as_ref().unwrap().clone()
+        };
+
+        // Batch script for repository initialization without commit
+        let init_script = format!(
+            r#"
+            git init -b {} &&
+            git config user.name '{}' &&
+            git config user.email '{}'
+        "#,
+            GitTestConstants::DEFAULT_BRANCH,
+            GitTestConstants::TEST_USER_NAME,
+            GitTestConstants::TEST_USER_EMAIL
+        );
+
+        let output = Command::new("docker")
+            .args(["exec", &container_id, "sh", "-c", &init_script])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker batch init no commit failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        Ok(())
     }
 
     fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()> {
-        // Use batch operations for better performance
-        self.create_commit_batch(test_dir, message)
+        self.ensure_container_running(test_dir)?;
+
+        let container_id = {
+            let container_id_guard = self.container_id.lock().unwrap();
+            container_id_guard.as_ref().unwrap().clone()
+        };
+
+        // Escape the commit message for shell
+        let escaped_message = message.replace('\'', "'\"'\"'");
+        let commit_script =
+            format!("git --git-dir=.git add . && git --git-dir=.git commit -m '{escaped_message}'");
+
+        let output = Command::new("docker")
+            .args(["exec", &container_id, "sh", "-c", &commit_script])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker batch commit failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        Ok(())
     }
 }
 
@@ -501,7 +532,7 @@ mod tests {
         let (dir, docker_git) = setup_initialized_repo();
         dir.create_file("test.txt", "test content").unwrap();
         docker_git
-            .create_commit(&dir, "Initial commit")
+            .create_commit(&dir, GitTestConstants::INITIAL_COMMIT_MESSAGE)
             .expect(DOCKER_COMMIT_ERROR);
     }
 
@@ -531,7 +562,11 @@ mod tests {
             .expect(DOCKER_COMMIT_ERROR);
 
         assert!(dir.path().join(".git").exists());
-        assert!(dir.path().join("README.md").exists());
+        assert!(
+            dir.path()
+                .join(GitTestConstants::INITIAL_FILE_NAME)
+                .exists()
+        );
         assert!(dir.path().join("feature.txt").exists());
     }
 
@@ -544,13 +579,15 @@ mod tests {
         let dir = TestDir::new().expect(TEST_DIR_ERROR);
         let docker_git = DockerGit::new();
 
-        // Test batch initialization
-        docker_git
-            .init_repo_batch(&dir)
-            .expect("Batch init should succeed");
+        // Test initialization
+        docker_git.init_repo(&dir).expect("Init should succeed");
 
         assert!(dir.path().join(".git").exists());
-        assert!(dir.path().join("README.md").exists());
+        assert!(
+            dir.path()
+                .join(GitTestConstants::INITIAL_FILE_NAME)
+                .exists()
+        );
     }
 
     #[test]
@@ -560,11 +597,11 @@ mod tests {
         }
         let (dir, docker_git) = setup_initialized_repo();
 
-        // Create a file and commit with batch operations
+        // Create a file and commit
         dir.create_file("test.txt", "test content").unwrap();
         docker_git
-            .create_commit_batch(&dir, "Test commit")
-            .expect("Batch commit should succeed");
+            .create_commit(&dir, "Test commit")
+            .expect("Commit should succeed");
 
         // Verify the commit was created
         let output = docker_git
@@ -621,11 +658,11 @@ mod tests {
             "Should contain git status output"
         );
         assert!(
-            combined_output.contains("Initial commit"),
+            combined_output.contains(GitTestConstants::INITIAL_COMMIT_MESSAGE),
             "Should contain commit log"
         );
         assert!(
-            combined_output.contains("main"),
+            combined_output.contains(GitTestConstants::DEFAULT_BRANCH),
             "Should contain branch info"
         );
     }
@@ -637,12 +674,12 @@ mod tests {
         }
         let (dir, docker_git) = setup_initialized_repo();
 
-        // Test batch operations with special characters in commit message
+        // Test operations with special characters in commit message
         dir.create_file("special.txt", "content").unwrap();
         let special_message = "Commit with 'quotes' and \"double quotes\" and $variables";
         docker_git
-            .create_commit_batch(&dir, special_message)
-            .expect("Batch commit with special chars should succeed");
+            .create_commit(&dir, special_message)
+            .expect("Commit with special chars should succeed");
 
         // Verify the commit was created with correct message
         let output = docker_git
@@ -663,23 +700,47 @@ mod tests {
         let dir = TestDir::new().expect(TEST_DIR_ERROR);
         let docker_git = DockerGit::new();
 
-        // Test that batch operations work independently
-        docker_git
-            .init_repo_batch(&dir)
-            .expect("Batch init should work");
+        // Test that operations work independently
+        docker_git.init_repo(&dir).expect("Init should work");
         assert!(dir.path().join(".git").exists());
 
         // Test that individual operations also work
         dir.create_file("test.txt", "content").unwrap();
         docker_git
-            .create_commit_batch(&dir, "Test")
-            .expect("Batch commit should work");
+            .create_commit(&dir, "Test")
+            .expect("Commit should work");
 
         // Verify the operations succeeded
         let output = docker_git
             .execute_git(&dir, &["log", "--oneline", "-1"])
             .unwrap();
         assert!(output.contains("Test"));
+    }
+
+    #[test]
+    fn test_docker_git_batch_init_no_commit() {
+        if !should_run_docker_tests() {
+            return;
+        }
+        let dir = TestDir::new().expect(TEST_DIR_ERROR);
+        let docker_git = DockerGit::new();
+
+        // Test initialization without commit
+        docker_git
+            .init_repo_no_commit(&dir)
+            .expect("Init no commit should succeed");
+
+        assert!(dir.path().join(".git").exists());
+
+        // Verify no commits exist yet by checking that git log fails
+        let result = docker_git.execute_git(&dir, &["log", "--oneline"]);
+        assert!(result.is_err(), "git log should fail when no commits exist");
+
+        // Verify git status shows we're on main branch with no commits
+        let status = docker_git
+            .execute_git(&dir, &["status", "--porcelain"])
+            .unwrap();
+        assert!(status.is_empty(), "Should have no changes to commit");
     }
 
     #[test]
