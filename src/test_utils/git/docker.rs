@@ -145,15 +145,15 @@ impl DockerGit {
         Ok(())
     }
 
-    fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
-        let start = std::time::Instant::now();
+    /// Helper method to get the current container ID
+    fn get_container_id(&self) -> String {
+        let container_id_guard = self.container_id.lock().unwrap();
+        container_id_guard.as_ref().unwrap().clone()
+    }
 
-        self.ensure_container_running(test_dir)?;
-
-        let container_id = {
-            let container_id_guard = self.container_id.lock().unwrap();
-            container_id_guard.clone().unwrap()
-        };
+    /// Helper method to execute a Docker command with proper error handling
+    fn execute_docker_command(&self, script: &str, operation_name: &str) -> io::Result<String> {
+        let container_id = self.get_container_id();
 
         let output = Command::new("docker")
             .args(["exec", &container_id, "sh", "-c", script])
@@ -161,15 +161,26 @@ impl DockerGit {
 
         if !output.status.success() {
             return Err(io::Error::other(format!(
-                "Docker exec command failed: {}",
+                "Docker {} failed: {}",
+                operation_name,
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
 
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
+
+    fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
+        let start = std::time::Instant::now();
+
+        self.ensure_container_running(test_dir)?;
+
+        let result = self.execute_docker_command(script, "exec command")?;
+
         let duration = start.elapsed();
         eprintln!("🐳 Docker Git command '{script}' took {duration:?}");
 
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+        Ok(result)
     }
 
     pub fn run_git_command(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
@@ -197,11 +208,6 @@ impl DockerGit {
     ) -> io::Result<Vec<String>> {
         self.ensure_container_running(test_dir)?;
 
-        let container_id = {
-            let container_id_guard = self.container_id.lock().unwrap();
-            container_id_guard.as_ref().unwrap().clone()
-        };
-
         // Combine all commands into a single shell script
         let batch_script = commands
             .iter()
@@ -209,20 +215,10 @@ impl DockerGit {
             .collect::<Vec<_>>()
             .join(" && ");
 
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", &batch_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker batch git commands failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        let output_str = self.execute_docker_command(&batch_script, "batch git commands")?;
 
         // For batch operations, we return the combined output
         // Individual command outputs are separated by newlines
-        let output_str = String::from_utf8_lossy(&output.stdout).to_string();
         let results: Vec<String> = output_str.lines().map(|line| line.to_string()).collect();
 
         Ok(results)
@@ -238,11 +234,6 @@ impl DockerGit {
     ) -> io::Result<()> {
         self.ensure_container_running(test_dir)?;
 
-        let container_id = {
-            let container_id_guard = self.container_id.lock().unwrap();
-            container_id_guard.as_ref().unwrap().clone()
-        };
-
         // Escape the commit message and tag for shell
         let escaped_message = message.replace('\'', "'\"'\"'");
         let escaped_tag = tag.replace('\'', "'\"'\"'");
@@ -250,16 +241,7 @@ impl DockerGit {
             "git --git-dir=.git add . && git --git-dir=.git commit -m '{escaped_message}' && git --git-dir=.git tag '{escaped_tag}'"
         );
 
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", &batch_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker batch tag and commit failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        self.execute_docker_command(&batch_script, "batch tag and commit")?;
 
         Ok(())
     }
@@ -273,27 +255,16 @@ impl GitOperations for DockerGit {
     fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
         self.ensure_container_running(test_dir)?;
 
-        let container_id = {
-            let container_id_guard = self.container_id.lock().unwrap();
-            container_id_guard.as_ref().unwrap().clone()
-        };
-
         // Verify repository state before creating tag
         let verify_script = r#"
             set -e
             git rev-parse HEAD > /dev/null
         "#;
 
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", verify_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker repository state verification failed before tag creation: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        self.execute_docker_command(
+            verify_script,
+            "repository state verification before tag creation",
+        )?;
 
         // Create tag with proper escaping
         let escaped_tag = tag.replace('\'', "'\"'\"'");
@@ -304,27 +275,13 @@ impl GitOperations for DockerGit {
         "#
         );
 
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", &tag_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker tag creation failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        self.execute_docker_command(&tag_script, "tag creation")?;
 
         Ok(())
     }
 
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
         self.ensure_container_running(test_dir)?;
-
-        let container_id = {
-            let container_id_guard = self.container_id.lock().unwrap();
-            container_id_guard.as_ref().unwrap().clone()
-        };
 
         // Step 1: Initialize repository
         let init_script = format!(
@@ -339,16 +296,7 @@ impl GitOperations for DockerGit {
             GitTestConstants::TEST_USER_EMAIL
         );
 
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", &init_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker git init failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        self.execute_docker_command(&init_script, "git init")?;
 
         // Step 2: Create initial file and commit
         let commit_script = format!(
@@ -363,16 +311,7 @@ impl GitOperations for DockerGit {
             GitTestConstants::INITIAL_COMMIT_MESSAGE
         );
 
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", &commit_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker initial commit failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        self.execute_docker_command(&commit_script, "initial commit")?;
 
         // Step 3: Verify repository state
         let verify_script = r#"
@@ -381,27 +320,13 @@ impl GitOperations for DockerGit {
             git log --oneline -1 | grep -q 'Initial commit'
         "#;
 
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", verify_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker repository verification failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        self.execute_docker_command(verify_script, "repository verification")?;
 
         Ok(())
     }
 
     fn init_repo_no_commit(&self, test_dir: &TestDir) -> io::Result<()> {
         self.ensure_container_running(test_dir)?;
-
-        let container_id = {
-            let container_id_guard = self.container_id.lock().unwrap();
-            container_id_guard.as_ref().unwrap().clone()
-        };
 
         // Batch script for repository initialization without commit
         let init_script = format!(
@@ -415,27 +340,13 @@ impl GitOperations for DockerGit {
             GitTestConstants::TEST_USER_EMAIL
         );
 
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", &init_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker batch init no commit failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        self.execute_docker_command(&init_script, "batch init no commit")?;
 
         Ok(())
     }
 
     fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()> {
         self.ensure_container_running(test_dir)?;
-
-        let container_id = {
-            let container_id_guard = self.container_id.lock().unwrap();
-            container_id_guard.as_ref().unwrap().clone()
-        };
 
         // Escape the commit message for shell
         let escaped_message = message.replace('\'', "'\"'\"'");
@@ -447,16 +358,7 @@ impl GitOperations for DockerGit {
         "#
         );
 
-        let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", &commit_script])
-            .output()?;
-
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker batch commit failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        self.execute_docker_command(&commit_script, "batch commit")?;
 
         Ok(())
     }
