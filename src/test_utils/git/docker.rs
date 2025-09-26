@@ -47,12 +47,13 @@ impl DockerGit {
     fn ensure_container_running(&self, test_dir: &TestDir) -> io::Result<()> {
         let test_dir_path = test_dir.path().to_path_buf();
 
-        // Check if we need to start a new container
+        // Check if we need to start a new container - acquire both locks atomically
+        // by holding both locks simultaneously to prevent race conditions
         let needs_new_container = {
-            let container_id = self.container_id.lock().unwrap();
-            let current_dir = self.current_test_dir.lock().unwrap();
+            let container_id_guard = self.container_id.lock().unwrap();
+            let current_dir_guard = self.current_test_dir.lock().unwrap();
 
-            container_id.is_none() || current_dir.as_ref() != Some(&test_dir_path)
+            container_id_guard.is_none() || current_dir_guard.as_ref() != Some(&test_dir_path)
         };
 
         if needs_new_container {
