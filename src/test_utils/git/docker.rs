@@ -270,6 +270,54 @@ impl GitOperations for DockerGit {
         self.run_git_command(test_dir, args)
     }
 
+    fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
+        self.ensure_container_running(test_dir)?;
+
+        let container_id = {
+            let container_id_guard = self.container_id.lock().unwrap();
+            container_id_guard.as_ref().unwrap().clone()
+        };
+
+        // Verify repository state before creating tag
+        let verify_script = r#"
+            set -e
+            git rev-parse HEAD > /dev/null
+        "#;
+
+        let output = Command::new("docker")
+            .args(["exec", &container_id, "sh", "-c", verify_script])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker repository state verification failed before tag creation: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        // Create tag with proper escaping
+        let escaped_tag = tag.replace('\'', "'\"'\"'");
+        let tag_script = format!(
+            r#"
+            set -e
+            git tag '{escaped_tag}'
+        "#
+        );
+
+        let output = Command::new("docker")
+            .args(["exec", &container_id, "sh", "-c", &tag_script])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker tag creation failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        Ok(())
+    }
+
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
         self.ensure_container_running(test_dir)?;
 
@@ -278,22 +326,17 @@ impl GitOperations for DockerGit {
             container_id_guard.as_ref().unwrap().clone()
         };
 
-        // Batch script for repository initialization
+        // Step 1: Initialize repository
         let init_script = format!(
             r#"
+            set -e
             git init -b {} &&
             git config user.name '{}' &&
-            git config user.email '{}' &&
-            echo '{}' > {} &&
-            git add . &&
-            git commit -m '{}'
+            git config user.email '{}'
         "#,
             GitTestConstants::DEFAULT_BRANCH,
             GitTestConstants::TEST_USER_NAME,
-            GitTestConstants::TEST_USER_EMAIL,
-            GitTestConstants::INITIAL_FILE_CONTENT,
-            GitTestConstants::INITIAL_FILE_NAME,
-            GitTestConstants::INITIAL_COMMIT_MESSAGE
+            GitTestConstants::TEST_USER_EMAIL
         );
 
         let output = Command::new("docker")
@@ -302,7 +345,49 @@ impl GitOperations for DockerGit {
 
         if !output.status.success() {
             return Err(io::Error::other(format!(
-                "Docker batch init failed: {}",
+                "Docker git init failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        // Step 2: Create initial file and commit
+        let commit_script = format!(
+            r#"
+            set -e
+            echo '{}' > {} &&
+            git add . &&
+            git commit -m '{}'
+        "#,
+            GitTestConstants::INITIAL_FILE_CONTENT,
+            GitTestConstants::INITIAL_FILE_NAME,
+            GitTestConstants::INITIAL_COMMIT_MESSAGE
+        );
+
+        let output = Command::new("docker")
+            .args(["exec", &container_id, "sh", "-c", &commit_script])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker initial commit failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        // Step 3: Verify repository state
+        let verify_script = r#"
+            set -e
+            git rev-parse HEAD > /dev/null &&
+            git log --oneline -1 | grep -q 'Initial commit'
+        "#;
+
+        let output = Command::new("docker")
+            .args(["exec", &container_id, "sh", "-c", verify_script])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker repository verification failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
@@ -354,8 +439,13 @@ impl GitOperations for DockerGit {
 
         // Escape the commit message for shell
         let escaped_message = message.replace('\'', "'\"'\"'");
-        let commit_script =
-            format!("git --git-dir=.git add . && git --git-dir=.git commit -m '{escaped_message}'");
+        let commit_script = format!(
+            r#"
+            set -e
+            git add . &&
+            git commit -m '{escaped_message}'
+        "#
+        );
 
         let output = Command::new("docker")
             .args(["exec", &container_id, "sh", "-c", &commit_script])
