@@ -2,7 +2,7 @@ use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::utils::fuzzy_bool::FuzzyBool;
 use crate::cli::utils::output_formatter::OutputFormatter;
 use crate::cli::utils::vcs_override::VcsOverrideProcessor;
-use crate::constants::FORMAT_SEMVER;
+use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, FORMAT_ZERV, SUPPORTED_FORMATS_ARRAY};
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
 use crate::schema::create_zerv_version;
@@ -79,8 +79,8 @@ pub struct VersionArgs {
     pub input_format: String,
 
     /// Output format for generated version
-    #[arg(long, default_value = FORMAT_SEMVER, value_parser = ["semver", "pep440", "zerv"],
-          help = "Output format: 'semver' (default), 'pep440', or 'zerv' (RON format for piping)")]
+    #[arg(long, default_value = FORMAT_SEMVER, value_parser = SUPPORTED_FORMATS_ARRAY,
+          help = format!("Output format: '{}' (default), '{}', or '{}' (RON format for piping)", FORMAT_SEMVER, FORMAT_PEP440, FORMAT_ZERV))]
     pub output_format: String,
 
     // VCS override options

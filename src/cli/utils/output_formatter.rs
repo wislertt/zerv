@@ -61,19 +61,6 @@ impl OutputFormatter {
         }
     }
 
-    /// Validate that the output format is supported
-    pub fn validate_output_format(format: &str) -> Result<(), ZervError> {
-        if SUPPORTED_FORMATS.contains(&format) {
-            Ok(())
-        } else {
-            Err(ZervError::UnknownFormat(format!(
-                "Unknown output format: '{}'. Supported formats: {}",
-                format,
-                SUPPORTED_FORMATS.join(", ")
-            )))
-        }
-    }
-
     /// Get list of supported output formats
     pub fn supported_formats() -> &'static [&'static str] {
         SUPPORTED_FORMATS
@@ -176,19 +163,6 @@ mod tests {
         let zerv = create_test_zerv();
         let result = OutputFormatter::format_output(&zerv, "unknown", None, None);
         assert!(result.is_err(), "Unknown format should fail");
-        assert!(matches!(result, Err(ZervError::UnknownFormat(_))));
-    }
-
-    #[test]
-    fn test_validate_output_format() {
-        // Test valid formats
-        assert!(OutputFormatter::validate_output_format(FORMAT_SEMVER).is_ok());
-        assert!(OutputFormatter::validate_output_format(FORMAT_PEP440).is_ok());
-        assert!(OutputFormatter::validate_output_format(FORMAT_ZERV).is_ok());
-
-        // Test invalid format
-        let result = OutputFormatter::validate_output_format("invalid");
-        assert!(result.is_err());
         assert!(matches!(result, Err(ZervError::UnknownFormat(_))));
     }
 
