@@ -34,28 +34,31 @@ test:
 test_flaky:
 	@echo "🚀 Starting flaky test detection with 5 iterations..."
 	@echo "=================================================="
-	@start_time=$$(date +%s); \
+	@set -o pipefail; \
+	start_time=$$(date +%s); \
 	total_time=0; \
 	success_count=0; \
+	failed_iteration=0; \
 	for i in 1 2 3 4 5; do \
 		echo ""; \
 		echo "=== Iteration $$i/5 ==="; \
 		iter_start=$$(date +%s); \
 		echo "⏰ Start time: $$(date)"; \
 		echo "🔍 Running tests..."; \
-		if ZERV_TEST_NATIVE_GIT=false ZERV_TEST_DOCKER=true $(MAKE) _test 2>&1 | tee /tmp/test_output_$$i.log; then \
-			iter_end=$$(date +%s); \
-			iter_duration=$$((iter_end - iter_start)); \
+		ZERV_TEST_NATIVE_GIT=false ZERV_TEST_DOCKER=true $(MAKE) _test 2>&1 | tee /tmp/test_output_$$i.log; \
+		test_exit_code=$$?; \
+		iter_end=$$(date +%s); \
+		iter_duration=$$((iter_end - iter_start)); \
+		if [ $$test_exit_code -eq 0 ]; then \
 			total_time=$$((total_time + iter_duration)); \
 			success_count=$$((success_count + 1)); \
 			echo "✅ Iteration $$i completed successfully in $${iter_duration}s"; \
 			echo "⏰ End time: $$(date)"; \
 			rm -f /tmp/test_output_$$i.log; \
 		else \
-			iter_end=$$(date +%s); \
-			iter_duration=$$((iter_end - iter_start)); \
+			failed_iteration=$$i; \
 			echo ""; \
-			echo "❌ FAILED at iteration $$i after $${iter_duration}s"; \
+			echo "❌ FAILED at iteration $$i after $${iter_duration}s (exit code: $$test_exit_code)"; \
 			echo "⏰ End time: $$(date)"; \
 			echo ""; \
 			echo "🚨 FLAKINESS DETECTED - Test failed at iteration $$i"; \
@@ -72,9 +75,12 @@ test_flaky:
 				echo "No test output captured"; \
 			fi; \
 			echo "=================================================="; \
-			exit 1; \
+			break; \
 		fi; \
 	done; \
+	if [ $$failed_iteration -gt 0 ]; then \
+		exit 1; \
+	fi; \
 	end_time=$$(date +%s); \
 	total_duration=$$((end_time - start_time)); \
 	avg_time=$$((total_time / success_count)); \
