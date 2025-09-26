@@ -1,6 +1,8 @@
 use super::{GitOperations, TestDir};
 use std::io;
+use std::path::PathBuf;
 use std::process::Command;
+use std::sync::{Arc, Mutex};
 
 #[cfg(test)]
 fn validate_docker_args(args: &[&str]) -> Result<(), String> {
@@ -19,16 +21,52 @@ fn validate_docker_args(args: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-/// Docker-based git operations for integration testing
-#[derive(Default)]
-pub struct DockerGit;
+/// Docker-based git operations for integration testing with container reuse optimization
+///
+/// This implementation reuses a single long-running Docker container
+/// to avoid the overhead of creating new containers for each Git operation.
+pub struct DockerGit {
+    container_id: Arc<Mutex<Option<String>>>,
+    current_test_dir: Arc<Mutex<Option<PathBuf>>>,
+}
+
+impl Default for DockerGit {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DockerGit {
     pub fn new() -> Self {
-        Self
+        Self {
+            container_id: Arc::new(Mutex::new(None)),
+            current_test_dir: Arc::new(Mutex::new(None)),
+        }
     }
 
-    fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
+    fn ensure_container_running(&self, test_dir: &TestDir) -> io::Result<()> {
+        let test_dir_path = test_dir.path().to_path_buf();
+
+        // Check if we need to start a new container - acquire both locks atomically
+        // by holding both locks simultaneously to prevent race conditions
+        let needs_new_container = {
+            let container_id_guard = self.container_id.lock().unwrap();
+            let current_dir_guard = self.current_test_dir.lock().unwrap();
+
+            container_id_guard.is_none() || current_dir_guard.as_ref() != Some(&test_dir_path)
+        };
+
+        if needs_new_container {
+            self.start_container(test_dir)?;
+        }
+
+        Ok(())
+    }
+
+    fn start_container(&self, test_dir: &TestDir) -> io::Result<()> {
+        // Clean up existing container if any
+        self.cleanup_container()?;
+
         // Use current user on Unix systems, root on others
         #[cfg(unix)]
         let user_args = {
@@ -41,9 +79,9 @@ impl DockerGit {
 
         let mut args = vec![
             "run",
-            "--rm",
-            "--security-opt=no-new-privileges", // Strict mode: remove permissive layers
-            "--cap-drop=ALL",                   // Strict mode: drop all capabilities
+            "-d", // Run in detached mode for container reuse
+            "--security-opt=no-new-privileges",
+            "--cap-drop=ALL",
         ];
 
         // Add user args if present
@@ -61,7 +99,7 @@ impl DockerGit {
             "/workspace",
             "alpine/git:latest",
             "-c",
-            script,
+            "while true; do sleep 30; done", // Keep container alive
         ]);
 
         #[cfg(test)]
@@ -73,10 +111,60 @@ impl DockerGit {
 
         if !output.status.success() {
             return Err(io::Error::other(format!(
-                "Docker command failed: {}",
+                "Failed to start Docker container: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
+
+        let container_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+        // Update state
+        {
+            let mut container_id_guard = self.container_id.lock().unwrap();
+            let mut current_dir_guard = self.current_test_dir.lock().unwrap();
+            *container_id_guard = Some(container_id);
+            *current_dir_guard = Some(test_dir.path().to_path_buf());
+        }
+
+        Ok(())
+    }
+
+    fn cleanup_container(&self) -> io::Result<()> {
+        let container_id = {
+            let mut container_id_guard = self.container_id.lock().unwrap();
+            container_id_guard.take()
+        };
+
+        if let Some(id) = container_id {
+            let _ = Command::new("docker").args(["rm", "-f", &id]).output(); // Ignore errors during cleanup
+        }
+
+        Ok(())
+    }
+
+    fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
+        let start = std::time::Instant::now();
+
+        self.ensure_container_running(test_dir)?;
+
+        let container_id = {
+            let container_id_guard = self.container_id.lock().unwrap();
+            container_id_guard.clone().unwrap()
+        };
+
+        let output = Command::new("docker")
+            .args(["exec", &container_id, "sh", "-c", script])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "Docker exec command failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        let duration = start.elapsed();
+        eprintln!("🐳 Docker Git command '{script}' took {duration:?}");
 
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
@@ -101,6 +189,12 @@ impl DockerGit {
 impl GitOperations for DockerGit {
     fn execute_git(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
         self.run_git_command(test_dir, args)
+    }
+}
+
+impl Drop for DockerGit {
+    fn drop(&mut self) {
+        let _ = self.cleanup_container();
     }
 }
 
@@ -146,7 +240,10 @@ mod tests {
     #[test]
     fn test_docker_git_new() {
         let docker_git = DockerGit::new();
-        assert!(std::mem::size_of_val(&docker_git) == 0);
+        // DockerGit now contains Arc<Mutex<>> fields for container management
+        // so it's no longer zero-sized, but should still be relatively small
+        assert!(std::mem::size_of_val(&docker_git) > 0);
+        assert!(std::mem::size_of_val(&docker_git) < 100); // Reasonable upper bound
     }
 
     #[test]

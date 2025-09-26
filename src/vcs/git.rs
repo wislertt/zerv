@@ -307,15 +307,58 @@ mod tests {
         if !should_run_docker_tests() {
             return;
         }
-        let temp_dir = setup_git_repo_with_commit();
-        let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
-        let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
-        assert!(!data.commit_hash.is_empty());
-        assert!(!data.commit_hash_short.is_empty());
-        assert!(data.commit_timestamp > 0);
-        assert_eq!(data.tag_version, None);
-        assert_eq!(data.distance, 0);
+        // Setup with detailed error context
+        let temp_dir = setup_git_repo_with_commit();
+
+        // Verify .git directory exists before proceeding
+        let git_dir = temp_dir.path().join(".git");
+        assert!(
+            git_dir.exists(),
+            "Git repository should exist at: {}. Check Docker operations and timing.",
+            git_dir.display()
+        );
+
+        // Create GitVcs with detailed error context
+        let git_vcs = GitVcs::new(temp_dir.path())
+            .unwrap_or_else(|e| {
+                panic!("Failed to create GitVcs for repo at {}: {}. Check if .git directory is properly initialized.",
+                       temp_dir.path().display(), e);
+            });
+
+        // Get VCS data with detailed error context
+        let data = git_vcs.get_vcs_data()
+            .unwrap_or_else(|e| {
+                panic!("Failed to get VCS data from repo at {}: {}. Check Git operations and repository state.",
+                       temp_dir.path().display(), e);
+            });
+
+        // Detailed assertions with diagnostic information
+        assert!(
+            !data.commit_hash.is_empty(),
+            "Commit hash should not be empty. Got: '{}'. Check if Git commit was created properly.",
+            data.commit_hash
+        );
+        assert!(
+            !data.commit_hash_short.is_empty(),
+            "Short commit hash should not be empty. Got: '{}'. Check if Git commit was created properly.",
+            data.commit_hash_short
+        );
+        assert!(
+            data.commit_timestamp > 0,
+            "Commit timestamp should be positive. Got: {}. Check if Git commit timestamp is valid.",
+            data.commit_timestamp
+        );
+        assert_eq!(
+            data.tag_version, None,
+            "Tag version should be None for commit without tags. Got: {:?}. Check if tags were created unexpectedly.",
+            data.tag_version
+        );
+        assert_eq!(
+            data.distance, 0,
+            "Distance should be 0 for tagged commit. Got: {}. Check if distance calculation is correct.",
+            data.distance
+        );
     }
 
     #[test]
