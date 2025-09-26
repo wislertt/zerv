@@ -111,30 +111,63 @@ fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
 - Enhanced test error handling for better flakiness detection
 - `test_get_vcs_data_with_commit` improved with detailed diagnostics
 
-### **Phase 2: Parallelization (Advanced)**
+### **Phase 2: Parallelization (Advanced) - ❌ REVERTED**
 
-- [ ] Implement container pool for parallel tests
-- [ ] Add thread-safe container management
-- [ ] Update test execution to use parallel containers
-- [ ] **Expected Speedup**: Additional 40-50%
+- ✅ Implement container pool for parallel tests
+- ✅ Add thread-safe container management
+- ✅ Update test execution to use parallel containers
+- ✅ **Expected Speedup**: Additional 40-50%
 
-### **Phase 3: Batch Operations (Experimental - May Not Work)**
+**❌ PHASE 2 REVERSION NOTES**:
 
-⚠️ **Note**: This phase may not work as expected because the Docker image already includes git command and we just pass its subcommands. The batching approach might conflict with how Docker handles git command execution.
+- Container pool functionality integrated directly into `DockerGit` struct
+- Thread-safe management using `Arc<Mutex<VecDeque<PooledContainer>>>`
+- Parallel execution enabled by default in all Docker Git operations
+- Container acquisition/release mechanisms with automatic cleanup
+- Pool limits: max 4 containers, 5-minute max age, 1-minute idle timeout
+- Zero flakiness detected in 10-iteration test loop
+- All functionality consolidated into single `DockerGit` implementation
+- **REVERTED**: Performance improvement was only 4.3% (140s → 134s)
+- **REVERTED**: Added 400+ lines of complex container pool management code
+- **REVERTED**: High risk of flaky tests due to parallel container execution
+- **REVERTED**: Maintenance burden outweighed minimal performance benefit
 
-- [ ] Modify `GitOperations` methods to batch operations
-- [ ] Update `init_repo()`, `create_commit()`, `create_tag()` methods
-- [ ] Test batch operation error handling
-- [ ] **Expected Speedup**: Additional 20-30% (if feasible)
+### **Phase 3: Batch Operations (Experimental) - ✅ COMPLETED**
+
+⚠️ **Note**: This phase was initially considered experimental because the Docker image already includes git command and we just pass its subcommands. However, the batching approach works well by combining multiple git commands into single shell scripts.
+
+- ✅ Modify `GitOperations` methods to batch operations
+- ✅ Update `init_repo()`, `create_commit()` methods with batch versions
+- ✅ Test batch operation error handling
+- ✅ **Expected Speedup**: Additional 20-30%
+
+**✅ PHASE 3 COMPLETION NOTES**:
+
+- Batch operations implemented in `DockerGit` struct and enabled by default
+- `init_repo_batch()` combines git init, config, file creation, add, and commit
+- `create_commit_batch()` combines git add and commit in single call
+- `create_tag_and_commit_batch()` combines add, commit, and tag operations
+- `run_batch_git_commands()` executes multiple git commands in single Docker call
+- **Simplified approach**: No environment variable needed - batch operations are the default
+- `GitOperations` trait methods (`init_repo()`, `create_commit()`) use batch operations automatically
+- Proper shell escaping for special characters in commit messages
+- Comprehensive test coverage for all batch operations
 
 ## 🎯 **Expected Performance Results**
 
-| Optimization Phase | Current Time | Optimized Time | Speedup          |
-| ------------------ | ------------ | -------------- | ---------------- |
-| Container Reuse    | 100%         | 20-30%         | 3-5x             |
-| + Parallelization  | 20-30%       | 10-15%         | 2x               |
-| + Batch Operations | 10-15%       | 5-8%           | 2x (if feasible) |
-| **Total**          | **100%**     | **5-8%**       | **12-20x**       |
+| Optimization Phase | Current Time | Optimized Time | Speedup  | Status       |
+| ------------------ | ------------ | -------------- | -------- | ------------ |
+| Container Reuse    | 100%         | 20-30%         | 3-5x     | ✅ COMPLETED |
+| + Parallelization  | 20-30%       | 10-15%         | 2x       | ❌ REVERTED  |
+| + Batch Operations | 20-30%       | 15-20%         | 1.3-2x   | ✅ COMPLETED |
+| **Total**          | **100%**     | **15-20%**     | **5-6x** | **66% DONE** |
+
+### **Actual Phase 2 Results (Reverted):**
+
+- **Before**: ~140s average test execution time
+- **After**: ~134s average test execution time
+- **Improvement**: Only 6 seconds (4.3% faster)
+- **Verdict**: Insufficient improvement to justify complexity
 
 ## 🔧 **Implementation Details**
 
@@ -145,11 +178,25 @@ fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
 3. `src/test_utils/mod.rs` - Add optimization flags
 4. `src/config.rs` - Add optimization environment variables
 
-### **New Environment Variables:**
+### **Environment Variables:**
 
-- `ZERV_TEST_DOCKER_OPTIMIZE=true` - Enable container reuse
-- `ZERV_TEST_DOCKER_PARALLEL=true` - Enable parallel execution
-- `ZERV_TEST_DOCKER_BATCH=true` - Enable batched operations
+- `ZERV_TEST_NATIVE_GIT=true` - Use native Git instead of Docker (for CI)
+- `ZERV_TEST_DOCKER=true` - Enable Docker tests (default)
+
+**Note**: Container reuse and batch operations are now enabled by default in `DockerGit` - no additional environment variables needed. Parallel execution was reverted.
+
+### **Usage Examples:**
+
+```bash
+# Run with optimized Docker Git (container reuse + batch operations)
+make test
+
+# Use native Git for faster CI performance
+ZERV_TEST_NATIVE_GIT=true make test
+
+# Disable Docker tests entirely
+ZERV_TEST_DOCKER=false make test
+```
 
 ### **Backward Compatibility:**
 
@@ -355,19 +402,26 @@ RUST_LOG=debug cargo test test_tagged_repo_clean test_distance_repo_clean test_d
 
 ## 🎯 **Next Steps**
 
+### **Current Status:**
+
+1. **Phase 1**: ✅ Container reuse optimization completed and maintained
+2. **Phase 2**: ❌ Parallelization reverted due to minimal performance gain
+3. **Phase 3**: ✅ Batch operations completed and available
+
 ### **Immediate Actions:**
 
-1. **Start with Phase 1**: Implement container reuse optimization
-2. **Benchmark current performance**: Measure baseline test execution time
-3. **Create optimized DockerGit**: Implement container reuse logic
-4. **Test and validate**: Ensure no regressions
+1. **Maintain Phase 1**: Keep container reuse optimization working
+2. **Use Phase 3**: Batch operations are now enabled by default
+3. **Monitor performance**: Track test execution times with both optimizations
+4. **Consider alternatives**: Native Git in CI, test selection strategies
 
 ### **Short-term Goals:**
 
-- Complete Phase 1 implementation
-- Achieve 70-80% performance improvement
-- Validate test stability and quality
-- Document performance improvements
+- Maintain Phase 1 container reuse benefits
+- Monitor Phase 3 batch operations performance
+- Monitor for any flakiness issues
+- Measure actual performance improvement from both optimizations
+- Explore alternative optimization strategies
 
 ### **Long-term Goals:**
 
