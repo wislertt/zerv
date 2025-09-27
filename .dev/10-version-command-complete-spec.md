@@ -488,9 +488,9 @@ $ zerv version --output-format semver  # Dirty state
 $ zerv version --output-format zerv
 (
     schema: (
-        core: [VarField("major"), VarField("minor"), VarField("patch")],
-        extra_core: [VarField("epoch"), VarField("pre_release"), VarField("post")],
-        build: [VarField("bumped_branch"), VarField("bumped_commit_hash")],
+        core: [var("major"), var("minor"), var("patch")],
+        extra_core: [var("epoch"), var("pre_release"), var("post")],
+        build: [var("bumped_branch"), var("bumped_commit_hash")],
     ),
     vars: (
         major: Some(1),
@@ -850,7 +850,7 @@ zerv version --output-format zerv | zerv version --source stdin --output-format 
 
 ```bash
 # Test custom schema
-zerv version --schema-ron '(core: [VarField("major")])' --output-format zerv
+zerv version --schema-ron '(core: [var("major")])' --output-format zerv
 
 # Compare schema outputs
 zerv version --schema zerv-standard --output-format zerv > standard.ron
@@ -872,4 +872,532 @@ zerv version --tag-version={{ format_timestamp tag_timestamp format="%Y.%m.%d" }
 
 # Complex conditional logic
 zerv version --pre-release-label={{ if (gt distance 10) "alpha" (if (gt distance 5) "beta" "rc") }}
+```
+
+## Required Changes for Improved RON Format
+
+### Component Enum Updates
+
+**Current State:**
+
+```rust
+pub enum Component {
+    String(String),
+    Integer(u64),
+    VarField(String),
+    VarTimestamp(String),
+    VarCustom(String),
+}
+```
+
+**Required Changes:**
+
+```rust
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Component {
+    #[serde(rename = "str")]
+    String(String),
+    #[serde(rename = "int")]
+    Integer(u64),
+    #[serde(rename = "var")]
+    VarField(String),  // Remove VarCustom, use var("custom.xxx")
+    #[serde(rename = "ts")]
+    VarTimestamp(String),
+}
+```
+
+### ZervVars Custom Fields
+
+**Current State:**
+
+```rust
+pub struct ZervVars {
+    // ... existing fields
+    pub custom: std::collections::HashMap<String, serde_json::Value>,
+}
+```
+
+**Required Changes:**
+
+```rust
+use serde_json::Value;
+
+pub struct ZervVars {
+    // ... existing fields
+    pub custom: Value,  // Change to nested JSON structure
+}
+```
+
+### RON Format Migration
+
+**Current RON:**
+
+```ron
+core: [VarField("major"), VarField("minor"), VarField("patch")]
+build: [VarField("current_branch"), VarCustom("build_id")]
+vars: (
+    major: Some(1),
+    custom.build_id: "123"  // Flattened
+)
+```
+
+**New RON:**
+
+```ron
+core: [var("major"), var("minor"), var("patch")]
+build: [var("current_branch"), var("custom.build_id"), str("stable"), int(1)]
+vars: (
+    major: Some(1),
+    custom: {
+        build_id: "123",
+        environment: "prod"
+    }
+)
+```
+
+### Implementation Tasks
+
+1. **Update Component enum** with serde rename attributes
+2. **Remove VarCustom variant** - use var("custom.xxx") instead
+3. **Change ZervVars.custom** from HashMap to Value for nested JSON
+4. **Update all schema presets** to use new component names
+5. **Update parser tests** to use new RON format
+6. **Update documentation** with new format examples
+7. **Add migration guide** for existing RON files
+8. **Add timestamp preset patterns** - `compact_date`, `compact_datetime`
+9. **Add custom format string support** - patterns starting with `%`
+10. **Update timestamp tests** - add new pattern test cases
+11. **Update field name mappings** - `tag_branch` → `last_branch`, `tag_commit_hash` → `last_commit_hash`, `tag_timestamp` → `last_timestamp`
+12. **Improve error messages** - include format string in `parse_timestamp_component` error messages
+13. **Replace bare strings with constants** - use constants/enums for field names instead of magic strings
+
+## Required Changes from Current Code to Ideal State
+
+### Field Name Changes in ZervVars
+
+**Current Implementation:**
+
+```rust
+pub struct ZervVars {
+    // ... other fields
+    pub tag_timestamp: Option<u64>,
+    pub tag_branch: Option<String>,
+    pub current_branch: Option<String>,
+    pub tag_commit_hash: Option<String>,
+    pub current_commit_hash: Option<String>,
+    // ... other fields
+}
+```
+
+**Ideal State Changes:**
+
+- Rename `tag_branch` → `last_branch` (internal field)
+- Rename `tag_commit_hash` → `last_commit_hash` (internal field)
+- Rename `tag_timestamp` → `last_timestamp` (internal field)
+- Map to schema access: `last_branch` → `bumped_branch` (for var() access)
+- Map to schema access: `last_commit_hash` → `bumped_commit_hash` (for var() access)
+- Map to schema access: `last_timestamp` → `bumped_timestamp` (for ts() format)
+- Remove `current_branch` and `current_commit_hash` (not needed in ideal state)
+- Add preset timestamp patterns: `compact_date`, `compact_datetime`
+- Add custom format string support with `%` prefix
+
+### Schema Preset Updates
+
+**Current Schema Presets** (in `src/schema/presets/mod.rs`):
+
+```rust
+// Current usage
+Component::VarField("current_branch".to_string())
+Component::VarField("current_commit_hash".to_string())
+```
+
+**Required Changes:**
+
+```rust
+// Update to use ideal field names
+Component::VarField("bumped_branch".to_string())           // maps to tag_branch
+Component::VarField("bumped_commit_hash".to_string())      // maps to tag_commit_hash
+```
+
+### Format Handler Updates
+
+**Current Implementation** (in `src/cli/utils/format_handler.rs`):
+
+```rust
+"current_branch" if zerv.vars.current_branch.is_none() => {
+    missing_vars.push("current_branch")
+}
+"current_commit_hash" if zerv.vars.current_commit_hash.is_none() => {
+    missing_vars.push("current_commit_hash")
+}
+```
+
+**Required Changes:**
+
+```rust
+"bumped_branch" if zerv.vars.last_branch.is_none() => {
+    missing_vars.push("bumped_branch")
+}
+"bumped_commit_hash" if zerv.vars.last_commit_hash.is_none() => {
+    missing_vars.push("bumped_commit_hash")
+}
+```
+
+### Version Format Updates
+
+**PEP440 Format** (in `src/version/pep440/from_zerv.rs`):
+
+```rust
+// Current
+"current_branch" => {
+    if let Some(branch) = &zerv.vars.current_branch {
+        // ...
+    }
+}
+"current_commit_hash" => {
+    if let Some(hash) = &zerv.vars.current_commit_hash {
+        // ...
+    }
+}
+
+// Required changes
+"bumped_branch" => {
+    if let Some(branch) = &zerv.vars.last_branch {
+        // ...
+    }
+}
+"bumped_commit_hash" => {
+    if let Some(hash) = &zerv.vars.last_commit_hash {
+        // ...
+    }
+}
+```
+
+**SemVer Format** (in `src/version/semver/from_zerv.rs`):
+
+```rust
+// Current
+"current_branch" => zerv.vars.current_branch.as_ref().map(|s| s.as_str()),
+"current_commit_hash" => zerv.vars.current_commit_hash.as_ref().map(|s| s.as_str()),
+
+// Required changes
+"bumped_branch" => zerv.vars.last_branch.as_ref().map(|s| s.as_str()),
+"bumped_commit_hash" => zerv.vars.last_commit_hash.as_ref().map(|s| s.as_str()),
+```
+
+### Timestamp Format Updates
+
+**Current Implementation** (in `src/version/zerv/utils.rs`):
+
+```rust
+pub fn resolve_timestamp(pattern: &str, timestamp: Option<u64>) -> Result<u64> {
+    // ... existing code ...
+    let result = match pattern {
+        "YYYY" => parse_timestamp_component(&dt, "%Y", "year")?,
+        "YY" => parse_timestamp_component(&dt, "%y", "year")?,
+        "MM" => parse_timestamp_component(&dt, "%-m", "month")?,
+        "0M" => parse_timestamp_component(&dt, "%m", "month")?,
+        // ... other single components
+        _ => {
+            return Err(ZervError::InvalidFormat(format!(
+                "Unknown timestamp pattern: {pattern}"
+            )));
+        }
+    };
+    Ok(result)
+}
+```
+
+**Required Changes:**
+
+```rust
+pub fn resolve_timestamp(pattern: &str, timestamp: Option<u64>) -> Result<u64> {
+    // ... existing code ...
+
+    let result = match pattern {
+        // Preset patterns first (exact matches)
+        "compact_date" => parse_timestamp_component(&dt, "%Y%m%d", "compact-date")?,
+        "compact_datetime" => parse_timestamp_component(&dt, "%Y%m%d%H%M%S", "compact-datetime")?,
+        "YYYY" => parse_timestamp_component(&dt, "%Y", "year")?,
+        "YY" => parse_timestamp_component(&dt, "%y", "year")?,
+        "MM" => parse_timestamp_component(&dt, "%-m", "month")?,
+        "0M" => parse_timestamp_component(&dt, "%m", "month")?,
+        "DD" => parse_timestamp_component(&dt, "%-d", "day")?,
+        "0D" => parse_timestamp_component(&dt, "%d", "day")?,
+        "HH" => parse_timestamp_component(&dt, "%-H", "hour")?,
+        "0H" => parse_timestamp_component(&dt, "%H", "hour")?,
+        "mm" => parse_timestamp_component(&dt, "%-M", "minute")?,
+        "0m" => parse_timestamp_component(&dt, "%M", "minute")?,
+        "SS" => parse_timestamp_component(&dt, "%-S", "second")?,
+        "0S" => parse_timestamp_component(&dt, "%S", "second")?,
+        "WW" => parse_timestamp_component(&dt, "%-W", "week")?,
+        "0W" => parse_timestamp_component(&dt, "%W", "week")?,
+
+        // Custom format fallback - try to parse as chrono format
+        _ => {
+            // Try to parse as custom chrono format
+            parse_timestamp_component(&dt, pattern, "custom format")
+                .map_err(|_| ZervError::InvalidFormat(format!(
+                    "Unknown timestamp pattern: {pattern}"
+                )))?
+        }
+    };
+
+    Ok(result)
+}
+```
+
+**New Test Cases to Add:**
+
+```rust
+#[rstest]
+// Preset patterns
+#[case(1710511845, "compact_date", 20240315)] // 2024-03-15 14:10:45
+#[case(1710511845, "compact_datetime", 20240315141045)]
+
+// Custom format strings (no % prefix required)
+#[case(1710511845, "%Y%m", 202403)] // Custom format
+#[case(1710511845, "%Y-%m-%d", 20240315)] // Custom format with separators
+#[case(1710511845, "%H:%M:%S", 141045)] // Custom time format
+
+// Edge cases
+#[case(1710511845, "", 0)] // Empty string - should fail
+#[case(1710511845, "invalid", 0)] // Invalid pattern - should fail
+fn test_resolve_timestamp_new_patterns(
+    #[case] timestamp: u64,
+    #[case] pattern: &str,
+    #[case] expected: u64,
+) {
+    let result = resolve_timestamp(pattern, Some(timestamp));
+    if expected == 0 {
+        // Should fail for edge cases
+        assert!(result.is_err());
+    } else {
+        assert_eq!(result.unwrap(), expected);
+    }
+}
+```
+
+### Replace Bare Strings with Constants
+
+**Current Problem:**
+The codebase uses **extensive bare strings** throughout (280+ instances found), which is error-prone and hard to maintain:
+
+```rust
+// Field names - 280+ instances
+Component::VarField("major".to_string())
+Component::VarField("minor".to_string())
+Component::VarField("patch".to_string())
+Component::VarField("distance".to_string())
+Component::VarField("dirty".to_string())
+Component::VarField("current_branch".to_string())
+Component::VarField("current_commit_hash".to_string())
+Component::VarField("tag_branch".to_string())
+Component::VarField("tag_commit_hash".to_string())
+Component::VarField("tag_timestamp".to_string())
+
+// Complex timestamp patterns - 10+ instances
+Component::VarTimestamp("compact_date".to_string())
+Component::VarTimestamp("compact_datetime".to_string())
+// Single patterns like "YYYY", "MM" can stay as bare strings
+
+// Source types and format names - 14+ instances
+"git" => { ... }        // Source type
+"stdin" => { ... }      // Source type
+"auto" => { ... }       // Format name
+"semver" => { ... }     // Format name
+"pep440" => { ... }     // Format name
+```
+
+**Required Changes:**
+
+```rust
+// Define constants for all string literals
+pub mod constants {
+    // Field names
+    pub mod fields {
+        // Core version fields
+        pub const MAJOR: &str = "major";
+        pub const MINOR: &str = "minor";
+        pub const PATCH: &str = "patch";
+        pub const EPOCH: &str = "epoch";
+
+        // Pre-release fields
+        pub const PRE_RELEASE: &str = "pre_release";
+
+        // Post-release fields
+        pub const POST: &str = "post";
+        pub const DEV: &str = "dev";
+
+        // VCS state fields
+        pub const DISTANCE: &str = "distance";
+        pub const DIRTY: &str = "dirty";
+        pub const CURRENT_BRANCH: &str = "current_branch";
+        pub const CURRENT_COMMIT_HASH: &str = "current_commit_hash";
+        pub const TAG_BRANCH: &str = "tag_branch";
+        pub const TAG_COMMIT_HASH: &str = "tag_commit_hash";
+        pub const TAG_TIMESTAMP: &str = "tag_timestamp";
+        pub const BUMPED_BRANCH: &str = "bumped_branch";
+        pub const BUMPED_COMMIT_HASH: &str = "bumped_commit_hash";
+        pub const BUMPED_TIMESTAMP: &str = "bumped_timestamp";
+
+        // Custom fields
+        pub const CUSTOM: &str = "custom";
+    }
+
+    // Timestamp patterns (only complex ones)
+    pub mod timestamp_patterns {
+        pub const COMPACT_DATE: &str = "compact_date";
+        pub const COMPACT_DATETIME: &str = "compact_datetime";
+    }
+
+    // Source types
+    pub mod sources {
+        pub const GIT: &str = "git";
+        pub const STDIN: &str = "stdin";
+    }
+
+    // Format names
+    pub mod formats {
+        pub const AUTO: &str = "auto";
+        pub const SEMVER: &str = "semver";
+        pub const PEP440: &str = "pep440";
+        pub const ZERV: &str = "zerv";
+    }
+}
+
+// Usage - type-safe and maintainable
+Component::VarField(constants::fields::MAJOR.to_string())
+Component::VarField(constants::fields::MINOR.to_string())
+Component::VarField(constants::fields::PATCH.to_string())
+Component::VarTimestamp(constants::timestamp_patterns::COMPACT_DATE.to_string())
+// Single patterns like "YYYY", "MM", "DD" can stay as bare strings
+Component::VarTimestamp("YYYY".to_string())
+Component::VarTimestamp("MM".to_string())
+```
+
+**Benefits:**
+
+- **Type Safety** - Compile-time checking of field names
+- **Refactoring Safety** - IDE can rename all usages automatically
+- **Documentation** - Constants serve as documentation of available fields
+- **Consistency** - Prevents typos and ensures consistent naming
+- **Maintainability** - Easy to add/remove/modify field names
+
+**Files to Update (280+ instances across):**
+
+- `src/version/zerv/utils.rs` - Field name matching in `extract_core_values`
+- `src/cli/utils/format_handler.rs` - Missing variable checks (15+ instances)
+- `src/version/pep440/from_zerv.rs` - Field name matching
+- `src/version/semver/from_zerv.rs` - Field name matching
+- `src/schema/presets/mod.rs` - Schema component creation
+- `src/version/zerv/test_utils.rs` - Test data creation (100+ instances)
+- `src/version/zerv/core.rs` - Test data and component creation
+- `src/version/zerv/display.rs` - Display components
+- `src/version/zerv/parser.rs` - Parser test data
+- `src/schema/parser.rs` - Parser test data
+- `src/schema/presets/calver.rs` - CalVer timestamp patterns
+- `src/cli/version.rs` - Format names and CLI values
+
+### Error Message Improvements
+
+**Current Implementation** (in `src/version/zerv/utils.rs`):
+
+```rust
+fn parse_timestamp_component(
+    dt: &chrono::DateTime<chrono::Utc>,
+    format_str: &str,
+    component_type: &str,
+) -> Result<u64> {
+    dt.format(format_str)
+        .to_string()
+        .parse()
+        .map_err(|_| ZervError::InvalidFormat(format!("Failed to parse {component_type}")))
+}
+```
+
+**Required Changes:**
+
+```rust
+fn parse_timestamp_component(
+    dt: &chrono::DateTime<chrono::Utc>,
+    format_str: &str,
+    component_type: &str,
+) -> Result<u64> {
+    dt.format(format_str)
+        .to_string()
+        .parse()
+        .map_err(|_| ZervError::InvalidFormat(format!(
+            "Failed to parse {component_type} with format '{format_str}'"
+        )))
+}
+```
+
+**Benefits:**
+
+- **Better debugging** - Shows exactly which format string failed
+- **Clearer error messages** - Users can see what format was attempted
+- **Easier troubleshooting** - Helps identify invalid chrono format strings
+
+### Test Updates
+
+**Test Utilities** (in `src/version/zerv/test_utils.rs`):
+
+```rust
+// Current test data
+Component::VarField("current_branch".to_string())
+Component::VarField("current_commit_hash".to_string())
+
+// Required changes
+Component::VarField("bumped_branch".to_string())
+Component::VarField("bumped_commit_hash".to_string())
+```
+
+**Schema Tests** (in `src/schema/mod.rs`):
+
+```rust
+// Current test data
+current_branch: Some("main".to_string()),
+current_commit_hash: Some("abc123".to_string()),
+
+// Required changes - update test expectations
+// Tests should expect the new field names in schema output
+```
+
+### Migration Strategy
+
+1. **Phase 1**: Add backward compatibility
+    - Keep both old and new field names working
+    - Add deprecation warnings for old names
+
+2. **Phase 2**: Update all internal usage
+    - Update schema presets
+    - Update format handlers
+    - Update version formatters
+    - Update tests
+
+3. **Phase 3**: Remove old field names
+    - Remove backward compatibility
+    - Clean up deprecated code
+
+### Breaking Changes
+
+**Schema RON Format:**
+
+```ron
+# Old format (will break)
+core: [var("current_branch"), var("current_commit_hash")]
+
+# New format (required)
+core: [var("bumped_branch"), var("bumped_commit_hash")]
+```
+
+**Custom Field Access:**
+
+```ron
+# Old format (will break)
+custom.current_branch
+
+# New format (required)
+custom.build_id  # nested JSON access
 ```
