@@ -1,5 +1,5 @@
 use zerv::cli::VersionArgs;
-use zerv::constants::{FORMAT_ZERV, SCHEMA_ZERV_STANDARD};
+use zerv::constants::{formats, schema_names};
 use zerv::test_utils::{GitRepoFixture, should_run_docker_tests};
 
 #[test]
@@ -27,10 +27,10 @@ fn test_zerv_format_output() {
     let args = VersionArgs {
         version: None,
         source: "git".to_string(),
-        schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+        schema: Some(schema_names::ZERV_STANDARD.to_string()),
         schema_ron: None,
         input_format: "auto".to_string(),
-        output_format: FORMAT_ZERV.to_string(),
+        output_format: formats::ZERV.to_string(),
         tag_version: None,
         distance: None,
         dirty: false,
@@ -140,7 +140,7 @@ fn test_zerv_format_schema_structure() {
         ..Default::default()
     };
 
-    let zerv = create_zerv_version(vars, Some(SCHEMA_ZERV_STANDARD), None).unwrap();
+    let zerv = create_zerv_version(vars, Some(schema_names::ZERV_STANDARD), None).unwrap();
     let ron_output = zerv.to_string();
 
     // Parse back and verify schema
@@ -179,10 +179,10 @@ fn test_zerv_format_roundtrip() {
     let args1 = VersionArgs {
         version: None,
         source: "git".to_string(),
-        schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+        schema: Some(schema_names::ZERV_STANDARD.to_string()),
         schema_ron: None,
         input_format: "auto".to_string(),
-        output_format: FORMAT_ZERV.to_string(),
+        output_format: formats::ZERV.to_string(),
         tag_version: None,
         distance: None,
         dirty: false,

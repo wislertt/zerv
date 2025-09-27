@@ -637,8 +637,7 @@ fn test_comprehensive_end_to_end_workflow() {
         .arg("v2.0.0-beta.1")
         .arg("--current-branch")
         .arg("release/2.0")
-        .arg("--dirty")
-        .arg("false")
+        .arg("--no-dirty")
         .assert_success();
 
     let zerv_ron = output1.stdout();

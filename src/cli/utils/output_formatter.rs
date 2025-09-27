@@ -1,4 +1,4 @@
-use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, FORMAT_ZERV, SUPPORTED_FORMATS};
+use crate::constants::{SUPPORTED_FORMATS, formats};
 use crate::error::ZervError;
 use crate::version::Zerv;
 use crate::version::pep440::PEP440;
@@ -34,9 +34,9 @@ impl OutputFormatter {
     /// Generate base output according to the specified format
     fn format_base_output(zerv_object: &Zerv, output_format: &str) -> Result<String, ZervError> {
         match output_format {
-            FORMAT_PEP440 => Ok(PEP440::from(zerv_object.clone()).to_string()),
-            FORMAT_SEMVER => Ok(SemVer::from(zerv_object.clone()).to_string()),
-            FORMAT_ZERV => Ok(zerv_object.to_string()),
+            formats::PEP440 => Ok(PEP440::from(zerv_object.clone()).to_string()),
+            formats::SEMVER => Ok(SemVer::from(zerv_object.clone()).to_string()),
+            formats::ZERV => Ok(zerv_object.to_string()),
             format => Err(ZervError::UnknownFormat(format!(
                 "Unknown output format: '{}'. Supported formats: {}",
                 format,
@@ -102,8 +102,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case(FORMAT_SEMVER, "1.2.3")]
-    #[case(FORMAT_PEP440, "1.2.3")]
+    #[case(formats::SEMVER, "1.2.3")]
+    #[case(formats::PEP440, "1.2.3")]
     fn test_format_output_basic_formats(#[case] format: &str, #[case] expected: &str) {
         let zerv = create_test_zerv();
         let result = OutputFormatter::format_output(&zerv, format, None, None);
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn test_format_output_zerv() {
         let zerv = create_test_zerv();
-        let result = OutputFormatter::format_output(&zerv, FORMAT_ZERV, None, None);
+        let result = OutputFormatter::format_output(&zerv, formats::ZERV, None, None);
         assert!(result.is_ok(), "Zerv formatting should succeed");
 
         let output = result.unwrap();
@@ -151,7 +151,7 @@ mod tests {
         #[case] expected: &str,
     ) {
         let zerv = create_test_zerv();
-        let result = OutputFormatter::format_output(&zerv, FORMAT_SEMVER, prefix, template);
+        let result = OutputFormatter::format_output(&zerv, formats::SEMVER, prefix, template);
         assert!(result.is_ok(), "Formatting should succeed");
 
         let output = result.unwrap();
@@ -169,9 +169,9 @@ mod tests {
     #[test]
     fn test_supported_formats() {
         let formats = OutputFormatter::supported_formats();
-        assert!(formats.contains(&FORMAT_SEMVER));
-        assert!(formats.contains(&FORMAT_PEP440));
-        assert!(formats.contains(&FORMAT_ZERV));
+        assert!(formats.contains(&formats::SEMVER));
+        assert!(formats.contains(&formats::PEP440));
+        assert!(formats.contains(&formats::ZERV));
         assert_eq!(formats.len(), 3);
     }
 

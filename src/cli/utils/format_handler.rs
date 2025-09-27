@@ -1,3 +1,4 @@
+use crate::constants::fields;
 use crate::error::ZervError;
 use crate::version::{Component, PEP440, SemVer, VersionObject, Zerv};
 use std::io::Read;
@@ -116,31 +117,33 @@ impl InputFormatHandler {
         let mut check_var_field = |component: &Component| {
             if let Component::VarField(field_name) = component {
                 match field_name.as_str() {
-                    "major" if zerv.vars.major.is_none() => missing_vars.push("major"),
-                    "minor" if zerv.vars.minor.is_none() => missing_vars.push("minor"),
-                    "patch" if zerv.vars.patch.is_none() => missing_vars.push("patch"),
-                    "epoch" if zerv.vars.epoch.is_none() => missing_vars.push("epoch"),
-                    "pre_release" if zerv.vars.pre_release.is_none() => {
-                        missing_vars.push("pre_release")
+                    fields::MAJOR if zerv.vars.major.is_none() => missing_vars.push(fields::MAJOR),
+                    fields::MINOR if zerv.vars.minor.is_none() => missing_vars.push(fields::MINOR),
+                    fields::PATCH if zerv.vars.patch.is_none() => missing_vars.push(fields::PATCH),
+                    fields::EPOCH if zerv.vars.epoch.is_none() => missing_vars.push(fields::EPOCH),
+                    fields::PRE_RELEASE if zerv.vars.pre_release.is_none() => {
+                        missing_vars.push(fields::PRE_RELEASE)
                     }
-                    "post" if zerv.vars.post.is_none() => missing_vars.push("post"),
-                    "dev" if zerv.vars.dev.is_none() => missing_vars.push("dev"),
-                    "distance" if zerv.vars.distance.is_none() => missing_vars.push("distance"),
-                    "dirty" if zerv.vars.dirty.is_none() => missing_vars.push("dirty"),
-                    "current_branch" if zerv.vars.current_branch.is_none() => {
-                        missing_vars.push("current_branch")
+                    fields::POST if zerv.vars.post.is_none() => missing_vars.push(fields::POST),
+                    fields::DEV if zerv.vars.dev.is_none() => missing_vars.push(fields::DEV),
+                    fields::DISTANCE if zerv.vars.distance.is_none() => {
+                        missing_vars.push(fields::DISTANCE)
                     }
-                    "current_commit_hash" if zerv.vars.current_commit_hash.is_none() => {
-                        missing_vars.push("current_commit_hash")
+                    fields::DIRTY if zerv.vars.dirty.is_none() => missing_vars.push(fields::DIRTY),
+                    fields::CURRENT_BRANCH if zerv.vars.current_branch.is_none() => {
+                        missing_vars.push(fields::CURRENT_BRANCH)
                     }
-                    "tag_commit_hash" if zerv.vars.tag_commit_hash.is_none() => {
-                        missing_vars.push("tag_commit_hash")
+                    fields::CURRENT_COMMIT_HASH if zerv.vars.current_commit_hash.is_none() => {
+                        missing_vars.push(fields::CURRENT_COMMIT_HASH)
                     }
-                    "tag_timestamp" if zerv.vars.tag_timestamp.is_none() => {
-                        missing_vars.push("tag_timestamp")
+                    fields::TAG_COMMIT_HASH if zerv.vars.tag_commit_hash.is_none() => {
+                        missing_vars.push(fields::TAG_COMMIT_HASH)
                     }
-                    "tag_branch" if zerv.vars.tag_branch.is_none() => {
-                        missing_vars.push("tag_branch")
+                    fields::TAG_TIMESTAMP if zerv.vars.tag_timestamp.is_none() => {
+                        missing_vars.push(fields::TAG_TIMESTAMP)
+                    }
+                    fields::TAG_BRANCH if zerv.vars.tag_branch.is_none() => {
+                        missing_vars.push(fields::TAG_BRANCH)
                     }
                     _ => {} // Custom variables or unknown fields are allowed
                 }

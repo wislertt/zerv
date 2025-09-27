@@ -1,3 +1,4 @@
+use crate::constants::{fields, timestamp_patterns};
 use crate::error::{Result, ZervError};
 use crate::version::zerv::{Component, PreReleaseLabel, Zerv};
 
@@ -6,9 +7,9 @@ pub fn extract_core_values(zerv: &Zerv) -> Vec<u64> {
     for comp in &zerv.schema.core {
         let val = match comp {
             Component::VarField(field) => match field.as_str() {
-                "major" => zerv.vars.major.unwrap_or(0),
-                "minor" => zerv.vars.minor.unwrap_or(0),
-                "patch" => zerv.vars.patch.unwrap_or(0),
+                fields::MAJOR => zerv.vars.major.unwrap_or(0),
+                fields::MINOR => zerv.vars.minor.unwrap_or(0),
+                fields::PATCH => zerv.vars.patch.unwrap_or(0),
                 _ => 0,
             },
             Component::VarTimestamp(pattern) => {
@@ -50,20 +51,20 @@ pub fn resolve_timestamp(pattern: &str, timestamp: Option<u64>) -> Result<u64> {
         .ok_or_else(|| ZervError::InvalidFormat("Invalid timestamp".to_string()))?;
 
     let result = match pattern {
-        "YYYY" => parse_timestamp_component(&dt, "%Y", "year")?,
-        "YY" => parse_timestamp_component(&dt, "%y", "year")?,
-        "MM" => parse_timestamp_component(&dt, "%-m", "month")?,
-        "0M" => parse_timestamp_component(&dt, "%m", "month")?,
-        "WW" => parse_timestamp_component(&dt, "%-W", "week")?,
-        "0W" => parse_timestamp_component(&dt, "%W", "week")?,
-        "DD" => parse_timestamp_component(&dt, "%-d", "day")?,
-        "0D" => parse_timestamp_component(&dt, "%d", "day")?,
-        "HH" => parse_timestamp_component(&dt, "%-H", "hour")?,
-        "0H" => parse_timestamp_component(&dt, "%H", "hour")?,
-        "mm" => parse_timestamp_component(&dt, "%-M", "minute")?,
-        "0m" => parse_timestamp_component(&dt, "%M", "minute")?,
-        "SS" => parse_timestamp_component(&dt, "%-S", "second")?,
-        "0S" => parse_timestamp_component(&dt, "%S", "second")?,
+        timestamp_patterns::YYYY => parse_timestamp_component(&dt, "%Y", "year")?,
+        timestamp_patterns::YY => parse_timestamp_component(&dt, "%y", "year")?,
+        timestamp_patterns::MM => parse_timestamp_component(&dt, "%-m", "month")?,
+        timestamp_patterns::ZERO_M => parse_timestamp_component(&dt, "%m", "month")?,
+        timestamp_patterns::WW => parse_timestamp_component(&dt, "%-W", "week")?,
+        timestamp_patterns::ZERO_W => parse_timestamp_component(&dt, "%W", "week")?,
+        timestamp_patterns::DD => parse_timestamp_component(&dt, "%-d", "day")?,
+        timestamp_patterns::ZERO_D => parse_timestamp_component(&dt, "%d", "day")?,
+        timestamp_patterns::HH => parse_timestamp_component(&dt, "%-H", "hour")?,
+        timestamp_patterns::ZERO_H => parse_timestamp_component(&dt, "%H", "hour")?,
+        timestamp_patterns::MM_MINUTE => parse_timestamp_component(&dt, "%-M", "minute")?,
+        timestamp_patterns::ZERO_M_MINUTE => parse_timestamp_component(&dt, "%M", "minute")?,
+        timestamp_patterns::SS => parse_timestamp_component(&dt, "%-S", "second")?,
+        timestamp_patterns::ZERO_S => parse_timestamp_component(&dt, "%S", "second")?,
         _ => {
             return Err(ZervError::InvalidFormat(format!(
                 "Unknown timestamp pattern: {pattern}"

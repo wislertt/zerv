@@ -6,6 +6,7 @@ pub use standard::{
     get_standard_schema, zerv_standard_tier_1, zerv_standard_tier_2, zerv_standard_tier_3,
 };
 
+use crate::constants::fields;
 use crate::version::zerv::{Component, ZervSchema, ZervVars};
 
 fn determine_tier(vars: &ZervVars) -> u8 {
@@ -20,41 +21,41 @@ fn determine_tier(vars: &ZervVars) -> u8 {
 
 fn tier_1_core() -> Vec<Component> {
     vec![
-        Component::VarField("major".to_string()),
-        Component::VarField("minor".to_string()),
-        Component::VarField("patch".to_string()),
+        Component::VarField(fields::MAJOR.to_string()),
+        Component::VarField(fields::MINOR.to_string()),
+        Component::VarField(fields::PATCH.to_string()),
     ]
 }
 
 fn tier_1_extra_core() -> Vec<Component> {
     vec![
-        Component::VarField("epoch".to_string()),
-        Component::VarField("pre_release".to_string()),
-        Component::VarField("post".to_string()),
+        Component::VarField(fields::EPOCH.to_string()),
+        Component::VarField(fields::PRE_RELEASE.to_string()),
+        Component::VarField(fields::POST.to_string()),
     ]
 }
 
 fn tier_2_build() -> Vec<Component> {
     vec![
-        Component::VarField("current_branch".to_string()),
-        Component::VarField("current_commit_hash".to_string()),
+        Component::VarField(fields::CURRENT_BRANCH.to_string()),
+        Component::VarField(fields::CURRENT_COMMIT_HASH.to_string()),
     ]
 }
 
 fn tier_3_extra_core() -> Vec<Component> {
     vec![
-        Component::VarField("epoch".to_string()),
-        Component::VarField("pre_release".to_string()),
-        Component::VarField("post".to_string()),
-        Component::VarField("dev".to_string()),
+        Component::VarField(fields::EPOCH.to_string()),
+        Component::VarField(fields::PRE_RELEASE.to_string()),
+        Component::VarField(fields::POST.to_string()),
+        Component::VarField(fields::DEV.to_string()),
     ]
 }
 
 fn tier_3_build() -> Vec<Component> {
     vec![
-        Component::VarField("current_branch".to_string()),
-        Component::VarField("distance".to_string()),
-        Component::VarField("current_commit_hash".to_string()),
+        Component::VarField(fields::CURRENT_BRANCH.to_string()),
+        Component::VarField(fields::DISTANCE.to_string()),
+        Component::VarField(fields::CURRENT_COMMIT_HASH.to_string()),
     ]
 }
 

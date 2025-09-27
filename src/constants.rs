@@ -1,14 +1,103 @@
-pub const SCHEMA_ZERV_STANDARD: &str = "zerv-standard";
+// Field names for ZervVars
+pub mod fields {
+    // Core version fields
+    pub const MAJOR: &str = "major";
+    pub const MINOR: &str = "minor";
+    pub const PATCH: &str = "patch";
+    pub const EPOCH: &str = "epoch";
 
-pub const FORMAT_PEP440: &str = "pep440";
-pub const FORMAT_SEMVER: &str = "semver";
-pub const FORMAT_ZERV: &str = "zerv";
+    // Pre-release fields
+    pub const PRE_RELEASE: &str = "pre_release";
+    pub const PRE_RELEASE_LABEL: &str = "pre_release.label";
+    pub const PRE_RELEASE_NUM: &str = "pre_release.num";
 
-pub const SUPPORTED_FORMATS_ARRAY: [&str; 3] = [FORMAT_SEMVER, FORMAT_PEP440, FORMAT_ZERV];
+    // Post-release fields
+    pub const POST: &str = "post";
+    pub const DEV: &str = "dev";
+
+    // VCS state fields (current naming - will be renamed to bumped_*)
+    pub const DISTANCE: &str = "distance";
+    pub const DIRTY: &str = "dirty";
+    pub const CURRENT_BRANCH: &str = "current_branch";
+    pub const CURRENT_COMMIT_HASH: &str = "current_commit_hash";
+    pub const CURRENT_COMMIT_HASH_SHORT: &str = "current_commit_hash_short";
+
+    // Tag fields (will be renamed to last_*)
+    pub const TAG_BRANCH: &str = "tag_branch";
+    pub const TAG_COMMIT_HASH: &str = "tag_commit_hash";
+    pub const TAG_TIMESTAMP: &str = "tag_timestamp";
+
+    // Bumped fields (for template access)
+    pub const BUMPED_BRANCH: &str = "bumped_branch";
+    pub const BUMPED_COMMIT_HASH: &str = "bumped_commit_hash";
+    pub const BUMPED_COMMIT_HASH_SHORT: &str = "bumped_commit_hash_short";
+    pub const BUMPED_TIMESTAMP: &str = "bumped_timestamp";
+
+    // Last version fields (for template access)
+    pub const LAST_BRANCH: &str = "last_branch";
+    pub const LAST_COMMIT_HASH: &str = "last_commit_hash";
+    pub const LAST_TIMESTAMP: &str = "last_timestamp";
+
+    // Custom fields
+    pub const CUSTOM: &str = "custom";
+}
+
+// Timestamp patterns
+pub mod timestamp_patterns {
+    pub const COMPACT_DATE: &str = "compact_date";
+    pub const COMPACT_DATETIME: &str = "compact_datetime";
+
+    // Single component patterns
+    pub const YYYY: &str = "YYYY";
+    pub const YY: &str = "YY";
+    pub const MM: &str = "MM";
+    pub const ZERO_M: &str = "0M";
+    pub const DD: &str = "DD";
+    pub const ZERO_D: &str = "0D";
+    pub const HH: &str = "HH";
+    pub const ZERO_H: &str = "0H";
+    pub const MM_MINUTE: &str = "mm";
+    pub const ZERO_M_MINUTE: &str = "0m";
+    pub const SS: &str = "SS";
+    pub const ZERO_S: &str = "0S";
+    pub const WW: &str = "WW";
+    pub const ZERO_W: &str = "0W";
+}
+
+// Source types
+pub mod sources {
+    pub const GIT: &str = "git";
+    pub const STDIN: &str = "stdin";
+}
+
+// Format names
+pub mod formats {
+    pub const AUTO: &str = "auto";
+    pub const SEMVER: &str = "semver";
+    pub const PEP440: &str = "pep440";
+    pub const ZERV: &str = "zerv";
+}
+
+// Format arrays for CLI validation
+pub const SUPPORTED_FORMATS_ARRAY: [&str; 3] = [formats::SEMVER, formats::PEP440, formats::ZERV];
 pub const SUPPORTED_FORMATS: &[&str] = &SUPPORTED_FORMATS_ARRAY;
 
-pub const FORMAT_NAME_PEP440: &str = "PEP440";
-pub const FORMAT_NAME_SEMVER: &str = "SemVer";
-pub const FORMAT_NAME_ZERV: &str = "Zerv";
-pub const SUPPORTED_FORMAT_NAMES: &[&str] =
-    &[FORMAT_NAME_PEP440, FORMAT_NAME_SEMVER, FORMAT_NAME_ZERV];
+// Format display names
+pub mod format_names {
+    pub const PEP440: &str = "PEP440";
+    pub const SEMVER: &str = "SemVer";
+    pub const ZERV: &str = "Zerv";
+}
+
+// Format display name arrays for CLI validation
+pub const SUPPORTED_FORMAT_NAMES: &[&str] = &[
+    format_names::PEP440,
+    format_names::SEMVER,
+    format_names::ZERV,
+];
+
+// Schema names
+pub mod schema_names {
+    pub const ZERV_STANDARD: &str = "zerv-standard";
+    pub const ZERV_CALVER: &str = "zerv-calver";
+}

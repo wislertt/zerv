@@ -1,7 +1,7 @@
 use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::utils::output_formatter::OutputFormatter;
 use crate::cli::utils::vcs_override::VcsOverrideProcessor;
-use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, FORMAT_ZERV, SUPPORTED_FORMATS_ARRAY};
+use crate::constants::{SUPPORTED_FORMATS_ARRAY, formats, sources};
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
 use crate::schema::create_zerv_version;
@@ -51,7 +51,7 @@ EXAMPLES:
   zerv version -C /path/to/repo
 
   # Pipe between commands with full data preservation
-  zerv version --output-format zerv | zerv version --source stdin --input-format zerv --schema calver
+  zerv version --output-format zerv | zerv version --source stdin --schema calver
 
   # Parse specific input format
   zerv version --tag-version 2.0.0-alpha.1 --input-format semver"
@@ -62,7 +62,7 @@ pub struct VersionArgs {
     pub version: Option<String>,
 
     /// Input source for version data
-    #[arg(long, default_value = "git", value_parser = ["git", "stdin"],
+    #[arg(long, default_value = sources::GIT, value_parser = [sources::GIT, sources::STDIN],
           help = "Input source: 'git' (extract from repository) or 'stdin' (read Zerv RON format)")]
     pub source: String,
 
@@ -75,13 +75,13 @@ pub struct VersionArgs {
     pub schema_ron: Option<String>,
 
     /// Input format for version string parsing
-    #[arg(long, default_value = "auto", value_parser = ["auto", "semver", "pep440"],
-          help = "Input format: 'auto' (detect), 'semver', or 'pep440'")]
+    #[arg(long, default_value = formats::AUTO, value_parser = [formats::AUTO, formats::SEMVER, formats::PEP440, formats::ZERV],
+          help = "Input format: 'auto' (detect), 'semver', 'pep440', or 'zerv' (for stdin)")]
     pub input_format: String,
 
     /// Output format for generated version
-    #[arg(long, default_value = FORMAT_SEMVER, value_parser = SUPPORTED_FORMATS_ARRAY,
-          help = format!("Output format: '{}' (default), '{}', or '{}' (RON format for piping)", FORMAT_SEMVER, FORMAT_PEP440, FORMAT_ZERV))]
+    #[arg(long, default_value = formats::SEMVER, value_parser = SUPPORTED_FORMATS_ARRAY,
+          help = format!("Output format: '{}' (default), '{}', or '{}' (RON format for piping)", formats::SEMVER, formats::PEP440, formats::ZERV))]
     pub output_format: String,
 
     // VCS override options
@@ -164,7 +164,7 @@ pub fn run_version_pipeline(args: VersionArgs) -> Result<String, ZervError> {
 
     // 2. Resolve input source and get Zerv object
     let mut zerv_object = match args.source.as_str() {
-        "git" => {
+        sources::GIT => {
             // Get git VCS data
             // If directory was specified via -C, only look in that directory (depth 0)
             // If no directory specified, allow unlimited depth search
@@ -192,9 +192,16 @@ pub fn run_version_pipeline(args: VersionArgs) -> Result<String, ZervError> {
             // Create Zerv object from vars and schema
             create_zerv_version(vars, args.schema.as_deref(), args.schema_ron.as_deref())?
         }
-        "stdin" => {
-            // Parse stdin as Zerv RON (input_format must be "zerv" for stdin)
-            let mut zerv_from_stdin = InputFormatHandler::parse_stdin(&args.input_format)?;
+        sources::STDIN => {
+            // For stdin source, default to "zerv" format if "auto" is specified
+            let input_format = if args.input_format == formats::AUTO {
+                formats::ZERV
+            } else {
+                &args.input_format
+            };
+
+            // Parse stdin as Zerv RON
+            let mut zerv_from_stdin = InputFormatHandler::parse_stdin(input_format)?;
 
             // Apply overrides to the parsed Zerv object if any are specified
             if args.has_overrides() {
@@ -274,7 +281,7 @@ fn zerv_to_vcs_data(zerv: &Zerv) -> Result<crate::vcs::VcsData, ZervError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, FORMAT_ZERV, SCHEMA_ZERV_STANDARD};
+    use crate::constants::{formats, schema_names, sources};
     use crate::test_utils::{GitRepoFixture, VersionTestUtils, should_run_docker_tests};
     use clap::Parser;
     use rstest::rstest;
@@ -283,11 +290,11 @@ mod tests {
     fn test_version_args_defaults() {
         let args = VersionArgs::try_parse_from(["zerv"]).unwrap();
         assert!(args.version.is_none());
-        assert_eq!(args.source, "git");
+        assert_eq!(args.source, sources::GIT);
         assert!(args.schema.is_none());
         assert!(args.schema_ron.is_none());
-        assert_eq!(args.input_format, "auto");
-        assert_eq!(args.output_format, FORMAT_SEMVER);
+        assert_eq!(args.input_format, formats::AUTO);
+        assert_eq!(args.output_format, formats::SEMVER);
 
         // VCS override options should be None/false by default
         assert!(args.tag_version.is_none());
@@ -331,7 +338,7 @@ mod tests {
         assert!(!args.clean);
         assert_eq!(args.current_branch, Some("feature/test".to_string()));
         assert_eq!(args.commit_hash, Some("abc123".to_string()));
-        assert_eq!(args.input_format, "semver");
+        assert_eq!(args.input_format, formats::SEMVER);
         assert_eq!(args.output_prefix, Some("version:".to_string()));
     }
 
@@ -410,11 +417,11 @@ mod tests {
 
         let args = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
             input_format: "auto".to_string(),
-            output_format: FORMAT_SEMVER.to_string(),
+            output_format: formats::SEMVER.to_string(),
             tag_version: None,
             distance: None,
             dirty: false,
@@ -448,8 +455,8 @@ mod tests {
 
         let args = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
             input_format: "auto".to_string(),
             output_format: "unknown".to_string(),
@@ -480,11 +487,11 @@ mod tests {
 
         let args = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
             input_format: "auto".to_string(),
-            output_format: FORMAT_SEMVER.to_string(),
+            output_format: formats::SEMVER.to_string(),
             tag_version: Some("v2.0.0".to_string()),
             distance: Some(5),
             dirty: true,
@@ -519,11 +526,11 @@ mod tests {
 
         let args = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
             input_format: "auto".to_string(),
-            output_format: FORMAT_SEMVER.to_string(),
+            output_format: formats::SEMVER.to_string(),
             tag_version: None,
             distance: None,
             dirty: false,
@@ -554,11 +561,11 @@ mod tests {
 
         let args = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
             input_format: "auto".to_string(),
-            output_format: FORMAT_SEMVER.to_string(),
+            output_format: formats::SEMVER.to_string(),
             tag_version: None,
             distance: None,
             dirty: false,
@@ -587,7 +594,7 @@ mod tests {
             schema: None,
             schema_ron: None,
             input_format: "auto".to_string(),
-            output_format: FORMAT_SEMVER.to_string(),
+            output_format: formats::SEMVER.to_string(),
             tag_version: None,
             distance: None,
             dirty: false,
@@ -616,11 +623,11 @@ mod tests {
         // Test with invalid tag version format
         let args = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
-            input_format: "semver".to_string(),
-            output_format: FORMAT_SEMVER.to_string(),
+            input_format: formats::SEMVER.to_string(),
+            output_format: formats::SEMVER.to_string(),
             tag_version: Some("invalid-version".to_string()),
             distance: None,
             dirty: false,
@@ -652,11 +659,11 @@ mod tests {
         // Test conflicting --clean with --distance
         let args = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
             input_format: "auto".to_string(),
-            output_format: FORMAT_SEMVER.to_string(),
+            output_format: formats::SEMVER.to_string(),
             tag_version: None,
             distance: Some(5),
             dirty: false,
@@ -688,11 +695,11 @@ mod tests {
         // Test SemVer input format
         let args_semver = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
-            input_format: "semver".to_string(),
-            output_format: FORMAT_SEMVER.to_string(),
+            input_format: formats::SEMVER.to_string(),
+            output_format: formats::SEMVER.to_string(),
             tag_version: Some("2.0.0-alpha.1".to_string()),
             distance: None,
             dirty: false,
@@ -714,11 +721,11 @@ mod tests {
         // Test PEP440 input format
         let args_pep440 = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
-            input_format: "pep440".to_string(),
-            output_format: FORMAT_PEP440.to_string(),
+            input_format: formats::PEP440.to_string(),
+            output_format: formats::PEP440.to_string(),
             tag_version: Some("2.0.0a1".to_string()),
             distance: None,
             dirty: false,
@@ -748,11 +755,11 @@ mod tests {
 
         let args = VersionArgs {
             version: None,
-            source: "git".to_string(),
-            schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
+            source: sources::GIT.to_string(),
+            schema: Some(schema_names::ZERV_STANDARD.to_string()),
             schema_ron: None,
             input_format: "auto".to_string(),
-            output_format: FORMAT_ZERV.to_string(),
+            output_format: formats::ZERV.to_string(),
             tag_version: None,
             distance: None,
             dirty: false,
