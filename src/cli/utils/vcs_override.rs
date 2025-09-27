@@ -32,8 +32,12 @@ impl VcsOverrideProcessor {
             vcs_data.distance = distance;
         }
 
-        if let Some(ref dirty) = args.dirty {
-            vcs_data.is_dirty = dirty.value();
+        if args.dirty {
+            vcs_data.is_dirty = true;
+        }
+
+        if args.no_dirty {
+            vcs_data.is_dirty = false;
         }
 
         if let Some(ref current_branch) = args.current_branch {
@@ -51,6 +55,7 @@ impl VcsOverrideProcessor {
 
     /// Validate that CLI override options don't conflict with each other
     pub fn validate_override_conflicts(args: &VersionArgs) -> Result<()> {
+        // TODO: make this cleaner
         // Check for --clean conflicts with --distance or --dirty
         if args.clean {
             if args.distance.is_some() {
@@ -59,11 +64,24 @@ impl VcsOverrideProcessor {
                 ));
             }
 
-            if args.dirty.is_some() {
+            if args.dirty {
                 return Err(ZervError::ConflictingOptions(
                     "Cannot use --clean with --dirty (conflicting options)".to_string(),
                 ));
             }
+
+            if args.no_dirty {
+                return Err(ZervError::ConflictingOptions(
+                    "Cannot use --clean with --no-dirty (conflicting options)".to_string(),
+                ));
+            }
+        }
+
+        // Check for conflicting dirty flags
+        if args.dirty && args.no_dirty {
+            return Err(ZervError::ConflictingOptions(
+                "Cannot use --dirty with --no-dirty (conflicting options)".to_string(),
+            ));
         }
 
         // Additional validation can be added here for future conflicts
@@ -76,7 +94,8 @@ impl VcsOverrideProcessor {
     pub fn has_overrides(args: &VersionArgs) -> bool {
         args.tag_version.is_some()
             || args.distance.is_some()
-            || args.dirty.is_some()
+            || args.dirty
+            || args.no_dirty
             || args.clean
             || args.current_branch.is_some()
             || args.commit_hash.is_some()
@@ -86,7 +105,6 @@ impl VcsOverrideProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::utils::fuzzy_bool::FuzzyBool;
 
     fn create_test_vcs_data() -> VcsData {
         VcsData {
@@ -111,7 +129,8 @@ mod tests {
             output_format: "semver".to_string(),
             tag_version: None,
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: false,
             current_branch: None,
             commit_hash: None,
@@ -187,7 +206,8 @@ mod tests {
     fn test_apply_overrides_dirty_true() {
         let vcs_data = create_test_vcs_data();
         let mut args = create_test_args();
-        args.dirty = Some(FuzzyBool::new(false));
+        args.dirty = false;
+        args.no_dirty = true;
 
         let result = VcsOverrideProcessor::apply_overrides(vcs_data, &args);
         assert!(result.is_ok());
@@ -201,7 +221,8 @@ mod tests {
         let mut vcs_data = create_test_vcs_data();
         vcs_data.is_dirty = false;
         let mut args = create_test_args();
-        args.dirty = Some(FuzzyBool::new(true));
+        args.dirty = true;
+        args.no_dirty = false;
 
         let result = VcsOverrideProcessor::apply_overrides(vcs_data, &args);
         assert!(result.is_ok());
@@ -274,7 +295,8 @@ mod tests {
         let mut args = create_test_args();
         args.tag_version = Some("v3.0.0".to_string());
         args.distance = Some(15);
-        args.dirty = Some(FuzzyBool::new(false));
+        args.dirty = false;
+        args.no_dirty = true;
         args.current_branch = Some("develop".to_string());
         args.commit_hash = Some("fedcba0987654321".to_string());
 
@@ -316,7 +338,8 @@ mod tests {
     fn test_validate_override_conflicts_clean_with_dirty() {
         let mut args = create_test_args();
         args.clean = true;
-        args.dirty = Some(FuzzyBool::new(true));
+        args.dirty = true;
+        args.no_dirty = false;
 
         let result = VcsOverrideProcessor::validate_override_conflicts(&args);
         assert!(result.is_err());
@@ -332,7 +355,8 @@ mod tests {
         let mut args = create_test_args();
         args.clean = true;
         args.distance = Some(5);
-        args.dirty = Some(FuzzyBool::new(true));
+        args.dirty = true;
+        args.no_dirty = false;
 
         let result = VcsOverrideProcessor::validate_override_conflicts(&args);
         assert!(result.is_err());
@@ -380,7 +404,8 @@ mod tests {
     #[test]
     fn test_has_overrides_dirty() {
         let mut args = create_test_args();
-        args.dirty = Some(FuzzyBool::new(true));
+        args.dirty = true;
+        args.no_dirty = false;
         assert!(VcsOverrideProcessor::has_overrides(&args));
     }
 
@@ -497,7 +522,8 @@ mod tests {
         let mut args = create_test_args();
         args.tag_version = Some("v1.9.0".to_string());
         args.distance = Some(25);
-        args.dirty = Some(FuzzyBool::new(true));
+        args.dirty = true;
+        args.no_dirty = false;
         args.current_branch = Some("feature/new-feature".to_string());
 
         let result = VcsOverrideProcessor::apply_overrides(vcs_data.clone(), &args);
@@ -516,7 +542,8 @@ mod tests {
         let mut args = create_test_args();
         args.commit_hash = Some("1a2b3c4d5e6f7890".to_string());
         args.current_branch = Some("main".to_string());
-        args.dirty = Some(FuzzyBool::new(false));
+        args.dirty = false;
+        args.no_dirty = true;
 
         let result = VcsOverrideProcessor::apply_overrides(vcs_data, &args);
         assert!(result.is_ok());

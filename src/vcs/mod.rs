@@ -33,19 +33,6 @@ pub struct VcsData {
     pub is_dirty: bool,
 }
 
-/// Version format for tag parsing
-#[derive(Debug, Clone, PartialEq)]
-pub enum VersionFormat {
-    /// Try SemVer first, then PEP440
-    Auto,
-    /// Force SemVer parsing only
-    SemVer,
-    /// Force PEP440 parsing only
-    Pep440,
-    // TODO: Add custom regex support
-    // Custom(String),
-}
-
 /// Detect and create appropriate VCS implementation
 pub fn detect_vcs(path: &Path) -> Result<Box<dyn Vcs>> {
     detect_vcs_with_limit(path, None)
@@ -124,13 +111,6 @@ mod tests {
         assert_eq!(data.commit_timestamp, 0);
         assert_eq!(data.tag_timestamp, None);
         assert!(!data.is_dirty);
-    }
-
-    #[test]
-    fn test_version_format() {
-        assert_eq!(VersionFormat::Auto, VersionFormat::Auto);
-        assert_eq!(VersionFormat::SemVer, VersionFormat::SemVer);
-        assert_eq!(VersionFormat::Pep440, VersionFormat::Pep440);
     }
 
     #[test]

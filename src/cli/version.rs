@@ -1,5 +1,4 @@
 use crate::cli::utils::format_handler::InputFormatHandler;
-use crate::cli::utils::fuzzy_bool::FuzzyBool;
 use crate::cli::utils::output_formatter::OutputFormatter;
 use crate::cli::utils::vcs_override::VcsOverrideProcessor;
 use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, FORMAT_ZERV, SUPPORTED_FORMATS_ARRAY};
@@ -28,7 +27,8 @@ VCS OVERRIDES:
   Override detected VCS values for testing and simulation:
   --tag-version <TAG>      Override detected tag version
   --distance <NUM>         Override distance from tag
-  --dirty <BOOL>           Override dirty state (true/false, yes/no, 1/0, etc.)
+  --dirty                  Override dirty state to true
+  --no-dirty               Override dirty state to false
   --clean                  Force clean state (distance=0, dirty=false)
   --current-branch <NAME>  Override branch name
   --commit-hash <HASH>     Override commit hash
@@ -41,7 +41,8 @@ EXAMPLES:
   zerv version --output-format pep440 --schema calver
 
   # Override VCS values for testing
-  zerv version --tag-version v2.0.0 --distance 5 --dirty yes
+  zerv version --tag-version v2.0.0 --distance 5 --dirty
+  zerv version --tag-version v2.0.0 --distance 5 --no-dirty
 
   # Force clean release state
   zerv version --clean
@@ -74,8 +75,8 @@ pub struct VersionArgs {
     pub schema_ron: Option<String>,
 
     /// Input format for version string parsing
-    #[arg(long, default_value = "auto", value_parser = ["auto", "semver", "pep440", "zerv"],
-          help = "Input format: 'auto' (detect), 'semver', 'pep440', or 'zerv' (for stdin RON input)")]
+    #[arg(long, default_value = "auto", value_parser = ["auto", "semver", "pep440"],
+          help = "Input format: 'auto' (detect), 'semver', or 'pep440'")]
     pub input_format: String,
 
     /// Output format for generated version
@@ -98,12 +99,13 @@ pub struct VersionArgs {
     )]
     pub distance: Option<u32>,
 
-    /// Override the detected dirty state
-    #[arg(
-        long,
-        help = "Override dirty state. Accepts: true/false, yes/no, y/n, 1/0, on/off (case-insensitive)"
-    )]
-    pub dirty: Option<FuzzyBool>,
+    /// Override the detected dirty state (sets dirty=true)
+    #[arg(long, help = "Override dirty state to true (sets dirty=true)")]
+    pub dirty: bool,
+
+    /// Override the detected dirty state (sets dirty=false)
+    #[arg(long, help = "Override dirty state to false (sets dirty=false)")]
+    pub no_dirty: bool,
 
     /// Set distance=0 and dirty=false (clean release state)
     #[arg(
@@ -145,7 +147,8 @@ impl VersionArgs {
     pub fn has_overrides(&self) -> bool {
         self.tag_version.is_some()
             || self.distance.is_some()
-            || self.dirty.is_some()
+            || self.dirty
+            || self.no_dirty
             || self.clean
             || self.current_branch.is_some()
             || self.commit_hash.is_some()
@@ -289,7 +292,8 @@ mod tests {
         // VCS override options should be None/false by default
         assert!(args.tag_version.is_none());
         assert!(args.distance.is_none());
-        assert!(args.dirty.is_none());
+        assert!(!args.dirty);
+        assert!(!args.no_dirty);
         assert!(!args.clean);
         assert!(args.current_branch.is_none());
         assert!(args.commit_hash.is_none());
@@ -322,8 +326,8 @@ mod tests {
 
         assert_eq!(args.tag_version, Some("v2.0.0".to_string()));
         assert_eq!(args.distance, Some(5));
-        assert!(args.dirty.is_some());
-        assert!(args.dirty.unwrap().value());
+        assert!(args.dirty);
+        assert!(!args.no_dirty);
         assert!(!args.clean);
         assert_eq!(args.current_branch, Some("feature/test".to_string()));
         assert_eq!(args.commit_hash, Some("abc123".to_string()));
@@ -337,33 +341,32 @@ mod tests {
 
         assert!(args.clean);
         assert!(args.distance.is_none());
-        assert!(args.dirty.is_none());
+        assert!(!args.dirty);
+        assert!(!args.no_dirty);
     }
 
     #[test]
-    fn test_version_args_fuzzy_bool_parsing() {
-        // Test various fuzzy bool values
-        let test_cases = [
-            ("true", true),
-            ("false", false),
-            ("yes", true),
-            ("no", false),
-            ("1", true),
-            ("0", false),
-            ("on", true),
-            ("off", false),
-        ];
+    fn test_version_args_dirty_flags() {
+        // Test --dirty flag
+        let args = VersionArgs::try_parse_from(["zerv", "--dirty"]).unwrap();
+        assert!(args.dirty);
+        assert!(!args.no_dirty);
 
-        for (input, expected) in &test_cases {
-            let args = VersionArgs::try_parse_from(["zerv", "--dirty", input]).unwrap();
+        // Test --no-dirty flag
+        let args = VersionArgs::try_parse_from(["zerv", "--no-dirty"]).unwrap();
+        assert!(!args.dirty);
+        assert!(args.no_dirty);
 
-            assert!(args.dirty.is_some(), "Failed to parse '{input}'");
-            assert_eq!(
-                args.dirty.unwrap().value(),
-                *expected,
-                "Wrong value for '{input}'"
-            );
-        }
+        // Test both flags together should fail validation
+        let args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
+        assert!(args.dirty);
+        assert!(args.no_dirty);
+
+        // The conflict should be caught by VcsOverrideProcessor validation
+        let vcs_data = crate::vcs::VcsData::default();
+        let result =
+            crate::cli::utils::vcs_override::VcsOverrideProcessor::apply_overrides(vcs_data, &args);
+        assert!(result.is_err());
     }
 
     #[rstest]
@@ -414,7 +417,8 @@ mod tests {
             output_format: FORMAT_SEMVER.to_string(),
             tag_version: None,
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: false,
             current_branch: None,
             commit_hash: None,
@@ -451,7 +455,8 @@ mod tests {
             output_format: "unknown".to_string(),
             tag_version: None,
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: false,
             current_branch: None,
             commit_hash: None,
@@ -482,7 +487,8 @@ mod tests {
             output_format: FORMAT_SEMVER.to_string(),
             tag_version: Some("v2.0.0".to_string()),
             distance: Some(5),
-            dirty: Some(FuzzyBool::new(true)),
+            dirty: true,
+            no_dirty: false,
             clean: false,
             current_branch: Some("feature/test".to_string()),
             commit_hash: Some("abc123def456".to_string()),
@@ -520,7 +526,8 @@ mod tests {
             output_format: FORMAT_SEMVER.to_string(),
             tag_version: None,
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: true, // This should force clean state
             current_branch: None,
             commit_hash: None,
@@ -554,7 +561,8 @@ mod tests {
             output_format: FORMAT_SEMVER.to_string(),
             tag_version: None,
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: false,
             current_branch: None,
             commit_hash: None,
@@ -582,7 +590,8 @@ mod tests {
             output_format: FORMAT_SEMVER.to_string(),
             tag_version: None,
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: false,
             current_branch: None,
             commit_hash: None,
@@ -614,7 +623,8 @@ mod tests {
             output_format: FORMAT_SEMVER.to_string(),
             tag_version: Some("invalid-version".to_string()),
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: false,
             current_branch: None,
             commit_hash: None,
@@ -649,7 +659,8 @@ mod tests {
             output_format: FORMAT_SEMVER.to_string(),
             tag_version: None,
             distance: Some(5),
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: true, // Conflicts with distance
             current_branch: None,
             commit_hash: None,
@@ -684,7 +695,8 @@ mod tests {
             output_format: FORMAT_SEMVER.to_string(),
             tag_version: Some("2.0.0-alpha.1".to_string()),
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: false,
             current_branch: None,
             commit_hash: None,
@@ -709,7 +721,8 @@ mod tests {
             output_format: FORMAT_PEP440.to_string(),
             tag_version: Some("2.0.0a1".to_string()),
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: false,
             current_branch: None,
             commit_hash: None,
@@ -742,7 +755,8 @@ mod tests {
             output_format: FORMAT_ZERV.to_string(),
             tag_version: None,
             distance: None,
-            dirty: None,
+            dirty: false,
+            no_dirty: false,
             clean: false,
             current_branch: None,
             commit_hash: None,
