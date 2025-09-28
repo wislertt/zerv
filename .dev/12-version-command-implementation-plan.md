@@ -237,7 +237,7 @@ pub fn resolve_timestamp(pattern: &str, timestamp: Option<u64>) -> Result<u64> {
 #[case(1710511845, "%H:%M:%S", 141045)]
 ```
 
-### Phase 3: Comprehensive CLI Arguments - [ ]
+### Phase 3: Comprehensive CLI Arguments - [x]
 
 #### Task 3.1: Add Bump Arguments - [x]
 
@@ -291,7 +291,7 @@ pub struct VersionArgs {
 2. Implement conflict validation (--bump-context vs --no-bump-context)
 3. Add processing logic in `VcsOverrideProcessor`
 
-#### Task 3.2: Implement Context Control Logic - [ ]
+#### Task 3.2: Implement Context Control Logic - [x]
 
 **Priority**: High | **Estimated Time**: 3-4 hours
 

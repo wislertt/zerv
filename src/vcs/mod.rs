@@ -2,6 +2,9 @@ use crate::error::{Result, ZervError};
 use std::path::{Path, PathBuf};
 
 pub mod git;
+pub mod vcs_data;
+
+pub use vcs_data::VcsData;
 
 /// Version Control System trait for extracting repository metadata
 pub trait Vcs {
@@ -10,27 +13,6 @@ pub trait Vcs {
 
     /// Check if this VCS type is available in the given directory
     fn is_available(&self, path: &Path) -> bool;
-}
-
-/// VCS data extracted from repository
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct VcsData {
-    /// Latest version tag (e.g., "v1.2.3")
-    pub tag_version: Option<String>,
-    /// Distance from latest tag to HEAD
-    pub distance: u32,
-    /// Current commit hash (full)
-    pub commit_hash: String,
-    /// Current commit hash (short)
-    pub commit_hash_short: String,
-    /// Current branch name
-    pub current_branch: Option<String>,
-    /// Commit timestamp (Unix timestamp)
-    pub commit_timestamp: i64,
-    /// Tag timestamp (Unix timestamp)
-    pub tag_timestamp: Option<i64>,
-    /// Whether working directory is dirty
-    pub is_dirty: bool,
 }
 
 /// Detect and create appropriate VCS implementation

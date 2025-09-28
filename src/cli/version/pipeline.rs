@@ -1,6 +1,5 @@
 use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::utils::output_formatter::OutputFormatter;
-use crate::cli::utils::vcs_override::VcsOverrideProcessor;
 use crate::constants::{formats, sources};
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
@@ -41,11 +40,8 @@ pub fn run_version_pipeline(args: VersionArgs) -> Result<String, ZervError> {
                 // Validation passed - the tag is in a valid format
             }
 
-            // Apply VCS overrides (including --tag-version with input format validation)
-            vcs_data = VcsOverrideProcessor::apply_overrides(vcs_data, &args)?;
-
-            // Apply context control (--bump-context vs --no-bump-context)
-            vcs_data = VcsOverrideProcessor::apply_context_control(vcs_data, &args)?;
+            // Apply VCS overrides (including --tag-version with input format validation and context control)
+            vcs_data = vcs_data.apply_overrides(&args)?;
 
             // Convert VCS data to ZervVars
             let vars = vcs_data_to_zerv_vars(vcs_data)?;
@@ -70,7 +66,7 @@ pub fn run_version_pipeline(args: VersionArgs) -> Result<String, ZervError> {
                 let mut temp_vcs_data = zerv_to_vcs_data(&zerv_from_stdin)?;
 
                 // Apply overrides
-                temp_vcs_data = VcsOverrideProcessor::apply_overrides(temp_vcs_data, &args)?;
+                temp_vcs_data = temp_vcs_data.apply_overrides(&args)?;
 
                 // Convert back to ZervVars and create new Zerv object
                 let updated_vars = vcs_data_to_zerv_vars(temp_vcs_data)?;
@@ -136,5 +132,6 @@ fn zerv_to_vcs_data(zerv: &Zerv) -> Result<crate::vcs::VcsData, ZervError> {
         commit_timestamp: vars.dev.unwrap_or(0) as i64,
         tag_timestamp: vars.last_timestamp.map(|t| t as i64),
         is_dirty: vars.dirty.unwrap_or(false),
+        is_shallow: false, // Default to false for stdin input
     })
 }
