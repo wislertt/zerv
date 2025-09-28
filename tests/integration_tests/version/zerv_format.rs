@@ -1,7 +1,6 @@
-use zerv::cli::VersionArgs;
 use zerv::constants::ron_fields;
 use zerv::constants::{formats, schema_names};
-use zerv::test_utils::{GitRepoFixture, should_run_docker_tests};
+use zerv::test_utils::{GitRepoFixture, VersionArgsFixture, should_run_docker_tests};
 
 #[test]
 fn test_zerv_format_output() {
@@ -25,24 +24,10 @@ fn test_zerv_format_output() {
         fixture.path().display()
     );
 
-    let args = VersionArgs {
-        version: None,
-        source: "git".to_string(),
-        schema: Some(schema_names::ZERV_STANDARD.to_string()),
-        schema_ron: None,
-        input_format: "auto".to_string(),
-        output_format: formats::ZERV.to_string(),
-        tag_version: None,
-        distance: None,
-        dirty: false,
-        no_dirty: false,
-        clean: false,
-        current_branch: None,
-        commit_hash: None,
-        output_template: None,
-        output_prefix: None,
-        directory: Some(fixture.path().to_str().unwrap().to_string()),
-    };
+    let mut args = VersionArgsFixture::create();
+    args.schema = Some(schema_names::ZERV_STANDARD.to_string());
+    args.output_format = formats::ZERV.to_string();
+    args.directory = Some(fixture.path().to_str().unwrap().to_string());
 
     // Run pipeline with detailed error context
     let result = zerv::cli::run_version_pipeline(args);
@@ -177,24 +162,10 @@ fn test_zerv_format_roundtrip() {
     let fixture = GitRepoFixture::tagged("v2.0.1").expect("Failed to create tagged repo");
 
     // Generate Zerv format
-    let args1 = VersionArgs {
-        version: None,
-        source: "git".to_string(),
-        schema: Some(schema_names::ZERV_STANDARD.to_string()),
-        schema_ron: None,
-        input_format: "auto".to_string(),
-        output_format: formats::ZERV.to_string(),
-        tag_version: None,
-        distance: None,
-        dirty: false,
-        no_dirty: false,
-        clean: false,
-        current_branch: None,
-        commit_hash: None,
-        output_template: None,
-        output_prefix: None,
-        directory: Some(fixture.path().to_str().unwrap().to_string()),
-    };
+    let mut args1 = VersionArgsFixture::create();
+    args1.schema = Some(schema_names::ZERV_STANDARD.to_string());
+    args1.output_format = formats::ZERV.to_string();
+    args1.directory = Some(fixture.path().to_str().unwrap().to_string());
 
     let zerv_output =
         zerv::cli::run_version_pipeline(args1).expect("First pipeline should succeed");

@@ -50,6 +50,10 @@ impl VcsOverrideProcessor {
             vcs_data.commit_hash_short = commit_hash.chars().take(7).collect();
         }
 
+        // Apply additional overrides (these will be processed in ZervVars conversion)
+        // Note: post, dev, pre_release_label, pre_release_num, epoch, custom are handled
+        // in the ZervVars conversion phase, not in VcsData
+
         Ok(vcs_data)
     }
 
@@ -84,6 +88,14 @@ impl VcsOverrideProcessor {
             ));
         }
 
+        // Check for conflicting context control flags
+        if args.bump_context && args.no_bump_context {
+            return Err(ZervError::ConflictingOptions(
+                "Cannot use --bump-context with --no-bump-context (conflicting options)"
+                    .to_string(),
+            ));
+        }
+
         // Additional validation can be added here for future conflicts
         // For example, if we add --shallow flag that conflicts with --distance
 
@@ -99,6 +111,35 @@ impl VcsOverrideProcessor {
             || args.clean
             || args.current_branch.is_some()
             || args.commit_hash.is_some()
+            || args.post.is_some()
+            || args.dev.is_some()
+            || args.pre_release_label.is_some()
+            || args.pre_release_num.is_some()
+            || args.epoch.is_some()
+            || args.custom.is_some()
+    }
+
+    /// Apply context control logic (--bump-context vs --no-bump-context)
+    pub fn apply_context_control(mut vcs_data: VcsData, args: &VersionArgs) -> Result<VcsData> {
+        // Validate context flags
+        if args.bump_context && args.no_bump_context {
+            return Err(ZervError::ConflictingOptions(
+                "Cannot use --bump-context with --no-bump-context".to_string(),
+            ));
+        }
+
+        // Apply context control
+        if args.no_bump_context {
+            // Force clean state - no VCS metadata
+            vcs_data.distance = 0;
+            vcs_data.is_dirty = false;
+            vcs_data.current_branch = None;
+            vcs_data.commit_hash = "unknown".to_string();
+            vcs_data.commit_hash_short = "unknown".to_string();
+        }
+        // --bump-context is default behavior, no changes needed
+
+        Ok(vcs_data)
     }
 }
 
@@ -134,6 +175,22 @@ mod tests {
             clean: false,
             current_branch: None,
             commit_hash: None,
+            post: None,
+            dev: None,
+            pre_release_label: None,
+            pre_release_num: None,
+            epoch: None,
+            custom: None,
+            bump_major: None,
+            bump_minor: None,
+            bump_patch: None,
+            bump_distance: None,
+            bump_post: None,
+            bump_dev: None,
+            bump_pre_release_num: None,
+            bump_epoch: None,
+            bump_context: false,
+            no_bump_context: false,
             output_template: None,
             output_prefix: None,
             directory: None,
@@ -553,5 +610,70 @@ mod tests {
         assert_eq!(updated.commit_hash_short, "1a2b3c4");
         assert_eq!(updated.current_branch, Some("main".to_string()));
         assert!(!updated.is_dirty);
+    }
+
+    #[test]
+    fn test_apply_context_control_no_bump_context() {
+        let vcs_data = create_test_vcs_data();
+        let mut args = create_test_args();
+        args.no_bump_context = true;
+
+        let result = VcsOverrideProcessor::apply_context_control(vcs_data, &args);
+        assert!(result.is_ok());
+
+        let updated = result.unwrap();
+        assert_eq!(updated.distance, 0);
+        assert!(!updated.is_dirty);
+        assert!(updated.current_branch.is_none());
+        assert_eq!(updated.commit_hash, "unknown");
+        assert_eq!(updated.commit_hash_short, "unknown");
+    }
+
+    #[test]
+    fn test_apply_context_control_bump_context() {
+        let vcs_data = create_test_vcs_data();
+        let mut args = create_test_args();
+        args.bump_context = true;
+
+        let result = VcsOverrideProcessor::apply_context_control(vcs_data.clone(), &args);
+        assert!(result.is_ok());
+
+        // Should be unchanged (default behavior)
+        let updated = result.unwrap();
+        assert_eq!(updated.distance, vcs_data.distance);
+        assert_eq!(updated.is_dirty, vcs_data.is_dirty);
+        assert_eq!(updated.current_branch, vcs_data.current_branch);
+        assert_eq!(updated.commit_hash, vcs_data.commit_hash);
+    }
+
+    #[test]
+    fn test_apply_context_control_conflicting_flags() {
+        let vcs_data = create_test_vcs_data();
+        let mut args = create_test_args();
+        args.bump_context = true;
+        args.no_bump_context = true;
+
+        let result = VcsOverrideProcessor::apply_context_control(vcs_data, &args);
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::ConflictingOptions(_)));
+        assert!(error.to_string().contains("--bump-context"));
+        assert!(error.to_string().contains("--no-bump-context"));
+    }
+
+    #[test]
+    fn test_validate_override_conflicts_context_control() {
+        let mut args = create_test_args();
+        args.bump_context = true;
+        args.no_bump_context = true;
+
+        let result = VcsOverrideProcessor::validate_override_conflicts(&args);
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::ConflictingOptions(_)));
+        assert!(error.to_string().contains("--bump-context"));
+        assert!(error.to_string().contains("--no-bump-context"));
     }
 }
