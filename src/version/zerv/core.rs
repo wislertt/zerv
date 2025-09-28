@@ -1,6 +1,5 @@
-use crate::constants::ron_fields;
 use crate::error::ZervError;
-use crate::version::zerv::schema::{Component, ZervSchema};
+use crate::version::zerv::schema::ZervSchema;
 use crate::version::zerv::vars::ZervVars;
 use serde::{Deserialize, Serialize};
 
@@ -29,89 +28,14 @@ impl Zerv {
         // Validate schema structure first
         schema.validate()?;
 
-        // Validate schema-vars compatibility
-        Self::validate_components(&schema.core, &vars)?;
-        Self::validate_components(&schema.extra_core, &vars)?;
-        Self::validate_components(&schema.build, &vars)?;
-
         Ok(Self { schema, vars })
-    }
-
-    /// Validate the Zerv object structure and compatibility
-    pub fn validate(&self) -> Result<(), ZervError> {
-        // Validate schema structure
-        self.schema.validate()?;
-
-        // Validate schema-vars compatibility
-        Self::validate_components(&self.schema.core, &self.vars)?;
-        Self::validate_components(&self.schema.extra_core, &self.vars)?;
-        Self::validate_components(&self.schema.build, &self.vars)?;
-
-        Ok(())
-    }
-
-    fn validate_components(components: &[Component], vars: &ZervVars) -> Result<(), ZervError> {
-        for component in components {
-            Self::validate_component(component, vars)?;
-        }
-        Ok(())
-    }
-
-    /// Validate a single component's compatibility with vars
-    fn validate_component(component: &Component, vars: &ZervVars) -> Result<(), ZervError> {
-        if let Component::VarField(field_name) = component {
-            Self::check_var_field_compatibility(field_name, vars)?;
-        }
-        Ok(())
-    }
-
-    /// Check if a specific field has a corresponding value in vars
-    fn check_var_field_compatibility(field_name: &str, vars: &ZervVars) -> Result<(), ZervError> {
-        let is_missing = match field_name {
-            // Core version fields
-            ron_fields::MAJOR => vars.major.is_none(),
-            ron_fields::MINOR => vars.minor.is_none(),
-            ron_fields::PATCH => vars.patch.is_none(),
-            ron_fields::EPOCH => vars.epoch.is_none(),
-            // Pre-release fields
-            ron_fields::PRE_RELEASE => vars.pre_release.is_none(),
-            ron_fields::POST => vars.post.is_none(),
-            ron_fields::DEV => vars.dev.is_none(),
-            // VCS state fields
-            ron_fields::DISTANCE => vars.distance.is_none(),
-            ron_fields::DIRTY => vars.dirty.is_none(),
-            ron_fields::BRANCH => vars.bumped_branch.is_none(),
-            ron_fields::COMMIT_HASH_SHORT => vars.bumped_commit_hash.is_none(),
-            // Last version fields
-            ron_fields::LAST_COMMIT_HASH => vars.last_commit_hash.is_none(),
-            ron_fields::LAST_TIMESTAMP => vars.last_timestamp.is_none(),
-            ron_fields::LAST_BRANCH => vars.last_branch.is_none(),
-            _ => {
-                // Custom fields and other valid fields don't need to be present in vars
-                return Ok(());
-            }
-        };
-
-        if is_missing {
-            // Only error for core version components (major, minor, patch)
-            if matches!(
-                field_name,
-                ron_fields::MAJOR | ron_fields::MINOR | ron_fields::PATCH
-            ) {
-                return Err(ZervError::StdinError(format!(
-                    "Invalid Zerv RON: schema references missing core variable '{field_name}'. Ensure this field is present in the vars section."
-                )));
-            }
-        }
-
-        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rstest::rstest;
+    use crate::version::zerv::Component;
 
     mod construction {
         use super::*;
@@ -154,140 +78,6 @@ mod tests {
             assert_eq!(pre_release.number, Some(1));
         }
     }
-
-    // Validation tests using rstest
-
-    #[rstest]
-    #[case("major", true, false)] // Has value, should not error
-    #[case("minor", false, true)] // Missing value, should error
-    #[case("patch", false, true)] // Missing value, should error
-    #[case("epoch", false, false)] // Missing value, but not core field, should not error
-    #[case("pre_release", false, false)] // Missing value, but not core field, should not error
-    #[case("custom.build_id", false, false)] // Custom field, should not error
-    fn test_validate_component_core_fields(
-        #[case] field_name: &str,
-        #[case] has_value: bool,
-        #[case] should_error: bool,
-    ) {
-        let mut vars = ZervVars::default();
-        if has_value {
-            match field_name {
-                "major" => vars.major = Some(1),
-                "minor" => vars.minor = Some(2),
-                "patch" => vars.patch = Some(3),
-                "epoch" => vars.epoch = Some(0),
-                "pre_release" => {
-                    vars.pre_release = Some(PreReleaseVar {
-                        label: PreReleaseLabel::Alpha,
-                        number: Some(1),
-                    })
-                }
-                _ => {}
-            }
-        }
-
-        let component = Component::VarField(field_name.to_string());
-        let result = Zerv::validate_component(&component, &vars);
-
-        if should_error {
-            assert!(result.is_err());
-            assert!(
-                result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("missing core variable")
-            );
-        } else {
-            assert!(result.is_ok());
-        }
-    }
-
-    #[rstest]
-    #[case(Component::String("test".to_string()))]
-    #[case(Component::Integer(42))]
-    #[case(Component::VarTimestamp("YYYY".to_string()))]
-    fn test_validate_component_non_var_fields(#[case] component: Component) {
-        let vars = ZervVars::default();
-        let result = Zerv::validate_component(&component, &vars);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_validate_success() {
-        let schema = ZervSchema {
-            core: vec![Component::VarField("major".to_string())],
-            extra_core: vec![],
-            build: vec![],
-        };
-        let vars = ZervVars {
-            major: Some(1),
-            ..Default::default()
-        };
-
-        let zerv = Zerv { schema, vars };
-        assert!(zerv.validate().is_ok());
-    }
-
-    #[test]
-    fn test_validate_missing_core_field() {
-        let schema = ZervSchema {
-            core: vec![Component::VarField("major".to_string())],
-            extra_core: vec![],
-            build: vec![],
-        };
-        let vars = ZervVars::default(); // No major field
-
-        let zerv = Zerv { schema, vars };
-        let result = zerv.validate();
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("missing core variable")
-        );
-    }
-
-    #[test]
-    fn test_validate_components_success() {
-        let schema = ZervSchema {
-            core: vec![
-                Component::VarField("major".to_string()),
-                Component::VarField("minor".to_string()),
-            ],
-            extra_core: vec![],
-            build: vec![],
-        };
-        let vars = ZervVars {
-            major: Some(1),
-            minor: Some(2),
-            ..Default::default()
-        };
-
-        let result = Zerv::validate_components(&schema.core, &vars);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_validate_components_missing_field() {
-        let schema = ZervSchema {
-            core: vec![Component::VarField("major".to_string())],
-            extra_core: vec![],
-            build: vec![],
-        };
-        let vars = ZervVars::default(); // No major field
-
-        let result = Zerv::validate_components(&schema.core, &vars);
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("missing core variable")
-        );
-    }
-
-    // Component tests moved to schema module
 
     mod variables {
         use super::*;

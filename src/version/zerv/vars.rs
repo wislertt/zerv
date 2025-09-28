@@ -38,19 +38,6 @@ fn default_custom_value() -> serde_json::Value {
 }
 
 impl ZervVars {
-    /// Get the short commit hash, derived from bumped_commit_hash
-    /// Returns the first 7 characters of the full commit hash, or None if not available
-    pub fn get_bumped_commit_hash_short(&self) -> Option<String> {
-        Self::derive_short_hash(self.bumped_commit_hash.as_ref())
-    }
-
-    /// Get the short commit hash for the last commit, derived from last_commit_hash
-    /// Returns the first 7 characters of the full commit hash, or None if not available
-    pub fn get_last_commit_hash_short(&self) -> Option<String> {
-        Self::derive_short_hash(self.last_commit_hash.as_ref())
-    }
-
-    /// Derive short hash from full hash (7 characters or less if hash is shorter)
     fn derive_short_hash(hash: Option<&String>) -> Option<String> {
         hash.map(|h| {
             if h.len() >= 7 {
@@ -59,6 +46,14 @@ impl ZervVars {
                 h.clone()
             }
         })
+    }
+
+    pub fn get_bumped_commit_hash_short(&self) -> Option<String> {
+        Self::derive_short_hash(self.bumped_commit_hash.as_ref())
+    }
+
+    pub fn get_last_commit_hash_short(&self) -> Option<String> {
+        Self::derive_short_hash(self.last_commit_hash.as_ref())
     }
 }
 
