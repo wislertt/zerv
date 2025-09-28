@@ -11,6 +11,9 @@ use std::env::current_dir;
 use super::args::VersionArgs;
 
 pub fn run_version_pipeline(args: VersionArgs) -> Result<String, ZervError> {
+    // 0. Early validation - fail fast on conflicting options
+    args.validate()?;
+
     // 1. Determine working directory
     let work_dir = match args.directory.as_deref() {
         Some(dir) => std::path::PathBuf::from(dir),

@@ -239,7 +239,7 @@ pub fn resolve_timestamp(pattern: &str, timestamp: Option<u64>) -> Result<u64> {
 
 ### Phase 3: Comprehensive CLI Arguments - [ ]
 
-#### Task 3.1: Add Bump Arguments - [ ]
+#### Task 3.1: Add Bump Arguments - [x]
 
 **Priority**: High | **Estimated Time**: 4-5 hours
 

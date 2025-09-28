@@ -1,4 +1,5 @@
 use crate::constants::{SUPPORTED_FORMATS_ARRAY, formats, sources};
+use crate::error::ZervError;
 use clap::Parser;
 
 #[derive(Parser)]
@@ -92,11 +93,11 @@ pub struct VersionArgs {
     pub distance: Option<u32>,
 
     /// Override the detected dirty state (sets dirty=true)
-    #[arg(long, help = "Override dirty state to true (sets dirty=true)")]
+    #[arg(long, action = clap::ArgAction::SetTrue, help = "Override dirty state to true (sets dirty=true)")]
     pub dirty: bool,
 
     /// Override the detected dirty state (sets dirty=false)
-    #[arg(long, help = "Override dirty state to false (sets dirty=false)")]
+    #[arg(long, action = clap::ArgAction::SetTrue, help = "Override dirty state to false (sets dirty=false)")]
     pub no_dirty: bool,
 
     /// Set distance=0 and dirty=false (clean release state)
@@ -202,6 +203,56 @@ pub struct VersionArgs {
 }
 
 impl VersionArgs {
+    /// Validate arguments and return early errors
+    /// This provides early validation before VCS processing
+    pub fn validate(&self) -> Result<(), ZervError> {
+        // Check for conflicting dirty flags
+        if self.dirty && self.no_dirty {
+            return Err(ZervError::ConflictingOptions(
+                "Cannot use --dirty with --no-dirty (conflicting options)".to_string(),
+            ));
+        }
+
+        // Check for --clean conflicts
+        if self.clean {
+            if self.distance.is_some() {
+                return Err(ZervError::ConflictingOptions(
+                    "Cannot use --clean with --distance (conflicting options)".to_string(),
+                ));
+            }
+            if self.dirty {
+                return Err(ZervError::ConflictingOptions(
+                    "Cannot use --clean with --dirty (conflicting options)".to_string(),
+                ));
+            }
+            if self.no_dirty {
+                return Err(ZervError::ConflictingOptions(
+                    "Cannot use --clean with --no-dirty (conflicting options)".to_string(),
+                ));
+            }
+        }
+
+        // Check for conflicting context control flags
+        if self.bump_context && self.no_bump_context {
+            return Err(ZervError::ConflictingOptions(
+                "Cannot use --bump-context with --no-bump-context (conflicting options)"
+                    .to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Get the dirty override state (None = use VCS, Some(bool) = override)
+    pub fn dirty_override(&self) -> Option<bool> {
+        match (self.dirty, self.no_dirty) {
+            (true, false) => Some(true),    // --dirty
+            (false, true) => Some(false),   // --no-dirty
+            (false, false) => None,         // neither (use VCS)
+            (true, true) => unreachable!(), // Should be caught by validation
+        }
+    }
+
     /// Check if any VCS overrides are specified in the arguments
     pub fn has_overrides(&self) -> bool {
         self.tag_version.is_some()
@@ -234,5 +285,292 @@ impl VersionArgs {
     /// Check if any context control options are specified
     pub fn has_context_control(&self) -> bool {
         self.bump_context || self.no_bump_context
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::constants::{formats, sources};
+    use crate::test_utils::VersionArgsFixture;
+    use clap::Parser;
+
+    #[test]
+    fn test_version_args_defaults() {
+        let args = VersionArgs::try_parse_from(["zerv"]).unwrap();
+        assert!(args.version.is_none());
+        assert_eq!(args.source, sources::GIT);
+        assert!(args.schema.is_none());
+        assert!(args.schema_ron.is_none());
+        assert_eq!(args.input_format, formats::AUTO);
+        assert_eq!(args.output_format, formats::SEMVER);
+
+        // VCS override options should be None/false by default
+        assert!(args.tag_version.is_none());
+        assert!(args.distance.is_none());
+        assert!(!args.dirty);
+        assert!(!args.no_dirty);
+        assert!(!args.clean);
+        assert!(args.current_branch.is_none());
+        assert!(args.commit_hash.is_none());
+        assert!(args.post.is_none());
+        assert!(args.dev.is_none());
+        assert!(args.pre_release_label.is_none());
+        assert!(args.pre_release_num.is_none());
+        assert!(args.epoch.is_none());
+        assert!(args.custom.is_none());
+
+        // Bump options should be None by default
+        assert!(args.bump_major.is_none());
+        assert!(args.bump_minor.is_none());
+        assert!(args.bump_patch.is_none());
+        assert!(args.bump_distance.is_none());
+        assert!(args.bump_post.is_none());
+        assert!(args.bump_dev.is_none());
+        assert!(args.bump_pre_release_num.is_none());
+        assert!(args.bump_epoch.is_none());
+
+        // Context control options should be false by default
+        assert!(!args.bump_context);
+        assert!(!args.no_bump_context);
+
+        // Output options should be None by default
+        assert!(args.output_template.is_none());
+        assert!(args.output_prefix.is_none());
+    }
+
+    #[test]
+    fn test_version_args_with_overrides() {
+        let args = VersionArgs::try_parse_from([
+            "zerv",
+            "--tag-version",
+            "v2.0.0",
+            "--distance",
+            "5",
+            "--dirty",
+            "--current-branch",
+            "feature/test",
+            "--commit-hash",
+            "abc123",
+            "--input-format",
+            "semver",
+            "--output-prefix",
+            "version:",
+        ])
+        .unwrap();
+
+        assert_eq!(args.tag_version, Some("v2.0.0".to_string()));
+        assert_eq!(args.distance, Some(5));
+        assert!(args.dirty);
+        assert!(!args.no_dirty);
+        assert!(!args.clean);
+        assert_eq!(args.current_branch, Some("feature/test".to_string()));
+        assert_eq!(args.commit_hash, Some("abc123".to_string()));
+        assert_eq!(args.input_format, formats::SEMVER);
+        assert_eq!(args.output_prefix, Some("version:".to_string()));
+    }
+
+    #[test]
+    fn test_version_args_clean_flag() {
+        let args = VersionArgs::try_parse_from(["zerv", "--clean"]).unwrap();
+
+        assert!(args.clean);
+        assert!(args.distance.is_none());
+        assert!(!args.dirty);
+        assert!(!args.no_dirty);
+    }
+
+    #[test]
+    fn test_version_args_dirty_flags() {
+        // Test --dirty flag
+        let args = VersionArgs::try_parse_from(["zerv", "--dirty"]).unwrap();
+        assert!(args.dirty);
+        assert!(!args.no_dirty);
+
+        // Test --no-dirty flag
+        let args = VersionArgs::try_parse_from(["zerv", "--no-dirty"]).unwrap();
+        assert!(!args.dirty);
+        assert!(args.no_dirty);
+
+        // Test both flags together should fail early validation
+        let args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
+        assert!(args.dirty);
+        assert!(args.no_dirty);
+
+        // The conflict should be caught by early validation
+        let result = args.validate();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dirty_override_helper() {
+        // Test --dirty flag
+        let args = VersionArgs::try_parse_from(["zerv", "--dirty"]).unwrap();
+        assert_eq!(args.dirty_override(), Some(true));
+
+        // Test --no-dirty flag
+        let args = VersionArgs::try_parse_from(["zerv", "--no-dirty"]).unwrap();
+        assert_eq!(args.dirty_override(), Some(false));
+
+        // Test neither flag (use VCS)
+        let args = VersionArgs::try_parse_from(["zerv"]).unwrap();
+        assert_eq!(args.dirty_override(), None);
+    }
+
+    #[test]
+    fn test_validate_no_conflicts() {
+        // Test with no conflicting options
+        let args = VersionArgs::try_parse_from(["zerv"]).unwrap();
+        assert!(args.validate().is_ok());
+
+        // Test with individual options (no conflicts)
+        let args = VersionArgs::try_parse_from(["zerv", "--dirty"]).unwrap();
+        assert!(args.validate().is_ok());
+
+        let args = VersionArgs::try_parse_from(["zerv", "--no-dirty"]).unwrap();
+        assert!(args.validate().is_ok());
+
+        let args = VersionArgs::try_parse_from(["zerv", "--clean"]).unwrap();
+        assert!(args.validate().is_ok());
+
+        let args = VersionArgs::try_parse_from(["zerv", "--distance", "5"]).unwrap();
+        assert!(args.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_dirty_conflicts() {
+        // Test conflicting dirty flags
+        let args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
+        let result = args.validate();
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::ConflictingOptions(_)));
+        assert!(error.to_string().contains("--dirty"));
+        assert!(error.to_string().contains("--no-dirty"));
+        assert!(error.to_string().contains("conflicting options"));
+    }
+
+    #[test]
+    fn test_validate_clean_conflicts() {
+        // Test --clean with --distance
+        let args = VersionArgs::try_parse_from(["zerv", "--clean", "--distance", "5"]).unwrap();
+        let result = args.validate();
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::ConflictingOptions(_)));
+        assert!(error.to_string().contains("--clean"));
+        assert!(error.to_string().contains("--distance"));
+
+        // Test --clean with --dirty
+        let args = VersionArgs::try_parse_from(["zerv", "--clean", "--dirty"]).unwrap();
+        let result = args.validate();
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::ConflictingOptions(_)));
+        assert!(error.to_string().contains("--clean"));
+        assert!(error.to_string().contains("--dirty"));
+
+        // Test --clean with --no-dirty
+        let args = VersionArgs::try_parse_from(["zerv", "--clean", "--no-dirty"]).unwrap();
+        let result = args.validate();
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::ConflictingOptions(_)));
+        assert!(error.to_string().contains("--clean"));
+        assert!(error.to_string().contains("--no-dirty"));
+    }
+
+    #[test]
+    fn test_validate_context_control_conflicts() {
+        // Test conflicting context control flags
+        let args =
+            VersionArgs::try_parse_from(["zerv", "--bump-context", "--no-bump-context"]).unwrap();
+        let result = args.validate();
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::ConflictingOptions(_)));
+        assert!(error.to_string().contains("--bump-context"));
+        assert!(error.to_string().contains("--no-bump-context"));
+        assert!(error.to_string().contains("conflicting options"));
+    }
+
+    #[test]
+    fn test_validate_clean_with_non_conflicting_options() {
+        // Test --clean with options that should NOT conflict
+        let args = VersionArgs::try_parse_from([
+            "zerv",
+            "--clean",
+            "--tag-version",
+            "v2.0.0",
+            "--current-branch",
+            "main",
+            "--commit-hash",
+            "abc123",
+        ])
+        .unwrap();
+        assert!(args.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_multiple_conflicts() {
+        // Test that validation fails on the first conflict found
+        let args = VersionArgs::try_parse_from([
+            "zerv",
+            "--clean",
+            "--distance",
+            "5",
+            "--dirty",
+            "--no-dirty",
+        ])
+        .unwrap();
+        let result = args.validate();
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        let error_msg = error.to_string();
+        // Should fail on the first conflict (dirty flags conflict comes first)
+        assert!(error_msg.contains("--dirty"));
+        assert!(error_msg.contains("--no-dirty"));
+        assert!(error_msg.contains("conflicting options"));
+    }
+
+    #[test]
+    fn test_validate_error_message_quality() {
+        // Test that error messages are clear and actionable
+        let args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
+        let result = args.validate();
+        assert!(result.is_err());
+
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Conflicting options"));
+        assert!(error_msg.contains("--dirty"));
+        assert!(error_msg.contains("--no-dirty"));
+        assert!(error_msg.contains("conflicting options"));
+        assert!(error_msg.contains("Cannot use"));
+    }
+
+    #[test]
+    fn test_version_args_fixture() {
+        let args = VersionArgsFixture::create();
+        assert_eq!(args.source, sources::GIT);
+        assert_eq!(args.output_format, formats::SEMVER);
+
+        let args_with_overrides = VersionArgsFixture::with_overrides();
+        assert_eq!(args_with_overrides.tag_version, Some("v2.0.0".to_string()));
+        assert_eq!(args_with_overrides.distance, Some(5));
+        assert!(args_with_overrides.dirty);
+
+        let args_with_clean = VersionArgsFixture::with_clean();
+        assert!(args_with_clean.clean);
+
+        let args_with_bumps = VersionArgsFixture::with_bumps();
+        assert!(args_with_bumps.bump_major.is_some());
+        assert!(args_with_bumps.bump_minor.is_some());
+        assert!(args_with_bumps.bump_patch.is_some());
     }
 }

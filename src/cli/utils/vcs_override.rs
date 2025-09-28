@@ -7,11 +7,9 @@ use crate::vcs::VcsData;
 pub struct VcsOverrideProcessor;
 
 impl VcsOverrideProcessor {
-    /// Apply CLI overrides to VCS data with conflict validation
+    /// Apply CLI overrides to VCS data
+    /// Note: Early validation should be called before this method via args.validate()
     pub fn apply_overrides(mut vcs_data: VcsData, args: &VersionArgs) -> Result<VcsData> {
-        // First validate for conflicting options
-        Self::validate_override_conflicts(args)?;
-
         // Apply --clean flag first (sets distance=0 and dirty=false)
         if args.clean {
             vcs_data.distance = 0;
@@ -32,12 +30,9 @@ impl VcsOverrideProcessor {
             vcs_data.distance = distance;
         }
 
-        if args.dirty {
-            vcs_data.is_dirty = true;
-        }
-
-        if args.no_dirty {
-            vcs_data.is_dirty = false;
+        // Apply dirty override using the helper method
+        if let Some(dirty_value) = args.dirty_override() {
+            vcs_data.is_dirty = dirty_value;
         }
 
         if let Some(ref current_branch) = args.current_branch {
@@ -55,51 +50,6 @@ impl VcsOverrideProcessor {
         // in the ZervVars conversion phase, not in VcsData
 
         Ok(vcs_data)
-    }
-
-    /// Validate that CLI override options don't conflict with each other
-    pub fn validate_override_conflicts(args: &VersionArgs) -> Result<()> {
-        // TODO: make this cleaner
-        // Check for --clean conflicts with --distance or --dirty
-        if args.clean {
-            if args.distance.is_some() {
-                return Err(ZervError::ConflictingOptions(
-                    "Cannot use --clean with --distance (conflicting options)".to_string(),
-                ));
-            }
-
-            if args.dirty {
-                return Err(ZervError::ConflictingOptions(
-                    "Cannot use --clean with --dirty (conflicting options)".to_string(),
-                ));
-            }
-
-            if args.no_dirty {
-                return Err(ZervError::ConflictingOptions(
-                    "Cannot use --clean with --no-dirty (conflicting options)".to_string(),
-                ));
-            }
-        }
-
-        // Check for conflicting dirty flags
-        if args.dirty && args.no_dirty {
-            return Err(ZervError::ConflictingOptions(
-                "Cannot use --dirty with --no-dirty (conflicting options)".to_string(),
-            ));
-        }
-
-        // Check for conflicting context control flags
-        if args.bump_context && args.no_bump_context {
-            return Err(ZervError::ConflictingOptions(
-                "Cannot use --bump-context with --no-bump-context (conflicting options)"
-                    .to_string(),
-            ));
-        }
-
-        // Additional validation can be added here for future conflicts
-        // For example, if we add --shallow flag that conflicts with --distance
-
-        Ok(())
     }
 
     /// Check if any VCS overrides are specified in the arguments
@@ -370,75 +320,6 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_override_conflicts_no_conflicts() {
-        let args = create_test_args();
-        let result = VcsOverrideProcessor::validate_override_conflicts(&args);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_validate_override_conflicts_clean_with_distance() {
-        let mut args = create_test_args();
-        args.clean = true;
-        args.distance = Some(5);
-
-        let result = VcsOverrideProcessor::validate_override_conflicts(&args);
-        assert!(result.is_err());
-
-        let error = result.unwrap_err();
-        assert!(matches!(error, ZervError::ConflictingOptions(_)));
-        assert!(error.to_string().contains("--clean"));
-        assert!(error.to_string().contains("--distance"));
-    }
-
-    #[test]
-    fn test_validate_override_conflicts_clean_with_dirty() {
-        let mut args = create_test_args();
-        args.clean = true;
-        args.dirty = true;
-        args.no_dirty = false;
-
-        let result = VcsOverrideProcessor::validate_override_conflicts(&args);
-        assert!(result.is_err());
-
-        let error = result.unwrap_err();
-        assert!(matches!(error, ZervError::ConflictingOptions(_)));
-        assert!(error.to_string().contains("--clean"));
-        assert!(error.to_string().contains("--dirty"));
-    }
-
-    #[test]
-    fn test_validate_override_conflicts_clean_with_both() {
-        let mut args = create_test_args();
-        args.clean = true;
-        args.distance = Some(5);
-        args.dirty = true;
-        args.no_dirty = false;
-
-        let result = VcsOverrideProcessor::validate_override_conflicts(&args);
-        assert!(result.is_err());
-
-        // Should fail on the first conflict (distance)
-        let error = result.unwrap_err();
-        assert!(matches!(error, ZervError::ConflictingOptions(_)));
-        assert!(error.to_string().contains("--clean"));
-        assert!(error.to_string().contains("--distance"));
-    }
-
-    #[test]
-    fn test_validate_override_conflicts_clean_with_other_options() {
-        // Clean should not conflict with tag_version, current_branch, or commit_hash
-        let mut args = create_test_args();
-        args.clean = true;
-        args.tag_version = Some("v2.0.0".to_string());
-        args.current_branch = Some("feature".to_string());
-        args.commit_hash = Some("abc123".to_string());
-
-        let result = VcsOverrideProcessor::validate_override_conflicts(&args);
-        assert!(result.is_ok());
-    }
-
-    #[test]
     fn test_has_overrides_none() {
         let args = create_test_args();
         assert!(!VcsOverrideProcessor::has_overrides(&args));
@@ -504,7 +385,7 @@ mod tests {
         args.distance = Some(10); // This should override the clean distance=0
 
         // This should fail validation due to conflict
-        let result = VcsOverrideProcessor::validate_override_conflicts(&args);
+        let result = args.validate();
         assert!(result.is_err());
     }
 
@@ -515,7 +396,7 @@ mod tests {
         args.clean = true;
         args.distance = Some(5);
 
-        let result = VcsOverrideProcessor::validate_override_conflicts(&args);
+        let result = args.validate();
         assert!(result.is_err());
 
         let error_msg = result.unwrap_err().to_string();
@@ -654,21 +535,6 @@ mod tests {
         args.no_bump_context = true;
 
         let result = VcsOverrideProcessor::apply_context_control(vcs_data, &args);
-        assert!(result.is_err());
-
-        let error = result.unwrap_err();
-        assert!(matches!(error, ZervError::ConflictingOptions(_)));
-        assert!(error.to_string().contains("--bump-context"));
-        assert!(error.to_string().contains("--no-bump-context"));
-    }
-
-    #[test]
-    fn test_validate_override_conflicts_context_control() {
-        let mut args = create_test_args();
-        args.bump_context = true;
-        args.no_bump_context = true;
-
-        let result = VcsOverrideProcessor::validate_override_conflicts(&args);
         assert!(result.is_err());
 
         let error = result.unwrap_err();
