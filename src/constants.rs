@@ -71,7 +71,6 @@ pub mod timestamp_patterns {
     pub const WW: &str = "WW";
     pub const ZERO_W: &str = "0W";
 
-    /// Get all valid timestamp patterns for validation
     pub fn get_valid_timestamp_patterns() -> Vec<&'static str> {
         vec![
             // Preset patterns

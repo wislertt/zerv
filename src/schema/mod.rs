@@ -1,6 +1,5 @@
 mod parser;
 mod presets;
-mod validation;
 
 pub use parser::{ComponentConfig, SchemaConfig, parse_ron_schema};
 pub use presets::{
@@ -8,7 +7,6 @@ pub use presets::{
     zerv_calver_tier_2, zerv_calver_tier_3, zerv_standard_tier_1, zerv_standard_tier_2,
     zerv_standard_tier_3,
 };
-pub use validation::{component_validation, structure_validation};
 
 use crate::error::ZervError;
 use crate::version::zerv::{Zerv, ZervVars};
@@ -42,13 +40,14 @@ pub fn create_zerv_version(
         (None, None) => get_preset_schema("zerv-standard", &vars).unwrap(),
     };
 
-    Ok(Zerv { schema, vars })
+    Zerv::new(schema, vars)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::zerv::{ZervSchema, ZervVars};
+    use crate::version::zerv::schema::ZervSchema;
+    use crate::version::zerv::vars::ZervVars;
     use rstest::rstest;
 
     #[rstest]

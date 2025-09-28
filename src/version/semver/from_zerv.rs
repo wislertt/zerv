@@ -91,9 +91,10 @@ fn build_metadata_from_components(
             .filter_map(|comp| match comp {
                 Component::String(s) => Some(BuildMetadata::String(s.clone())),
                 Component::Integer(i) => Some(BuildMetadata::Integer(*i)),
-                Component::VarTimestamp(pattern) => Some(BuildMetadata::Integer(
-                    resolve_timestamp(pattern, last_timestamp).unwrap_or(0),
-                )),
+                Component::VarTimestamp(pattern) => last_timestamp
+                    .and_then(|ts| resolve_timestamp(pattern, ts).ok())
+                    .and_then(|result| result.parse::<u64>().ok())
+                    .map(BuildMetadata::Integer),
                 Component::VarField(field) => match field.as_str() {
                     crate::constants::template_vars::BUMPED_BRANCH => zerv
                         .vars
@@ -145,8 +146,10 @@ mod tests {
 
     use rstest::rstest;
 
+    use crate::version::zerv::core::PreReleaseLabel;
+    use crate::version::zerv::schema::ZervSchema;
     use crate::version::zerv::test_utils::*;
-    use crate::version::zerv::{PreReleaseLabel, ZervSchema, ZervVars};
+    use crate::version::zerv::vars::ZervVars;
 
     // CalVer helper functions (demonstrating VarTimestamp usage)
     fn calver_yy_mm_patch() -> Zerv {

@@ -1,6 +1,8 @@
 use super::{LocalSegment, PEP440};
 use crate::version::pep440::core::{DevLabel, PostLabel};
-use crate::version::zerv::{Component, Zerv, resolve_timestamp, utils::extract_core_values};
+use crate::version::zerv::core::Zerv;
+use crate::version::zerv::schema::Component;
+use crate::version::zerv::{resolve_timestamp, utils::extract_core_values};
 
 struct PEP440Components {
     epoch: u32,
@@ -95,8 +97,12 @@ fn add_component_to_local(
             add_integer_to_local(*n, local_overflow);
         }
         Component::VarTimestamp(pattern) => {
-            let val = resolve_timestamp(pattern, last_timestamp).unwrap_or(0);
-            add_integer_to_local(val, local_overflow);
+            if let Some(ts) = last_timestamp
+                && let Ok(result) = resolve_timestamp(pattern, ts)
+                && let Ok(val) = result.parse::<u64>()
+            {
+                add_integer_to_local(val, local_overflow);
+            }
         }
         Component::VarField(field) => {
             add_var_field_to_local(field, zerv, local_overflow);

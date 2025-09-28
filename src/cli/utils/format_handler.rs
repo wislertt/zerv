@@ -1,5 +1,4 @@
 use crate::error::ZervError;
-use crate::schema::structure_validation;
 use crate::version::{PEP440, SemVer, VersionObject, Zerv};
 use std::io::Read;
 use std::str::FromStr;
@@ -102,7 +101,7 @@ impl InputFormatHandler {
 
     /// Validate the structure of a parsed Zerv object
     fn validate_zerv_structure(zerv: &Zerv) -> Result<(), ZervError> {
-        structure_validation::validate_zerv_structure(zerv)
+        zerv.schema.validate()
     }
 
     /// Create detailed RON parsing error with helpful suggestions

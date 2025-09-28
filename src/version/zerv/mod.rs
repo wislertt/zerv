@@ -1,11 +1,19 @@
 pub mod core;
 mod display;
 mod parser;
+pub mod schema; // New module
 #[cfg(test)]
 mod test_schema_assertions;
 #[cfg(test)]
 pub mod test_utils;
 pub mod utils;
+pub mod vars; // New module
 
-pub use core::{Component, PreReleaseLabel, PreReleaseVar, Zerv, ZervSchema, ZervVars};
+// Core types
+pub use core::{PreReleaseLabel, PreReleaseVar, Zerv};
+// Vars types
+pub use vars::ZervVars;
+// Schema types
+pub use schema::{Component, ZervSchema};
+// Utilities
 pub use utils::{normalize_pre_release_label, resolve_timestamp};

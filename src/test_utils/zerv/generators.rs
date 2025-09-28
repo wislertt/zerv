@@ -61,7 +61,8 @@ pub fn vcs_zerv_ron(params: &ZervParams, post: u64) -> String {
 
     // Set VCS fields using the correct field names
     builder.vars_mut().bumped_branch = Some(params.branch.clone());
-    builder.vars_mut().bumped_commit_hash_short = Some(params.commit_hash[..7].to_string());
+    builder.vars_mut().bumped_commit_hash = Some(params.commit_hash.to_string());
+    // Note: bumped_commit_hash_short is now derived from bumped_commit_hash
     builder.vars_mut().distance = Some(params.distance);
     builder.vars_mut().dirty = Some(params.dirty);
 

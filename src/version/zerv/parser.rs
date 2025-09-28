@@ -14,7 +14,8 @@ impl FromStr for Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::zerv::{Component, ZervSchema, ZervVars};
+    use crate::version::zerv::schema::{Component, ZervSchema};
+    use crate::version::zerv::vars::ZervVars;
 
     #[test]
     fn test_zerv_parse_simple() {
@@ -74,7 +75,7 @@ mod tests {
             minor: Some(2),
             ..Default::default()
         };
-        let original = Zerv::new(schema, vars);
+        let original = Zerv::new(schema, vars).unwrap();
 
         let ron_string = original.to_string();
         let parsed: Zerv = ron_string.parse().unwrap();

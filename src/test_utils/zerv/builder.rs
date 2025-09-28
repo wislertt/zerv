@@ -100,7 +100,7 @@ impl ZervRonBuilder {
     ) -> Self {
         self.vars.bumped_branch = Some(branch.to_string());
         self.vars.bumped_commit_hash = Some(commit_hash.to_string());
-        self.vars.bumped_commit_hash_short = Some(commit_hash[..7].to_string());
+        // Note: bumped_commit_hash_short is now derived from bumped_commit_hash
         self.vars.distance = Some(distance);
         self.vars.dirty = Some(dirty);
         self
@@ -139,6 +139,7 @@ impl ZervRonBuilder {
     /// Create the Zerv object
     pub fn build(self) -> Zerv {
         Zerv::new(self.schema, self.vars)
+            .expect("Failed to create Zerv object - check schema and vars compatibility")
     }
 
     /// Generate RON string from the built Zerv object
@@ -232,7 +233,7 @@ mod tests {
         assert_eq!(zerv.vars.bumped_branch, Some(branch.to_string()));
         assert_eq!(zerv.vars.bumped_commit_hash, Some(commit_hash.to_string()));
         assert_eq!(
-            zerv.vars.bumped_commit_hash_short,
+            zerv.vars.get_bumped_commit_hash_short(),
             Some(commit_hash[..7].to_string())
         );
         assert_eq!(zerv.vars.distance, Some(distance));
