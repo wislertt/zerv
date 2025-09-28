@@ -12,11 +12,8 @@ pub use git::{DockerGit, GitOperations, GitRepoFixture, NativeGit};
 pub use output::TestOutput;
 pub use vcs_fixtures::{get_real_pep440_vcs_data, get_real_semver_vcs_data};
 pub use version::VersionTestUtils;
-// Programmatic RON fixtures
-pub use zerv::{
-    ZervRonBuilder, generators, get_all_fixtures, get_invalid_fixtures, get_valid_fixtures,
-    zerv_ron_fixtures,
-};
+// Zerv fixtures
+pub use zerv::{ZervFixture, ZervSchemaFixture, ZervVarsFixture};
 
 pub fn should_use_native_git() -> bool {
     ZervConfig::load()

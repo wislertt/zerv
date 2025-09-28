@@ -1,7 +1,8 @@
-pub mod builder;
-pub mod generators;
-pub mod zerv_ron_fixtures;
+pub mod schema;
+pub mod vars;
+#[allow(clippy::module_inception)]
+pub mod zerv;
 
-pub use builder::ZervRonBuilder;
-pub use generators::*;
-pub use zerv_ron_fixtures::{get_all_fixtures, get_invalid_fixtures, get_valid_fixtures};
+pub use schema::ZervSchemaFixture;
+pub use vars::ZervVarsFixture;
+pub use zerv::ZervFixture;

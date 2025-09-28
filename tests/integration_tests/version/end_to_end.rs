@@ -3,7 +3,7 @@ use rstest::rstest;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::time::Instant;
-use zerv::test_utils::{GitRepoFixture, should_run_docker_tests, zerv_ron_fixtures};
+use zerv::test_utils::{GitRepoFixture, ZervFixture, should_run_docker_tests};
 
 struct TestOverrides<'a> {
     tag_version: Option<&'a str>,
@@ -114,8 +114,8 @@ fn test_conflicting_overrides(
 /// Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
 #[test]
 fn test_stdin_source_with_zerv_ron() {
-    // Use the VCS Zerv RON fixture
-    let zerv_ron_input = &zerv_ron_fixtures::vcs();
+    // Use a basic Zerv RON fixture for testing
+    let zerv_ron_input = &ZervFixture::basic().to_ron_string();
 
     // Test basic stdin parsing
     let mut cmd = Command::new("cargo");

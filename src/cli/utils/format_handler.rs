@@ -384,10 +384,10 @@ mod tests {
 
     #[test]
     fn test_parse_and_validate_zerv_ron_with_valid_input() {
-        use crate::version::zerv::test_utils::base_zerv;
+        use crate::test_utils::zerv::ZervFixture;
 
         // Create a valid Zerv object and convert to RON
-        let zerv = base_zerv();
+        let zerv = ZervFixture::basic().zerv().clone();
         let ron_string = zerv.to_string();
 
         // Test that we can parse it back successfully
@@ -564,9 +564,9 @@ mod tests {
 
     #[test]
     fn test_validate_zerv_structure_with_valid_structure() {
-        use crate::version::zerv::test_utils::base_zerv;
+        use crate::test_utils::zerv::ZervFixture;
 
-        let valid_zerv = base_zerv();
+        let valid_zerv = ZervFixture::basic().zerv().clone();
         let result = InputFormatHandler::validate_zerv_structure(&valid_zerv);
         assert!(result.is_ok(), "Should accept valid Zerv structure");
     }
@@ -685,19 +685,24 @@ mod tests {
 
     #[test]
     fn test_stdin_validation_with_complex_zerv_structures() {
-        use crate::version::PreReleaseLabel;
-        use crate::version::zerv::test_utils::{
-            pep_zerv_complex_2_1_2_3_alpha_1_post_1_dev_1_local_1, zerv_1_0_0_with_pre_release,
-        };
+        use crate::test_utils::zerv::ZervFixture;
+        use crate::version::zerv::PreReleaseLabel;
 
         // Test with pre-release Zerv
-        let pre_release_zerv = zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(1));
+        let pre_release_zerv = ZervFixture::with_pre_release(PreReleaseLabel::Alpha, Some(1))
+            .zerv()
+            .clone();
         let ron_string = pre_release_zerv.to_string();
         let result = InputFormatHandler::parse_and_validate_zerv_ron(&ron_string);
         assert!(result.is_ok(), "Should parse pre-release Zerv successfully");
 
         // Test with complex PEP440 Zerv
-        let complex_zerv = pep_zerv_complex_2_1_2_3_alpha_1_post_1_dev_1_local_1();
+        let complex_zerv =
+            ZervFixture::with_all_components(2, PreReleaseLabel::Alpha, Some(1), 1, 1)
+                .add_build(crate::version::zerv::Component::String("local".to_string()))
+                .add_build(crate::version::zerv::Component::Integer(1))
+                .zerv()
+                .clone();
         let ron_string = complex_zerv.to_string();
         let result = InputFormatHandler::parse_and_validate_zerv_ron(&ron_string);
         assert!(result.is_ok(), "Should parse complex Zerv successfully");
@@ -706,10 +711,10 @@ mod tests {
     // Integration tests for comprehensive format handling
     #[test]
     fn test_parse_stdin_with_valid_zerv_ron() {
-        use crate::version::zerv::test_utils::base_zerv;
+        use crate::test_utils::zerv::ZervFixture;
 
         // Create a sample Zerv object
-        let zerv = base_zerv();
+        let zerv = ZervFixture::basic().zerv().clone();
         let ron_string = zerv.to_string();
 
         // Verify the RON string is valid
