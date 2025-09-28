@@ -6,7 +6,7 @@ pub use standard::{
     get_standard_schema, zerv_standard_tier_1, zerv_standard_tier_2, zerv_standard_tier_3,
 };
 
-use crate::constants::fields;
+use crate::constants::{ron_fields, template_vars};
 use crate::version::zerv::{Component, ZervSchema, ZervVars};
 
 fn determine_tier(vars: &ZervVars) -> u8 {
@@ -21,41 +21,41 @@ fn determine_tier(vars: &ZervVars) -> u8 {
 
 fn tier_1_core() -> Vec<Component> {
     vec![
-        Component::VarField(fields::MAJOR.to_string()),
-        Component::VarField(fields::MINOR.to_string()),
-        Component::VarField(fields::PATCH.to_string()),
+        Component::VarField(ron_fields::MAJOR.to_string()),
+        Component::VarField(ron_fields::MINOR.to_string()),
+        Component::VarField(ron_fields::PATCH.to_string()),
     ]
 }
 
 fn tier_1_extra_core() -> Vec<Component> {
     vec![
-        Component::VarField(fields::EPOCH.to_string()),
-        Component::VarField(fields::PRE_RELEASE.to_string()),
-        Component::VarField(fields::POST.to_string()),
+        Component::VarField(ron_fields::EPOCH.to_string()),
+        Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+        Component::VarField(ron_fields::POST.to_string()),
     ]
 }
 
 fn tier_2_build() -> Vec<Component> {
     vec![
-        Component::VarField(fields::CURRENT_BRANCH.to_string()),
-        Component::VarField(fields::CURRENT_COMMIT_HASH.to_string()),
+        Component::VarField(template_vars::BUMPED_BRANCH.to_string()),
+        Component::VarField(template_vars::BUMPED_COMMIT_HASH.to_string()),
     ]
 }
 
 fn tier_3_extra_core() -> Vec<Component> {
     vec![
-        Component::VarField(fields::EPOCH.to_string()),
-        Component::VarField(fields::PRE_RELEASE.to_string()),
-        Component::VarField(fields::POST.to_string()),
-        Component::VarField(fields::DEV.to_string()),
+        Component::VarField(ron_fields::EPOCH.to_string()),
+        Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+        Component::VarField(ron_fields::POST.to_string()),
+        Component::VarField(ron_fields::DEV.to_string()),
     ]
 }
 
 fn tier_3_build() -> Vec<Component> {
     vec![
-        Component::VarField(fields::CURRENT_BRANCH.to_string()),
-        Component::VarField(fields::DISTANCE.to_string()),
-        Component::VarField(fields::CURRENT_COMMIT_HASH.to_string()),
+        Component::VarField(template_vars::BUMPED_BRANCH.to_string()),
+        Component::VarField(ron_fields::DISTANCE.to_string()),
+        Component::VarField(template_vars::BUMPED_COMMIT_HASH.to_string()),
     ]
 }
 

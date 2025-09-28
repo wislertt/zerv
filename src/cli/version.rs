@@ -261,19 +261,19 @@ fn zerv_to_vcs_data(zerv: &Zerv) -> Result<crate::vcs::VcsData, ZervError> {
         tag_version,
         distance: vars.distance.unwrap_or(0) as u32,
         commit_hash: vars
-            .current_commit_hash
+            .bumped_commit_hash
             .clone()
             .unwrap_or_else(|| "unknown".to_string()),
         commit_hash_short: vars
-            .current_commit_hash
+            .bumped_commit_hash
             .clone()
             .unwrap_or_else(|| "unknown".to_string())
             .chars()
             .take(7)
             .collect(),
-        current_branch: vars.current_branch.clone(),
+        current_branch: vars.bumped_branch.clone(),
         commit_timestamp: vars.dev.unwrap_or(0) as i64,
-        tag_timestamp: vars.tag_timestamp.map(|t| t as i64),
+        tag_timestamp: vars.last_timestamp.map(|t| t as i64),
         is_dirty: vars.dirty.unwrap_or(false),
     })
 }

@@ -62,18 +62,18 @@ fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
 
 fn add_var_field_to_local(field: &str, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
     match field {
-        "current_branch" => {
-            if let Some(branch) = &zerv.vars.current_branch {
+        crate::constants::template_vars::BUMPED_BRANCH => {
+            if let Some(branch) = &zerv.vars.bumped_branch {
                 local_overflow.push(LocalSegment::String(branch.clone()));
             }
         }
-        "distance" => {
+        crate::constants::ron_fields::DISTANCE => {
             if let Some(distance) = zerv.vars.distance {
                 local_overflow.push(LocalSegment::Integer(distance as u32));
             }
         }
-        "current_commit_hash" => {
-            if let Some(hash) = &zerv.vars.current_commit_hash {
+        crate::constants::template_vars::BUMPED_COMMIT_HASH => {
+            if let Some(hash) = &zerv.vars.bumped_commit_hash {
                 local_overflow.push(LocalSegment::String(hash.clone()));
             }
         }
@@ -84,7 +84,7 @@ fn add_var_field_to_local(field: &str, zerv: &Zerv, local_overflow: &mut Vec<Loc
 fn add_component_to_local(
     comp: &Component,
     local_overflow: &mut Vec<LocalSegment>,
-    tag_timestamp: Option<u64>,
+    last_timestamp: Option<u64>,
     zerv: &Zerv,
 ) {
     match comp {
@@ -95,13 +95,12 @@ fn add_component_to_local(
             add_integer_to_local(*n, local_overflow);
         }
         Component::VarTimestamp(pattern) => {
-            let val = resolve_timestamp(pattern, tag_timestamp).unwrap_or(0);
+            let val = resolve_timestamp(pattern, last_timestamp).unwrap_or(0);
             add_integer_to_local(val, local_overflow);
         }
         Component::VarField(field) => {
             add_var_field_to_local(field, zerv, local_overflow);
         }
-        _ => {}
     }
 }
 
@@ -123,7 +122,7 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
             _ => add_component_to_local(
                 comp,
                 &mut components.local_overflow,
-                zerv.vars.tag_timestamp,
+                zerv.vars.last_timestamp,
                 zerv,
             ),
         }
@@ -134,12 +133,12 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
 
 fn process_build_components(
     components: &[Component],
-    tag_timestamp: Option<u64>,
+    last_timestamp: Option<u64>,
     zerv: &Zerv,
 ) -> Vec<LocalSegment> {
     let mut local_overflow = Vec::new();
     for comp in components {
-        add_component_to_local(comp, &mut local_overflow, tag_timestamp, zerv);
+        add_component_to_local(comp, &mut local_overflow, last_timestamp, zerv);
     }
     local_overflow
 }
@@ -152,7 +151,7 @@ impl From<Zerv> for PEP440 {
 
         components.local_overflow.extend(process_build_components(
             &zerv.schema.build,
-            zerv.vars.tag_timestamp,
+            zerv.vars.last_timestamp,
             &zerv,
         ));
 

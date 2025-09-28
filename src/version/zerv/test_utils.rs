@@ -1122,10 +1122,10 @@ pub fn zerv_1_0_0_with_bar_dev_and_epoch_original_order(dev: u64, epoch: u64) ->
 
 // VarField build metadata test helpers
 #[cfg(test)]
-pub fn pep_zerv_1_0_0_with_current_branch() -> Zerv {
+pub fn pep_zerv_1_0_0_with_bumped_branch() -> Zerv {
     let mut zerv = base_zerv();
-    zerv.schema.build = vec![Component::VarField("current_branch".to_string())];
-    zerv.vars.current_branch = Some("main".to_string());
+    zerv.schema.build = vec![Component::VarField("bumped_branch".to_string())];
+    zerv.vars.bumped_branch = Some("main".to_string());
     zerv
 }
 
@@ -1140,8 +1140,8 @@ pub fn pep_zerv_1_0_0_with_distance() -> Zerv {
 #[cfg(test)]
 pub fn pep_zerv_1_0_0_with_commit_hash() -> Zerv {
     let mut zerv = base_zerv();
-    zerv.schema.build = vec![Component::VarField("current_commit_hash".to_string())];
-    zerv.vars.current_commit_hash = Some("abc123".to_string());
+    zerv.schema.build = vec![Component::VarField("bumped_commit_hash".to_string())];
+    zerv.vars.bumped_commit_hash = Some("abc123".to_string());
     zerv
 }
 
@@ -1149,13 +1149,13 @@ pub fn pep_zerv_1_0_0_with_commit_hash() -> Zerv {
 pub fn pep_zerv_1_0_0_with_branch_distance_hash() -> Zerv {
     let mut zerv = base_zerv();
     zerv.schema.build = vec![
-        Component::VarField("current_branch".to_string()),
+        Component::VarField("bumped_branch".to_string()),
         Component::VarField("distance".to_string()),
-        Component::VarField("current_commit_hash".to_string()),
+        Component::VarField("bumped_commit_hash".to_string()),
     ];
-    zerv.vars.current_branch = Some("dev".to_string());
+    zerv.vars.bumped_branch = Some("dev".to_string());
     zerv.vars.distance = Some(3);
-    zerv.vars.current_commit_hash = Some("def456".to_string());
+    zerv.vars.bumped_commit_hash = Some("def456".to_string());
     zerv
 }
 
@@ -1163,9 +1163,9 @@ pub fn pep_zerv_1_0_0_with_branch_distance_hash() -> Zerv {
 pub fn pep_zerv_1_0_0_with_none_varfields() -> Zerv {
     let mut zerv = base_zerv();
     zerv.schema.build = vec![
-        Component::VarField("current_branch".to_string()),
+        Component::VarField("bumped_branch".to_string()),
         Component::VarField("distance".to_string()),
-        Component::VarField("current_commit_hash".to_string()),
+        Component::VarField("bumped_commit_hash".to_string()),
     ];
     // All vars are None by default
     zerv
@@ -1174,8 +1174,8 @@ pub fn pep_zerv_1_0_0_with_none_varfields() -> Zerv {
 #[cfg(test)]
 pub fn sem_zerv_1_0_0_with_branch() -> Zerv {
     let mut zerv = base_zerv();
-    zerv.schema.build = vec![Component::VarField("current_branch".to_string())];
-    zerv.vars.current_branch = Some("dev".to_string());
+    zerv.schema.build = vec![Component::VarField("bumped_branch".to_string())];
+    zerv.vars.bumped_branch = Some("dev".to_string());
     zerv
 }
 
@@ -1190,8 +1190,8 @@ pub fn sem_zerv_1_0_0_with_distance() -> Zerv {
 #[cfg(test)]
 pub fn sem_zerv_1_0_0_with_commit_hash() -> Zerv {
     let mut zerv = base_zerv();
-    zerv.schema.build = vec![Component::VarField("current_commit_hash".to_string())];
-    zerv.vars.current_commit_hash = Some("abc123".to_string());
+    zerv.schema.build = vec![Component::VarField("bumped_commit_hash".to_string())];
+    zerv.vars.bumped_commit_hash = Some("abc123".to_string());
     zerv
 }
 
@@ -1199,13 +1199,13 @@ pub fn sem_zerv_1_0_0_with_commit_hash() -> Zerv {
 pub fn sem_zerv_1_0_0_with_branch_distance_hash() -> Zerv {
     let mut zerv = base_zerv();
     zerv.schema.build = vec![
-        Component::VarField("current_branch".to_string()),
+        Component::VarField("bumped_branch".to_string()),
         Component::VarField("distance".to_string()),
-        Component::VarField("current_commit_hash".to_string()),
+        Component::VarField("bumped_commit_hash".to_string()),
     ];
-    zerv.vars.current_branch = Some("dev".to_string());
+    zerv.vars.bumped_branch = Some("dev".to_string());
     zerv.vars.distance = Some(3);
-    zerv.vars.current_commit_hash = Some("def456".to_string());
+    zerv.vars.bumped_commit_hash = Some("def456".to_string());
     zerv
 }
 
@@ -1213,9 +1213,9 @@ pub fn sem_zerv_1_0_0_with_branch_distance_hash() -> Zerv {
 pub fn sem_zerv_1_0_0_with_none_varfields() -> Zerv {
     let mut zerv = base_zerv();
     zerv.schema.build = vec![
-        Component::VarField("current_branch".to_string()),
+        Component::VarField("bumped_branch".to_string()),
         Component::VarField("distance".to_string()),
-        Component::VarField("current_commit_hash".to_string()),
+        Component::VarField("bumped_commit_hash".to_string()),
     ];
     // All vars are None by default
     zerv

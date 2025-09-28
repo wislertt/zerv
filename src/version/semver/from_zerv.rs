@@ -80,7 +80,7 @@ fn build_pre_release_identifiers(
 
 fn build_metadata_from_components(
     components: &[Component],
-    tag_timestamp: Option<u64>,
+    last_timestamp: Option<u64>,
     zerv: &Zerv,
 ) -> Option<Vec<BuildMetadata>> {
     if components.is_empty() {
@@ -92,23 +92,24 @@ fn build_metadata_from_components(
                 Component::String(s) => Some(BuildMetadata::String(s.clone())),
                 Component::Integer(i) => Some(BuildMetadata::Integer(*i)),
                 Component::VarTimestamp(pattern) => Some(BuildMetadata::Integer(
-                    resolve_timestamp(pattern, tag_timestamp).unwrap_or(0),
+                    resolve_timestamp(pattern, last_timestamp).unwrap_or(0),
                 )),
                 Component::VarField(field) => match field.as_str() {
-                    "current_branch" => zerv
+                    crate::constants::template_vars::BUMPED_BRANCH => zerv
                         .vars
-                        .current_branch
+                        .bumped_branch
                         .as_ref()
                         .map(|s| BuildMetadata::String(s.clone())),
-                    "distance" => zerv.vars.distance.map(BuildMetadata::Integer),
-                    "current_commit_hash" => zerv
+                    crate::constants::ron_fields::DISTANCE => {
+                        zerv.vars.distance.map(BuildMetadata::Integer)
+                    }
+                    crate::constants::template_vars::BUMPED_COMMIT_HASH => zerv
                         .vars
-                        .current_commit_hash
+                        .bumped_commit_hash
                         .as_ref()
                         .map(|s| BuildMetadata::String(s.clone())),
                     _ => None,
                 },
-                _ => None,
             })
             .collect();
 
@@ -126,7 +127,7 @@ impl From<Zerv> for SemVer {
         let (major, minor, patch) = extract_version_numbers(&core_values);
         let pre_release = build_pre_release_identifiers(&zerv, &core_values);
         let build_metadata =
-            build_metadata_from_components(&zerv.schema.build, zerv.vars.tag_timestamp, &zerv);
+            build_metadata_from_components(&zerv.schema.build, zerv.vars.last_timestamp, &zerv);
 
         SemVer {
             major,
@@ -161,7 +162,7 @@ mod tests {
             },
             vars: ZervVars {
                 patch: Some(5),
-                tag_timestamp: Some(1710547200), // 2024-03-15
+                last_timestamp: Some(1710547200), // 2024-03-15
                 ..Default::default()
             },
         }
@@ -180,7 +181,7 @@ mod tests {
             },
             vars: ZervVars {
                 patch: Some(1),
-                tag_timestamp: Some(1710547200),
+                last_timestamp: Some(1710547200),
                 ..Default::default()
             },
         }
@@ -205,7 +206,7 @@ mod tests {
                 major: Some(1),
                 minor: Some(0),
                 patch: Some(0),
-                tag_timestamp: Some(1710547200),
+                last_timestamp: Some(1710547200),
                 ..Default::default()
             },
         }

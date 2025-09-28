@@ -92,10 +92,10 @@ mod tests {
                 patch: Some(3),
                 distance: Some(0),
                 dirty: Some(false),
-                current_branch: Some("main".to_string()),
-                current_commit_hash: Some("abc123".to_string()),
+                bumped_branch: Some("main".to_string()),
+                bumped_commit_hash: Some("abc123".to_string()),
                 dev: None,
-                tag_timestamp: Some(1234567890),
+                last_timestamp: Some(1234567890),
                 ..Default::default()
             },
         }

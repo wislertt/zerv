@@ -1,4 +1,4 @@
-use crate::constants::{fields, timestamp_patterns};
+use crate::constants::{ron_fields, timestamp_patterns};
 use crate::error::{Result, ZervError};
 use crate::version::zerv::{Component, PreReleaseLabel, Zerv};
 
@@ -7,13 +7,13 @@ pub fn extract_core_values(zerv: &Zerv) -> Vec<u64> {
     for comp in &zerv.schema.core {
         let val = match comp {
             Component::VarField(field) => match field.as_str() {
-                fields::MAJOR => zerv.vars.major.unwrap_or(0),
-                fields::MINOR => zerv.vars.minor.unwrap_or(0),
-                fields::PATCH => zerv.vars.patch.unwrap_or(0),
+                ron_fields::MAJOR => zerv.vars.major.unwrap_or(0),
+                ron_fields::MINOR => zerv.vars.minor.unwrap_or(0),
+                ron_fields::PATCH => zerv.vars.patch.unwrap_or(0),
                 _ => 0,
             },
             Component::VarTimestamp(pattern) => {
-                resolve_timestamp(pattern, zerv.vars.tag_timestamp).unwrap_or(0)
+                resolve_timestamp(pattern, zerv.vars.last_timestamp).unwrap_or(0)
             }
             Component::Integer(n) => *n,
             _ => 0,

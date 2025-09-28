@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
+use serde_json;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PreReleaseLabel {
@@ -24,16 +23,19 @@ pub struct ZervSchema {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Component {
+    #[serde(rename = "str")]
     String(String),
+    #[serde(rename = "int")]
     Integer(u64),
+    #[serde(rename = "var")]
     VarField(String),
+    #[serde(rename = "ts")]
     VarTimestamp(String),
-    VarCustom(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ZervVars {
-    // from version string
+    // Core version fields (unchanged)
     pub major: Option<u64>,
     pub minor: Option<u64>,
     pub patch: Option<u64>,
@@ -42,29 +44,35 @@ pub struct ZervVars {
     pub post: Option<u64>,
     pub dev: Option<u64>,
 
-    // from vcs
-    pub tag_timestamp: Option<u64>,
-    pub tag_branch: Option<String>,
-    pub current_branch: Option<String>,
+    // VCS state fields (renamed and restructured)
     pub distance: Option<u64>,
     pub dirty: Option<bool>,
-    pub tag_commit_hash: Option<String>,
-    pub current_commit_hash: Option<String>,
 
-    pub custom: HashMap<String, VarValue>,
+    // Bumped fields (for template access)
+    pub bumped_branch: Option<String>,
+    pub bumped_commit_hash: Option<String>,
+    pub bumped_commit_hash_short: Option<String>,
+    pub bumped_timestamp: Option<u64>,
+
+    // Last version fields (for template access)
+    pub last_branch: Option<String>,
+    pub last_commit_hash: Option<String>,
+    pub last_timestamp: Option<u64>,
+
+    // Custom variables (changed to nested JSON)
+    #[serde(default = "default_custom_value")]
+    pub custom: serde_json::Value,
+}
+
+/// Default value for custom field - returns an empty JSON object
+fn default_custom_value() -> serde_json::Value {
+    serde_json::json!({})
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PreReleaseVar {
     pub label: PreReleaseLabel,
     pub number: Option<u64>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum VarValue {
-    String(String),
-    Integer(u64),
-    Boolean(bool),
 }
 
 impl Zerv {
@@ -101,7 +109,7 @@ mod tests {
             assert_eq!(vars.major, None);
             assert_eq!(vars.minor, None);
             assert_eq!(vars.patch, None);
-            assert!(vars.custom.is_empty());
+            assert!(vars.custom.as_object().is_none_or(|obj| obj.is_empty()));
         }
 
         #[test]
@@ -155,46 +163,10 @@ mod tests {
             }
         }
 
-        #[test]
-        fn test_component_var_custom() {
-            let comp = Component::VarCustom("custom_var".to_string());
-            match comp {
-                Component::VarCustom(key) => assert_eq!(key, "custom_var"),
-                _ => panic!("Expected VarCustom component"),
-            }
-        }
+        // VarCustom component removed - use var("custom.xxx") instead
     }
 
-    mod var_values {
-        use super::*;
-
-        #[test]
-        fn test_var_value_string() {
-            let val = VarValue::String("test".to_string());
-            match val {
-                VarValue::String(s) => assert_eq!(s, "test"),
-                _ => panic!("Expected String value"),
-            }
-        }
-
-        #[test]
-        fn test_var_value_integer() {
-            let val = VarValue::Integer(123);
-            match val {
-                VarValue::Integer(n) => assert_eq!(n, 123),
-                _ => panic!("Expected Integer value"),
-            }
-        }
-
-        #[test]
-        fn test_var_value_boolean() {
-            let val = VarValue::Boolean(true);
-            match val {
-                VarValue::Boolean(b) => assert!(b),
-                _ => panic!("Expected Boolean value"),
-            }
-        }
-    }
+    // VarValue tests removed - using serde_json::Value for custom variables
 
     mod variables {
         use super::*;
@@ -205,7 +177,7 @@ mod tests {
                 major: Some(1),
                 minor: Some(2),
                 patch: Some(3),
-                current_branch: Some("main".to_string()),
+                bumped_branch: Some("main".to_string()),
                 dirty: Some(true),
                 ..Default::default()
             };
@@ -213,26 +185,29 @@ mod tests {
             assert_eq!(vars.major, Some(1));
             assert_eq!(vars.minor, Some(2));
             assert_eq!(vars.patch, Some(3));
-            assert_eq!(vars.current_branch, Some("main".to_string()));
+            assert_eq!(vars.bumped_branch, Some("main".to_string()));
             assert_eq!(vars.dirty, Some(true));
         }
 
         #[test]
         fn test_custom_variables() {
-            let mut vars = ZervVars::default();
-            vars.custom
-                .insert("build_id".to_string(), VarValue::Integer(456));
-            vars.custom
-                .insert("env".to_string(), VarValue::String("prod".to_string()));
-            vars.custom
-                .insert("debug".to_string(), VarValue::Boolean(false));
+            let vars = ZervVars {
+                custom: serde_json::json!({
+                    "build_id": 456,
+                    "env": "prod",
+                    "debug": false,
+                    "metadata": {
+                        "author": "ci",
+                        "timestamp": 1703123456
+                    }
+                }),
+                ..Default::default()
+            };
 
-            assert_eq!(vars.custom.get("build_id"), Some(&VarValue::Integer(456)));
-            assert_eq!(
-                vars.custom.get("env"),
-                Some(&VarValue::String("prod".to_string()))
-            );
-            assert_eq!(vars.custom.get("debug"), Some(&VarValue::Boolean(false)));
+            assert_eq!(vars.custom["build_id"], serde_json::json!(456));
+            assert_eq!(vars.custom["env"], serde_json::json!("prod"));
+            assert_eq!(vars.custom["debug"], serde_json::json!(false));
+            assert_eq!(vars.custom["metadata"]["author"], serde_json::json!("ci"));
         }
     }
 
@@ -280,13 +255,13 @@ mod tests {
         #[test]
         fn test_empty_strings() {
             let vars = ZervVars {
-                current_branch: Some("".to_string()),
-                tag_commit_hash: Some("".to_string()),
+                bumped_branch: Some("".to_string()),
+                last_commit_hash: Some("".to_string()),
                 ..Default::default()
             };
 
-            assert_eq!(vars.current_branch, Some("".to_string()));
-            assert_eq!(vars.tag_commit_hash, Some("".to_string()));
+            assert_eq!(vars.bumped_branch, Some("".to_string()));
+            assert_eq!(vars.last_commit_hash, Some("".to_string()));
         }
     }
 
@@ -346,13 +321,13 @@ mod tests {
 
             let vars = ZervVars {
                 patch: Some(1),
-                tag_timestamp: Some(1710547200),
+                last_timestamp: Some(1710547200),
                 ..Default::default()
             };
 
             let zerv = Zerv::new(schema, vars);
             assert_eq!(zerv.vars.patch, Some(1));
-            assert_eq!(zerv.vars.tag_timestamp, Some(1710547200));
+            assert_eq!(zerv.vars.last_timestamp, Some(1710547200));
         }
     }
 }

@@ -1,5 +1,27 @@
-// Field names for ZervVars
-pub mod fields {
+// RON Schema field names (for var() components)
+pub mod ron_fields {
+    // Re-export shared fields
+    pub use super::shared_fields::*;
+
+    // RON-specific VCS fields
+    pub const BRANCH: &str = "branch";
+    pub const COMMIT_HASH_SHORT: &str = "commit_hash_short";
+}
+
+// Template variable names (for output templates)
+pub mod template_vars {
+    // Re-export shared fields
+    pub use super::shared_fields::*;
+
+    // Template-specific VCS context fields
+    pub const BUMPED_BRANCH: &str = "bumped_branch";
+    pub const BUMPED_COMMIT_HASH: &str = "bumped_commit_hash";
+    pub const BUMPED_COMMIT_HASH_SHORT: &str = "bumped_commit_hash_short";
+    pub const BUMPED_TIMESTAMP: &str = "bumped_timestamp";
+}
+
+// Shared field names (same for both RON and template)
+pub mod shared_fields {
     // Core version fields
     pub const MAJOR: &str = "major";
     pub const MINOR: &str = "minor";
@@ -15,25 +37,11 @@ pub mod fields {
     pub const POST: &str = "post";
     pub const DEV: &str = "dev";
 
-    // VCS state fields (current naming - will be renamed to bumped_*)
+    // VCS state fields
     pub const DISTANCE: &str = "distance";
     pub const DIRTY: &str = "dirty";
-    pub const CURRENT_BRANCH: &str = "current_branch";
-    pub const CURRENT_COMMIT_HASH: &str = "current_commit_hash";
-    pub const CURRENT_COMMIT_HASH_SHORT: &str = "current_commit_hash_short";
 
-    // Tag fields (will be renamed to last_*)
-    pub const TAG_BRANCH: &str = "tag_branch";
-    pub const TAG_COMMIT_HASH: &str = "tag_commit_hash";
-    pub const TAG_TIMESTAMP: &str = "tag_timestamp";
-
-    // Bumped fields (for template access)
-    pub const BUMPED_BRANCH: &str = "bumped_branch";
-    pub const BUMPED_COMMIT_HASH: &str = "bumped_commit_hash";
-    pub const BUMPED_COMMIT_HASH_SHORT: &str = "bumped_commit_hash_short";
-    pub const BUMPED_TIMESTAMP: &str = "bumped_timestamp";
-
-    // Last version fields (for template access)
+    // Last version fields
     pub const LAST_BRANCH: &str = "last_branch";
     pub const LAST_COMMIT_HASH: &str = "last_commit_hash";
     pub const LAST_TIMESTAMP: &str = "last_timestamp";
@@ -62,6 +70,30 @@ pub mod timestamp_patterns {
     pub const ZERO_S: &str = "0S";
     pub const WW: &str = "WW";
     pub const ZERO_W: &str = "0W";
+
+    /// Get all valid timestamp patterns for validation
+    pub fn get_valid_timestamp_patterns() -> Vec<&'static str> {
+        vec![
+            // Preset patterns
+            COMPACT_DATE,
+            COMPACT_DATETIME,
+            // Single component patterns
+            YYYY,
+            YY,
+            MM,
+            ZERO_M,
+            DD,
+            ZERO_D,
+            HH,
+            ZERO_H,
+            MM_MINUTE,
+            ZERO_M_MINUTE,
+            SS,
+            ZERO_S,
+            WW,
+            ZERO_W,
+        ]
+    }
 }
 
 // Source types

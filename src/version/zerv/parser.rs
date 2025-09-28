@@ -21,7 +21,7 @@ mod tests {
         let ron_str = r#"
             (
                 schema: (
-                    core: [VarField("major")],
+                    core: [var("major")],
                     extra_core: [],
                     build: [],
                 ),
@@ -33,13 +33,13 @@ mod tests {
                     pre_release: None,
                     post: None,
                     dev: None,
-                    tag_timestamp: None,
-                    tag_branch: None,
-                    current_branch: None,
+                    last_timestamp: None,
+                    last_branch: None,
+                    bumped_branch: None,
                     distance: None,
                     dirty: None,
-                    tag_commit_hash: None,
-                    current_commit_hash: None,
+                    last_commit_hash: None,
+                    bumped_commit_hash: None,
                     custom: {},
                 ),
             )

@@ -1,5 +1,6 @@
 mod parser;
 mod presets;
+mod validation;
 
 pub use parser::{ComponentConfig, SchemaConfig, parse_ron_schema};
 pub use presets::{
@@ -7,6 +8,7 @@ pub use presets::{
     zerv_calver_tier_2, zerv_calver_tier_3, zerv_standard_tier_1, zerv_standard_tier_2,
     zerv_standard_tier_3,
 };
+pub use validation::{component_validation, structure_validation};
 
 use crate::error::ZervError;
 use crate::version::zerv::{Zerv, ZervVars};
@@ -64,7 +66,7 @@ mod tests {
         ZervVars {
             major: Some(1), minor: Some(2), patch: Some(3),
             dirty: Some(false), distance: Some(5), post: Some(5),
-            current_branch: Some("main".to_string()), current_commit_hash: Some("abc123".to_string()),
+            bumped_branch: Some("main".to_string()), bumped_commit_hash: Some("abc123".to_string()),
             ..Default::default()
         },
         zerv_standard_tier_2()
@@ -74,7 +76,7 @@ mod tests {
         ZervVars {
             major: Some(1), minor: Some(2), patch: Some(3),
             dirty: Some(true), dev: Some(1234567890),
-            current_branch: Some("feature".to_string()), current_commit_hash: Some("def456".to_string()),
+            bumped_branch: Some("feature".to_string()), bumped_commit_hash: Some("def456".to_string()),
             ..Default::default()
         },
         zerv_standard_tier_3()
@@ -83,7 +85,7 @@ mod tests {
         "zerv-calver",
         ZervVars {
             patch: Some(1), dirty: Some(false), distance: Some(0),
-            tag_timestamp: Some(1710547200),
+            last_timestamp: Some(1710547200),
             ..Default::default()
         },
         zerv_calver_tier_1()
@@ -92,8 +94,8 @@ mod tests {
         "zerv-calver",
         ZervVars {
             patch: Some(1), dirty: Some(false), distance: Some(5), post: Some(5),
-            current_branch: Some("main".to_string()), current_commit_hash: Some("abc123".to_string()),
-            tag_timestamp: Some(1710547200),
+            bumped_branch: Some("main".to_string()), bumped_commit_hash: Some("abc123".to_string()),
+            last_timestamp: Some(1710547200),
             ..Default::default()
         },
         zerv_calver_tier_2()
@@ -102,8 +104,8 @@ mod tests {
         "zerv-calver",
         ZervVars {
             patch: Some(1), dirty: Some(true), dev: Some(1234567890),
-            current_branch: Some("feature".to_string()), current_commit_hash: Some("def456".to_string()),
-            tag_timestamp: Some(1710547200),
+            bumped_branch: Some("feature".to_string()), bumped_commit_hash: Some("def456".to_string()),
+            last_timestamp: Some(1710547200),
             ..Default::default()
         },
         zerv_calver_tier_3()

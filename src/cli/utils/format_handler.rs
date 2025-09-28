@@ -1,6 +1,6 @@
-use crate::constants::fields;
 use crate::error::ZervError;
-use crate::version::{Component, PEP440, SemVer, VersionObject, Zerv};
+use crate::schema::structure_validation;
+use crate::version::{PEP440, SemVer, VersionObject, Zerv};
 use std::io::Read;
 use std::str::FromStr;
 
@@ -102,80 +102,7 @@ impl InputFormatHandler {
 
     /// Validate the structure of a parsed Zerv object
     fn validate_zerv_structure(zerv: &Zerv) -> Result<(), ZervError> {
-        // Check that schema has at least one component in core
-        if zerv.schema.core.is_empty()
-            && zerv.schema.extra_core.is_empty()
-            && zerv.schema.build.is_empty()
-        {
-            return Err(ZervError::StdinError(
-                "Invalid Zerv RON: schema must contain at least one component in core, extra_core, or build sections".to_string()
-            ));
-        }
-
-        // Validate that VarField references in schema have corresponding values in vars (where applicable)
-        let mut missing_vars = Vec::new();
-        let mut check_var_field = |component: &Component| {
-            if let Component::VarField(field_name) = component {
-                match field_name.as_str() {
-                    fields::MAJOR if zerv.vars.major.is_none() => missing_vars.push(fields::MAJOR),
-                    fields::MINOR if zerv.vars.minor.is_none() => missing_vars.push(fields::MINOR),
-                    fields::PATCH if zerv.vars.patch.is_none() => missing_vars.push(fields::PATCH),
-                    fields::EPOCH if zerv.vars.epoch.is_none() => missing_vars.push(fields::EPOCH),
-                    fields::PRE_RELEASE if zerv.vars.pre_release.is_none() => {
-                        missing_vars.push(fields::PRE_RELEASE)
-                    }
-                    fields::POST if zerv.vars.post.is_none() => missing_vars.push(fields::POST),
-                    fields::DEV if zerv.vars.dev.is_none() => missing_vars.push(fields::DEV),
-                    fields::DISTANCE if zerv.vars.distance.is_none() => {
-                        missing_vars.push(fields::DISTANCE)
-                    }
-                    fields::DIRTY if zerv.vars.dirty.is_none() => missing_vars.push(fields::DIRTY),
-                    fields::CURRENT_BRANCH if zerv.vars.current_branch.is_none() => {
-                        missing_vars.push(fields::CURRENT_BRANCH)
-                    }
-                    fields::CURRENT_COMMIT_HASH if zerv.vars.current_commit_hash.is_none() => {
-                        missing_vars.push(fields::CURRENT_COMMIT_HASH)
-                    }
-                    fields::TAG_COMMIT_HASH if zerv.vars.tag_commit_hash.is_none() => {
-                        missing_vars.push(fields::TAG_COMMIT_HASH)
-                    }
-                    fields::TAG_TIMESTAMP if zerv.vars.tag_timestamp.is_none() => {
-                        missing_vars.push(fields::TAG_TIMESTAMP)
-                    }
-                    fields::TAG_BRANCH if zerv.vars.tag_branch.is_none() => {
-                        missing_vars.push(fields::TAG_BRANCH)
-                    }
-                    _ => {} // Custom variables or unknown fields are allowed
-                }
-            }
-        };
-
-        // Check all schema components for missing variables
-        for component in &zerv.schema.core {
-            check_var_field(component);
-        }
-        for component in &zerv.schema.extra_core {
-            check_var_field(component);
-        }
-        for component in &zerv.schema.build {
-            check_var_field(component);
-        }
-
-        // Only warn about missing core version components (major, minor, patch)
-        let core_missing: Vec<&str> = missing_vars
-            .iter()
-            .filter(|&&var| matches!(var, "major" | "minor" | "patch"))
-            .copied()
-            .collect();
-
-        if !core_missing.is_empty() {
-            return Err(ZervError::StdinError(format!(
-                "Invalid Zerv RON: schema references missing core variables: {}. Ensure these fields are present in the vars section.",
-                core_missing.join(", ")
-            )));
-        }
-
-        Ok(())
+        structure_validation::validate_zerv_structure(zerv)
     }
 
     /// Create detailed RON parsing error with helpful suggestions
