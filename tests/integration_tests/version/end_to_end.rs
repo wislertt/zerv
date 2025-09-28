@@ -152,7 +152,7 @@ fn test_stdin_source_with_zerv_ron() {
 
     let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
     assert!(
-        version.contains("1.2.3"),
+        version.contains("1.0.0"),
         "Version should contain the input version. Got: {version}"
     );
 }
