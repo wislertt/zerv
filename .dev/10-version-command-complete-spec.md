@@ -1187,7 +1187,7 @@ The codebase uses **extensive bare strings** throughout (280+ instances found), 
 // Field names - 280+ instances
 Component::VarField("major".to_string())
 Component::VarField("minor".to_string())
-Component::VarField("patch".to_string())
+Component::VarField(ron_fields::PATCH.to_string())
 Component::VarField("distance".to_string())
 Component::VarField("dirty".to_string())
 Component::VarField("current_branch".to_string())

@@ -160,7 +160,7 @@ mod tests {
                 core: vec![
                     Component::VarTimestamp("YY".to_string()),
                     Component::VarTimestamp("MM".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core: vec![],
                 build: vec![],
@@ -179,7 +179,7 @@ mod tests {
                 core: vec![
                     Component::VarTimestamp("YYYY".to_string()),
                     Component::VarTimestamp("MM".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core: vec![],
                 build: vec![],
@@ -196,9 +196,9 @@ mod tests {
         Zerv {
             schema: ZervSchema {
                 core: vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core: vec![],
                 build: vec![

@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use crate::constants::ron_fields;
     use crate::schema::create_zerv_version;
     use crate::version::zerv::{Component, ZervVars};
 
@@ -26,15 +27,15 @@ mod tests {
         assert_eq!(zerv.schema.core.len(), 3);
         assert_eq!(
             zerv.schema.core[0],
-            Component::VarField("major".to_string())
+            Component::VarField(ron_fields::MAJOR.to_string())
         );
         assert_eq!(
             zerv.schema.core[1],
-            Component::VarField("minor".to_string())
+            Component::VarField(ron_fields::MINOR.to_string())
         );
         assert_eq!(
             zerv.schema.core[2],
-            Component::VarField("patch".to_string())
+            Component::VarField(ron_fields::PATCH.to_string())
         );
     }
 
@@ -57,15 +58,15 @@ mod tests {
         assert_eq!(parsed.schema.core.len(), 3);
         assert_eq!(
             parsed.schema.core[0],
-            Component::VarField("major".to_string())
+            Component::VarField(ron_fields::MAJOR.to_string())
         );
         assert_eq!(
             parsed.schema.core[1],
-            Component::VarField("minor".to_string())
+            Component::VarField(ron_fields::MINOR.to_string())
         );
         assert_eq!(
             parsed.schema.core[2],
-            Component::VarField("patch".to_string())
+            Component::VarField(ron_fields::PATCH.to_string())
         );
 
         // Verify vars are preserved

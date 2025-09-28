@@ -233,6 +233,7 @@ impl InputFormatHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::ron_fields;
 
     #[test]
     fn test_parse_version_string_semver() {
@@ -537,9 +538,9 @@ mod tests {
         let zerv_missing_vars = Zerv {
             schema: ZervSchema {
                 core: vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core: vec![],
                 build: vec![],

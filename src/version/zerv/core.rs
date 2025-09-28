@@ -35,6 +35,7 @@ impl Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::ron_fields;
     use crate::version::zerv::Component;
 
     mod construction {
@@ -43,7 +44,7 @@ mod tests {
         #[test]
         fn test_zerv_new() {
             let schema = ZervSchema {
-                core: vec![Component::VarField("major".to_string())],
+                core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
                 extra_core: vec![],
                 build: vec![],
             };
@@ -181,11 +182,11 @@ mod tests {
         fn test_semver_like_structure() {
             let schema = ZervSchema {
                 core: vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
-                extra_core: vec![Component::VarField("pre_release".to_string())],
+                extra_core: vec![Component::VarField(ron_fields::PRE_RELEASE.to_string())],
                 build: vec![
                     Component::String("build".to_string()),
                     Component::Integer(123),
@@ -222,7 +223,7 @@ mod tests {
                     Component::VarTimestamp("YYYY".to_string()),
                     Component::VarTimestamp("MM".to_string()),
                     Component::VarTimestamp("DD".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core: vec![],
                 build: vec![],

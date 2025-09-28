@@ -1,3 +1,4 @@
+use crate::constants::ron_fields;
 use crate::version::zerv::{Component, ZervSchema};
 
 /// Fixture for creating ZervSchema test data with RON string support
@@ -11,9 +12,9 @@ impl ZervSchemaFixture {
         Self {
             schema: ZervSchema::new(
                 vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 vec![],
                 vec![],
@@ -28,7 +29,7 @@ impl ZervSchemaFixture {
         fixture
             .schema
             .extra_core
-            .push(Component::VarField("pre_release".to_string()));
+            .push(Component::VarField(ron_fields::PRE_RELEASE.to_string()));
         fixture
     }
 
@@ -38,7 +39,7 @@ impl ZervSchemaFixture {
         fixture
             .schema
             .extra_core
-            .push(Component::VarField("epoch".to_string()));
+            .push(Component::VarField(ron_fields::EPOCH.to_string()));
         fixture
     }
 
@@ -48,7 +49,7 @@ impl ZervSchemaFixture {
         fixture
             .schema
             .extra_core
-            .push(Component::VarField("post".to_string()));
+            .push(Component::VarField(ron_fields::POST.to_string()));
         fixture
     }
 
@@ -58,7 +59,7 @@ impl ZervSchemaFixture {
         fixture
             .schema
             .extra_core
-            .push(Component::VarField("dev".to_string()));
+            .push(Component::VarField(ron_fields::DEV.to_string()));
         fixture
     }
 
@@ -81,15 +82,15 @@ impl ZervSchemaFixture {
         Self {
             schema: ZervSchema::new(
                 vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 vec![
-                    Component::VarField("epoch".to_string()),
-                    Component::VarField("pre_release".to_string()),
-                    Component::VarField("post".to_string()),
-                    Component::VarField("dev".to_string()),
+                    Component::VarField(ron_fields::EPOCH.to_string()),
+                    Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+                    Component::VarField(ron_fields::POST.to_string()),
+                    Component::VarField(ron_fields::DEV.to_string()),
                 ],
                 vec![
                     Component::String("build".to_string()),

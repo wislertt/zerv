@@ -13,15 +13,16 @@ impl fmt::Display for Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::ron_fields;
     use crate::version::zerv::{Component, ZervSchema, ZervVars};
 
     #[test]
     fn test_zerv_display() {
         let schema = ZervSchema {
             core: vec![
-                Component::VarField("major".to_string()),
+                Component::VarField(ron_fields::MAJOR.to_string()),
                 Component::String(".".to_string()),
-                Component::VarField("minor".to_string()),
+                Component::VarField(ron_fields::MINOR.to_string()),
             ],
             extra_core: vec![],
             build: vec![],
@@ -44,7 +45,7 @@ mod tests {
     #[test]
     fn test_zerv_display_roundtrip() {
         let schema = ZervSchema {
-            core: vec![Component::VarField("major".to_string())],
+            core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
             extra_core: vec![],
             build: vec![],
         };

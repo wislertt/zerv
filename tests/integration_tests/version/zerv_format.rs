@@ -1,4 +1,5 @@
 use zerv::cli::VersionArgs;
+use zerv::constants::ron_fields;
 use zerv::constants::{formats, schema_names};
 use zerv::test_utils::{GitRepoFixture, should_run_docker_tests};
 
@@ -110,17 +111,17 @@ fn test_zerv_format_output() {
     );
     assert_eq!(
         parsed.schema.core[0],
-        Component::VarField("major".to_string()),
+        Component::VarField(ron_fields::MAJOR.to_string()),
         "First schema component should be major field"
     );
     assert_eq!(
         parsed.schema.core[1],
-        Component::VarField("minor".to_string()),
+        Component::VarField(ron_fields::MINOR.to_string()),
         "Second schema component should be minor field"
     );
     assert_eq!(
         parsed.schema.core[2],
-        Component::VarField("patch".to_string()),
+        Component::VarField(ron_fields::PATCH.to_string()),
         "Third schema component should be patch field"
     );
 }
@@ -150,15 +151,15 @@ fn test_zerv_format_schema_structure() {
     assert_eq!(parsed.schema.core.len(), 3);
     assert_eq!(
         parsed.schema.core[0],
-        Component::VarField("major".to_string())
+        Component::VarField(ron_fields::MAJOR.to_string())
     );
     assert_eq!(
         parsed.schema.core[1],
-        Component::VarField("minor".to_string())
+        Component::VarField(ron_fields::MINOR.to_string())
     );
     assert_eq!(
         parsed.schema.core[2],
-        Component::VarField("patch".to_string())
+        Component::VarField(ron_fields::PATCH.to_string())
     );
 
     // Verify vars

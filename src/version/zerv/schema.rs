@@ -265,7 +265,7 @@ mod tests {
     #[test]
     fn test_validate_schema_structure_valid() {
         let schema = ZervSchema {
-            core: vec![Component::VarField("major".to_string())],
+            core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
             extra_core: vec![],
             build: vec![],
         };
@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn test_zerv_schema_new_with_validation() {
         let schema = ZervSchema::new(
-            vec![Component::VarField("major".to_string())],
+            vec![Component::VarField(ron_fields::MAJOR.to_string())],
             vec![],
             vec![],
         )
@@ -309,9 +309,9 @@ mod tests {
     #[rstest]
     #[case(
         vec![
-            Component::VarField("major".to_string()),
+            Component::VarField(ron_fields::MAJOR.to_string()),
             Component::String(".".to_string()),
-            Component::VarField("minor".to_string()),
+            Component::VarField(ron_fields::MINOR.to_string()),
         ],
         vec![],
         vec![],
@@ -320,7 +320,7 @@ mod tests {
     #[case(
         vec![],
         vec![
-            Component::VarField("pre_release".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
             Component::String("-".to_string()),
             Component::Integer(42),
         ],
@@ -331,16 +331,16 @@ mod tests {
         vec![],
         vec![],
         vec![
-            Component::VarField("distance".to_string()),
+            Component::VarField(ron_fields::DISTANCE.to_string()),
             Component::String("+".to_string()),
             Component::VarTimestamp("compact_date".to_string()),
         ],
         0, 0, 3
     )]
     #[case(
-        vec![Component::VarField("major".to_string())],
-        vec![Component::VarField("minor".to_string())],
-        vec![Component::VarField("patch".to_string())],
+        vec![Component::VarField(ron_fields::MAJOR.to_string())],
+        vec![Component::VarField(ron_fields::MINOR.to_string())],
+        vec![Component::VarField(ron_fields::PATCH.to_string())],
         1, 1, 1
     )]
     fn test_zerv_schema_new_valid_sections(
@@ -361,7 +361,7 @@ mod tests {
     fn test_zerv_schema_new_valid_all_component_types() {
         let schema = ZervSchema::new(
             vec![
-                Component::VarField("major".to_string()),
+                Component::VarField(ron_fields::MAJOR.to_string()),
                 Component::String(".".to_string()),
                 Component::Integer(1),
                 Component::VarTimestamp("YYYY".to_string()),
@@ -381,7 +381,7 @@ mod tests {
     fn test_zerv_schema_new_valid_custom_fields(#[case] field_name: &str) {
         let schema = ZervSchema::new(
             vec![
-                Component::VarField("major".to_string()),
+                Component::VarField(ron_fields::MAJOR.to_string()),
                 Component::VarField(field_name.to_string()),
             ],
             vec![],
@@ -515,7 +515,7 @@ mod tests {
     fn test_zerv_schema_new_error_mixed_valid_invalid() {
         let result = ZervSchema::new(
             vec![
-                Component::VarField("major".to_string()),
+                Component::VarField(ron_fields::MAJOR.to_string()),
                 Component::VarField("invalid_field".to_string()),
             ],
             vec![],

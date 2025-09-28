@@ -1,4 +1,5 @@
 use super::{BuildMetadata, PreReleaseIdentifier, SemVer};
+use crate::constants::ron_fields;
 use crate::version::zerv::{
     Component, PreReleaseVar, Zerv, ZervSchema, ZervVars, normalize_pre_release_label,
 };
@@ -42,18 +43,19 @@ impl PreReleaseProcessor {
                 "epoch" if self.epoch.is_none() => {
                     self.epoch = Some(*num);
                     self.extra_core
-                        .push(Component::VarField("epoch".to_string()));
+                        .push(Component::VarField(ron_fields::EPOCH.to_string()));
                     true
                 }
                 "dev" if self.dev.is_none() => {
                     self.dev = Some(*num);
-                    self.extra_core.push(Component::VarField("dev".to_string()));
+                    self.extra_core
+                        .push(Component::VarField(ron_fields::DEV.to_string()));
                     true
                 }
                 "post" if self.post.is_none() => {
                     self.post = Some(*num);
                     self.extra_core
-                        .push(Component::VarField("post".to_string()));
+                        .push(Component::VarField(ron_fields::POST.to_string()));
                     true
                 }
                 _ => self.try_pre_release_pattern(label, Some(*num)),
@@ -72,7 +74,7 @@ impl PreReleaseProcessor {
                 number,
             });
             self.extra_core
-                .push(Component::VarField("pre_release".to_string()));
+                .push(Component::VarField(ron_fields::PRE_RELEASE.to_string()));
             return true;
         }
         false
@@ -135,9 +137,9 @@ impl From<SemVer> for Zerv {
         Zerv {
             schema: ZervSchema {
                 core: vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core,
                 build,

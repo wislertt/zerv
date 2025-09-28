@@ -70,6 +70,7 @@ impl OutputFormatter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::ron_fields;
     use crate::version::{ZervSchema, ZervVars};
     use rstest::rstest;
 
@@ -79,9 +80,9 @@ mod tests {
         Zerv {
             schema: ZervSchema {
                 core: vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core: vec![],
                 build: vec![],

@@ -1,4 +1,5 @@
 use super::{LocalSegment, PEP440};
+use crate::constants::ron_fields;
 use crate::version::zerv::{Component, PreReleaseVar, Zerv, ZervSchema, ZervVars};
 
 impl From<PEP440> for Zerv {
@@ -8,12 +9,12 @@ impl From<PEP440> for Zerv {
 
         // Add epoch to extra_core if non-zero
         if pep440.epoch > 0 {
-            extra_core.push(Component::VarField("epoch".to_string()));
+            extra_core.push(Component::VarField(ron_fields::EPOCH.to_string()));
         }
 
         // Add pre-release to extra_core if present
         let pre_release = if let (Some(label), number) = (pep440.pre_label, pep440.pre_number) {
-            extra_core.push(Component::VarField("pre_release".to_string()));
+            extra_core.push(Component::VarField(ron_fields::PRE_RELEASE.to_string()));
             Some(PreReleaseVar {
                 label,
                 number: number.map(|n| n as u64),
@@ -24,7 +25,7 @@ impl From<PEP440> for Zerv {
 
         // Add post to extra_core if present
         let post = if pep440.post_label.is_some() {
-            extra_core.push(Component::VarField("post".to_string()));
+            extra_core.push(Component::VarField(ron_fields::POST.to_string()));
             pep440.post_number.map(|n| n as u64)
         } else {
             None
@@ -32,7 +33,7 @@ impl From<PEP440> for Zerv {
 
         // Add dev to extra_core if present
         let dev = if pep440.dev_label.is_some() {
-            extra_core.push(Component::VarField("dev".to_string()));
+            extra_core.push(Component::VarField(ron_fields::DEV.to_string()));
             pep440.dev_number.map(|n| n as u64)
         } else {
             None
@@ -60,9 +61,9 @@ impl From<PEP440> for Zerv {
         Zerv {
             schema: ZervSchema {
                 core: vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core,
                 build,
