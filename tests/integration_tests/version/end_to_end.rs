@@ -16,11 +16,11 @@ struct TestOverrides<'a> {
 
 #[rstest]
 #[case::tag_version_override("v1.0.0", TestOverrides { tag_version: Some("v2.0.0"), distance: None, dirty: None, clean: false, branch: None, commit_hash: None }, "2.0.0")]
-#[case::distance_override("v1.0.0", TestOverrides { tag_version: None, distance: Some(5), dirty: None, clean: false, branch: None, commit_hash: None }, "1.0.0+main.")]
+#[case::distance_override("v1.0.0", TestOverrides { tag_version: None, distance: Some(5), dirty: None, clean: false, branch: None, commit_hash: None }, "1.0.0-post.5+main.")]
 #[case::dirty_override_true("v1.0.0", TestOverrides { tag_version: None, distance: None, dirty: Some(true), clean: false, branch: None, commit_hash: None }, "1.0.0+main.")]
 #[case::dirty_override_false("v1.0.0", TestOverrides { tag_version: None, distance: None, dirty: Some(false), clean: false, branch: None, commit_hash: None }, "1.0.0")]
 #[case::clean_flag("v1.0.0", TestOverrides { tag_version: None, distance: None, dirty: None, clean: true, branch: None, commit_hash: None }, "1.0.0")]
-#[case::branch_override("v1.0.0", TestOverrides { tag_version: None, distance: Some(2), dirty: None, clean: false, branch: Some("feature"), commit_hash: None }, "1.0.0+feature.")]
+#[case::branch_override("v1.0.0", TestOverrides { tag_version: None, distance: Some(2), dirty: None, clean: false, branch: Some("feature"), commit_hash: None }, "1.0.0-post.2+feature.")]
 #[case::commit_hash_override("v1.0.0", TestOverrides { tag_version: None, distance: None, dirty: None, clean: false, branch: None, commit_hash: Some("abc123") }, "1.0.0")]
 #[case::multiple_overrides("v1.0.0", TestOverrides { tag_version: Some("v3.0.0"), distance: Some(1), dirty: Some(false), clean: false, branch: Some("dev"), commit_hash: Some("def456") }, "3.0.0+dev.")]
 fn test_git_source_with_overrides(

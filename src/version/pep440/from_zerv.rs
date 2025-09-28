@@ -1,4 +1,5 @@
 use super::{LocalSegment, PEP440};
+use crate::constants::ron_fields;
 use crate::version::pep440::core::{DevLabel, PostLabel};
 use crate::version::zerv::core::Zerv;
 use crate::version::zerv::schema::Component;
@@ -64,17 +65,17 @@ fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
 
 fn add_var_field_to_local(field: &str, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
     match field {
-        crate::constants::template_vars::BUMPED_BRANCH => {
+        ron_fields::BRANCH => {
             if let Some(branch) = &zerv.vars.bumped_branch {
                 local_overflow.push(LocalSegment::String(branch.clone()));
             }
         }
-        crate::constants::ron_fields::DISTANCE => {
+        ron_fields::DISTANCE => {
             if let Some(distance) = zerv.vars.distance {
                 local_overflow.push(LocalSegment::Integer(distance as u32));
             }
         }
-        crate::constants::template_vars::BUMPED_COMMIT_HASH => {
+        ron_fields::COMMIT_HASH_SHORT => {
             if let Some(hash) = &zerv.vars.bumped_commit_hash {
                 local_overflow.push(LocalSegment::String(hash.clone()));
             }
@@ -151,6 +152,9 @@ fn process_build_components(
 
 impl From<Zerv> for PEP440 {
     fn from(zerv: Zerv) -> Self {
+        if let Err(e) = zerv.schema.validate() {
+            panic!("Invalid schema in PEP440::from(Zerv): {e}");
+        }
         let core_values = extract_core_values(&zerv);
         let release = extract_release_values(&core_values);
         let mut components = process_extra_core_components(&zerv);

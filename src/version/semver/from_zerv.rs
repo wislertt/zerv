@@ -1,4 +1,5 @@
 use super::{BuildMetadata, PreReleaseIdentifier, SemVer};
+use crate::constants::ron_fields;
 use crate::version::semver::utils::pre_release_label_to_semver_string;
 use crate::version::zerv::{Component, Zerv, resolve_timestamp, utils::extract_core_values};
 
@@ -96,15 +97,13 @@ fn build_metadata_from_components(
                     .and_then(|result| result.parse::<u64>().ok())
                     .map(BuildMetadata::Integer),
                 Component::VarField(field) => match field.as_str() {
-                    crate::constants::template_vars::BUMPED_BRANCH => zerv
+                    ron_fields::BRANCH => zerv
                         .vars
                         .bumped_branch
                         .as_ref()
                         .map(|s| BuildMetadata::String(s.clone())),
-                    crate::constants::ron_fields::DISTANCE => {
-                        zerv.vars.distance.map(BuildMetadata::Integer)
-                    }
-                    crate::constants::template_vars::BUMPED_COMMIT_HASH => zerv
+                    ron_fields::DISTANCE => zerv.vars.distance.map(BuildMetadata::Integer),
+                    ron_fields::COMMIT_HASH_SHORT => zerv
                         .vars
                         .bumped_commit_hash
                         .as_ref()
@@ -124,6 +123,9 @@ fn build_metadata_from_components(
 
 impl From<Zerv> for SemVer {
     fn from(zerv: Zerv) -> Self {
+        if let Err(e) = zerv.schema.validate() {
+            panic!("Invalid schema in SemVer::from(Zerv): {e}");
+        }
         let core_values = extract_core_values(&zerv);
         let (major, minor, patch) = extract_version_numbers(&core_values);
         let pre_release = build_pre_release_identifiers(&zerv, &core_values);

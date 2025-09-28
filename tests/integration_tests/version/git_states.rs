@@ -25,10 +25,10 @@ fn test_version_command_with_distance() {
         GitRepoFixture::with_distance("v1.0.0", 3).expect("Failed to create repo with distance");
     let output = VersionCommandUtils::run_version_command(&fixture);
 
-    // Tier 2: Distance, clean → major.minor.patch+branch.<commit>
+    // Tier 2: Distance, clean → major.minor.patch.post<distance>+branch.<commit>
     VersionTestUtils::assert_version_pattern(
         &output,
-        "1.0.0+main.<commit>",
+        "1.0.0-post.3+main.<commit>",
         "tagged_with_distance",
     );
     VersionTestUtils::assert_version_components(&output, "1.0.0", "tagged_with_distance");

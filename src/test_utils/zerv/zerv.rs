@@ -1,3 +1,4 @@
+use crate::constants::ron_fields;
 use crate::version::zerv::{Component, PreReleaseLabel, PreReleaseVar, Zerv, ZervSchema, ZervVars};
 
 use super::{ZervSchemaFixture, ZervVarsFixture};
@@ -237,7 +238,7 @@ impl ZervFixture {
         extra: Vec<Component>,
     ) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
-        zerv.schema.extra_core = vec![Component::VarField("pre_release".to_string())];
+        zerv.schema.extra_core = vec![Component::VarField(ron_fields::PRE_RELEASE.to_string())];
         zerv.schema.extra_core.extend(extra);
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
         zerv
@@ -303,7 +304,7 @@ impl ZervFixture {
         let mut zerv = Self::zerv_version(1, 2, 3);
         zerv.schema
             .extra_core
-            .push(Component::VarField("epoch".to_string()));
+            .push(Component::VarField(ron_fields::EPOCH.to_string()));
         zerv.vars.epoch = Some(2);
         zerv
     }
@@ -312,7 +313,7 @@ impl ZervFixture {
         let mut zerv = Self::zerv_version(1, 2, 3);
         zerv.schema
             .extra_core
-            .push(Component::VarField("pre_release".to_string()));
+            .push(Component::VarField(ron_fields::PRE_RELEASE.to_string()));
         zerv.vars.pre_release = Some(PreReleaseVar {
             label: PreReleaseLabel::Alpha,
             number: Some(1),
@@ -324,7 +325,7 @@ impl ZervFixture {
         let mut zerv = Self::zerv_version(1, 2, 3);
         zerv.schema
             .extra_core
-            .push(Component::VarField("post".to_string()));
+            .push(Component::VarField(ron_fields::POST.to_string()));
         zerv.vars.post = Some(1);
         zerv
     }
@@ -333,7 +334,7 @@ impl ZervFixture {
         let mut zerv = Self::zerv_version(1, 2, 3);
         zerv.schema
             .extra_core
-            .push(Component::VarField("dev".to_string()));
+            .push(Component::VarField(ron_fields::DEV.to_string()));
         zerv.vars.dev = Some(1);
         zerv
     }
@@ -351,10 +352,10 @@ impl ZervFixture {
     pub fn pep_zerv_complex_2_1_2_3_alpha_1_post_1_dev_1_local_1() -> Zerv {
         let mut zerv = Self::zerv_version(1, 2, 3);
         zerv.schema.extra_core = vec![
-            Component::VarField("epoch".to_string()),
-            Component::VarField("pre_release".to_string()),
-            Component::VarField("post".to_string()),
-            Component::VarField("dev".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
         ];
         zerv.schema.build = vec![
             Component::String("local".to_string()),
@@ -416,7 +417,7 @@ impl ZervFixture {
             ],
         );
         zerv.schema.extra_core = vec![
-            Component::VarField("pre_release".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
             Component::String("lowercase".to_string()),
             Component::Integer(4),
             Component::String("UPPERCASE".to_string()),
@@ -430,7 +431,7 @@ impl ZervFixture {
         zerv.schema.extra_core = vec![
             Component::String("foo".to_string()),
             Component::String("bar".to_string()),
-            Component::VarField("pre_release".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
             Component::String("baz".to_string()),
         ];
         zerv
@@ -472,7 +473,7 @@ impl ZervFixture {
         let mut zerv = Self::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, None);
         zerv.schema.extra_core = vec![
             Component::String("test".to_string()),
-            Component::VarField("pre_release".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
             Component::String("beta".to_string()),
             Component::String("rc".to_string()),
             Component::Integer(1),
@@ -485,7 +486,7 @@ impl ZervFixture {
         zerv.schema.extra_core = vec![
             Component::String("foo".to_string()),
             Component::Integer(1),
-            Component::VarField("pre_release".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
         ];
         zerv
     }
@@ -495,7 +496,7 @@ impl ZervFixture {
         zerv.schema.extra_core = vec![
             Component::String("bar".to_string()),
             Component::Integer(2),
-            Component::VarField("pre_release".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
         ];
         zerv
     }
@@ -540,8 +541,8 @@ impl ZervFixture {
     ) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("epoch".to_string()),
-            Component::VarField("pre_release".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
@@ -551,8 +552,8 @@ impl ZervFixture {
     pub fn zerv_1_0_0_with_post_and_dev(post: u64, dev: u64) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("post".to_string()),
-            Component::VarField("dev".to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
         ];
         zerv.vars.post = Some(post);
         zerv.vars.dev = Some(dev);
@@ -562,8 +563,8 @@ impl ZervFixture {
     pub fn zerv_1_0_0_with_dev_and_post(dev: u64, post: u64) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("dev".to_string()),
-            Component::VarField("post".to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
         ];
         zerv.vars.dev = Some(dev);
         zerv.vars.post = Some(post);
@@ -577,8 +578,8 @@ impl ZervFixture {
     ) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("pre_release".to_string()),
-            Component::VarField("post".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
         ];
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
         zerv.vars.post = Some(post);
@@ -592,8 +593,8 @@ impl ZervFixture {
     ) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("pre_release".to_string()),
-            Component::VarField("dev".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
         ];
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
         zerv.vars.dev = Some(dev);
@@ -608,9 +609,9 @@ impl ZervFixture {
     ) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("pre_release".to_string()),
-            Component::VarField("post".to_string()),
-            Component::VarField("dev".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
         ];
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
         zerv.vars.post = Some(post);
@@ -626,9 +627,9 @@ impl ZervFixture {
     ) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("pre_release".to_string()),
-            Component::VarField("dev".to_string()),
-            Component::VarField("post".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
         ];
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
         zerv.vars.dev = Some(dev);
@@ -639,9 +640,9 @@ impl ZervFixture {
     pub fn zerv_1_0_0_with_epoch_post_and_dev(epoch: u64, post: u64, dev: u64) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("epoch".to_string()),
-            Component::VarField("post".to_string()),
-            Component::VarField("dev".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.post = Some(post);
@@ -652,9 +653,9 @@ impl ZervFixture {
     pub fn zerv_1_0_0_with_epoch_dev_and_post(epoch: u64, dev: u64, post: u64) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("epoch".to_string()),
-            Component::VarField("dev".to_string()),
-            Component::VarField("post".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.dev = Some(dev);
@@ -671,10 +672,10 @@ impl ZervFixture {
     ) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("epoch".to_string()),
-            Component::VarField("pre_release".to_string()),
-            Component::VarField("post".to_string()),
-            Component::VarField("dev".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
@@ -692,10 +693,10 @@ impl ZervFixture {
     ) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("epoch".to_string()),
-            Component::VarField("pre_release".to_string()),
-            Component::VarField("dev".to_string()),
-            Component::VarField("post".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
@@ -748,9 +749,9 @@ impl ZervFixture {
     pub fn zerv_1_0_0_with_foo_epoch_and_alpha(epoch: u64, alpha_num: u64) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("epoch".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
             Component::String("foo".to_string()),
-            Component::VarField("pre_release".to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.pre_release = Some(PreReleaseVar {
@@ -763,9 +764,9 @@ impl ZervFixture {
     pub fn zerv_1_0_0_with_epoch_foo_and_post(epoch: u64, post: u64) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("epoch".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
             Component::String("foo".to_string()),
-            Component::VarField("post".to_string()),
+            Component::VarField(ron_fields::POST.to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.post = Some(post);
@@ -775,9 +776,9 @@ impl ZervFixture {
     pub fn zerv_1_0_0_with_bar_dev_and_epoch(dev: u64, epoch: u64) -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
-            Component::VarField("epoch".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
             Component::String("bar".to_string()),
-            Component::VarField("dev".to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
         ];
         zerv.vars.dev = Some(dev);
         zerv.vars.epoch = Some(epoch);
@@ -789,8 +790,8 @@ impl ZervFixture {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
             Component::String("foo".to_string()),
-            Component::VarField("epoch".to_string()),
-            Component::VarField("pre_release".to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
+            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.pre_release = Some(PreReleaseVar {
@@ -804,8 +805,8 @@ impl ZervFixture {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
             Component::String("bar".to_string()),
-            Component::VarField("dev".to_string()),
-            Component::VarField("epoch".to_string()),
+            Component::VarField(ron_fields::DEV.to_string()),
+            Component::VarField(ron_fields::EPOCH.to_string()),
         ];
         zerv.vars.dev = Some(dev);
         zerv.vars.epoch = Some(epoch);
@@ -959,14 +960,16 @@ impl ZervFixture {
 
     pub fn pep_zerv_1_0_0_with_distance() -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
-        zerv.schema.build = vec![Component::VarField("distance".to_string())];
+        zerv.schema.build = vec![Component::VarField(ron_fields::DISTANCE.to_string())];
         zerv.vars.distance = Some(5);
         zerv
     }
 
     pub fn pep_zerv_1_0_0_with_commit_hash() -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
-        zerv.schema.build = vec![Component::VarField("bumped_commit_hash".to_string())];
+        zerv.schema.build = vec![Component::VarField(
+            ron_fields::COMMIT_HASH_SHORT.to_string(),
+        )];
         zerv.vars.bumped_commit_hash = Some("abc123".to_string());
         zerv
     }
@@ -974,11 +977,11 @@ impl ZervFixture {
     pub fn pep_zerv_1_0_0_with_branch_distance_hash() -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.build = vec![
-            Component::VarField("bumped_branch".to_string()),
-            Component::VarField("distance".to_string()),
-            Component::VarField("bumped_commit_hash".to_string()),
+            Component::VarField(ron_fields::BRANCH.to_string()),
+            Component::VarField(ron_fields::DISTANCE.to_string()),
+            Component::VarField(ron_fields::COMMIT_HASH_SHORT.to_string()),
         ];
-        zerv.vars.bumped_branch = Some("dev".to_string());
+        zerv.vars.bumped_branch = Some(ron_fields::DEV.to_string());
         zerv.vars.distance = Some(3);
         zerv.vars.bumped_commit_hash = Some("def456".to_string());
         zerv
@@ -991,21 +994,23 @@ impl ZervFixture {
     // SemVer VCS-related functions
     pub fn sem_zerv_1_0_0_with_branch() -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
-        zerv.schema.build = vec![Component::VarField("bumped_branch".to_string())];
-        zerv.vars.bumped_branch = Some("dev".to_string());
+        zerv.schema.build = vec![Component::VarField(ron_fields::BRANCH.to_string())];
+        zerv.vars.bumped_branch = Some(ron_fields::DEV.to_string());
         zerv
     }
 
     pub fn sem_zerv_1_0_0_with_distance() -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
-        zerv.schema.build = vec![Component::VarField("distance".to_string())];
+        zerv.schema.build = vec![Component::VarField(ron_fields::DISTANCE.to_string())];
         zerv.vars.distance = Some(5);
         zerv
     }
 
     pub fn sem_zerv_1_0_0_with_commit_hash() -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
-        zerv.schema.build = vec![Component::VarField("bumped_commit_hash".to_string())];
+        zerv.schema.build = vec![Component::VarField(
+            ron_fields::COMMIT_HASH_SHORT.to_string(),
+        )];
         zerv.vars.bumped_commit_hash = Some("abc123".to_string());
         zerv
     }
@@ -1013,11 +1018,11 @@ impl ZervFixture {
     pub fn sem_zerv_1_0_0_with_branch_distance_hash() -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.build = vec![
-            Component::VarField("bumped_branch".to_string()),
-            Component::VarField("distance".to_string()),
-            Component::VarField("bumped_commit_hash".to_string()),
+            Component::VarField(ron_fields::BRANCH.to_string()),
+            Component::VarField(ron_fields::DISTANCE.to_string()),
+            Component::VarField(ron_fields::COMMIT_HASH_SHORT.to_string()),
         ];
-        zerv.vars.bumped_branch = Some("dev".to_string());
+        zerv.vars.bumped_branch = Some(ron_fields::DEV.to_string());
         zerv.vars.distance = Some(3);
         zerv.vars.bumped_commit_hash = Some("def456".to_string());
         zerv
@@ -1026,9 +1031,9 @@ impl ZervFixture {
     pub fn sem_zerv_1_0_0_with_none_varfields() -> Zerv {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.build = vec![
-            Component::VarField("bumped_branch".to_string()),
-            Component::VarField("distance".to_string()),
-            Component::VarField("bumped_commit_hash".to_string()),
+            Component::VarField(ron_fields::BRANCH.to_string()),
+            Component::VarField(ron_fields::DISTANCE.to_string()),
+            Component::VarField(ron_fields::COMMIT_HASH_SHORT.to_string()),
         ];
         // All vars are None by default
         zerv
@@ -1069,7 +1074,7 @@ impl ZervFixture {
             .zerv
             .schema
             .extra_core
-            .push(Component::VarField("pre_release".to_string()));
+            .push(Component::VarField(ron_fields::PRE_RELEASE.to_string()));
         fixture.zerv.vars.pre_release = Some(PreReleaseVar { label, number });
         fixture
     }
@@ -1081,7 +1086,7 @@ impl ZervFixture {
             .zerv
             .schema
             .extra_core
-            .push(Component::VarField("dev".to_string()));
+            .push(Component::VarField(ron_fields::DEV.to_string()));
         fixture.zerv.vars.dev = Some(dev);
         fixture
     }

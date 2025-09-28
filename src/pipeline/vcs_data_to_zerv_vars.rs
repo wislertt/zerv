@@ -23,6 +23,11 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
     vars.bumped_commit_hash = Some(vcs_data.commit_hash_short);
     vars.last_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
 
+    // Map distance to post field for tier 2 schema (distance > 0, clean)
+    if vcs_data.distance > 0 && !vcs_data.is_dirty {
+        vars.post = Some(vcs_data.distance as u64);
+    }
+
     Ok(vars)
 }
 

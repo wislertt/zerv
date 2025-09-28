@@ -378,15 +378,27 @@ mod tests {
 
     #[rstest]
     #[case("tagged_clean", "v1.0.0", 0, None, "1.0.0")]
-    #[case("tagged_with_distance_1", "v1.0.0", 1, None, "1.0.0+main.<commit>")]
-    #[case("tagged_with_distance_3", "v2.1.0", 3, None, "2.1.0+main.<commit>")]
+    #[case(
+        "tagged_with_distance_1",
+        "v1.0.0",
+        1,
+        None,
+        "1.0.0-post.1+main.<commit>"
+    )]
+    #[case(
+        "tagged_with_distance_3",
+        "v2.1.0",
+        3,
+        None,
+        "2.1.0-post.3+main.<commit>"
+    )]
     #[case("tagged_on_branch", "v1.5.0", 0, Some("feature"), "1.5.0")]
     #[case(
         "tagged_with_distance_on_branch",
         "v2.0.0",
         2,
         Some("dev"),
-        "2.0.0+dev.<commit>"
+        "2.0.0-post.2+dev.<commit>"
     )]
     fn test_run_version_pipeline_with_docker_git(
         #[case] scenario: &str,
