@@ -627,8 +627,8 @@ impl ZervFixture {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
             Component::VarField("pre_release".to_string()),
-            Component::VarField("post".to_string()),
             Component::VarField("dev".to_string()),
+            Component::VarField("post".to_string()),
         ];
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
         zerv.vars.dev = Some(dev);
@@ -653,8 +653,8 @@ impl ZervFixture {
         let mut zerv = Self::zerv_version(1, 0, 0);
         zerv.schema.extra_core = vec![
             Component::VarField("epoch".to_string()),
-            Component::VarField("post".to_string()),
             Component::VarField("dev".to_string()),
+            Component::VarField("post".to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.dev = Some(dev);
@@ -694,8 +694,8 @@ impl ZervFixture {
         zerv.schema.extra_core = vec![
             Component::VarField("epoch".to_string()),
             Component::VarField("pre_release".to_string()),
-            Component::VarField("post".to_string()),
             Component::VarField("dev".to_string()),
+            Component::VarField("post".to_string()),
         ];
         zerv.vars.epoch = Some(epoch);
         zerv.vars.pre_release = Some(PreReleaseVar { label, number });
@@ -890,7 +890,7 @@ impl ZervFixture {
     }
 
     pub fn pep_zerv_1_0_0_beta_2_post_3_dev_1() -> Zerv {
-        Self::zerv_1_0_0_with_pre_release_dev_and_post(PreReleaseLabel::Beta, Some(2), 1, 3)
+        Self::zerv_1_0_0_with_pre_release_post_and_dev(PreReleaseLabel::Beta, Some(2), 3, 1)
     }
 
     pub fn pep_zerv_1_0_0_rc_1_post_1_dev_1() -> Zerv {
@@ -902,7 +902,7 @@ impl ZervFixture {
     }
 
     pub fn pep_zerv_1_0_0_epoch_1_post_1_dev_2() -> Zerv {
-        Self::zerv_1_0_0_with_epoch_dev_and_post(1, 2, 1)
+        Self::zerv_1_0_0_with_epoch_post_and_dev(1, 1, 2)
     }
 
     pub fn pep_zerv_1_0_0_epoch_3_alpha_1_post_2_dev_1() -> Zerv {
@@ -910,7 +910,7 @@ impl ZervFixture {
     }
 
     pub fn pep_zerv_1_0_0_epoch_1_beta_2_post_1_dev_3() -> Zerv {
-        Self::zerv_1_0_0_with_all_components_reordered(1, PreReleaseLabel::Beta, Some(2), 3, 1)
+        Self::zerv_1_0_0_with_all_components(1, PreReleaseLabel::Beta, Some(2), 1, 3)
     }
 
     pub fn pep_zerv_1_0_0_epoch_1_build() -> Zerv {

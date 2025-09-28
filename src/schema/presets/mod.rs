@@ -6,7 +6,7 @@ pub use standard::{
     get_standard_schema, zerv_standard_tier_1, zerv_standard_tier_2, zerv_standard_tier_3,
 };
 
-use crate::constants::{ron_fields, template_vars};
+use crate::constants::ron_fields;
 use crate::version::zerv::{Component, ZervSchema, ZervVars};
 
 fn determine_tier(vars: &ZervVars) -> u8 {
@@ -37,8 +37,8 @@ fn tier_1_extra_core() -> Vec<Component> {
 
 fn tier_2_build() -> Vec<Component> {
     vec![
-        Component::VarField(template_vars::BUMPED_BRANCH.to_string()),
-        Component::VarField(template_vars::BUMPED_COMMIT_HASH.to_string()),
+        Component::VarField(ron_fields::BRANCH.to_string()),
+        Component::VarField(ron_fields::COMMIT_HASH_SHORT.to_string()),
     ]
 }
 
@@ -53,9 +53,9 @@ fn tier_3_extra_core() -> Vec<Component> {
 
 fn tier_3_build() -> Vec<Component> {
     vec![
-        Component::VarField(template_vars::BUMPED_BRANCH.to_string()),
+        Component::VarField(ron_fields::BRANCH.to_string()),
         Component::VarField(ron_fields::DISTANCE.to_string()),
-        Component::VarField(template_vars::BUMPED_COMMIT_HASH.to_string()),
+        Component::VarField(ron_fields::COMMIT_HASH_SHORT.to_string()),
     ]
 }
 
