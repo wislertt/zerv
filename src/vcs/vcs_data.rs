@@ -1,6 +1,6 @@
 use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::version::VersionArgs;
-use crate::error::{Result, ZervError};
+use crate::error::Result;
 
 /// VCS data extracted from repository
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -90,13 +90,6 @@ impl VcsData {
 
     /// Apply context control logic (--bump-context vs --no-bump-context)
     fn apply_context_control(mut self, args: &VersionArgs) -> Result<Self> {
-        // Validate context flags
-        if args.bump_context && args.no_bump_context {
-            return Err(ZervError::ConflictingOptions(
-                "Cannot use --bump-context with --no-bump-context".to_string(),
-            ));
-        }
-
         // Apply context control
         if args.no_bump_context {
             // Force clean state - no VCS metadata
@@ -187,16 +180,26 @@ mod tests {
     }
 
     #[test]
-    fn test_apply_overrides_with_conflicting_context_flags() {
-        let vcs_data = VcsData::default();
-        let args =
-            VersionArgs::try_parse_from(["zerv", "--bump-context", "--no-bump-context"]).unwrap();
+    fn test_apply_overrides_with_bump_context() {
+        let vcs_data = VcsData {
+            distance: 5,
+            is_dirty: true,
+            current_branch: Some("main".to_string()),
+            commit_hash: "abc123".to_string(),
+            commit_hash_short: "abc123".to_string(),
+            ..Default::default()
+        };
+
+        let args = VersionArgs::try_parse_from(["zerv", "--bump-context"]).unwrap();
         let result = vcs_data.apply_overrides(&args);
 
-        assert!(result.is_err());
-        let error = result.unwrap_err();
-        assert!(matches!(error, ZervError::ConflictingOptions(_)));
-        assert!(error.to_string().contains("--bump-context"));
-        assert!(error.to_string().contains("--no-bump-context"));
+        assert!(result.is_ok());
+        let updated_vcs_data = result.unwrap();
+        // --bump-context is default behavior, so no changes should be made
+        assert_eq!(updated_vcs_data.distance, 5);
+        assert!(updated_vcs_data.is_dirty);
+        assert_eq!(updated_vcs_data.current_branch, Some("main".to_string()));
+        assert_eq!(updated_vcs_data.commit_hash, "abc123");
+        assert_eq!(updated_vcs_data.commit_hash_short, "abc123");
     }
 }

@@ -9,7 +9,7 @@ use std::env::current_dir;
 
 use super::args::VersionArgs;
 
-pub fn run_version_pipeline(args: VersionArgs) -> Result<String, ZervError> {
+pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> {
     // 0. Early validation - fail fast on conflicting options
     args.validate()?;
 

@@ -205,7 +205,7 @@ pub struct VersionArgs {
 impl VersionArgs {
     /// Validate arguments and return early errors
     /// This provides early validation before VCS processing
-    pub fn validate(&self) -> Result<(), ZervError> {
+    pub fn validate(&mut self) -> Result<(), ZervError> {
         // Check for conflicting dirty flags
         if self.dirty && self.no_dirty {
             return Err(ZervError::ConflictingOptions(
@@ -232,12 +232,32 @@ impl VersionArgs {
             }
         }
 
-        // Check for conflicting context control flags
-        if self.bump_context && self.no_bump_context {
-            return Err(ZervError::ConflictingOptions(
-                "Cannot use --bump-context with --no-bump-context (conflicting options)"
-                    .to_string(),
-            ));
+        // Resolve default context control behavior
+        self.resolve_context_control_defaults()?;
+
+        Ok(())
+    }
+
+    /// Resolve default context control behavior
+    /// If neither --bump-context nor --no-bump-context is provided, default to --bump-context
+    fn resolve_context_control_defaults(&mut self) -> Result<(), ZervError> {
+        // Mathematical approach: handle all possible states
+        match (self.bump_context, self.no_bump_context) {
+            // Invalid case: both flags provided
+            (true, true) => {
+                return Err(ZervError::ConflictingOptions(
+                    "Cannot use --bump-context with --no-bump-context (conflicting options)"
+                        .to_string(),
+                ));
+            }
+            // Default case: neither flag provided
+            (false, false) => {
+                self.bump_context = true;
+            }
+            // Any other case: explicit flags provided (keep as is)
+            _ => {
+                // No change needed - already correct
+            }
         }
 
         Ok(())
@@ -393,7 +413,7 @@ mod tests {
         assert!(args.no_dirty);
 
         // Test both flags together should fail early validation
-        let args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
         assert!(args.dirty);
         assert!(args.no_dirty);
 
@@ -420,27 +440,27 @@ mod tests {
     #[test]
     fn test_validate_no_conflicts() {
         // Test with no conflicting options
-        let args = VersionArgs::try_parse_from(["zerv"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv"]).unwrap();
         assert!(args.validate().is_ok());
 
         // Test with individual options (no conflicts)
-        let args = VersionArgs::try_parse_from(["zerv", "--dirty"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--dirty"]).unwrap();
         assert!(args.validate().is_ok());
 
-        let args = VersionArgs::try_parse_from(["zerv", "--no-dirty"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--no-dirty"]).unwrap();
         assert!(args.validate().is_ok());
 
-        let args = VersionArgs::try_parse_from(["zerv", "--clean"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--clean"]).unwrap();
         assert!(args.validate().is_ok());
 
-        let args = VersionArgs::try_parse_from(["zerv", "--distance", "5"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--distance", "5"]).unwrap();
         assert!(args.validate().is_ok());
     }
 
     #[test]
     fn test_validate_dirty_conflicts() {
         // Test conflicting dirty flags
-        let args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
         let result = args.validate();
         assert!(result.is_err());
 
@@ -454,7 +474,7 @@ mod tests {
     #[test]
     fn test_validate_clean_conflicts() {
         // Test --clean with --distance
-        let args = VersionArgs::try_parse_from(["zerv", "--clean", "--distance", "5"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--clean", "--distance", "5"]).unwrap();
         let result = args.validate();
         assert!(result.is_err());
 
@@ -464,7 +484,7 @@ mod tests {
         assert!(error.to_string().contains("--distance"));
 
         // Test --clean with --dirty
-        let args = VersionArgs::try_parse_from(["zerv", "--clean", "--dirty"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--clean", "--dirty"]).unwrap();
         let result = args.validate();
         assert!(result.is_err());
 
@@ -474,7 +494,7 @@ mod tests {
         assert!(error.to_string().contains("--dirty"));
 
         // Test --clean with --no-dirty
-        let args = VersionArgs::try_parse_from(["zerv", "--clean", "--no-dirty"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--clean", "--no-dirty"]).unwrap();
         let result = args.validate();
         assert!(result.is_err());
 
@@ -487,7 +507,7 @@ mod tests {
     #[test]
     fn test_validate_context_control_conflicts() {
         // Test conflicting context control flags
-        let args =
+        let mut args =
             VersionArgs::try_parse_from(["zerv", "--bump-context", "--no-bump-context"]).unwrap();
         let result = args.validate();
         assert!(result.is_err());
@@ -502,7 +522,7 @@ mod tests {
     #[test]
     fn test_validate_clean_with_non_conflicting_options() {
         // Test --clean with options that should NOT conflict
-        let args = VersionArgs::try_parse_from([
+        let mut args = VersionArgs::try_parse_from([
             "zerv",
             "--clean",
             "--tag-version",
@@ -519,7 +539,7 @@ mod tests {
     #[test]
     fn test_validate_multiple_conflicts() {
         // Test that validation fails on the first conflict found
-        let args = VersionArgs::try_parse_from([
+        let mut args = VersionArgs::try_parse_from([
             "zerv",
             "--clean",
             "--distance",
@@ -542,7 +562,7 @@ mod tests {
     #[test]
     fn test_validate_error_message_quality() {
         // Test that error messages are clear and actionable
-        let args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
+        let mut args = VersionArgs::try_parse_from(["zerv", "--dirty", "--no-dirty"]).unwrap();
         let result = args.validate();
         assert!(result.is_err());
 
@@ -552,6 +572,47 @@ mod tests {
         assert!(error_msg.contains("--no-dirty"));
         assert!(error_msg.contains("conflicting options"));
         assert!(error_msg.contains("Cannot use"));
+    }
+
+    #[test]
+    fn test_context_control_all_scenarios() {
+        // Test all 4 possible states of (bump_context, no_bump_context)
+
+        // Scenario 1: (false, false) - Neither flag provided: should default to bump-context
+        let mut args = VersionArgs::try_parse_from(["zerv"]).unwrap();
+        assert!(!args.bump_context);
+        assert!(!args.no_bump_context);
+        assert!(args.validate().is_ok());
+        assert!(args.bump_context);
+        assert!(!args.no_bump_context);
+
+        // Scenario 2: (true, false) - Explicit --bump-context: should remain unchanged
+        let mut args = VersionArgs::try_parse_from(["zerv", "--bump-context"]).unwrap();
+        assert!(args.bump_context);
+        assert!(!args.no_bump_context);
+        assert!(args.validate().is_ok());
+        assert!(args.bump_context);
+        assert!(!args.no_bump_context);
+
+        // Scenario 3: (false, true) - Explicit --no-bump-context: should remain unchanged
+        let mut args = VersionArgs::try_parse_from(["zerv", "--no-bump-context"]).unwrap();
+        assert!(!args.bump_context);
+        assert!(args.no_bump_context);
+        assert!(args.validate().is_ok());
+        assert!(!args.bump_context);
+        assert!(args.no_bump_context);
+
+        // Scenario 4: (true, true) - Both flags provided: should return error
+        let mut args =
+            VersionArgs::try_parse_from(["zerv", "--bump-context", "--no-bump-context"]).unwrap();
+        assert!(args.bump_context);
+        assert!(args.no_bump_context);
+        let result = args.validate();
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::ConflictingOptions(_)));
+        assert!(error.to_string().contains("--bump-context"));
+        assert!(error.to_string().contains("--no-bump-context"));
     }
 
     #[test]
