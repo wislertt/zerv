@@ -1,6 +1,14 @@
 use crate::constants::timestamp_patterns;
 use crate::error::{Result, ZervError};
 
+fn create_invalid_pattern_error(token: &str) -> ZervError {
+    let valid_patterns = timestamp_patterns::get_valid_timestamp_patterns();
+    ZervError::InvalidFormat(format!(
+        "Invalid timestamp pattern '{token}'. Available patterns: {}. You can combine patterns like 'YYYY0M0D' for date or 'YYYY0M0D0H0m0S' for datetime.",
+        valid_patterns.join(", ")
+    ))
+}
+
 fn tokenize_pattern(pattern: &str) -> Result<Vec<String>> {
     let mut tokens = Vec::new();
     let mut current_token = String::new();
@@ -26,9 +34,7 @@ fn tokenize_pattern(pattern: &str) -> Result<Vec<String>> {
             current_token.push(c);
         } else {
             // Reject any non-pattern characters
-            return Err(ZervError::InvalidFormat(format!(
-                "Invalid character '{c}' in pattern '{pattern}'. Only pattern characters (Y, M, D, H, m, S, W, 0) are supported. Use chrono format strings for literals."
-            )));
+            return Err(create_invalid_pattern_error(pattern));
         }
         previous_c = Some(c);
     }
@@ -42,9 +48,7 @@ fn tokenize_pattern(pattern: &str) -> Result<Vec<String>> {
     let valid_patterns = timestamp_patterns::get_valid_timestamp_patterns();
     for token in &tokens {
         if !valid_patterns.contains(&token.as_str()) {
-            return Err(ZervError::InvalidFormat(format!(
-                "Invalid timestamp pattern '{token}'. Use valid timestamp patterns like YYYY, YY, MM, etc."
-            )));
+            return Err(create_invalid_pattern_error(pattern));
         }
     }
 
@@ -199,19 +203,6 @@ mod tests {
     #[case("WWm")]
     fn test_tokenize_pattern_invalid(#[case] pattern: &str) {
         assert!(tokenize_pattern(pattern).is_err());
-    }
-
-    #[test]
-    fn test_debug_tokenization() {
-        // Debug test to see what tokens are generated
-        let tokens = tokenize_pattern("YYYY0M").unwrap();
-        println!("YYYY0M tokens: {tokens:?}");
-
-        let tokens = tokenize_pattern("YYMMDD").unwrap();
-        println!("YYMMDD tokens: {tokens:?}");
-
-        let tokens = tokenize_pattern("YYYY0M0D").unwrap();
-        println!("YYYY0M0D tokens: {tokens:?}");
     }
 
     // Tests for resolve_timestamp with new patterns - only pattern characters
