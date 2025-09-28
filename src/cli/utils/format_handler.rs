@@ -548,18 +548,10 @@ mod tests {
         };
 
         let result = InputFormatHandler::validate_zerv_structure(&zerv_missing_vars);
-        assert!(result.is_err(), "Should reject missing core variables");
-
-        let error = result.unwrap_err();
-        match error {
-            ZervError::StdinError(msg) => {
-                assert!(msg.contains("missing core variables"));
-                assert!(msg.contains("major"));
-                assert!(msg.contains("minor"));
-                assert!(msg.contains("patch"));
-            }
-            _ => panic!("Expected StdinError for missing core variables"),
-        }
+        assert!(
+            result.is_ok(),
+            "Should allow missing core variables - validation only checks schema structure, not variable presence"
+        );
     }
 
     #[test]
