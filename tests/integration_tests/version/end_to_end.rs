@@ -119,20 +119,10 @@ fn test_stdin_source_with_zerv_ron() {
 
     // Test basic stdin parsing
     let mut cmd = Command::new("cargo");
-    cmd.args([
-        "run",
-        "--bin",
-        "zerv",
-        "--",
-        "version",
-        "--source",
-        "stdin",
-        "--input-format",
-        "zerv",
-    ])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped());
+    cmd.args(["run", "--bin", "zerv", "--", "version", "--source", "stdin"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
     let mut child = cmd.spawn().expect("Failed to spawn command");
 
@@ -241,26 +231,16 @@ fn test_error_scenarios_with_overrides(
 /// Test stdin error scenarios
 /// Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
 #[rstest]
-#[case::simple_version_string("1.2.3", "Use --tag-version")]
+#[case::simple_version_string("1.2.3", "Invalid input format")]
 #[case::empty_input("", "No input provided via stdin")]
-#[case::invalid_ron("invalid ron format", "Invalid Zerv RON format")]
-#[case::semver_to_stdin("1.2.3", "Use --tag-version instead")]
+#[case::invalid_ron("invalid ron format", "Invalid input format")]
+#[case::semver_to_stdin("1.2.3", "Invalid input format")]
 fn test_stdin_error_scenarios(#[case] stdin_input: &str, #[case] expected_error_pattern: &str) {
     let mut cmd = Command::new("cargo");
-    cmd.args([
-        "run",
-        "--bin",
-        "zerv",
-        "--",
-        "version",
-        "--source",
-        "stdin",
-        "--input-format",
-        "zerv",
-    ])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped());
+    cmd.args(["run", "--bin", "zerv", "--", "version", "--source", "stdin"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
     let mut child = cmd.spawn().expect("Failed to spawn command");
 

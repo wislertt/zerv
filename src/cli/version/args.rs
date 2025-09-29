@@ -68,8 +68,8 @@ pub struct VersionArgs {
     pub schema_ron: Option<String>,
 
     /// Input format for version string parsing
-    #[arg(long, default_value = formats::AUTO, value_parser = [formats::AUTO, formats::SEMVER, formats::PEP440, formats::ZERV],
-          help = "Input format: 'auto' (detect), 'semver', 'pep440', or 'zerv' (for stdin)")]
+    #[arg(long, default_value = formats::AUTO, value_parser = [formats::AUTO, formats::SEMVER, formats::PEP440],
+          help = "Input format: 'auto' (detect), 'semver', or 'pep440'")]
     pub input_format: String,
 
     /// Output format for generated version
@@ -235,6 +235,9 @@ impl VersionArgs {
         // Resolve default context control behavior
         self.resolve_context_control_defaults()?;
 
+        // Resolve default bump values
+        self.resolve_bump_defaults()?;
+
         Ok(())
     }
 
@@ -258,6 +261,52 @@ impl VersionArgs {
             _ => {
                 // No change needed - already correct
             }
+        }
+
+        Ok(())
+    }
+
+    /// Resolve default bump values
+    /// If a bump option is provided without a value, set it to 1 (the default)
+    fn resolve_bump_defaults(&mut self) -> Result<(), ZervError> {
+        // Resolve bump_major: Some(None) -> Some(Some(1))
+        if let Some(None) = self.bump_major {
+            self.bump_major = Some(Some(1));
+        }
+
+        // Resolve bump_minor: Some(None) -> Some(Some(1))
+        if let Some(None) = self.bump_minor {
+            self.bump_minor = Some(Some(1));
+        }
+
+        // Resolve bump_patch: Some(None) -> Some(Some(1))
+        if let Some(None) = self.bump_patch {
+            self.bump_patch = Some(Some(1));
+        }
+
+        // Resolve bump_distance: Some(None) -> Some(Some(1))
+        if let Some(None) = self.bump_distance {
+            self.bump_distance = Some(Some(1));
+        }
+
+        // Resolve bump_post: Some(None) -> Some(Some(1))
+        if let Some(None) = self.bump_post {
+            self.bump_post = Some(Some(1));
+        }
+
+        // Resolve bump_dev: Some(None) -> Some(Some(1))
+        if let Some(None) = self.bump_dev {
+            self.bump_dev = Some(Some(1));
+        }
+
+        // Resolve bump_pre_release_num: Some(None) -> Some(Some(1))
+        if let Some(None) = self.bump_pre_release_num {
+            self.bump_pre_release_num = Some(Some(1));
+        }
+
+        // Resolve bump_epoch: Some(None) -> Some(Some(1))
+        if let Some(None) = self.bump_epoch {
+            self.bump_epoch = Some(Some(1));
         }
 
         Ok(())

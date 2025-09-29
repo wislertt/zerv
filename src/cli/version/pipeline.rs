@@ -1,6 +1,6 @@
 use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::utils::output_formatter::OutputFormatter;
-use crate::constants::{formats, sources};
+use crate::constants::sources;
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
 use crate::schema::create_zerv_version;
@@ -21,44 +21,10 @@ pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> 
 
     // 2. Resolve input source and get Zerv object
     let mut zerv_object = match args.source.as_str() {
-        sources::GIT => {
-            // Get git VCS data
-            // If directory was specified via -C, only look in that directory (depth 0)
-            // If no directory specified, allow unlimited depth search
-            let max_depth = if args.directory.is_some() {
-                Some(0)
-            } else {
-                None
-            };
-            let mut vcs_data =
-                crate::vcs::detect_vcs_with_limit(&work_dir, max_depth)?.get_vcs_data()?;
-
-            // Parse git tag with input format if available and validate it
-            if let Some(ref tag_version) = vcs_data.tag_version {
-                let _parsed_version =
-                    InputFormatHandler::parse_version_string(tag_version, &args.input_format)?;
-                // Validation passed - the tag is in a valid format
-            }
-
-            // Apply VCS overrides (including --tag-version with input format validation and context control)
-            vcs_data = vcs_data.apply_overrides(&args)?;
-
-            // Convert VCS data to ZervVars
-            let vars = vcs_data_to_zerv_vars(vcs_data)?;
-
-            // Create Zerv object from vars and schema
-            create_zerv_version(vars, args.schema.as_deref(), args.schema_ron.as_deref())?
-        }
+        sources::GIT => super::git_pipeline::process_git_source(&work_dir, &args)?,
         sources::STDIN => {
-            // For stdin source, default to "zerv" format if "auto" is specified
-            let input_format = if args.input_format == formats::AUTO {
-                formats::ZERV
-            } else {
-                &args.input_format
-            };
-
             // Parse stdin as Zerv RON
-            let mut zerv_from_stdin = InputFormatHandler::parse_stdin(input_format)?;
+            let mut zerv_from_stdin = InputFormatHandler::parse_stdin_to_zerv()?;
 
             // Apply overrides to the parsed Zerv object if any are specified
             if args.has_overrides() {

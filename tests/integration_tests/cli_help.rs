@@ -151,7 +151,7 @@ fn test_version_help_comprehensive() {
         "Should show source values"
     );
     assert!(
-        output.contains("[possible values: auto, semver, pep440, zerv]"),
+        output.contains("[possible values: auto, semver, pep440]"),
         "Should show input format values"
     );
     assert!(
