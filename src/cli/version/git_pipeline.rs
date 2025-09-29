@@ -36,9 +36,9 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<Zerv, Z
     // Apply overrides to ZervVars before creating Zerv object
     // This ensures the schema tier is determined based on the final state after overrides
     // (e.g., distance > 0 → Tier 2 with build metadata, dirty → Tier 3 with dev segment)
-    if args.has_overrides() {
-        vars.apply_overrides(args)?;
-    }
+    // Always apply overrides for git source to handle VCS logic (distance-to-post mapping, etc.)
+    // even when no explicit overrides are provided
+    vars.apply_overrides(args)?;
 
     // Create Zerv object from vars and schema (with default fallback)
     let (schema_name, schema_ron) = args.resolve_schema();

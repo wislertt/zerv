@@ -11,9 +11,8 @@ pub fn process_stdin_source(args: &VersionArgs) -> Result<Zerv, ZervError> {
 
     // TODO: try to move this logic to main pipeline (unify with other sources)
     // Apply overrides to be consistent with git pipeline
-    if args.has_overrides() {
-        zerv_from_stdin.vars.apply_overrides(args)?;
-    }
+    // Always apply overrides for consistency with git pipeline
+    zerv_from_stdin.vars.apply_overrides(args)?;
 
     // Apply schema with default fallback if needed
     let (schema_name, schema_ron) = args.resolve_schema();

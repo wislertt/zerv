@@ -322,40 +322,6 @@ impl VersionArgs {
         }
     }
 
-    /// Check if any VCS overrides are specified in the arguments
-    pub fn has_overrides(&self) -> bool {
-        self.tag_version.is_some()
-            || self.distance.is_some()
-            || self.dirty
-            || self.no_dirty
-            || self.clean
-            || self.current_branch.is_some()
-            || self.commit_hash.is_some()
-            || self.post.is_some()
-            || self.dev.is_some()
-            || self.pre_release_label.is_some()
-            || self.pre_release_num.is_some()
-            || self.epoch.is_some()
-            || self.custom.is_some()
-    }
-
-    /// Check if any bump operations are specified in the arguments
-    pub fn has_bumps(&self) -> bool {
-        self.bump_major.is_some()
-            || self.bump_minor.is_some()
-            || self.bump_patch.is_some()
-            || self.bump_distance.is_some()
-            || self.bump_post.is_some()
-            || self.bump_dev.is_some()
-            || self.bump_pre_release_num.is_some()
-            || self.bump_epoch.is_some()
-    }
-
-    /// Check if any context control options are specified
-    pub fn has_context_control(&self) -> bool {
-        self.bump_context || self.no_bump_context
-    }
-
     /// Resolve schema selection with default fallback
     /// Returns (schema_name, schema_ron) with default applied if neither is provided
     pub fn resolve_schema(&self) -> (Option<&str>, Option<&str>) {
