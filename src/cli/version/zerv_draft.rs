@@ -178,7 +178,7 @@ mod tests {
         let invalid_ron = "invalid ron syntax";
         let draft = ZervDraft::new(vars, None);
         let result = draft.create_zerv_version(None, Some(invalid_ron));
-        assert!(matches!(result, Err(ZervError::SchemaParseError(_))));
+        assert!(matches!(result, Err(ZervError::StdinError(_))));
     }
 
     #[test]

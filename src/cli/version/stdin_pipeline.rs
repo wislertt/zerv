@@ -12,6 +12,6 @@ pub fn process_stdin_source(_args: &VersionArgs) -> Result<ZervDraft, ZervError>
     // Return ZervDraft with existing schema (stdin source)
     Ok(ZervDraft::new(
         zerv_from_stdin.vars,
-        Some(zerv_from_stdin.schema.into()),
+        Some((&zerv_from_stdin.schema).into()),
     ))
 }

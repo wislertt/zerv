@@ -1,8 +1,8 @@
 use super::{LocalSegment, PEP440};
 use crate::constants::ron_fields;
 use crate::version::pep440::core::{DevLabel, PostLabel};
+use crate::version::zerv::Component;
 use crate::version::zerv::core::Zerv;
-use crate::version::zerv::schema::Component;
 use crate::version::zerv::{resolve_timestamp, utils::extract_core_values};
 
 struct PEP440Components {

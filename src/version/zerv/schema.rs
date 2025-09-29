@@ -2,6 +2,8 @@ use crate::constants::{ron_fields, timestamp_patterns};
 use crate::error::ZervError;
 use serde::{Deserialize, Serialize};
 
+use super::components::Component;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZervSchema {
     pub core: Vec<Component>,
@@ -139,18 +141,6 @@ impl ZervSchema {
 
         false
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Component {
-    #[serde(rename = "str")]
-    String(String),
-    #[serde(rename = "int")]
-    Integer(u64),
-    #[serde(rename = "var")]
-    VarField(String),
-    #[serde(rename = "ts")]
-    VarTimestamp(String),
 }
 
 #[cfg(test)]
