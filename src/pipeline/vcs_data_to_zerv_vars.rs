@@ -20,7 +20,7 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
     vars.distance = Some(vcs_data.distance as u64);
     vars.bumped_branch = vcs_data.current_branch;
     vars.dirty = Some(vcs_data.is_dirty);
-    vars.bumped_commit_hash = Some(vcs_data.commit_hash_short);
+    vars.bumped_commit_hash = Some(vcs_data.commit_hash);
     vars.last_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
 
     // Map distance to post field for tier 2 schema (distance > 0, clean)
@@ -82,6 +82,7 @@ mod tests {
     fn test_vcs_data_to_zerv_vars_no_tag() {
         let vcs_data = VcsData {
             tag_version: None,
+            commit_hash: "abc1234".to_string(),
             ..Default::default()
         };
         let result = vcs_data_to_zerv_vars(vcs_data);
@@ -109,6 +110,7 @@ mod tests {
     fn test_vcs_data_to_zerv_vars_invalid_tag_formats(#[case] invalid_tag: &str) {
         let vcs_data = VcsData {
             tag_version: Some(invalid_tag.to_string()),
+            commit_hash: "abc1234".to_string(),
             ..Default::default()
         };
         let result = vcs_data_to_zerv_vars(vcs_data);

@@ -88,7 +88,6 @@ mod tests {
         assert_eq!(data.tag_version, None);
         assert_eq!(data.distance, 0);
         assert_eq!(data.commit_hash, "");
-        assert_eq!(data.commit_hash_short, "");
         assert_eq!(data.current_branch, None);
         assert_eq!(data.commit_timestamp, 0);
         assert_eq!(data.tag_timestamp, None);

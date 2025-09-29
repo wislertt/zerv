@@ -17,7 +17,7 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<Zerv, Z
     } else {
         None
     };
-    let mut vcs_data = crate::vcs::detect_vcs_with_limit(work_dir, max_depth)?.get_vcs_data()?;
+    let vcs_data = crate::vcs::detect_vcs_with_limit(work_dir, max_depth)?.get_vcs_data()?;
 
     // Parse git tag with input format if available and validate it
     if let Some(ref tag_version) = vcs_data.tag_version {
@@ -27,7 +27,7 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<Zerv, Z
     }
 
     // Apply VCS overrides (including --tag-version with input format validation and context control)
-    vcs_data = vcs_data.apply_overrides(args)?;
+    // vcs_data = vcs_data.apply_overrides(args)?;
 
     // Convert VCS data to ZervVars
     let vars = vcs_data_to_zerv_vars(vcs_data)?;

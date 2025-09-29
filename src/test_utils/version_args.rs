@@ -129,6 +129,26 @@ impl VersionArgsFixture {
         args.dev = Some(10);
         args
     }
+
+    /// Create a VersionArgs for testing with VCS overrides
+    pub fn with_vcs_overrides() -> VersionArgs {
+        let mut args = Self::create();
+        args.distance = Some(5);
+        args.dirty = true;
+        args.current_branch = Some("feature/test".to_string());
+        args.commit_hash = Some("abc123def456".to_string());
+        args
+    }
+
+    /// Create a VersionArgs for testing with version component overrides
+    pub fn with_version_overrides() -> VersionArgs {
+        let mut args = Self::create();
+        args.tag_version = Some("v2.0.0".to_string());
+        args.post = Some(10);
+        args.dev = Some(5);
+        args.epoch = Some(1);
+        args
+    }
 }
 
 impl Default for VersionArgsFixture {

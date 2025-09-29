@@ -293,7 +293,7 @@ pub struct VersionArgs {
 2. Implement conflict validation (--bump-context vs --no-bump-context)
 3. Add processing logic in `VcsOverrideProcessor`
 
-#### Task 3.2: Add --source stdin Support - [ ]
+#### Task 3.2: Add --source stdin Support - [x]
 
 **Priority**: CRITICAL | **Estimated Time**: 2-3 hours
 
@@ -401,6 +401,12 @@ impl Zerv {
         Ok(())
     }
 
+}
+```
+
+```rust
+// src/version/zerv/vars.rs
+impl ZervVars {
     /// Apply override operations to version components
     pub fn apply_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Apply tag version override (parse and extract components)
@@ -410,31 +416,31 @@ impl Zerv {
 
         // Apply individual field overrides
         if let Some(distance) = args.distance {
-            self.vars.distance = Some(distance as u64);
+            self.distance = Some(distance as u64);
         }
 
         if let Some(dirty_value) = args.dirty_override() {
-            self.vars.dirty = Some(dirty_value);
+            self.dirty = Some(dirty_value);
         }
 
         if let Some(ref branch) = args.current_branch {
-            self.vars.bumped_branch = Some(branch.clone());
+            self.bumped_branch = Some(branch.clone());
         }
 
         if let Some(ref commit_hash) = args.commit_hash {
-            self.vars.bumped_commit_hash = Some(commit_hash.clone());
+            self.bumped_commit_hash = Some(commit_hash.clone());
         }
 
         if let Some(post) = args.post {
-            self.vars.post = Some(post as u64);
+            self.post = Some(post as u64);
         }
 
         if let Some(dev) = args.dev {
-            self.vars.dev = Some(dev as u64);
+            self.dev = Some(dev as u64);
         }
 
         if let Some(ref label) = args.pre_release_label {
-            self.vars.pre_release = Some(PreReleaseVar {
+            self.pre_release = Some(PreReleaseVar {
                 label: normalize_pre_release_label(label)
                     .ok_or_else(|| ZervError::InvalidVersion(format!("Invalid pre-release label: {}", label)))?,
                 number: args.pre_release_num.map(|n| n as u64),
@@ -442,11 +448,11 @@ impl Zerv {
         }
 
         if let Some(epoch) = args.epoch {
-            self.vars.epoch = Some(epoch as u64);
+            self.epoch = Some(epoch as u64);
         }
 
         if let Some(ref custom_json) = args.custom {
-            self.vars.custom = serde_json::from_str(custom_json)
+            self.custom = serde_json::from_str(custom_json)
                 .map_err(|e| ZervError::InvalidVersion(format!("Invalid custom JSON: {}", e)))?;
         }
 
@@ -483,18 +489,18 @@ impl Zerv {
         let parts: Vec<&str> = version_str.split('.').collect();
 
         if parts.len() >= 3 {
-            self.vars.major = Some(parts[0].parse().map_err(|_| ZervError::InvalidVersion("Invalid major version".to_string()))?);
-            self.vars.minor = Some(parts[1].parse().map_err(|_| ZervError::InvalidVersion("Invalid minor version".to_string()))?);
+            self.major = Some(parts[0].parse().map_err(|_| ZervError::InvalidVersion("Invalid major version".to_string()))?);
+            self.minor = Some(parts[1].parse().map_err(|_| ZervError::InvalidVersion("Invalid minor version".to_string()))?);
 
             // Handle patch with potential pre-release
             let patch_part = parts[2];
             if let Some(dash_pos) = patch_part.find('-') {
-                self.vars.patch = Some(patch_part[..dash_pos].parse().map_err(|_| ZervError::InvalidVersion("Invalid patch version".to_string()))?);
+                self.patch = Some(patch_part[..dash_pos].parse().map_err(|_| ZervError::InvalidVersion("Invalid patch version".to_string()))?);
                 // Parse pre-release part
                 let pre_release_part = &patch_part[dash_pos + 1..];
                 self.parse_pre_release(pre_release_part)?;
             } else {
-                self.vars.patch = Some(patch_part.parse().map_err(|_| ZervError::InvalidVersion("Invalid patch version".to_string()))?);
+                self.patch = Some(patch_part.parse().map_err(|_| ZervError::InvalidVersion("Invalid patch version".to_string()))?);
             }
         } else {
             return Err(ZervError::InvalidVersion("Invalid semantic version format".to_string()));
@@ -508,7 +514,7 @@ impl Zerv {
         // This is a simplified parser - full PEP440 parsing would be more complex
         if let Some(bang_pos) = version_str.find('!') {
             // Has epoch
-            self.vars.epoch = Some(version_str[..bang_pos].parse().map_err(|_| ZervError::InvalidVersion("Invalid epoch".to_string()))?);
+            self.epoch = Some(version_str[..bang_pos].parse().map_err(|_| ZervError::InvalidVersion("Invalid epoch".to_string()))?);
             self.parse_semver_version(&version_str[bang_pos + 1..])?;
         } else {
             self.parse_semver_version(version_str)?;
@@ -529,7 +535,7 @@ impl Zerv {
                 None
             };
 
-            self.vars.pre_release = Some(PreReleaseVar {
+            self.pre_release = Some(PreReleaseVar {
                 label: normalize_pre_release_label(label)
                     .ok_or_else(|| ZervError::InvalidVersion(format!("Invalid pre-release label: {}", label)))?,
                 number,
@@ -544,15 +550,24 @@ impl Zerv {
 **Integration in Pipeline**:
 
 ```rust
+// src/cli/version/stdin_pipeline.rs
+pub fn process_stdin_source(args: &VersionArgs) -> Result<Zerv, ZervError> {
+    // Parse stdin as Zerv RON
+    let mut zerv_from_stdin = InputFormatHandler::parse_stdin_to_zerv()?;
+
+    // Apply overrides directly to ZervVars (no conversion needed)
+    if args.has_overrides() {
+        zerv_from_stdin.vars.apply_overrides(args)?;
+    }
+
+    Ok(zerv_from_stdin)
+}
+
 // src/cli/version/pipeline.rs
 pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> {
     // ... existing validation and source resolution ...
 
-    // 3. Apply overrides and bumps to Zerv object
-    if args.has_overrides() {
-        zerv_object.apply_overrides(&args)?;
-    }
-
+    // 3. Apply bumps to Zerv object (overrides handled in source processing)
     if args.has_bumps() {
         zerv_object.apply_bumps(&args)?;
     }
@@ -560,6 +575,14 @@ pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> 
     // ... rest of pipeline ...
 }
 ```
+
+**Architectural Improvement**: Moving `apply_overrides` to `ZervVars` instead of `Zerv` provides:
+
+- **Better separation of concerns**: ZervVars handles its own data manipulation
+- **More focused API**: Method only operates on what it actually needs
+- **Cleaner implementation**: No need for lossy Zerv → VcsData → Zerv conversions
+- **Complete coverage**: Handles all version fields, not just VCS-level ones
+- **Consistent patterns**: Matches existing helper methods on ZervVars
 
 #### Task 3.4: Implement Context Control Logic - [x]
 
