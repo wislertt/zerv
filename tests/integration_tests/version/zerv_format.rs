@@ -114,7 +114,7 @@ fn test_zerv_format_output() {
 #[test]
 fn test_zerv_format_schema_structure() {
     // Test without Docker dependency
-    use zerv::schema::create_zerv_version;
+    use zerv::cli::version::ZervDraft;
     use zerv::version::zerv::{Component, ZervVars};
 
     let vars = ZervVars {
@@ -126,7 +126,9 @@ fn test_zerv_format_schema_structure() {
         ..Default::default()
     };
 
-    let zerv = create_zerv_version(vars, Some(schema_names::ZERV_STANDARD), None).unwrap();
+    let zerv = ZervDraft::new(vars, None)
+        .create_zerv_version(Some(schema_names::ZERV_STANDARD), None)
+        .unwrap();
     let ron_output = zerv.to_string();
 
     // Parse back and verify schema

@@ -202,6 +202,45 @@ pub struct VersionArgs {
     pub directory: Option<String>,
 }
 
+impl Default for VersionArgs {
+    fn default() -> Self {
+        Self {
+            version: None,
+            source: sources::GIT.to_string(),
+            schema: None,
+            schema_ron: None,
+            input_format: formats::AUTO.to_string(),
+            output_format: formats::SEMVER.to_string(),
+            tag_version: None,
+            distance: None,
+            dirty: false,
+            no_dirty: false,
+            clean: false,
+            current_branch: None,
+            commit_hash: None,
+            post: None,
+            dev: None,
+            pre_release_label: None,
+            pre_release_num: None,
+            epoch: None,
+            custom: None,
+            bump_major: None,
+            bump_minor: None,
+            bump_patch: None,
+            bump_distance: None,
+            bump_post: None,
+            bump_dev: None,
+            bump_pre_release_num: None,
+            bump_epoch: None,
+            bump_context: false,
+            no_bump_context: false,
+            output_template: None,
+            output_prefix: None,
+            directory: None,
+        }
+    }
+}
+
 impl VersionArgs {
     /// Validate arguments and return early errors
     /// This provides early validation before VCS processing

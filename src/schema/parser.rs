@@ -3,14 +3,14 @@ use crate::version::zerv::{Component, ZervSchema};
 use ron::de::from_str;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SchemaConfig {
     pub core: Vec<ComponentConfig>,
     pub extra_core: Vec<ComponentConfig>,
     pub build: Vec<ComponentConfig>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ComponentConfig {
     String { value: String },
     Integer { value: u64 },
@@ -29,12 +29,51 @@ impl From<ComponentConfig> for Component {
     }
 }
 
+impl From<&Component> for ComponentConfig {
+    fn from(component: &Component) -> Self {
+        match component {
+            Component::String(value) => ComponentConfig::String {
+                value: value.clone(),
+            },
+            Component::Integer(value) => ComponentConfig::Integer { value: *value },
+            Component::VarField(field) => ComponentConfig::VarField {
+                field: field.clone(),
+            },
+            Component::VarTimestamp(pattern) => ComponentConfig::VarTimestamp {
+                pattern: pattern.clone(),
+            },
+        }
+    }
+}
+
 impl From<SchemaConfig> for ZervSchema {
     fn from(config: SchemaConfig) -> Self {
         ZervSchema {
             core: config.core.into_iter().map(Component::from).collect(),
             extra_core: config.extra_core.into_iter().map(Component::from).collect(),
             build: config.build.into_iter().map(Component::from).collect(),
+        }
+    }
+}
+
+impl From<ZervSchema> for SchemaConfig {
+    fn from(schema: ZervSchema) -> Self {
+        SchemaConfig {
+            core: schema
+                .core
+                .into_iter()
+                .map(|c| ComponentConfig::from(&c))
+                .collect(),
+            extra_core: schema
+                .extra_core
+                .into_iter()
+                .map(|c| ComponentConfig::from(&c))
+                .collect(),
+            build: schema
+                .build
+                .into_iter()
+                .map(|c| ComponentConfig::from(&c))
+                .collect(),
         }
     }
 }

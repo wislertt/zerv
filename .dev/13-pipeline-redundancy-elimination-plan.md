@@ -298,3 +298,38 @@ impl ZervDraft {
 - [ ] All existing tests pass
 - [ ] New unified pipeline logic is well-tested
 - [ ] Code is more maintainable and easier to extend
+
+## Future Cleanup Tasks
+
+### ComponentConfig/Component Consolidation
+
+**Issue**: `ComponentConfig` and `Component` are nearly identical with only minor structural differences:
+
+- `ComponentConfig`: Named fields (`{ value: String }`) - better for serialization
+- `Component`: Tuple variants (`String(String)`) - more concise in Rust code
+
+**Solution**: Consolidate to single `Component` type with serde attributes:
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Component {
+    #[serde(rename = "String")]
+    String { value: String },
+    #[serde(rename = "Integer")]
+    Integer { value: u64 },
+    // etc.
+}
+```
+
+**Benefits**:
+
+- Eliminates code duplication
+- Reduces maintenance overhead
+- Simplifies conversion logic
+- Maintains same serialization behavior
+
+**Files to Update**:
+
+- `src/schema/parser.rs` - Remove `ComponentConfig` and conversion logic
+- `src/version/zerv/schema.rs` - Update `Component` with serde attributes
+- All test files using `ComponentConfig`

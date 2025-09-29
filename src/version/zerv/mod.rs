@@ -2,8 +2,6 @@ pub mod core;
 mod display;
 mod parser;
 pub mod schema; // New module
-#[cfg(test)]
-mod test_schema_assertions;
 pub mod utils;
 pub mod vars; // New module
 

@@ -15,19 +15,17 @@ pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> 
         None => current_dir()?,
     };
 
-    // 2. Resolve input source and get Zerv object
-    // Note: Overrides are applied within each source pipeline to ensure
-    // schema tier is determined based on final state after overrides
-    let zerv_object = match args.source.as_str() {
+    // 2. Get ZervDraft from source (no schema applied yet)
+    let zerv_draft = match args.source.as_str() {
         sources::GIT => super::git_pipeline::process_git_source(&work_dir, &args)?,
         sources::STDIN => super::stdin_pipeline::process_stdin_source(&args)?,
         source => return Err(ZervError::UnknownSource(source.to_string())),
     };
 
-    // Note: Schema application is now handled within each source pipeline
-    // to ensure proper tier determination based on final state after overrides
+    // 3. Convert to Zerv (applies overrides internally)
+    let zerv_object = zerv_draft.to_zerv(&args)?;
 
-    // 5. Apply output formatting with enhanced options
+    // 4. Apply output formatting with enhanced options
     let output = OutputFormatter::format_output(
         &zerv_object,
         &args.output_format,

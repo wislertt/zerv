@@ -1,14 +1,13 @@
 use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
-use crate::schema::create_zerv_version;
-use crate::version::Zerv;
 use std::path::Path;
 
 use super::args::VersionArgs;
+use super::zerv_draft::ZervDraft;
 
-/// Process git source and return a Zerv object
-pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<Zerv, ZervError> {
+/// Process git source and return a ZervDraft object
+pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDraft, ZervError> {
     // Get git VCS data
     // If directory was specified via -C, only look in that directory (depth 0)
     // If no directory specified, allow unlimited depth search
@@ -26,25 +25,11 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<Zerv, Z
         // Validation passed - the tag is in a valid format
     }
 
-    // Apply VCS overrides (including --tag-version with input format validation and context control)
-    // vcs_data = vcs_data.apply_overrides(args)?;
-
     // Convert VCS data to ZervVars
-    let mut vars = vcs_data_to_zerv_vars(vcs_data)?;
+    let vars = vcs_data_to_zerv_vars(vcs_data)?;
 
-    // TODO: try to move this logic to main pipeline (unify with other sources)
-    // Apply overrides to ZervVars before creating Zerv object
-    // This ensures the schema tier is determined based on the final state after overrides
-    // (e.g., distance > 0 → Tier 2 with build metadata, dirty → Tier 3 with dev segment)
-    // Always apply overrides for git source to handle VCS logic (distance-to-post mapping, etc.)
-    // even when no explicit overrides are provided
-    vars.apply_overrides(args)?;
-
-    // Create Zerv object from vars and schema (with default fallback)
-    let (schema_name, schema_ron) = args.resolve_schema();
-    // TODO: end of move plan
-
-    create_zerv_version(vars, schema_name, schema_ron)
+    // Return ZervDraft without schema (git source)
+    Ok(ZervDraft::new(vars, None))
 }
 
 #[cfg(test)]
@@ -69,22 +54,28 @@ mod tests {
         // Process the git source
         let result = process_git_source(fixture.path(), &args);
 
-        // Should succeed and return a Zerv object
+        // Should succeed and return a ZervDraft object
         assert!(
             result.is_ok(),
             "process_git_source should succeed for basic git repo"
         );
 
-        let zerv = result.unwrap();
+        let draft = result.unwrap();
 
         // Verify basic structure
-        assert!(zerv.vars.major.is_some(), "Should have major version");
-        assert!(zerv.vars.minor.is_some(), "Should have minor version");
-        assert!(zerv.vars.patch.is_some(), "Should have patch version");
+        assert!(draft.vars.major.is_some(), "Should have major version");
+        assert!(draft.vars.minor.is_some(), "Should have minor version");
+        assert!(draft.vars.patch.is_some(), "Should have patch version");
 
         // Verify version values match the tag
-        assert_eq!(zerv.vars.major, Some(1), "Major version should be 1");
-        assert_eq!(zerv.vars.minor, Some(2), "Minor version should be 2");
-        assert_eq!(zerv.vars.patch, Some(3), "Patch version should be 3");
+        assert_eq!(draft.vars.major, Some(1), "Major version should be 1");
+        assert_eq!(draft.vars.minor, Some(2), "Minor version should be 2");
+        assert_eq!(draft.vars.patch, Some(3), "Patch version should be 3");
+
+        // Verify no schema initially (git source)
+        assert!(
+            draft.schema.is_none(),
+            "Git source should not have schema initially"
+        );
     }
 }
