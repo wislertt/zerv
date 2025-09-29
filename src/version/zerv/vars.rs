@@ -111,6 +111,15 @@ impl ZervVars {
             self.bumped_commit_hash = Some(commit_hash.chars().take(7).collect());
         }
 
+        // Map distance to post field for tier 2 schema (distance > 0, clean)
+        // This mirrors the logic in vcs_data_to_zerv_vars
+        if let Some(distance) = self.distance
+            && distance > 0
+            && self.dirty != Some(true)
+        {
+            self.post = Some(distance);
+        }
+
         Ok(())
     }
 

@@ -24,6 +24,8 @@ pub enum ZervError {
     UnknownSchema(String),
     /// Conflicting schema parameters
     ConflictingSchemas(String),
+    /// Missing schema specification
+    MissingSchema(String),
 
     // CLI errors
     /// Unknown format specified
@@ -58,6 +60,7 @@ impl std::fmt::Display for ZervError {
             ZervError::SchemaParseError(msg) => write!(f, "Schema parse error: {msg}"),
             ZervError::UnknownSchema(name) => write!(f, "Unknown schema: {name}"),
             ZervError::ConflictingSchemas(msg) => write!(f, "Conflicting schemas: {msg}"),
+            ZervError::MissingSchema(msg) => write!(f, "Missing schema: {msg}"),
 
             // CLI errors
             ZervError::UnknownFormat(format) => write!(f, "Unknown format: {format}"),

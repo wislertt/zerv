@@ -17,13 +17,6 @@ pub fn create_zerv_version(
     schema_ron: Option<&str>,
 ) -> Result<Zerv, ZervError> {
     let schema = match (schema_name, schema_ron) {
-        // Error if both are provided
-        (Some(_), Some(_)) => {
-            return Err(ZervError::ConflictingSchemas(
-                "Cannot specify both schema_name and schema_ron".to_string(),
-            ));
-        }
-
         // Custom RON schema
         (None, Some(ron_str)) => parse_ron_schema(ron_str)?,
 
@@ -36,8 +29,17 @@ pub fn create_zerv_version(
             }
         }
 
-        // Neither provided - use default
-        (None, None) => get_preset_schema("zerv-standard", &vars).unwrap(),
+        // Error cases
+        (Some(_), Some(_)) => {
+            return Err(ZervError::ConflictingSchemas(
+                "Cannot specify both schema_name and schema_ron".to_string(),
+            ));
+        }
+        (None, None) => {
+            return Err(ZervError::MissingSchema(
+                "Either schema_name or schema_ron must be provided".to_string(),
+            ));
+        }
     };
 
     Zerv::new(schema, vars)
@@ -119,7 +121,7 @@ mod tests {
     }
 
     #[test]
-    fn test_default_schema() {
+    fn test_create_zerv_version_requires_explicit_schema() {
         let vars = ZervVars {
             major: Some(1),
             minor: Some(2),
@@ -129,7 +131,13 @@ mod tests {
             ..Default::default()
         };
 
-        let zerv = create_zerv_version(vars, None, None).unwrap();
+        // Test that create_zerv_version requires explicit schema (no default)
+        let result = create_zerv_version(vars.clone(), None, None);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ZervError::MissingSchema(_)));
+
+        // Test with explicit schema (should work)
+        let zerv = create_zerv_version(vars, Some("zerv-standard"), None).unwrap();
         assert_eq!(zerv.schema, zerv_standard_tier_1());
     }
 

@@ -30,10 +30,21 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<Zerv, Z
     // vcs_data = vcs_data.apply_overrides(args)?;
 
     // Convert VCS data to ZervVars
-    let vars = vcs_data_to_zerv_vars(vcs_data)?;
+    let mut vars = vcs_data_to_zerv_vars(vcs_data)?;
 
-    // Create Zerv object from vars and schema
-    create_zerv_version(vars, args.schema.as_deref(), args.schema_ron.as_deref())
+    // TODO: try to move this logic to main pipeline (unify with other sources)
+    // Apply overrides to ZervVars before creating Zerv object
+    // This ensures the schema tier is determined based on the final state after overrides
+    // (e.g., distance > 0 → Tier 2 with build metadata, dirty → Tier 3 with dev segment)
+    if args.has_overrides() {
+        vars.apply_overrides(args)?;
+    }
+
+    // Create Zerv object from vars and schema (with default fallback)
+    let (schema_name, schema_ron) = args.resolve_schema();
+    // TODO: end of move plan
+
+    create_zerv_version(vars, schema_name, schema_ron)
 }
 
 #[cfg(test)]
