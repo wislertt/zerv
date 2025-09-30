@@ -341,68 +341,684 @@ pub mod sources {
 }
 ```
 
-#### Task 3.3: Implement Centralized Bump Logic in Zerv Object - [ ]
+#### Task 3.3: Add Bump Method to Zerv Object - [ ]
 
-**Priority**: CRITICAL | **Estimated Time**: 4-6 hours
+**Priority**: CRITICAL | **Estimated Time**: 4-5 hours
 
-**Goal**: Add bump processing methods to Zerv object as centralized logic
+**Goal**: Add bump processing methods to Zerv object as centralized logic with dedicated module structure
 
 **Note**: This bump logic is applied to Zerv objects after they are created from any source (git, stdin, string), maintaining clean separation of concerns.
+
+**Module Structure**:
+
+```
+src/version/zerv/bump/
+├── mod.rs           # BumpType enum and apply_bumps coordinator method
+├── vars_primary.rs  # Primary ZervVars field bumps (major, minor, patch)
+├── vars_secondary.rs # Secondary ZervVars field bumps (distance, post, dev, pre_release, epoch)
+├── vars_timestamp.rs # Timestamp bump logic (bump_bumped_timestamp)
+└── tests.rs         # Comprehensive bump tests
+```
 
 **Implementation**:
 
 ```rust
-// src/version/zerv/core.rs
+// src/version/zerv/bump/mod.rs
+use super::ZervVars;
+use crate::error::ZervError;
+use crate::cli::version::args::VersionArgs;
+use crate::constants::shared_fields;
+
+pub mod vars_primary;
+pub mod vars_secondary;
+pub mod vars_timestamp;
+
+#[cfg(test)]
+mod tests;
+
+/// Enum for bump types - uses constants for field names
+#[derive(Debug, Clone, PartialEq)]
+pub enum BumpType {
+    Major,
+    Minor,
+    Patch,
+    Distance,
+    Post,
+    Dev,
+    Epoch,
+    PreRelease,
+}
+
+impl BumpType {
+    /// Get the field name constant for this bump type
+    pub fn field_name(&self) -> &'static str {
+        match self {
+            BumpType::Major => shared_fields::MAJOR,
+            BumpType::Minor => shared_fields::MINOR,
+            BumpType::Patch => shared_fields::PATCH,
+            BumpType::Distance => shared_fields::DISTANCE,
+            BumpType::Post => shared_fields::POST,
+            BumpType::Dev => shared_fields::DEV,
+            BumpType::Epoch => shared_fields::EPOCH,
+            BumpType::PreRelease => shared_fields::PRE_RELEASE,
+        }
+    }
+}
+
 impl Zerv {
-    /// Apply bump operations to version components
+    /// Apply bump operations from VersionArgs
     pub fn apply_bumps(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Apply major bump
         if let Some(Some(increment)) = args.bump_major {
-            self.vars.major = Some(self.vars.major.unwrap_or(0) + increment as u64);
+            self.bump_major(increment as u64)?;
         }
 
-        // Apply minor bump
         if let Some(Some(increment)) = args.bump_minor {
-            self.vars.minor = Some(self.vars.minor.unwrap_or(0) + increment as u64);
+            self.bump_minor(increment as u64)?;
         }
 
-        // Apply patch bump
         if let Some(Some(increment)) = args.bump_patch {
-            self.vars.patch = Some(self.vars.patch.unwrap_or(0) + increment as u64);
+            self.bump_patch(increment as u64)?;
         }
 
-        // Apply distance bump
         if let Some(Some(increment)) = args.bump_distance {
-            self.vars.distance = Some(self.vars.distance.unwrap_or(0) + increment as u64);
+            self.bump_distance(increment as u64)?;
         }
 
-        // Apply post bump
         if let Some(Some(increment)) = args.bump_post {
-            self.vars.post = Some(self.vars.post.unwrap_or(0) + increment as u64);
+            self.bump_post(increment as u64)?;
         }
 
-        // Apply dev bump
         if let Some(Some(increment)) = args.bump_dev {
-            self.vars.dev = Some(self.vars.dev.unwrap_or(0) + increment as u64);
+            self.bump_dev(increment as u64)?;
         }
 
-        // Apply pre-release number bump
         if let Some(Some(increment)) = args.bump_pre_release_num {
-            if let Some(ref mut pre_release) = self.vars.pre_release {
-                pre_release.number = Some(pre_release.number.unwrap_or(0) + increment as u64);
-            }
+            self.bump_pre_release(increment as u64)?;
         }
 
-        // Apply epoch bump
         if let Some(Some(increment)) = args.bump_epoch {
-            self.vars.epoch = Some(self.vars.epoch.unwrap_or(0) + increment as u64);
+            self.bump_epoch(increment as u64)?;
         }
+
+        // Update bumped_timestamp based on context
+        self.bump_bumped_timestamp(args)?;
 
         Ok(())
     }
-
 }
 ```
+
+```rust
+// src/version/zerv/bump/vars_primary.rs
+use super::Zerv;
+use crate::error::ZervError;
+
+impl Zerv {
+    /// Bump major version by the specified increment
+    pub fn bump_major(&mut self, increment: u64) -> Result<(), ZervError> {
+        self.vars.major = Some(self.vars.major.unwrap_or(0) + increment);
+        Ok(())
+    }
+
+    /// Bump minor version by the specified increment
+    pub fn bump_minor(&mut self, increment: u64) -> Result<(), ZervError> {
+        self.vars.minor = Some(self.vars.minor.unwrap_or(0) + increment);
+        Ok(())
+    }
+
+    /// Bump patch version by the specified increment
+    pub fn bump_patch(&mut self, increment: u64) -> Result<(), ZervError> {
+        self.vars.patch = Some(self.vars.patch.unwrap_or(0) + increment);
+        Ok(())
+    }
+}
+
+// src/version/zerv/bump/extra_core.rs
+use super::Zerv;
+use crate::error::ZervError;
+
+impl Zerv {
+    /// Bump distance by the specified increment
+    pub fn bump_distance(&mut self, increment: u64) -> Result<(), ZervError> {
+        self.vars.distance = Some(self.vars.distance.unwrap_or(0) + increment);
+        Ok(())
+    }
+
+    /// Bump post-release version by the specified increment
+    pub fn bump_post(&mut self, increment: u64) -> Result<(), ZervError> {
+        self.vars.post = Some(self.vars.post.unwrap_or(0) + increment);
+        Ok(())
+    }
+
+    /// Bump dev version by the specified increment
+    pub fn bump_dev(&mut self, increment: u64) -> Result<(), ZervError> {
+        self.vars.dev = Some(self.vars.dev.unwrap_or(0) + increment);
+        Ok(())
+    }
+
+    /// Bump pre-release number by the specified increment
+    pub fn bump_pre_release(&mut self, increment: u64) -> Result<(), ZervError> {
+        if let Some(ref mut pre_release) = self.vars.pre_release {
+            pre_release.number = Some(pre_release.number.unwrap_or(0) + increment);
+        } else {
+            return Err(ZervError::InvalidVersion(
+                "Cannot bump pre-release number: no pre-release exists".to_string()
+            ));
+        }
+        Ok(())
+    }
+
+    /// Bump epoch by the specified increment
+    pub fn bump_epoch(&mut self, increment: u64) -> Result<(), ZervError> {
+        self.vars.epoch = Some(self.vars.epoch.unwrap_or(0) + increment);
+        Ok(())
+    }
+}
+```
+
+```rust
+// src/version/zerv/bump/vars_timestamp.rs
+use super::Zerv;
+use crate::cli::version::args::VersionArgs;
+use crate::error::ZervError;
+
+impl Zerv {
+    /// Bump bumped_timestamp based on bump context and dirty state
+    pub fn bump_bumped_timestamp(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+        // Only update timestamp if bump context is enabled (default behavior)
+        if !args.bump_context {
+            return Ok(());
+        }
+
+        // bumped_timestamp should represent the timestamp of the current commit
+        // If dirty, use current timestamp (uncommitted changes)
+        // If clean, use the VCS commit timestamp (already set from VCS data)
+        if self.vars.dirty == Some(true) {
+            self.vars.bumped_timestamp = Some(chrono::Utc::now().timestamp() as u64);
+        }
+        // If clean, keep the existing timestamp (from VCS data)
+        // This represents the timestamp of the current commit
+
+        Ok(())
+    }
+}
+```
+
+**Testing Requirements**:
+
+```rust
+// src/version/zerv/bump/tests.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::zerv::ZervFixture;
+    use crate::cli::version::args::VersionArgs;
+    use rstest::*;
+
+    // Test apply_bumps method - only test the main coordinator method
+    #[rstest]
+    #[case("v1.0.0", vec![(BumpType::Major, 1), (BumpType::Minor, 2)], (Some(2), Some(2), Some(0)))]
+    #[case("v2.5.3", vec![(BumpType::Major, 0), (BumpType::Patch, 7)], (Some(2), Some(5), Some(10)))]
+    #[case("v0.0.0", vec![(BumpType::Major, 3), (BumpType::Minor, 2), (BumpType::Patch, 1)], (Some(3), Some(2), Some(1)))]
+    fn test_apply_bumps_method(
+        #[case] version: &str,
+        #[case] bumps: Vec<(BumpType, u64)>,
+        #[case] expected: (Option<u64>, Option<u64>, Option<u64>)
+    ) {
+        let mut zerv = ZervFixture::tagged(version).unwrap();
+        let mut args = VersionArgs::default();
+
+        // Set up args based on bump specifications
+        for (bump_type, increment) in bumps {
+            match bump_type {
+                BumpType::Major => args.bump_major = Some(Some(increment as i64)),
+                BumpType::Minor => args.bump_minor = Some(Some(increment as i64)),
+                BumpType::Patch => args.bump_patch = Some(Some(increment as i64)),
+                BumpType::Distance => args.bump_distance = Some(Some(increment as i64)),
+                BumpType::Post => args.bump_post = Some(Some(increment as i64)),
+                BumpType::Dev => args.bump_dev = Some(Some(increment as i64)),
+                BumpType::Epoch => args.bump_epoch = Some(Some(increment as i64)),
+                BumpType::PreRelease => args.bump_pre_release_num = Some(Some(increment as i64)),
+            }
+        }
+
+        zerv.apply_bumps(&args).unwrap();
+
+        assert_eq!(zerv.vars.major, expected.0);
+        assert_eq!(zerv.vars.minor, expected.1);
+        assert_eq!(zerv.vars.patch, expected.2);
+    }
+
+    // Test BumpType enum functionality
+    #[test]
+    fn test_bump_type_field_names() {
+        assert_eq!(BumpType::Major.field_name(), "major");
+        assert_eq!(BumpType::Minor.field_name(), "minor");
+        assert_eq!(BumpType::Patch.field_name(), "patch");
+        assert_eq!(BumpType::Distance.field_name(), "distance");
+        assert_eq!(BumpType::Post.field_name(), "post");
+        assert_eq!(BumpType::Dev.field_name(), "dev");
+        assert_eq!(BumpType::Epoch.field_name(), "epoch");
+        assert_eq!(BumpType::PreRelease.field_name(), "pre_release");
+    }
+
+    // Test bumped_timestamp logic
+    #[test]
+    fn test_bumped_timestamp_dirty_with_bump_context() {
+        let mut zerv = ZervFixture::tagged("v1.0.0").unwrap();
+        zerv.vars.dirty = Some(true);
+        zerv.vars.bumped_timestamp = Some(1234567890); // Old timestamp
+
+        let args = VersionArgs::try_parse_from(["zerv", "--bump-major", "1"]).unwrap();
+        zerv.apply_bumps(&args).unwrap();
+
+        // Should update to current timestamp when dirty (uncommitted changes)
+        assert!(zerv.vars.bumped_timestamp.is_some());
+        assert!(zerv.vars.bumped_timestamp.unwrap() > 1234567890);
+    }
+
+    #[test]
+    fn test_bumped_timestamp_clean_with_bump_context() {
+        let mut zerv = ZervFixture::tagged("v1.0.0").unwrap();
+        zerv.vars.dirty = Some(false);
+        zerv.vars.bumped_timestamp = Some(1234567890); // VCS commit timestamp
+
+        let args = VersionArgs::try_parse_from(["zerv", "--bump-major", "1"]).unwrap();
+        zerv.apply_bumps(&args).unwrap();
+
+        // Should keep VCS commit timestamp when clean (represents current commit)
+        assert_eq!(zerv.vars.bumped_timestamp, Some(1234567890));
+    }
+
+    #[test]
+    fn test_bumped_timestamp_no_bump_context() {
+        let mut zerv = ZervFixture::tagged("v1.0.0").unwrap();
+        zerv.vars.dirty = Some(true);
+        zerv.vars.bumped_timestamp = Some(1234567890); // Old timestamp
+
+        let args = VersionArgs::try_parse_from(["zerv", "--no-bump-context", "--bump-major", "1"]).unwrap();
+        zerv.apply_bumps(&args).unwrap();
+
+        // Should keep existing timestamp when bump context is disabled
+        assert_eq!(zerv.vars.bumped_timestamp, Some(1234567890));
+    }
+
+    #[test]
+    fn test_bumped_timestamp_clean_no_bump_context() {
+        let mut zerv = ZervFixture::tagged("v1.0.0").unwrap();
+        zerv.vars.dirty = Some(false);
+        zerv.vars.bumped_timestamp = Some(1234567890); // VCS timestamp
+
+        let args = VersionArgs::try_parse_from(["zerv", "--no-bump-context", "--bump-major", "1"]).unwrap();
+        zerv.apply_bumps(&args).unwrap();
+
+        // Should keep existing timestamp when bump context is disabled
+        assert_eq!(zerv.vars.bumped_timestamp, Some(1234567890));
+    }
+}
+```
+
+**Individual Module Tests**:
+
+```rust
+// src/version/zerv/bump/core.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::zerv::ZervFixture;
+    use rstest::*;
+
+    #[rstest]
+    #[case("v1.0.0", 2, Some(3))]
+    #[case("v2.5.3", 1, Some(3))]
+    #[case("v0.0.0", 5, Some(5))]
+    fn test_bump_major(#[case] version: &str, #[case] increment: u64, #[case] expected: Option<u64>) {
+        let mut zerv = ZervFixture::tagged(version).unwrap();
+        zerv.bump_major(increment).unwrap();
+        assert_eq!(zerv.vars.major, expected);
+    }
+
+    #[rstest]
+    #[case("v1.0.0", 3, Some(3))]
+    #[case("v1.2.3", 1, Some(3))]
+    #[case("v0.0.0", 7, Some(7))]
+    fn test_bump_minor(#[case] version: &str, #[case] increment: u64, #[case] expected: Option<u64>) {
+        let mut zerv = ZervFixture::tagged(version).unwrap();
+        zerv.bump_minor(increment).unwrap();
+        assert_eq!(zerv.vars.minor, expected);
+    }
+
+    #[rstest]
+    #[case("v1.0.0", 1, Some(1))]
+    #[case("v1.2.3", 5, Some(8))]
+    #[case("v0.0.0", 2, Some(2))]
+    fn test_bump_patch(#[case] version: &str, #[case] increment: u64, #[case] expected: Option<u64>) {
+        let mut zerv = ZervFixture::tagged(version).unwrap();
+        zerv.bump_patch(increment).unwrap();
+        assert_eq!(zerv.vars.patch, expected);
+    }
+
+    // Edge cases for core bumps
+    #[rstest]
+    #[case("v1.0.0", 0, Some(1))]  // Bump by 0
+    #[case("v1.0.0", 1000, Some(1001))]  // Large increment
+    fn test_bump_major_edge_cases(#[case] version: &str, #[case] increment: u64, #[case] expected: Option<u64>) {
+        let mut zerv = ZervFixture::tagged(version).unwrap();
+        zerv.bump_major(increment).unwrap();
+        assert_eq!(zerv.vars.major, expected);
+    }
+}
+
+// src/version/zerv/bump/extra_core.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::zerv::ZervFixture;
+    use rstest::*;
+
+    #[rstest]
+    #[case(1, 2, Some(3))]
+    #[case(5, 0, Some(5))]  // Bump by 0
+    #[case(0, 10, Some(10))]  // From zero
+    fn test_bump_distance(#[case] initial: u64, #[case] increment: u64, #[case] expected: Option<u64>) {
+        let mut zerv = ZervFixture::with_distance("v1.0.0", initial).unwrap();
+        zerv.bump_distance(increment).unwrap();
+        assert_eq!(zerv.vars.distance, expected);
+    }
+
+    #[rstest]
+    #[case(0, 1, Some(1))]
+    #[case(3, 2, Some(5))]
+    #[case(10, 0, Some(10))]
+    fn test_bump_post(#[case] initial: u64, #[case] increment: u64, #[case] expected: Option<u64>) {
+        let mut zerv = ZervFixture::tagged("v1.0.0").unwrap();
+        zerv.vars.post = Some(initial);
+        zerv.bump_post(increment).unwrap();
+        assert_eq!(zerv.vars.post, expected);
+    }
+
+    #[rstest]
+    #[case(0, 1, Some(1))]
+    #[case(5, 3, Some(8))]
+    #[case(7, 0, Some(7))]
+    fn test_bump_dev(#[case] initial: u64, #[case] increment: u64, #[case] expected: Option<u64>) {
+        let mut zerv = ZervFixture::tagged("v1.0.0").unwrap();
+        zerv.vars.dev = Some(initial);
+        zerv.bump_dev(increment).unwrap();
+        assert_eq!(zerv.vars.dev, expected);
+    }
+
+    #[rstest]
+    #[case(0, 1, Some(1))]
+    #[case(2, 3, Some(5))]
+    #[case(5, 0, Some(5))]
+    fn test_bump_epoch(#[case] initial: u64, #[case] increment: u64, #[case] expected: Option<u64>) {
+        let mut zerv = ZervFixture::tagged("v1.0.0").unwrap();
+        zerv.vars.epoch = Some(initial);
+        zerv.bump_epoch(increment).unwrap();
+        assert_eq!(zerv.vars.epoch, expected);
+    }
+
+    #[rstest]
+    #[case("alpha", 1, 1, Some(2))]
+    #[case("beta", 5, 3, Some(8))]
+    #[case("rc", 0, 2, Some(2))]
+    fn test_bump_pre_release(#[case] label: &str, #[case] initial: u64, #[case] increment: u64, #[case] expected: Option<u64>) {
+        let mut zerv = ZervFixture::with_pre_release("v1.0.0", label, initial).unwrap();
+        zerv.bump_pre_release(increment).unwrap();
+        assert_eq!(zerv.vars.pre_release.as_ref().unwrap().number, expected);
+    }
+
+    #[rstest]
+    #[case("v1.0.0")]  // No pre-release
+    #[case("v1.0.0-alpha")]  // Pre-release without number
+    fn test_bump_pre_release_errors(#[case] version: &str) {
+        let mut zerv = ZervFixture::tagged(version).unwrap();
+        let result = zerv.bump_pre_release(1);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no pre-release exists"));
+    }
+}
+```
+
+#### Task 3.4: Fix Missing bumped_timestamp Population - [ ]
+
+**Priority**: HIGH | **Estimated Time**: 30 minutes
+
+**Goal**: Fix missing `bumped_timestamp` field population from VCS data
+
+**Current Issue**: The `bumped_timestamp` field exists in `ZervVars` but is not being populated from `VcsData.commit_timestamp`.
+
+**Implementation**:
+
+```rust
+// src/pipeline/vcs_data_to_zerv_vars.rs
+pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
+    // Parse version from tag_version
+    let version = if let Some(ref tag_version) = vcs_data.tag_version {
+        parse_version_from_tag(tag_version, None).ok_or_else(|| {
+            ZervError::InvalidFormat(format!("Failed to parse version from tag: {tag_version}"))
+        })?
+    } else {
+        return Err(ZervError::NoTagsFound);
+    };
+
+    let mut vars: ZervVars = version.into();
+
+    // VCS-specific fields
+    vars.distance = Some(vcs_data.distance as u64);
+    vars.bumped_branch = vcs_data.current_branch;
+    vars.dirty = Some(vcs_data.is_dirty);
+    vars.bumped_commit_hash = Some(vcs_data.commit_hash);
+    vars.bumped_timestamp = Some(vcs_data.commit_timestamp as u64);  // ← ADD THIS LINE
+    vars.last_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
+
+    Ok(vars)
+}
+```
+
+**Testing**:
+
+```rust
+#[test]
+fn test_bumped_timestamp_population() {
+    let vcs_data = VcsData {
+        tag_version: Some("v1.0.0".to_string()),
+        commit_timestamp: 1234567890,
+        ..Default::default()
+    };
+
+    let vars = vcs_data_to_zerv_vars(vcs_data).unwrap();
+    assert_eq!(vars.bumped_timestamp, Some(1234567890));
+}
+```
+
+**Impact**: Enables template usage like `--pre-release-num={{ bumped_timestamp }}` and `--custom-build-time={{ bumped_timestamp }}`.
+
+#### Task 3.5: Integrate Bump Functionality in Pipeline - [ ]
+
+**Priority**: CRITICAL | **Estimated Time**: 2-3 hours
+
+**Goal**: Integrate bump functionality into the version pipeline with new module structure
+
+**Implementation**:
+
+```rust
+// src/cli/version/pipeline.rs
+pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> {
+    // ... existing validation and source resolution ...
+
+    // 3. Apply bumps to Zerv object (overrides handled in source processing)
+    if args.has_bumps() {
+        zerv_object.apply_bumps(&args)?;
+    }
+
+    // ... rest of pipeline ...
+}
+
+// src/cli/version/stdin_pipeline.rs
+pub fn process_stdin_source(args: &VersionArgs) -> Result<Zerv, ZervError> {
+    // Parse stdin as Zerv RON
+    let mut zerv_from_stdin = InputFormatHandler::parse_stdin_to_zerv()?;
+
+    // Apply overrides directly to ZervVars (no conversion needed)
+    if args.has_overrides() {
+        zerv_from_stdin.vars.apply_overrides(args)?;
+    }
+
+    // Apply bumps if specified
+    if args.has_bumps() {
+        zerv_from_stdin.apply_bumps(args)?;
+    }
+
+    Ok(zerv_from_stdin)
+}
+```
+
+**Integration Testing**:
+
+```rust
+// tests/integration_tests/version/bump_integration.rs
+use rstest::*;
+
+#[rstest]
+#[case("v1.0.0", "--bump-major", "1", "2.0.0")]
+#[case("v2.5.3", "--bump-major", "2", "4.5.3")]
+#[case("v0.0.0", "--bump-major", "5", "5.0.0")]
+fn test_bump_integration_git_source(#[case] version: &str, #[case] flag: &str, #[case] increment: &str, #[case] expected: &str) {
+    // Test bump functionality with git source
+    let output = run_zerv_command(&["version", flag, increment]);
+    assert!(output.contains(expected));
+}
+
+#[rstest]
+#[case("v1.0.0", "--bump-minor", "2", "1.2.0")]
+#[case("v1.2.3", "--bump-patch", "5", "1.2.8")]
+#[case("v0.0.0", "--bump-minor", "3", "0.3.0")]
+fn test_bump_integration_core_bumps(#[case] version: &str, #[case] flag: &str, #[case] increment: &str, #[case] expected: &str) {
+    let output = run_zerv_command(&["version", flag, increment]);
+    assert!(output.contains(expected));
+}
+
+#[rstest]
+#[case("v1.0.0", "--bump-distance", "3", "distance: 3")]
+#[case("v1.0.0", "--bump-post", "2", "post: 2")]
+#[case("v1.0.0", "--bump-dev", "1", "dev: 1")]
+#[case("v1.0.0", "--bump-epoch", "1", "epoch: 1")]
+fn test_bump_integration_extra_bumps(#[case] version: &str, #[case] flag: &str, #[case] increment: &str, #[case] expected: &str) {
+    let output = run_zerv_command(&["version", flag, increment]);
+    assert!(output.contains(expected));
+}
+
+#[rstest]
+#[case("v1.0.0", vec!["--bump-major", "1", "--bump-minor", "2"], "2.2.0")]
+#[case("v2.5.3", vec!["--bump-major", "0", "--bump-patch", "7"], "2.5.10")]
+#[case("v0.0.0", vec!["--bump-major", "3", "--bump-minor", "2", "--bump-patch", "1"], "3.2.1")]
+fn test_bump_integration_multiple_bumps(
+    #[case] version: &str,
+    #[case] flags: Vec<&str>,
+    #[case] expected: &str
+) {
+    let mut args = vec!["version"];
+    args.extend(flags);
+    let output = run_zerv_command(&args);
+    assert!(output.contains(expected));
+}
+
+#[rstest]
+#[case("v1.0.0", vec!["--bump-major", "1", "--bump-distance", "2", "--bump-post", "1"], "2.0.0")]
+#[case("v0.0.0", vec!["--bump-minor", "5", "--bump-patch", "3", "--bump-epoch", "1"], "0.5.3")]
+fn test_bump_integration_mixed_bumps(
+    #[case] version: &str,
+    #[case] flags: Vec<&str>,
+    #[case] expected: &str
+) {
+    let mut args = vec!["version"];
+    args.extend(flags);
+    let output = run_zerv_command(&args);
+    assert!(output.contains(expected));
+}
+
+#[rstest]
+#[case("v1.0.0", "--bump-major", "0", "1.0.0")]  // Bump by 0
+#[case("v1.0.0", "--bump-major", "100", "101.0.0")]  // Large increment
+fn test_bump_integration_edge_cases(#[case] version: &str, #[case] flag: &str, #[case] increment: &str, #[case] expected: &str) {
+    let output = run_zerv_command(&["version", flag, increment]);
+    assert!(output.contains(expected));
+}
+
+#[rstest]
+#[case("v1.0.0", "--bump-pre-release-num", "1", "no pre-release exists")]
+#[case("v1.0.0-alpha", "--bump-pre-release-num", "1", "no pre-release exists")]
+fn test_bump_integration_pre_release_errors(#[case] version: &str, #[case] flag: &str, #[case] increment: &str, #[case] expected: &str) {
+    let result = run_zerv_command(&["version", flag, increment]);
+    assert!(result.contains(expected));
+}
+
+#[rstest]
+#[case("v1.0.0", BumpType::Major, 1, BumpType::Minor, 2, (Some(2), Some(2)))]
+#[case("v2.5.3", BumpType::Major, 0, BumpType::Patch, 7, (Some(2), Some(10)))]
+fn test_apply_bumps_method(
+    #[case] version: &str,
+    #[case] bump1: BumpType,
+    #[case] inc1: u64,
+    #[case] bump2: BumpType,
+    #[case] inc2: u64,
+    #[case] expected: (Option<u64>, Option<u64>)
+) {
+    use crate::test_utils::zerv::ZervFixture;
+    use crate::cli::version::args::VersionArgs;
+
+    let mut zerv = ZervFixture::tagged(version).unwrap();
+    let mut args = VersionArgs::default();
+
+    // Set up args based on bump types
+    match bump1 {
+        BumpType::Major => args.bump_major = Some(Some(inc1 as i64)),
+        BumpType::Minor => args.bump_minor = Some(Some(inc1 as i64)),
+        BumpType::Patch => args.bump_patch = Some(Some(inc1 as i64)),
+        BumpType::Distance => args.bump_distance = Some(Some(inc1 as i64)),
+        BumpType::Post => args.bump_post = Some(Some(inc1 as i64)),
+        BumpType::Dev => args.bump_dev = Some(Some(inc1 as i64)),
+        BumpType::Epoch => args.bump_epoch = Some(Some(inc1 as i64)),
+        BumpType::PreRelease => args.bump_pre_release_num = Some(Some(inc1 as i64)),
+    }
+
+    match bump2 {
+        BumpType::Major => args.bump_major = Some(Some(inc2 as i64)),
+        BumpType::Minor => args.bump_minor = Some(Some(inc2 as i64)),
+        BumpType::Patch => args.bump_patch = Some(Some(inc2 as i64)),
+        BumpType::Distance => args.bump_distance = Some(Some(inc2 as i64)),
+        BumpType::Post => args.bump_post = Some(Some(inc2 as i64)),
+        BumpType::Dev => args.bump_dev = Some(Some(inc2 as i64)),
+        BumpType::Epoch => args.bump_epoch = Some(Some(inc2 as i64)),
+        BumpType::PreRelease => args.bump_pre_release_num = Some(Some(inc2 as i64)),
+    }
+
+    zerv.apply_bumps(&args).unwrap();
+
+    assert_eq!(zerv.vars.major, expected.0);
+    assert_eq!(zerv.vars.minor, expected.1);
+}
+```
+
+**Module Integration**:
+
+```rust
+// src/version/zerv/mod.rs - Add bump module
+pub mod bump;
+
+// The bump methods are now implemented directly on Zerv in the bump module files
+// No additional integration needed in core.rs - methods are available via module imports
+```
+
+#### Task 3.6: Add Override Methods to ZervVars - [x]
+
+**Priority**: CRITICAL | **Estimated Time**: 3-4 hours
+
+**Goal**: Add override processing methods to ZervVars for complete field coverage
+
+**Implementation**:
 
 ```rust
 // src/version/zerv/vars.rs
@@ -547,35 +1163,6 @@ impl ZervVars {
 }
 ```
 
-**Integration in Pipeline**:
-
-```rust
-// src/cli/version/stdin_pipeline.rs
-pub fn process_stdin_source(args: &VersionArgs) -> Result<Zerv, ZervError> {
-    // Parse stdin as Zerv RON
-    let mut zerv_from_stdin = InputFormatHandler::parse_stdin_to_zerv()?;
-
-    // Apply overrides directly to ZervVars (no conversion needed)
-    if args.has_overrides() {
-        zerv_from_stdin.vars.apply_overrides(args)?;
-    }
-
-    Ok(zerv_from_stdin)
-}
-
-// src/cli/version/pipeline.rs
-pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> {
-    // ... existing validation and source resolution ...
-
-    // 3. Apply bumps to Zerv object (overrides handled in source processing)
-    if args.has_bumps() {
-        zerv_object.apply_bumps(&args)?;
-    }
-
-    // ... rest of pipeline ...
-}
-```
-
 **Architectural Improvement**: Moving `apply_overrides` to `ZervVars` instead of `Zerv` provides:
 
 - **Better separation of concerns**: ZervVars handles its own data manipulation
@@ -584,7 +1171,7 @@ pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> 
 - **Complete coverage**: Handles all version fields, not just VCS-level ones
 - **Consistent patterns**: Matches existing helper methods on ZervVars
 
-#### Task 3.4: Implement Context Control Logic - [x]
+#### Task 3.7: Implement Context Control Logic - [x]
 
 **Priority**: High | **Estimated Time**: 3-4 hours
 
