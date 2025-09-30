@@ -1,11 +1,12 @@
+pub mod bump;
 pub mod components;
 pub mod core;
 mod display;
 mod parser;
-pub mod schema; // New module
-pub mod schema_config; // New module for SchemaConfig
+pub mod schema;
+pub mod schema_config;
 pub mod utils;
-pub mod vars; // New module
+pub mod vars;
 
 // Core types
 pub use core::{PreReleaseLabel, PreReleaseVar, Zerv};

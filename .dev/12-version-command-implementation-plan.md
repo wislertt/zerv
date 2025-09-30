@@ -341,7 +341,7 @@ pub mod sources {
 }
 ```
 
-#### Task 3.3: Add Bump Method to Zerv Object - [ ]
+#### Task 3.3: Add Bump Method to Zerv Object - [x]
 
 **Priority**: CRITICAL | **Estimated Time**: 4-5 hours
 

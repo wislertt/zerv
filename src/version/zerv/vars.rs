@@ -325,7 +325,7 @@ mod tests {
             ..Default::default()
         };
 
-        let args = VersionArgs::try_parse_from(["zerv", "--no-bump-context"]).unwrap();
+        let args = VersionArgs::try_parse_from(["version", "--no-bump-context"]).unwrap();
         let result = vars.apply_overrides(&args);
 
         assert!(result.is_ok());
@@ -346,7 +346,7 @@ mod tests {
             ..Default::default()
         };
 
-        let args = VersionArgs::try_parse_from(["zerv", "--bump-context"]).unwrap();
+        let args = VersionArgs::try_parse_from(["version", "--bump-context"]).unwrap();
         let result = vars.apply_overrides(&args);
 
         assert!(result.is_ok());
@@ -445,7 +445,7 @@ mod tests {
             ..Default::default()
         };
 
-        let args = VersionArgs::try_parse_from(["zerv", "--dirty"]).unwrap();
+        let args = VersionArgs::try_parse_from(["version", "--dirty"]).unwrap();
         let result = vars.apply_overrides(&args);
 
         assert!(result.is_ok());
@@ -459,7 +459,7 @@ mod tests {
             ..Default::default()
         };
 
-        let args = VersionArgs::try_parse_from(["zerv", "--no-dirty"]).unwrap();
+        let args = VersionArgs::try_parse_from(["version", "--no-dirty"]).unwrap();
         let result = vars.apply_overrides(&args);
 
         assert!(result.is_ok());
@@ -504,7 +504,7 @@ mod tests {
         let mut vars = ZervVars::default();
 
         let args =
-            VersionArgs::try_parse_from(["zerv", "--custom", r#"{"invalid": json}"#]).unwrap();
+            VersionArgs::try_parse_from(["version", "--custom", r#"{"invalid": json}"#]).unwrap();
         let result = vars.apply_overrides(&args);
 
         assert!(result.is_err());

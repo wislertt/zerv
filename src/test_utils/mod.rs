@@ -1,3 +1,4 @@
+pub mod bump_type;
 pub mod dir;
 pub mod git;
 pub mod output;
@@ -8,6 +9,7 @@ pub mod zerv;
 
 use crate::config::ZervConfig;
 
+pub use bump_type::BumpType;
 pub use dir::TestDir;
 pub use git::{DockerGit, GitOperations, GitRepoFixture, NativeGit};
 pub use output::TestOutput;

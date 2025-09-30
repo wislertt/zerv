@@ -1,5 +1,6 @@
 use crate::cli::version::args::VersionArgs;
 use crate::constants::{formats, sources};
+use crate::test_utils::BumpType;
 
 /// Test fixture for creating VersionArgs with sensible defaults
 pub struct VersionArgsFixture;
@@ -88,6 +89,26 @@ impl VersionArgsFixture {
         args.bump_major = Some(Some(1));
         args.bump_minor = Some(Some(2));
         args.bump_patch = Some(Some(3));
+        args
+    }
+
+    /// Create a VersionArgs with specific bump operations from BumpType specifications
+    pub fn with_bump_specs(bumps: Vec<(BumpType, u64)>) -> VersionArgs {
+        let mut args = Self::create();
+
+        for (bump_type, increment) in bumps {
+            match bump_type {
+                BumpType::Major => args.bump_major = Some(Some(increment as u32)),
+                BumpType::Minor => args.bump_minor = Some(Some(increment as u32)),
+                BumpType::Patch => args.bump_patch = Some(Some(increment as u32)),
+                BumpType::Distance => args.bump_distance = Some(Some(increment as u32)),
+                BumpType::Post => args.bump_post = Some(Some(increment as u32)),
+                BumpType::Dev => args.bump_dev = Some(Some(increment as u32)),
+                BumpType::Epoch => args.bump_epoch = Some(Some(increment as u32)),
+                BumpType::PreRelease => args.bump_pre_release_num = Some(Some(increment as u32)),
+            }
+        }
+
         args
     }
 

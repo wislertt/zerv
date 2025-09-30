@@ -114,10 +114,12 @@ $ zerv version  # Uncommitted changes
 **Context → Override → Bump Logic**:
 
 1. **Context Control** - Determine data scope
-    - `--bump-context` (default): Include full metadata
-    - `--no-bump-context`: Use tag version only
-2. **Overrides** - Set absolute values
-3. **Bumps** - Modify existing values
+    - `--bump-context` (default): Include full VCS metadata
+    - `--no-bump-context`: Force clean state (distance=0, dirty=false, no VCS context)
+2. **Overrides** - Set absolute values (respects context control)
+3. **Bumps** - Modify existing values (respects context control)
+
+**Note**: Context control happens first and affects all subsequent processing. `--no-bump-context` eliminates VCS metadata, making VCS-related overrides and bumps meaningless.
 
 ## Templating Support
 
@@ -606,6 +608,10 @@ Error: Not in a git directory. Use -C <dir> to specify directory or --source str
 
 ```bash
 Error: Cannot use --format with --input-format or --output-format
+Error: Cannot use --no-bump-context with --dirty (conflicting options)
+Error: Cannot use --clean with --dirty (conflicting options)
+Error: Cannot use --clean with --no-dirty (conflicting options)
+Error: Cannot use --clean with --distance (conflicting options)
 ```
 
 ## Troubleshooting
@@ -636,6 +642,16 @@ Error: Cannot use --format with --input-format or --output-format
 
 - **Solution**: Don't use `--format` with `--input-format` or `--output-format`
 - **Example**: Use `--output-format pep440` instead of `--format pep440 --output-format semver`
+
+**"--no-bump-context with --dirty"**
+
+- **Solution**: `--no-bump-context` eliminates VCS metadata, making `--dirty` meaningless
+- **Example**: Use `--no-bump-context` alone for clean tag versions, or `--bump-context` with `--dirty` for VCS-aware versions
+
+**"--clean with other options"**
+
+- **Solution**: `--clean` forces clean state, conflicting with dirty/distance overrides
+- **Example**: Use `--clean` alone, or use individual overrides like `--dirty` or `--distance` without `--clean`
 
 ## Exit Codes
 
