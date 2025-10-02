@@ -4,9 +4,14 @@ use crate::constants::shared_constants;
 use crate::error::ZervError;
 
 impl Zerv {
-    /// Process major version bump with reset logic
+    /// Process major version component with override, bump, and reset logic
     pub fn process_major(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Apply bump if requested
+        // 1. Override step - set absolute value if specified
+        if let Some(override_value) = args.major {
+            self.vars.major = Some(override_value as u64);
+        }
+
+        // 2. Bump + Reset step (atomic operation)
         if let Some(Some(increment)) = args.bump_major {
             self.vars.major = Some(self.vars.major.unwrap_or(0) + increment as u64);
 
@@ -18,9 +23,14 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process minor version bump with reset logic
+    /// Process minor version component with override, bump, and reset logic
     pub fn process_minor(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Apply bump if requested
+        // 1. Override step - set absolute value if specified
+        if let Some(override_value) = args.minor {
+            self.vars.minor = Some(override_value as u64);
+        }
+
+        // 2. Bump + Reset step (atomic operation)
         if let Some(Some(increment)) = args.bump_minor {
             self.vars.minor = Some(self.vars.minor.unwrap_or(0) + increment as u64);
 
@@ -32,9 +42,14 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process patch version bump with reset logic
+    /// Process patch version component with override, bump, and reset logic
     pub fn process_patch(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Apply bump if requested
+        // 1. Override step - set absolute value if specified
+        if let Some(override_value) = args.patch {
+            self.vars.patch = Some(override_value as u64);
+        }
+
+        // 2. Bump + Reset step (atomic operation)
         if let Some(Some(increment)) = args.bump_patch {
             self.vars.patch = Some(self.vars.patch.unwrap_or(0) + increment as u64);
 

@@ -18,7 +18,7 @@ impl ZervDraft {
 
     pub fn to_zerv(mut self, args: &VersionArgs) -> Result<Zerv, ZervError> {
         // Apply overrides first
-        self.vars.apply_overrides(args)?;
+        self.vars.apply_context_overrides(args)?;
 
         // Then create the Zerv object
         let (schema_name, schema_ron) = args.resolve_schema();

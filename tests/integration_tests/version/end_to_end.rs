@@ -49,7 +49,11 @@ fn test_git_source_with_overrides(
         cmd.arg("--distance").arg(distance.to_string());
     }
     if let Some(dirty) = overrides.dirty {
-        cmd.arg("--dirty").arg(if dirty { "true" } else { "false" });
+        if dirty {
+            cmd.arg("--dirty");
+        } else {
+            cmd.arg("--no-dirty");
+        }
     }
     if overrides.clean {
         cmd.arg("--clean");
@@ -98,7 +102,11 @@ fn test_conflicting_overrides(
         cmd.arg("--distance").arg(distance.to_string());
     }
     if let Some(dirty) = dirty_override {
-        cmd.arg("--dirty").arg(if dirty { "true" } else { "false" });
+        if dirty {
+            cmd.arg("--dirty");
+        } else {
+            cmd.arg("--no-dirty");
+        }
     }
 
     let output = cmd.assert_failure();

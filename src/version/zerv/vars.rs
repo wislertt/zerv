@@ -2,7 +2,7 @@ use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::version::VersionArgs;
 use crate::error::ZervError;
 use crate::version::zerv::core::PreReleaseVar;
-use crate::version::zerv::utils::normalize_pre_release_label;
+// use crate::version::zerv::utils::normalize_pre_release_label;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
@@ -62,7 +62,7 @@ impl ZervVars {
 
     /// Apply all CLI overrides to ZervVars including VCS and version components
     /// Note: Early validation should be called before this method via args.validate()
-    pub fn apply_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+    pub fn apply_context_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Apply VCS-level overrides first
         self.apply_vcs_overrides(args)?;
 
@@ -70,7 +70,7 @@ impl ZervVars {
         self.apply_clean_flag(args)?;
 
         // Apply version-specific field overrides
-        self.apply_version_overrides(args)?;
+        self.apply_tag_version_overrides(args)?;
 
         // Apply context control logic
         self.apply_context_control(args)?;
@@ -124,7 +124,7 @@ impl ZervVars {
     }
 
     /// Apply version-specific field overrides
-    fn apply_version_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+    fn apply_tag_version_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Apply tag version override (parse and extract components)
         if let Some(ref tag_version) = args.tag_version {
             // Use existing InputFormatHandler for parsing
@@ -133,36 +133,36 @@ impl ZervVars {
             let parsed_vars = ZervVars::from(version_object);
 
             // Apply parsed version components to self
+            self.epoch = parsed_vars.epoch;
             self.major = parsed_vars.major;
             self.minor = parsed_vars.minor;
             self.patch = parsed_vars.patch;
-            self.epoch = parsed_vars.epoch;
             self.pre_release = parsed_vars.pre_release;
             self.post = parsed_vars.post;
             self.dev = parsed_vars.dev;
         }
 
-        // Apply version-specific field overrides
-        if let Some(post) = args.post {
-            self.post = Some(post as u64);
-        }
+        // // Apply version-specific field overrides
+        // if let Some(post) = args.post {
+        //     self.post = Some(post as u64);
+        // }
 
-        if let Some(dev) = args.dev {
-            self.dev = Some(dev as u64);
-        }
+        // if let Some(dev) = args.dev {
+        //     self.dev = Some(dev as u64);
+        // }
 
-        if let Some(ref label) = args.pre_release_label {
-            self.pre_release = Some(PreReleaseVar {
-                label: normalize_pre_release_label(label).ok_or_else(|| {
-                    ZervError::InvalidVersion(format!("Invalid pre-release label: {label}"))
-                })?,
-                number: args.pre_release_num.map(|n| n as u64),
-            });
-        }
+        // if let Some(ref label) = args.pre_release_label {
+        //     self.pre_release = Some(PreReleaseVar {
+        //         label: normalize_pre_release_label(label).ok_or_else(|| {
+        //             ZervError::InvalidVersion(format!("Invalid pre-release label: {label}"))
+        //         })?,
+        //         number: args.pre_release_num.map(|n| n as u64),
+        //     });
+        // }
 
-        if let Some(epoch) = args.epoch {
-            self.epoch = Some(epoch as u64);
-        }
+        // if let Some(epoch) = args.epoch {
+        //     self.epoch = Some(epoch as u64);
+        // }
 
         if let Some(ref custom_json) = args.custom {
             self.custom = serde_json::from_str(custom_json)
@@ -287,7 +287,7 @@ mod tests {
         };
 
         let args = VersionArgsFixture::new().with_clean_flag(true).build();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
         assert_eq!(vars.distance, Some(0));
@@ -311,7 +311,7 @@ mod tests {
             .with_current_branch("feature/test")
             .with_commit_hash("abc123def")
             .build();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
         assert_eq!(vars.distance, Some(5));
@@ -332,7 +332,7 @@ mod tests {
         };
 
         let args = VersionArgs::try_parse_from(["version", "--no-bump-context"]).unwrap();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
         assert_eq!(vars.distance, Some(0));
@@ -353,7 +353,7 @@ mod tests {
         };
 
         let args = VersionArgs::try_parse_from(["version", "--bump-context"]).unwrap();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
         // --bump-context is default behavior, so no changes should be made
@@ -364,47 +364,41 @@ mod tests {
     }
 
     #[test]
-    fn test_apply_overrides_version_components() {
+    fn test_apply_overrides_tag_version_only() {
         let mut vars = ZervVars::default();
 
+        // Test that apply_overrides now only handles tag_version parsing and VCS overrides
+        // Individual component overrides are handled in process_* methods
+        let args = VersionArgsFixture::new().with_tag_version("2.0.0").build();
+        let result = vars.apply_context_overrides(&args);
+
+        assert!(result.is_ok());
+        // Tag version parsing should still work
+        assert_eq!(vars.major, Some(2));
+        assert_eq!(vars.minor, Some(0));
+        assert_eq!(vars.patch, Some(0));
+    }
+
+    #[test]
+    fn test_apply_overrides_individual_components_not_handled() {
+        let mut vars = ZervVars::default();
+
+        // Test that individual component overrides are NOT handled by apply_overrides
         let args = VersionArgsFixture::new()
-            .with_tag_version("2.0.0")
             .with_post(10)
             .with_dev(5)
             .with_pre_release_label("alpha")
             .with_pre_release_num(1)
             .with_epoch(1)
             .build();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
-        assert_eq!(vars.major, Some(2));
-        assert_eq!(vars.minor, Some(0));
-        assert_eq!(vars.patch, Some(0));
-        assert_eq!(vars.post, Some(10));
-        assert_eq!(vars.dev, Some(5));
-        assert_eq!(vars.epoch, Some(1));
-    }
-
-    #[test]
-    fn test_apply_overrides_pre_release() {
-        let mut vars = ZervVars::default();
-
-        let args = VersionArgs::try_parse_from([
-            "zerv",
-            "--pre-release-label",
-            "rc",
-            "--pre-release-num",
-            "2",
-        ])
-        .unwrap();
-        let result = vars.apply_overrides(&args);
-
-        assert!(result.is_ok());
-        assert!(vars.pre_release.is_some());
-        let pre_release = vars.pre_release.unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Rc);
-        assert_eq!(pre_release.number, Some(2));
+        // Individual component overrides should NOT be applied by apply_overrides
+        assert_eq!(vars.post, None);
+        assert_eq!(vars.dev, None);
+        assert_eq!(vars.epoch, None);
+        assert_eq!(vars.pre_release, None);
     }
 
     #[test]
@@ -417,7 +411,7 @@ mod tests {
             r#"{"build_id": 123, "env": "production"}"#,
         ])
         .unwrap();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
         assert_eq!(vars.custom.get("build_id"), Some(&serde_json::json!(123)));
@@ -439,7 +433,7 @@ mod tests {
             "semver",
         ])
         .unwrap();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
         assert_eq!(vars.major, Some(2));
@@ -459,7 +453,7 @@ mod tests {
         };
 
         let args = VersionArgs::try_parse_from(["version", "--dirty"]).unwrap();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
         assert_eq!(vars.dirty, Some(true));
@@ -473,7 +467,7 @@ mod tests {
         };
 
         let args = VersionArgs::try_parse_from(["version", "--no-dirty"]).unwrap();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
         assert_eq!(vars.dirty, Some(false));
@@ -501,7 +495,7 @@ mod tests {
             "abc123",
         ])
         .unwrap();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
         // Clean flag should override other VCS settings
@@ -518,7 +512,7 @@ mod tests {
 
         let args =
             VersionArgs::try_parse_from(["version", "--custom", r#"{"invalid": json}"#]).unwrap();
-        let result = vars.apply_overrides(&args);
+        let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_err());
         match result {
@@ -526,27 +520,6 @@ mod tests {
                 assert!(msg.contains("Invalid custom JSON"));
             }
             _ => panic!("Expected InvalidVersion error for invalid JSON"),
-        }
-    }
-
-    #[test]
-    fn test_apply_overrides_invalid_pre_release_label() {
-        let mut vars = ZervVars::default();
-
-        let args = VersionArgs::try_parse_from([
-            "zerv",
-            "--pre-release-label",
-            "invalid-label-with-special-chars!",
-        ])
-        .unwrap();
-        let result = vars.apply_overrides(&args);
-
-        assert!(result.is_err());
-        match result {
-            Err(ZervError::InvalidVersion(msg)) => {
-                assert!(msg.contains("Invalid pre-release label"));
-            }
-            _ => panic!("Expected InvalidVersion error for invalid pre-release label"),
         }
     }
 }

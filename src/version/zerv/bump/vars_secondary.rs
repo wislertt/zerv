@@ -4,9 +4,14 @@ use crate::constants::shared_constants;
 use crate::error::ZervError;
 
 impl Zerv {
-    /// Process post-release version bump with reset logic
+    /// Process post-release component with override, bump, and reset logic
     pub fn process_post(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Apply bump if requested
+        // 1. Override step - set absolute value if specified
+        if let Some(override_value) = args.post {
+            self.vars.post = Some(override_value as u64);
+        }
+
+        // 2. Bump + Reset step (atomic operation)
         if let Some(Some(increment)) = args.bump_post {
             self.vars.post = Some(self.vars.post.unwrap_or(0) + increment as u64);
 
@@ -18,9 +23,14 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process dev version bump with reset logic
+    /// Process dev component with override, bump, and reset logic
     pub fn process_dev(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Apply bump if requested
+        // 1. Override step - set absolute value if specified
+        if let Some(override_value) = args.dev {
+            self.vars.dev = Some(override_value as u64);
+        }
+
+        // 2. Bump + Reset step (atomic operation)
         if let Some(Some(increment)) = args.bump_dev {
             self.vars.dev = Some(self.vars.dev.unwrap_or(0) + increment as u64);
 
@@ -32,9 +42,32 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process pre-release number bump with reset logic
+    /// Process pre-release component with override, bump, and reset logic
     pub fn process_pre_release(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Apply bump if requested
+        // 1. Override step - handle pre-release label and number overrides
+        if let Some(ref label) = args.pre_release_label {
+            // Import the normalize function
+            use crate::version::zerv::utils::general::normalize_pre_release_label;
+
+            self.vars.pre_release = Some(crate::version::zerv::core::PreReleaseVar {
+                label: normalize_pre_release_label(label).ok_or_else(|| {
+                    ZervError::InvalidVersion(format!("Invalid pre-release label: {label}"))
+                })?,
+                number: args.pre_release_num.map(|n| n as u64),
+            });
+        } else if let Some(override_num) = args.pre_release_num {
+            // If only number is specified, create alpha label if none exists
+            if self.vars.pre_release.is_none() {
+                self.vars.pre_release = Some(crate::version::zerv::core::PreReleaseVar {
+                    label: crate::version::zerv::core::PreReleaseLabel::Alpha,
+                    number: Some(override_num as u64),
+                });
+            } else if let Some(ref mut pre_release) = self.vars.pre_release {
+                pre_release.number = Some(override_num as u64);
+            }
+        }
+
+        // 2. Bump + Reset step (atomic operation)
         if let Some(Some(increment)) = args.bump_pre_release_num {
             if let Some(ref mut pre_release) = self.vars.pre_release {
                 pre_release.number = Some(pre_release.number.unwrap_or(0) + increment as u64);
@@ -52,9 +85,14 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process epoch bump with reset logic
+    /// Process epoch component with override, bump, and reset logic
     pub fn process_epoch(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Apply bump if requested
+        // 1. Override step - set absolute value if specified
+        if let Some(override_value) = args.epoch {
+            self.vars.epoch = Some(override_value as u64);
+        }
+
+        // 2. Bump + Reset step (atomic operation)
         if let Some(Some(increment)) = args.bump_epoch {
             self.vars.epoch = Some(self.vars.epoch.unwrap_or(0) + increment as u64);
 
