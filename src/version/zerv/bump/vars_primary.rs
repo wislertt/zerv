@@ -62,7 +62,9 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        let args = crate::test_utils::VersionArgsFixture::with_bump_major(increment as u32);
+        let args = crate::test_utils::VersionArgsFixture::new()
+            .with_bump_major_flag(increment as u32)
+            .build();
         zerv.process_major(&args).unwrap();
         assert_eq!(zerv.vars.major, expected);
     }
@@ -77,7 +79,9 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        let args = crate::test_utils::VersionArgsFixture::with_bump_minor(increment as u32);
+        let args = crate::test_utils::VersionArgsFixture::new()
+            .with_bump_minor_flag(increment as u32)
+            .build();
         zerv.process_minor(&args).unwrap();
         assert_eq!(zerv.vars.minor, expected);
     }
@@ -92,7 +96,9 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        let args = crate::test_utils::VersionArgsFixture::with_bump_patch(increment as u32);
+        let args = crate::test_utils::VersionArgsFixture::new()
+            .with_bump_patch_flag(increment as u32)
+            .build();
         zerv.process_patch(&args).unwrap();
         assert_eq!(zerv.vars.patch, expected);
     }

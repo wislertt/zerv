@@ -82,7 +82,9 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        let args = crate::test_utils::VersionArgsFixture::with_bump_post(increment as u32);
+        let args = crate::test_utils::VersionArgsFixture::new()
+            .with_bump_post_flag(increment as u32)
+            .build();
         zerv.process_post(&args).unwrap();
         assert_eq!(zerv.vars.post, expected);
     }
@@ -96,7 +98,9 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        let args = crate::test_utils::VersionArgsFixture::with_bump_dev(increment as u32);
+        let args = crate::test_utils::VersionArgsFixture::new()
+            .with_bump_dev_flag(increment as u32)
+            .build();
         zerv.process_dev(&args).unwrap();
         assert_eq!(zerv.vars.dev, expected);
     }
@@ -110,7 +114,9 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        let args = crate::test_utils::VersionArgsFixture::with_bump_epoch(increment as u32);
+        let args = crate::test_utils::VersionArgsFixture::new()
+            .with_bump_epoch_flag(increment as u32)
+            .build();
         zerv.process_epoch(&args).unwrap();
         assert_eq!(zerv.vars.epoch, expected);
     }
@@ -118,7 +124,9 @@ mod tests {
     #[test]
     fn test_bump_pre_release_success() {
         let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(1));
-        let args = crate::test_utils::VersionArgsFixture::with_bump_pre_release_num(2);
+        let args = crate::test_utils::VersionArgsFixture::new()
+            .with_bump_pre_release_num_flag(2)
+            .build();
         zerv.process_pre_release(&args).unwrap();
         assert_eq!(zerv.vars.pre_release.as_ref().unwrap().number, Some(3));
     }
@@ -126,7 +134,9 @@ mod tests {
     #[test]
     fn test_bump_pre_release_no_pre_release() {
         let mut zerv = ZervFixture::zerv_version(1, 0, 0);
-        let args = crate::test_utils::VersionArgsFixture::with_bump_pre_release_num(1);
+        let args = crate::test_utils::VersionArgsFixture::new()
+            .with_bump_pre_release_num_flag(1)
+            .build();
         let result = zerv.process_pre_release(&args);
         assert!(result.is_err());
         assert!(

@@ -24,10 +24,11 @@ fn test_zerv_format_output() {
         fixture.path().display()
     );
 
-    let mut args = VersionArgsFixture::create();
-    args.schema = Some(schema_names::ZERV_STANDARD.to_string());
-    args.output_format = formats::ZERV.to_string();
-    args.directory = Some(fixture.path().to_str().unwrap().to_string());
+    let args = VersionArgsFixture::new()
+        .with_schema(schema_names::ZERV_STANDARD)
+        .with_output_format(formats::ZERV)
+        .with_directory(fixture.path().to_str().unwrap())
+        .build();
 
     // Run pipeline with detailed error context
     let result = zerv::cli::run_version_pipeline(args);
@@ -164,10 +165,11 @@ fn test_zerv_format_roundtrip() {
     let fixture = GitRepoFixture::tagged("v2.0.1").expect("Failed to create tagged repo");
 
     // Generate Zerv format
-    let mut args1 = VersionArgsFixture::create();
-    args1.schema = Some(schema_names::ZERV_STANDARD.to_string());
-    args1.output_format = formats::ZERV.to_string();
-    args1.directory = Some(fixture.path().to_str().unwrap().to_string());
+    let args1 = VersionArgsFixture::new()
+        .with_schema(schema_names::ZERV_STANDARD)
+        .with_output_format(formats::ZERV)
+        .with_directory(fixture.path().to_str().unwrap())
+        .build();
 
     let zerv_output =
         zerv::cli::run_version_pipeline(args1).expect("First pipeline should succeed");

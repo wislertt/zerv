@@ -60,7 +60,7 @@ mod tests {
         #[case] expected: (Option<u64>, Option<u64>, Option<u64>),
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        let args = VersionArgsFixture::with_bump_specs(bumps);
+        let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
 
         zerv.apply_component_processing(&args).unwrap();
 
@@ -74,7 +74,7 @@ mod tests {
     fn test_apply_bumps_zero_increments() {
         let mut zerv = ZervFixture::zerv_version(0, 0, 0);
         let bumps = vec![BumpType::Post(0), BumpType::Dev(0)];
-        let args = VersionArgsFixture::with_bump_specs(bumps);
+        let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
 
         zerv.apply_component_processing(&args).unwrap();
 
@@ -115,7 +115,7 @@ mod tests {
             BumpType::Post(2),  // Applied to reset value (0)
             BumpType::Dev(5),   // Applied to reset value (0)
         ];
-        let args = VersionArgsFixture::with_bump_specs(bumps);
+        let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
         zerv.apply_component_processing(&args).unwrap();
 
         // Verify fields follow reset logic:
@@ -158,7 +158,7 @@ mod tests {
             BumpType::Minor(2), // Applied to reset value (0)
             BumpType::Patch(3), // Applied to reset value (0)
         ];
-        let args = VersionArgsFixture::with_bump_specs(bumps);
+        let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
         zerv.apply_component_processing(&args).unwrap();
 
         // Verify semantic versioning reset logic:
@@ -184,7 +184,7 @@ mod tests {
             BumpType::Minor(1), // Should reset patch, post, dev
             BumpType::Patch(2), // Applied to reset value (0)
         ];
-        let args = VersionArgsFixture::with_bump_specs(bumps);
+        let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
         zerv.apply_component_processing(&args).unwrap();
 
         // Verify minor bump reset logic:
@@ -219,7 +219,7 @@ mod tests {
 
         // Apply bumps
         let bumps = vec![BumpType::Patch(1)];
-        let args = VersionArgsFixture::with_bump_specs(bumps);
+        let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
         zerv.apply_component_processing(&args).unwrap();
 
         // Verify fields were bumped
@@ -248,7 +248,7 @@ mod tests {
 
         // Apply pre-release bump
         let bumps = vec![BumpType::PreReleaseNum(2)];
-        let args = VersionArgsFixture::with_bump_specs(bumps);
+        let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
         zerv.apply_component_processing(&args).unwrap();
 
         // Verify pre-release was bumped
@@ -268,7 +268,7 @@ mod tests {
 
         // Try to apply pre-release bump
         let bumps = vec![BumpType::PreReleaseNum(1)];
-        let args = VersionArgsFixture::with_bump_specs(bumps);
+        let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
         let result = zerv.apply_component_processing(&args);
 
         // Should fail because there's no pre-release to bump
@@ -296,10 +296,10 @@ mod tests {
             ];
 
             // Method 1: Using the new chainable approach
-            let args = VersionArgsFixture::apply_override_specs(
-                VersionArgsFixture::apply_bump_specs(VersionArgsFixture::create(), bumps),
-                overrides,
-            );
+            let args = VersionArgsFixture::new()
+                .with_bump_specs(bumps)
+                .with_override_specs(overrides)
+                .build();
 
             zerv.apply_component_processing(&args).unwrap();
 

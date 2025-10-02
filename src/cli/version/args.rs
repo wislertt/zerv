@@ -695,19 +695,27 @@ mod tests {
 
     #[test]
     fn test_version_args_fixture() {
-        let args = VersionArgsFixture::create();
+        let args = VersionArgsFixture::new().build();
         assert_eq!(args.source, sources::GIT);
         assert_eq!(args.output_format, formats::SEMVER);
 
-        let args_with_overrides = VersionArgsFixture::with_overrides();
+        let args_with_overrides = VersionArgsFixture::new()
+            .with_tag_version("v2.0.0")
+            .with_distance(5)
+            .with_dirty(true)
+            .build();
         assert_eq!(args_with_overrides.tag_version, Some("v2.0.0".to_string()));
         assert_eq!(args_with_overrides.distance, Some(5));
         assert!(args_with_overrides.dirty);
 
-        let args_with_clean = VersionArgsFixture::with_clean();
+        let args_with_clean = VersionArgsFixture::new().with_clean_flag(true).build();
         assert!(args_with_clean.clean);
 
-        let args_with_bumps = VersionArgsFixture::with_bumps();
+        let args_with_bumps = VersionArgsFixture::new()
+            .with_bump_major_flag(1)
+            .with_bump_minor_flag(1)
+            .with_bump_patch_flag(1)
+            .build();
         assert!(args_with_bumps.bump_major.is_some());
         assert!(args_with_bumps.bump_minor.is_some());
         assert!(args_with_bumps.bump_patch.is_some());

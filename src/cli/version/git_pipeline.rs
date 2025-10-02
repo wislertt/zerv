@@ -48,8 +48,9 @@ mod tests {
         let fixture = GitRepoFixture::tagged("v1.2.3").expect("Failed to create git fixture");
 
         // Create basic version args using fixture
-        let mut args = VersionArgsFixture::create();
-        args.directory = Some(fixture.path().to_string_lossy().to_string());
+        let args = VersionArgsFixture::new()
+            .with_directory(&fixture.path().to_string_lossy())
+            .build();
 
         // Process the git source
         let result = process_git_source(fixture.path(), &args);

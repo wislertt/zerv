@@ -286,7 +286,7 @@ mod tests {
             ..Default::default()
         };
 
-        let args = VersionArgsFixture::with_clean();
+        let args = VersionArgsFixture::new().with_clean_flag(true).build();
         let result = vars.apply_overrides(&args);
 
         assert!(result.is_ok());
@@ -304,7 +304,13 @@ mod tests {
             ..Default::default()
         };
 
-        let args = VersionArgsFixture::with_vcs_overrides();
+        let args = VersionArgsFixture::new()
+            .with_tag_version("v1.0.0")
+            .with_distance(5)
+            .with_dirty(true)
+            .with_current_branch("feature/test")
+            .with_commit_hash("abc123def")
+            .build();
         let result = vars.apply_overrides(&args);
 
         assert!(result.is_ok());
@@ -361,7 +367,14 @@ mod tests {
     fn test_apply_overrides_version_components() {
         let mut vars = ZervVars::default();
 
-        let args = VersionArgsFixture::with_version_overrides();
+        let args = VersionArgsFixture::new()
+            .with_tag_version("2.0.0")
+            .with_post(10)
+            .with_dev(5)
+            .with_pre_release_label("alpha")
+            .with_pre_release_num(1)
+            .with_epoch(1)
+            .build();
         let result = vars.apply_overrides(&args);
 
         assert!(result.is_ok());
