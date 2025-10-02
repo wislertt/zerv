@@ -1,8 +1,9 @@
 use super::Zerv;
+use crate::cli::version::args::VersionArgs;
 use crate::error::ZervError;
 
 impl Zerv {
-    pub fn bump_bumped_timestamp(&mut self) -> Result<(), ZervError> {
+    pub fn process_bumped_timestamp(&mut self, _args: &VersionArgs) -> Result<(), ZervError> {
         if self.vars.dirty == Some(true) {
             self.vars.bumped_timestamp = Some(chrono::Utc::now().timestamp() as u64);
         }
@@ -23,7 +24,8 @@ mod tests {
         let old_timestamp = chrono::Utc::now().timestamp() as u64 - 3600;
         zerv.vars.bumped_timestamp = Some(old_timestamp);
 
-        zerv.bump_bumped_timestamp().unwrap();
+        let args = crate::cli::version::args::VersionArgs::default();
+        zerv.process_bumped_timestamp(&args).unwrap();
 
         // Should update to current timestamp when dirty (uncommitted changes)
         assert!(zerv.vars.bumped_timestamp.is_some());
@@ -39,7 +41,8 @@ mod tests {
         let vcs_timestamp = chrono::Utc::now().timestamp() as u64 - 7200;
         zerv.vars.bumped_timestamp = Some(vcs_timestamp);
 
-        zerv.bump_bumped_timestamp().unwrap();
+        let args = crate::cli::version::args::VersionArgs::default();
+        zerv.process_bumped_timestamp(&args).unwrap();
 
         // Should keep VCS commit timestamp when clean (represents current commit)
         assert_eq!(zerv.vars.bumped_timestamp, Some(vcs_timestamp));
@@ -55,7 +58,8 @@ mod tests {
         let old_timestamp = chrono::Utc::now().timestamp() as u64 - 1800;
         zerv.vars.bumped_timestamp = Some(old_timestamp);
 
-        zerv.bump_bumped_timestamp().unwrap();
+        let args = crate::cli::version::args::VersionArgs::default();
+        zerv.process_bumped_timestamp(&args).unwrap();
 
         // Should keep existing timestamp when dirty=false (context control forces clean state)
         assert_eq!(zerv.vars.bumped_timestamp, Some(old_timestamp));
@@ -70,7 +74,8 @@ mod tests {
         let vcs_timestamp = chrono::Utc::now().timestamp() as u64 - 86400;
         zerv.vars.bumped_timestamp = Some(vcs_timestamp);
 
-        zerv.bump_bumped_timestamp().unwrap();
+        let args = crate::cli::version::args::VersionArgs::default();
+        zerv.process_bumped_timestamp(&args).unwrap();
 
         // Should keep existing timestamp when bump context is disabled
         assert_eq!(zerv.vars.bumped_timestamp, Some(vcs_timestamp));

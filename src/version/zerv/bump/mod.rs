@@ -9,38 +9,34 @@ pub mod vars_secondary;
 pub mod vars_timestamp;
 
 impl Zerv {
-    /// Apply bump operations from VersionArgs
-    pub fn apply_bumps(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        if let Some(Some(increment)) = args.bump_major {
-            self.bump_major(increment as u64)?;
-        }
+    /// Apply component processing from VersionArgs using new process methods
+    pub fn apply_component_processing(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+        // Process components in precedence order (highest to lowest)
+        // This ensures reset logic works correctly
 
-        if let Some(Some(increment)) = args.bump_minor {
-            self.bump_minor(increment as u64)?;
-        }
+        // Epoch (highest precedence)
+        self.process_epoch(args)?;
 
-        if let Some(Some(increment)) = args.bump_patch {
-            self.bump_patch(increment as u64)?;
-        }
+        // Major
+        self.process_major(args)?;
 
-        if let Some(Some(increment)) = args.bump_post {
-            self.bump_post(increment as u64)?;
-        }
+        // Minor
+        self.process_minor(args)?;
 
-        if let Some(Some(increment)) = args.bump_dev {
-            self.bump_dev(increment as u64)?;
-        }
+        // Patch
+        self.process_patch(args)?;
 
-        if let Some(Some(increment)) = args.bump_pre_release_num {
-            self.bump_pre_release(increment as u64)?;
-        }
+        // Pre-release
+        self.process_pre_release(args)?;
 
-        if let Some(Some(increment)) = args.bump_epoch {
-            self.bump_epoch(increment as u64)?;
-        }
+        // Post
+        self.process_post(args)?;
 
-        // Update bumped_timestamp based on dirty state
-        self.bump_bumped_timestamp()?;
+        // Dev (lowest precedence)
+        self.process_dev(args)?;
+
+        // Update bumped_timestamp based on dirty state and context
+        self.process_bumped_timestamp(args)?;
 
         Ok(())
     }
@@ -52,10 +48,10 @@ mod tests {
     use crate::version::zerv::bump::types::BumpType;
     use rstest::*;
 
-    // Test apply_bumps method - only test the main coordinator method
+    // Test apply_component_processing method with reset logic
     #[rstest]
     #[case((1, 0, 0), vec![BumpType::Major(1), BumpType::Minor(2)], (Some(2), Some(2), Some(0)))]
-    #[case((2, 5, 3), vec![BumpType::Major(0), BumpType::Patch(7)], (Some(2), Some(5), Some(10)))]
+    #[case((2, 5, 3), vec![BumpType::Patch(7)], (Some(2), Some(5), Some(10)))]
     #[case((0, 0, 0), vec![BumpType::Major(3), BumpType::Minor(2), BumpType::Patch(1)], (Some(3), Some(2), Some(1)))]
     fn test_apply_bumps_method(
         #[case] version: (u64, u64, u64),
@@ -65,7 +61,7 @@ mod tests {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
         let args = VersionArgsFixture::with_bump_specs(bumps);
 
-        zerv.apply_bumps(&args).unwrap();
+        zerv.apply_component_processing(&args).unwrap();
 
         assert_eq!(zerv.vars.major, expected.0);
         assert_eq!(zerv.vars.minor, expected.1);
@@ -79,13 +75,13 @@ mod tests {
         let bumps = vec![BumpType::Post(0), BumpType::Dev(0)];
         let args = VersionArgsFixture::with_bump_specs(bumps);
 
-        zerv.apply_bumps(&args).unwrap();
+        zerv.apply_component_processing(&args).unwrap();
 
         assert_eq!(zerv.vars.post, Some(0));
         assert_eq!(zerv.vars.dev, Some(0));
     }
 
-    // Test apply_bumps with complex combinations including timestamps
+    // Test apply_component_processing with complex combinations following reset logic
     #[test]
     fn test_apply_bumps_complex_combination() {
         // Create a Zerv with VCS data and secondary fields
@@ -101,31 +97,35 @@ mod tests {
         .zerv()
         .clone();
 
-        // Set up some initial secondary fields
+        // Set up some initial version fields (these should be reset by epoch bump)
+        zerv.vars.major = Some(1);
+        zerv.vars.minor = Some(2);
+        zerv.vars.patch = Some(3);
         zerv.vars.post = Some(5);
         zerv.vars.dev = Some(10);
         zerv.vars.epoch = Some(2);
 
-        // Apply multiple bumps
+        // Apply multiple bumps with reset logic
+        // Processing order: Epoch → Major → Minor → Patch → Pre-release → Post → Dev
         let bumps = vec![
-            BumpType::Major(1),
-            BumpType::Minor(2),
-            BumpType::Post(2),
-            BumpType::Dev(5),
-            BumpType::Epoch(1),
+            BumpType::Epoch(1), // Resets ALL lower precedence components
+            BumpType::Major(1), // Applied to reset value (0)
+            BumpType::Minor(2), // Applied to reset value (0)
+            BumpType::Post(2),  // Applied to reset value (0)
+            BumpType::Dev(5),   // Applied to reset value (0)
         ];
         let args = VersionArgsFixture::with_bump_specs(bumps);
-        zerv.apply_bumps(&args).unwrap();
+        zerv.apply_component_processing(&args).unwrap();
 
-        // Verify primary fields
-        assert_eq!(zerv.vars.major, Some(2)); // 1 + 1
-        assert_eq!(zerv.vars.minor, Some(2)); // 0 + 2
-        assert_eq!(zerv.vars.patch, Some(0)); // unchanged
-
-        // Verify secondary fields
-        assert_eq!(zerv.vars.post, Some(7)); // 5 + 2
-        assert_eq!(zerv.vars.dev, Some(15)); // 10 + 5
-        assert_eq!(zerv.vars.epoch, Some(3)); // 2 + 1
+        // Verify fields follow reset logic:
+        // 1. Epoch bump (2 + 1 = 3) resets all lower precedence to 0
+        // 2. Then explicit bumps are applied from 0
+        assert_eq!(zerv.vars.epoch, Some(3)); // 2 + 1 (epoch bump)
+        assert_eq!(zerv.vars.major, Some(1)); // 0 + 1 (reset by epoch, then bumped)
+        assert_eq!(zerv.vars.minor, Some(2)); // 0 + 2 (reset by epoch, then bumped)
+        assert_eq!(zerv.vars.patch, Some(0)); // 0 (reset by epoch, no explicit bump)
+        assert_eq!(zerv.vars.post, Some(2)); // 0 + 2 (reset by epoch, then bumped)
+        assert_eq!(zerv.vars.dev, Some(5)); // 0 + 5 (reset by epoch, then bumped)
 
         // Verify VCS fields (should be preserved from original)
         assert_eq!(zerv.vars.dirty, Some(true));
@@ -141,6 +141,59 @@ mod tests {
         // Verify timestamp was updated due to dirty=true
         assert!(zerv.vars.bumped_timestamp.is_some());
         assert!(zerv.vars.bumped_timestamp.unwrap() > 1234567890);
+    }
+
+    // Test semantic versioning reset behavior (major/minor bumps)
+    #[test]
+    fn test_apply_bumps_semantic_versioning_reset() {
+        // Start with version 1.2.3 with some post/dev components
+        let mut zerv = ZervFixture::zerv_version(1, 2, 3);
+        zerv.vars.post = Some(5);
+        zerv.vars.dev = Some(10);
+
+        // Test major bump resets minor, patch, post, dev
+        let bumps = vec![
+            BumpType::Major(1), // Should reset minor, patch, post, dev
+            BumpType::Minor(2), // Applied to reset value (0)
+            BumpType::Patch(3), // Applied to reset value (0)
+        ];
+        let args = VersionArgsFixture::with_bump_specs(bumps);
+        zerv.apply_component_processing(&args).unwrap();
+
+        // Verify semantic versioning reset logic:
+        // Major bump (1 + 1 = 2) resets minor, patch, post, dev to 0
+        // Then explicit bumps are applied from 0
+        assert_eq!(zerv.vars.major, Some(2)); // 1 + 1 (major bump)
+        assert_eq!(zerv.vars.minor, Some(2)); // 0 + 2 (reset by major, then bumped)
+        assert_eq!(zerv.vars.patch, Some(3)); // 0 + 3 (reset by major, then bumped)
+        assert_eq!(zerv.vars.post, None); // Reset by major bump, no explicit bump
+        assert_eq!(zerv.vars.dev, None); // Reset by major bump, no explicit bump
+    }
+
+    // Test minor bump reset behavior
+    #[test]
+    fn test_apply_bumps_minor_reset() {
+        // Start with version 1.2.3 with some post/dev components
+        let mut zerv = ZervFixture::zerv_version(1, 2, 3);
+        zerv.vars.post = Some(5);
+        zerv.vars.dev = Some(10);
+
+        // Test minor bump resets patch, post, dev (but not major)
+        let bumps = vec![
+            BumpType::Minor(1), // Should reset patch, post, dev
+            BumpType::Patch(2), // Applied to reset value (0)
+        ];
+        let args = VersionArgsFixture::with_bump_specs(bumps);
+        zerv.apply_component_processing(&args).unwrap();
+
+        // Verify minor bump reset logic:
+        // Minor bump (2 + 1 = 3) resets patch, post, dev to 0
+        // Major is preserved, explicit patch bump is applied
+        assert_eq!(zerv.vars.major, Some(1)); // Preserved (higher precedence)
+        assert_eq!(zerv.vars.minor, Some(3)); // 2 + 1 (minor bump)
+        assert_eq!(zerv.vars.patch, Some(2)); // 0 + 2 (reset by minor, then bumped)
+        assert_eq!(zerv.vars.post, None); // Reset by minor bump, no explicit bump
+        assert_eq!(zerv.vars.dev, None); // Reset by minor bump, no explicit bump
     }
 
     // Test apply_bumps with clean state (no timestamp update)
@@ -166,7 +219,7 @@ mod tests {
         // Apply bumps
         let bumps = vec![BumpType::Patch(1)];
         let args = VersionArgsFixture::with_bump_specs(bumps);
-        zerv.apply_bumps(&args).unwrap();
+        zerv.apply_component_processing(&args).unwrap();
 
         // Verify fields were bumped
         assert_eq!(zerv.vars.patch, Some(1)); // 0 + 1
@@ -197,7 +250,7 @@ mod tests {
         // Apply pre-release bump
         let bumps = vec![BumpType::PreReleaseNum(2)];
         let args = VersionArgsFixture::with_bump_specs(bumps);
-        zerv.apply_bumps(&args).unwrap();
+        zerv.apply_component_processing(&args).unwrap();
 
         // Verify pre-release was bumped
         assert!(zerv.vars.pre_release.is_some());
@@ -217,7 +270,7 @@ mod tests {
         // Try to apply pre-release bump
         let bumps = vec![BumpType::PreReleaseNum(1)];
         let args = VersionArgsFixture::with_bump_specs(bumps);
-        let result = zerv.apply_bumps(&args);
+        let result = zerv.apply_component_processing(&args);
 
         // Should fail because there's no pre-release to bump
         assert!(result.is_err());

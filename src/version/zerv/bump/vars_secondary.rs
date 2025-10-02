@@ -1,34 +1,68 @@
 use super::Zerv;
+use crate::cli::version::args::VersionArgs;
+use crate::constants::shared_constants;
 use crate::error::ZervError;
 
 impl Zerv {
-    /// Bump post-release version by the specified increment
-    pub fn bump_post(&mut self, increment: u64) -> Result<(), ZervError> {
-        self.vars.post = Some(self.vars.post.unwrap_or(0) + increment);
-        Ok(())
-    }
+    /// Process post-release version bump with reset logic
+    pub fn process_post(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+        // Apply bump if requested
+        if let Some(Some(increment)) = args.bump_post {
+            self.vars.post = Some(self.vars.post.unwrap_or(0) + increment as u64);
 
-    /// Bump dev version by the specified increment
-    pub fn bump_dev(&mut self, increment: u64) -> Result<(), ZervError> {
-        self.vars.dev = Some(self.vars.dev.unwrap_or(0) + increment);
-        Ok(())
-    }
-
-    /// Bump pre-release number by the specified increment
-    pub fn bump_pre_release(&mut self, increment: u64) -> Result<(), ZervError> {
-        if let Some(ref mut pre_release) = self.vars.pre_release {
-            pre_release.number = Some(pre_release.number.unwrap_or(0) + increment);
-        } else {
-            return Err(ZervError::InvalidVersion(
-                "Cannot bump pre-release number: no pre-release exists".to_string(),
-            ));
+            // Apply reset logic for lower precedence components
+            self.vars
+                .reset_lower_precedence_components(shared_constants::POST)?;
         }
+
         Ok(())
     }
 
-    /// Bump epoch by the specified increment
-    pub fn bump_epoch(&mut self, increment: u64) -> Result<(), ZervError> {
-        self.vars.epoch = Some(self.vars.epoch.unwrap_or(0) + increment);
+    /// Process dev version bump with reset logic
+    pub fn process_dev(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+        // Apply bump if requested
+        if let Some(Some(increment)) = args.bump_dev {
+            self.vars.dev = Some(self.vars.dev.unwrap_or(0) + increment as u64);
+
+            // Apply reset logic for lower precedence components
+            self.vars
+                .reset_lower_precedence_components(shared_constants::DEV)?;
+        }
+
+        Ok(())
+    }
+
+    /// Process pre-release number bump with reset logic
+    pub fn process_pre_release(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+        // Apply bump if requested
+        if let Some(Some(increment)) = args.bump_pre_release_num {
+            if let Some(ref mut pre_release) = self.vars.pre_release {
+                pre_release.number = Some(pre_release.number.unwrap_or(0) + increment as u64);
+
+                // Apply reset logic for lower precedence components
+                self.vars
+                    .reset_lower_precedence_components(shared_constants::PRE_RELEASE)?;
+            } else {
+                return Err(ZervError::InvalidVersion(
+                    "Cannot bump pre-release number: no pre-release exists".to_string(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Process epoch bump with reset logic
+    pub fn process_epoch(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+        // Apply bump if requested
+        if let Some(Some(increment)) = args.bump_epoch {
+            self.vars.epoch = Some(self.vars.epoch.unwrap_or(0) + increment as u64);
+
+            // Apply reset logic for lower precedence components
+            self.vars
+                .reset_lower_precedence_components(shared_constants::EPOCH)?;
+        }
+
         Ok(())
     }
 }
@@ -48,7 +82,8 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        zerv.bump_post(increment).unwrap();
+        let args = crate::test_utils::VersionArgsFixture::with_bump_post(increment as u32);
+        zerv.process_post(&args).unwrap();
         assert_eq!(zerv.vars.post, expected);
     }
 
@@ -61,7 +96,8 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        zerv.bump_dev(increment).unwrap();
+        let args = crate::test_utils::VersionArgsFixture::with_bump_dev(increment as u32);
+        zerv.process_dev(&args).unwrap();
         assert_eq!(zerv.vars.dev, expected);
     }
 
@@ -74,21 +110,24 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        zerv.bump_epoch(increment).unwrap();
+        let args = crate::test_utils::VersionArgsFixture::with_bump_epoch(increment as u32);
+        zerv.process_epoch(&args).unwrap();
         assert_eq!(zerv.vars.epoch, expected);
     }
 
     #[test]
     fn test_bump_pre_release_success() {
         let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(1));
-        zerv.bump_pre_release(2).unwrap();
+        let args = crate::test_utils::VersionArgsFixture::with_bump_pre_release_num(2);
+        zerv.process_pre_release(&args).unwrap();
         assert_eq!(zerv.vars.pre_release.as_ref().unwrap().number, Some(3));
     }
 
     #[test]
     fn test_bump_pre_release_no_pre_release() {
         let mut zerv = ZervFixture::zerv_version(1, 0, 0);
-        let result = zerv.bump_pre_release(1);
+        let args = crate::test_utils::VersionArgsFixture::with_bump_pre_release_num(1);
+        let result = zerv.process_pre_release(&args);
         assert!(result.is_err());
         assert!(
             result

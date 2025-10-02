@@ -1,22 +1,48 @@
 use super::Zerv;
+use crate::cli::version::args::VersionArgs;
+use crate::constants::shared_constants;
 use crate::error::ZervError;
 
 impl Zerv {
-    /// Bump major version by the specified increment
-    pub fn bump_major(&mut self, increment: u64) -> Result<(), ZervError> {
-        self.vars.major = Some(self.vars.major.unwrap_or(0) + increment);
+    /// Process major version bump with reset logic
+    pub fn process_major(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+        // Apply bump if requested
+        if let Some(Some(increment)) = args.bump_major {
+            self.vars.major = Some(self.vars.major.unwrap_or(0) + increment as u64);
+
+            // Apply reset logic for lower precedence components
+            self.vars
+                .reset_lower_precedence_components(shared_constants::MAJOR)?;
+        }
+
         Ok(())
     }
 
-    /// Bump minor version by the specified increment
-    pub fn bump_minor(&mut self, increment: u64) -> Result<(), ZervError> {
-        self.vars.minor = Some(self.vars.minor.unwrap_or(0) + increment);
+    /// Process minor version bump with reset logic
+    pub fn process_minor(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+        // Apply bump if requested
+        if let Some(Some(increment)) = args.bump_minor {
+            self.vars.minor = Some(self.vars.minor.unwrap_or(0) + increment as u64);
+
+            // Apply reset logic for lower precedence components
+            self.vars
+                .reset_lower_precedence_components(shared_constants::MINOR)?;
+        }
+
         Ok(())
     }
 
-    /// Bump patch version by the specified increment
-    pub fn bump_patch(&mut self, increment: u64) -> Result<(), ZervError> {
-        self.vars.patch = Some(self.vars.patch.unwrap_or(0) + increment);
+    /// Process patch version bump with reset logic
+    pub fn process_patch(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+        // Apply bump if requested
+        if let Some(Some(increment)) = args.bump_patch {
+            self.vars.patch = Some(self.vars.patch.unwrap_or(0) + increment as u64);
+
+            // Apply reset logic for lower precedence components
+            self.vars
+                .reset_lower_precedence_components(shared_constants::PATCH)?;
+        }
+
         Ok(())
     }
 }
@@ -36,7 +62,8 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        zerv.bump_major(increment).unwrap();
+        let args = crate::test_utils::VersionArgsFixture::with_bump_major(increment as u32);
+        zerv.process_major(&args).unwrap();
         assert_eq!(zerv.vars.major, expected);
     }
 
@@ -50,7 +77,8 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        zerv.bump_minor(increment).unwrap();
+        let args = crate::test_utils::VersionArgsFixture::with_bump_minor(increment as u32);
+        zerv.process_minor(&args).unwrap();
         assert_eq!(zerv.vars.minor, expected);
     }
 
@@ -64,7 +92,8 @@ mod tests {
         #[case] expected: Option<u64>,
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        zerv.bump_patch(increment).unwrap();
+        let args = crate::test_utils::VersionArgsFixture::with_bump_patch(increment as u32);
+        zerv.process_patch(&args).unwrap();
         assert_eq!(zerv.vars.patch, expected);
     }
 }

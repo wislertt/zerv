@@ -20,9 +20,14 @@ impl ZervDraft {
         // Apply overrides first
         self.vars.apply_overrides(args)?;
 
-        // Then create the final Zerv object
+        // Then create the Zerv object
         let (schema_name, schema_ron) = args.resolve_schema();
-        self.create_zerv_version(schema_name, schema_ron)
+        let mut zerv = self.create_zerv_version(schema_name, schema_ron)?;
+
+        // Apply component processing (bumps with reset logic)
+        zerv.apply_component_processing(args)?;
+
+        Ok(zerv)
     }
 
     pub fn create_zerv_version(

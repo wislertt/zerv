@@ -174,6 +174,56 @@ impl VersionArgsFixture {
         args.epoch = Some(1);
         args
     }
+
+    // Individual bump methods for testing
+    /// Create a VersionArgs with bump_major set
+    pub fn with_bump_major(increment: u32) -> VersionArgs {
+        let mut args = Self::create();
+        args.bump_major = Some(Some(increment));
+        args
+    }
+
+    /// Create a VersionArgs with bump_minor set
+    pub fn with_bump_minor(increment: u32) -> VersionArgs {
+        let mut args = Self::create();
+        args.bump_minor = Some(Some(increment));
+        args
+    }
+
+    /// Create a VersionArgs with bump_patch set
+    pub fn with_bump_patch(increment: u32) -> VersionArgs {
+        let mut args = Self::create();
+        args.bump_patch = Some(Some(increment));
+        args
+    }
+
+    /// Create a VersionArgs with bump_post set
+    pub fn with_bump_post(increment: u32) -> VersionArgs {
+        let mut args = Self::create();
+        args.bump_post = Some(Some(increment));
+        args
+    }
+
+    /// Create a VersionArgs with bump_dev set
+    pub fn with_bump_dev(increment: u32) -> VersionArgs {
+        let mut args = Self::create();
+        args.bump_dev = Some(Some(increment));
+        args
+    }
+
+    /// Create a VersionArgs with bump_epoch set
+    pub fn with_bump_epoch(increment: u32) -> VersionArgs {
+        let mut args = Self::create();
+        args.bump_epoch = Some(Some(increment));
+        args
+    }
+
+    /// Create a VersionArgs with bump_pre_release_num set
+    pub fn with_bump_pre_release_num(increment: u32) -> VersionArgs {
+        let mut args = Self::create();
+        args.bump_pre_release_num = Some(Some(increment));
+        args
+    }
 }
 
 impl Default for VersionArgsFixture {
