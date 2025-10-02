@@ -46,6 +46,7 @@ impl Zerv {
 mod tests {
     use crate::test_utils::{VersionArgsFixture, ZervFixture};
     use crate::version::zerv::bump::types::BumpType;
+    use crate::version::zerv::core::PreReleaseLabel;
     use rstest::*;
 
     // Test apply_component_processing method with reset logic
@@ -242,8 +243,6 @@ mod tests {
     // Test apply_bumps with pre-release bump
     #[test]
     fn test_apply_bumps_pre_release() {
-        use crate::version::zerv::core::PreReleaseLabel;
-
         // Create a Zerv with pre-release
         let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(3));
 
@@ -274,5 +273,47 @@ mod tests {
 
         // Should fail because there's no pre-release to bump
         assert!(result.is_err());
+    }
+
+    // Tests for combined bump and override specifications
+    // TODO:
+    mod combined_bump_override_tests {
+        use super::*;
+        use crate::test_utils::version_args::OverrideType;
+
+        #[test]
+        fn test_bump_and_override_basic_combination() {
+            // Create a Zerv with initial version 1.0.0
+            let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+
+            // Apply both bumps and overrides using chaining approach
+            let bumps = vec![BumpType::Major(1), BumpType::Minor(2)];
+            let overrides = vec![
+                OverrideType::TagVersion("v2.5.0".to_string()),
+                OverrideType::Distance(3),
+                OverrideType::Dirty(true),
+                OverrideType::CurrentBranch("feature/test".to_string()),
+            ];
+
+            // Method 1: Using the new chainable approach
+            let args = VersionArgsFixture::apply_override_specs(
+                VersionArgsFixture::apply_bump_specs(VersionArgsFixture::create(), bumps),
+                overrides,
+            );
+
+            zerv.apply_component_processing(&args).unwrap();
+
+            // // Verify bumps were applied (major bump resets minor, then minor bump applied)
+            // assert_eq!(zerv.vars.major, Some(2)); // 1 + 1 (major bump)
+            // assert_eq!(zerv.vars.minor, Some(2)); // 0 + 2 (reset by major, then bumped)
+            // assert_eq!(zerv.vars.patch, Some(0)); // Reset by major bump
+
+            // // Note: Overrides are applied during pipeline processing, not in apply_component_processing
+            // // This test verifies that the args structure is correctly created
+            // assert_eq!(args.tag_version, Some("v2.5.0".to_string()));
+            // assert_eq!(args.distance, Some(3));
+            // assert_eq!(args.dirty, true);
+            // assert_eq!(args.current_branch, Some("feature/test".to_string()));
+        }
     }
 }
