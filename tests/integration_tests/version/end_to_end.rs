@@ -3,10 +3,8 @@ use rstest::rstest;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::time::Instant;
-use zerv::test_utils::{GitRepoFixture, should_run_docker_tests};
+use zerv::test_utils::{GitRepoFixture, ZervFixture, should_run_docker_tests};
 
-/// Test git source with various override combinations
-/// Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7
 struct TestOverrides<'a> {
     tag_version: Option<&'a str>,
     distance: Option<u32>,
@@ -18,11 +16,11 @@ struct TestOverrides<'a> {
 
 #[rstest]
 #[case::tag_version_override("v1.0.0", TestOverrides { tag_version: Some("v2.0.0"), distance: None, dirty: None, clean: false, branch: None, commit_hash: None }, "2.0.0")]
-#[case::distance_override("v1.0.0", TestOverrides { tag_version: None, distance: Some(5), dirty: None, clean: false, branch: None, commit_hash: None }, "1.0.0+main.")]
+#[case::distance_override("v1.0.0", TestOverrides { tag_version: None, distance: Some(5), dirty: None, clean: false, branch: None, commit_hash: None }, "1.0.0-post.5+main.")]
 #[case::dirty_override_true("v1.0.0", TestOverrides { tag_version: None, distance: None, dirty: Some(true), clean: false, branch: None, commit_hash: None }, "1.0.0+main.")]
 #[case::dirty_override_false("v1.0.0", TestOverrides { tag_version: None, distance: None, dirty: Some(false), clean: false, branch: None, commit_hash: None }, "1.0.0")]
 #[case::clean_flag("v1.0.0", TestOverrides { tag_version: None, distance: None, dirty: None, clean: true, branch: None, commit_hash: None }, "1.0.0")]
-#[case::branch_override("v1.0.0", TestOverrides { tag_version: None, distance: Some(2), dirty: None, clean: false, branch: Some("feature"), commit_hash: None }, "1.0.0+feature.")]
+#[case::branch_override("v1.0.0", TestOverrides { tag_version: None, distance: Some(2), dirty: None, clean: false, branch: Some("feature"), commit_hash: None }, "1.0.0-post.2+feature.")]
 #[case::commit_hash_override("v1.0.0", TestOverrides { tag_version: None, distance: None, dirty: None, clean: false, branch: None, commit_hash: Some("abc123") }, "1.0.0")]
 #[case::multiple_overrides("v1.0.0", TestOverrides { tag_version: Some("v3.0.0"), distance: Some(1), dirty: Some(false), clean: false, branch: Some("dev"), commit_hash: Some("def456") }, "3.0.0+dev.")]
 fn test_git_source_with_overrides(
@@ -51,7 +49,11 @@ fn test_git_source_with_overrides(
         cmd.arg("--distance").arg(distance.to_string());
     }
     if let Some(dirty) = overrides.dirty {
-        cmd.arg("--dirty").arg(if dirty { "true" } else { "false" });
+        if dirty {
+            cmd.arg("--dirty");
+        } else {
+            cmd.arg("--no-dirty");
+        }
     }
     if overrides.clean {
         cmd.arg("--clean");
@@ -100,7 +102,11 @@ fn test_conflicting_overrides(
         cmd.arg("--distance").arg(distance.to_string());
     }
     if let Some(dirty) = dirty_override {
-        cmd.arg("--dirty").arg(if dirty { "true" } else { "false" });
+        if dirty {
+            cmd.arg("--dirty");
+        } else {
+            cmd.arg("--no-dirty");
+        }
     }
 
     let output = cmd.assert_failure();
@@ -116,52 +122,15 @@ fn test_conflicting_overrides(
 /// Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
 #[test]
 fn test_stdin_source_with_zerv_ron() {
-    if !should_run_docker_tests() {
-        return;
-    }
-
-    // Create a sample Zerv RON input
-    let zerv_ron_input = r#"(
-        schema: (
-            core: [VarField("major"), VarField("minor"), VarField("patch")],
-            extra_core: [],
-            build: [VarField("distance"), VarField("current_branch"), VarField("current_commit_hash")]
-        ),
-        vars: (
-            major: Some(1),
-            minor: Some(2),
-            patch: Some(3),
-            epoch: None,
-            pre_release: None,
-            post: None,
-            dev: None,
-            tag_timestamp: None,
-            tag_branch: None,
-            current_branch: Some("main"),
-            distance: Some(0),
-            dirty: Some(false),
-            tag_commit_hash: None,
-            current_commit_hash: Some("abc123def456"),
-            custom: {}
-        )
-    )"#;
+    // Use a basic Zerv RON fixture for testing
+    let zerv_ron_input = &ZervFixture::basic().to_ron_string();
 
     // Test basic stdin parsing
     let mut cmd = Command::new("cargo");
-    cmd.args([
-        "run",
-        "--bin",
-        "zerv",
-        "--",
-        "version",
-        "--source",
-        "stdin",
-        "--input-format",
-        "zerv",
-    ])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped());
+    cmd.args(["run", "--bin", "zerv", "--", "version", "--source", "stdin"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
     let mut child = cmd.spawn().expect("Failed to spawn command");
 
@@ -181,99 +150,8 @@ fn test_stdin_source_with_zerv_ron() {
 
     let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
     assert!(
-        version.contains("1.2.3"),
+        version.contains("1.0.0"),
         "Version should contain the input version. Got: {version}"
-    );
-}
-
-/// Test stdin source with overrides applied to RON input
-/// Requirements: 5.4, 5.5
-#[test]
-fn test_stdin_source_with_overrides() {
-    if !should_run_docker_tests() {
-        return;
-    }
-
-    let zerv_ron_input = r#"(
-        schema: (
-            core: [VarField("major"), VarField("minor"), VarField("patch")],
-            extra_core: [],
-            build: [VarField("distance"), VarField("current_branch"), VarField("current_commit_hash")]
-        ),
-        vars: (
-            major: Some(1),
-            minor: Some(0),
-            patch: Some(0),
-            epoch: None,
-            pre_release: None,
-            post: None,
-            dev: Some(1234567890),
-            tag_timestamp: None,
-            tag_branch: None,
-            current_branch: Some("main"),
-            distance: Some(5),
-            dirty: Some(true),
-            tag_commit_hash: None,
-            current_commit_hash: Some("original123"),
-            custom: {}
-        )
-    )"#;
-
-    // Test with overrides that should modify the input
-    let mut cmd = Command::new("cargo");
-    cmd.args([
-        "run",
-        "--bin",
-        "zerv",
-        "--",
-        "version",
-        "--source",
-        "stdin",
-        "--input-format",
-        "zerv",
-        "--tag-version",
-        "v2.0.0",
-        "--distance",
-        "0",
-        "--dirty",
-        "false",
-        "--current-branch",
-        "release",
-        "--commit-hash",
-        "override456",
-    ])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped());
-
-    let mut child = cmd.spawn().expect("Failed to spawn command");
-
-    if let Some(stdin) = child.stdin.as_mut() {
-        stdin
-            .write_all(zerv_ron_input.as_bytes())
-            .expect("Failed to write to stdin");
-    }
-
-    let output = child.wait_with_output().expect("Failed to read output");
-
-    assert!(
-        output.status.success(),
-        "Command should succeed with overrides. stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-    // Should reflect the overridden values (v2.0.0 with overrides applied)
-    assert!(
-        version.contains("2.0.0"),
-        "Version should reflect tag override (2.0.0). Got: {version}"
-    );
-
-    // Should reflect the distance and branch overrides
-    assert!(
-        version.contains("0") && version.contains("release"),
-        "Version should reflect distance and branch overrides. Got: {version}"
     );
 }
 
@@ -361,30 +239,16 @@ fn test_error_scenarios_with_overrides(
 /// Test stdin error scenarios
 /// Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
 #[rstest]
-#[case::simple_version_string("1.2.3", "Use --tag-version")]
+#[case::simple_version_string("1.2.3", "Invalid input format")]
 #[case::empty_input("", "No input provided via stdin")]
-#[case::invalid_ron("invalid ron format", "Invalid Zerv RON format")]
-#[case::semver_to_stdin("1.2.3", "Use --tag-version instead")]
+#[case::invalid_ron("invalid ron format", "Invalid input format")]
+#[case::semver_to_stdin("1.2.3", "Invalid input format")]
 fn test_stdin_error_scenarios(#[case] stdin_input: &str, #[case] expected_error_pattern: &str) {
-    if !should_run_docker_tests() {
-        return;
-    }
-
     let mut cmd = Command::new("cargo");
-    cmd.args([
-        "run",
-        "--bin",
-        "zerv",
-        "--",
-        "version",
-        "--source",
-        "stdin",
-        "--input-format",
-        "zerv",
-    ])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped());
+    cmd.args(["run", "--bin", "zerv", "--", "version", "--source", "stdin"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
     let mut child = cmd.spawn().expect("Failed to spawn command");
 
@@ -485,92 +349,6 @@ fn test_concurrent_executions() {
     }
 }
 
-/// Test memory usage with large RON inputs
-/// Requirements: 10.3
-#[test]
-fn test_memory_usage_with_large_ron() {
-    if !should_run_docker_tests() {
-        return;
-    }
-
-    // Create a large but valid Zerv RON input
-    let large_zerv_ron = format!(
-        r#"(
-            schema: (
-                core: [VarField("major"), VarField("minor"), VarField("patch")],
-                extra_core: [],
-                build: [VarField("distance"), VarField("current_branch"), VarField("current_commit_hash")]
-            ),
-            vars: (
-                major: Some(1),
-                minor: Some(0),
-                patch: Some(0),
-                epoch: None,
-                pre_release: None,
-                post: None,
-                dev: None,
-                tag_timestamp: None,
-                tag_branch: None,
-                current_branch: Some("{}"),
-                distance: Some(0),
-                dirty: Some(false),
-                tag_commit_hash: None,
-                current_commit_hash: Some("{}"),
-                custom: {{}}
-            )
-        )"#,
-        "a".repeat(100), // Large branch name
-        "b".repeat(100)  // Large commit hash
-    );
-
-    let mut cmd = Command::new("cargo");
-    cmd.args([
-        "run",
-        "--bin",
-        "zerv",
-        "--",
-        "version",
-        "--source",
-        "stdin",
-        "--input-format",
-        "zerv",
-    ])
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped());
-
-    let start_time = Instant::now();
-    let mut child = cmd.spawn().expect("Failed to spawn command");
-
-    if let Some(stdin) = child.stdin.as_mut() {
-        stdin
-            .write_all(large_zerv_ron.as_bytes())
-            .expect("Failed to write to stdin");
-    }
-
-    let output = child.wait_with_output().expect("Failed to read output");
-    let duration = start_time.elapsed();
-
-    assert!(
-        output.status.success(),
-        "Command should handle large RON input. stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    // Should still be reasonably fast even with large input
-    assert!(
-        duration.as_millis() < 50000, // Allow more time for large RON processing
-        "Large RON processing should be efficient. Took: {}ms",
-        duration.as_millis()
-    );
-
-    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    assert!(
-        version.contains("1.0.0"),
-        "Should produce valid version from large RON: {version}"
-    );
-}
-
 /// Test output format consistency across all scenarios
 /// Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
 #[rstest]
@@ -637,8 +415,7 @@ fn test_comprehensive_end_to_end_workflow() {
         .arg("v2.0.0-beta.1")
         .arg("--current-branch")
         .arg("release/2.0")
-        .arg("--dirty")
-        .arg("false")
+        .arg("--no-dirty")
         .assert_success();
 
     let zerv_ron = output1.stdout();

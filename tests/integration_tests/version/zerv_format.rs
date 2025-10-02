@@ -1,6 +1,6 @@
-use zerv::cli::VersionArgs;
-use zerv::constants::{FORMAT_ZERV, SCHEMA_ZERV_STANDARD};
-use zerv::test_utils::{GitRepoFixture, should_run_docker_tests};
+use zerv::constants::ron_fields;
+use zerv::constants::{formats, schema_names};
+use zerv::test_utils::{GitRepoFixture, VersionArgsFixture, should_run_docker_tests};
 
 #[test]
 fn test_zerv_format_output() {
@@ -24,23 +24,11 @@ fn test_zerv_format_output() {
         fixture.path().display()
     );
 
-    let args = VersionArgs {
-        version: None,
-        source: "git".to_string(),
-        schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
-        schema_ron: None,
-        input_format: "auto".to_string(),
-        output_format: FORMAT_ZERV.to_string(),
-        tag_version: None,
-        distance: None,
-        dirty: None,
-        clean: false,
-        current_branch: None,
-        commit_hash: None,
-        output_template: None,
-        output_prefix: None,
-        directory: Some(fixture.path().to_str().unwrap().to_string()),
-    };
+    let args = VersionArgsFixture::new()
+        .with_schema(schema_names::ZERV_STANDARD)
+        .with_output_format(formats::ZERV)
+        .with_directory(fixture.path().to_str().unwrap())
+        .build();
 
     // Run pipeline with detailed error context
     let result = zerv::cli::run_version_pipeline(args);
@@ -109,17 +97,17 @@ fn test_zerv_format_output() {
     );
     assert_eq!(
         parsed.schema.core[0],
-        Component::VarField("major".to_string()),
+        Component::VarField(ron_fields::MAJOR.to_string()),
         "First schema component should be major field"
     );
     assert_eq!(
         parsed.schema.core[1],
-        Component::VarField("minor".to_string()),
+        Component::VarField(ron_fields::MINOR.to_string()),
         "Second schema component should be minor field"
     );
     assert_eq!(
         parsed.schema.core[2],
-        Component::VarField("patch".to_string()),
+        Component::VarField(ron_fields::PATCH.to_string()),
         "Third schema component should be patch field"
     );
 }
@@ -127,7 +115,7 @@ fn test_zerv_format_output() {
 #[test]
 fn test_zerv_format_schema_structure() {
     // Test without Docker dependency
-    use zerv::schema::create_zerv_version;
+    use zerv::cli::version::ZervDraft;
     use zerv::version::zerv::{Component, ZervVars};
 
     let vars = ZervVars {
@@ -139,7 +127,9 @@ fn test_zerv_format_schema_structure() {
         ..Default::default()
     };
 
-    let zerv = create_zerv_version(vars, Some(SCHEMA_ZERV_STANDARD), None).unwrap();
+    let zerv = ZervDraft::new(vars, None)
+        .create_zerv_version(Some(schema_names::ZERV_STANDARD), None)
+        .unwrap();
     let ron_output = zerv.to_string();
 
     // Parse back and verify schema
@@ -149,15 +139,15 @@ fn test_zerv_format_schema_structure() {
     assert_eq!(parsed.schema.core.len(), 3);
     assert_eq!(
         parsed.schema.core[0],
-        Component::VarField("major".to_string())
+        Component::VarField(ron_fields::MAJOR.to_string())
     );
     assert_eq!(
         parsed.schema.core[1],
-        Component::VarField("minor".to_string())
+        Component::VarField(ron_fields::MINOR.to_string())
     );
     assert_eq!(
         parsed.schema.core[2],
-        Component::VarField("patch".to_string())
+        Component::VarField(ron_fields::PATCH.to_string())
     );
 
     // Verify vars
@@ -175,23 +165,11 @@ fn test_zerv_format_roundtrip() {
     let fixture = GitRepoFixture::tagged("v2.0.1").expect("Failed to create tagged repo");
 
     // Generate Zerv format
-    let args1 = VersionArgs {
-        version: None,
-        source: "git".to_string(),
-        schema: Some(SCHEMA_ZERV_STANDARD.to_string()),
-        schema_ron: None,
-        input_format: "auto".to_string(),
-        output_format: FORMAT_ZERV.to_string(),
-        tag_version: None,
-        distance: None,
-        dirty: None,
-        clean: false,
-        current_branch: None,
-        commit_hash: None,
-        output_template: None,
-        output_prefix: None,
-        directory: Some(fixture.path().to_str().unwrap().to_string()),
-    };
+    let args1 = VersionArgsFixture::new()
+        .with_schema(schema_names::ZERV_STANDARD)
+        .with_output_format(formats::ZERV)
+        .with_directory(fixture.path().to_str().unwrap())
+        .build();
 
     let zerv_output =
         zerv::cli::run_version_pipeline(args1).expect("First pipeline should succeed");

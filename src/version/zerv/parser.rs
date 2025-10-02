@@ -14,14 +14,16 @@ impl FromStr for Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::zerv::{Component, ZervSchema, ZervVars};
+    use crate::constants::ron_fields;
+    use crate::version::zerv::vars::ZervVars;
+    use crate::version::zerv::{Component, ZervSchema};
 
     #[test]
     fn test_zerv_parse_simple() {
         let ron_str = r#"
             (
                 schema: (
-                    core: [VarField("major")],
+                    core: [var("major")],
                     extra_core: [],
                     build: [],
                 ),
@@ -33,13 +35,13 @@ mod tests {
                     pre_release: None,
                     post: None,
                     dev: None,
-                    tag_timestamp: None,
-                    tag_branch: None,
-                    current_branch: None,
+                    last_timestamp: None,
+                    last_branch: None,
+                    bumped_branch: None,
                     distance: None,
                     dirty: None,
-                    tag_commit_hash: None,
-                    current_commit_hash: None,
+                    last_commit_hash: None,
+                    bumped_commit_hash: None,
                     custom: {},
                 ),
             )
@@ -62,9 +64,9 @@ mod tests {
     fn test_zerv_parse_roundtrip() {
         let schema = ZervSchema {
             core: vec![
-                Component::VarField("major".to_string()),
+                Component::VarField(ron_fields::MAJOR.to_string()),
                 Component::String(".".to_string()),
-                Component::VarField("minor".to_string()),
+                Component::VarField(ron_fields::MINOR.to_string()),
             ],
             extra_core: vec![],
             build: vec![],
@@ -74,7 +76,7 @@ mod tests {
             minor: Some(2),
             ..Default::default()
         };
-        let original = Zerv::new(schema, vars);
+        let original = Zerv::new(schema, vars).unwrap();
 
         let ron_string = original.to_string();
         let parsed: Zerv = ron_string.parse().unwrap();

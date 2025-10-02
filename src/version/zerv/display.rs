@@ -13,15 +13,16 @@ impl fmt::Display for Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::ron_fields;
     use crate::version::zerv::{Component, ZervSchema, ZervVars};
 
     #[test]
     fn test_zerv_display() {
         let schema = ZervSchema {
             core: vec![
-                Component::VarField("major".to_string()),
+                Component::VarField(ron_fields::MAJOR.to_string()),
                 Component::String(".".to_string()),
-                Component::VarField("minor".to_string()),
+                Component::VarField(ron_fields::MINOR.to_string()),
             ],
             extra_core: vec![],
             build: vec![],
@@ -31,7 +32,7 @@ mod tests {
             minor: Some(2),
             ..Default::default()
         };
-        let zerv = Zerv::new(schema, vars);
+        let zerv = Zerv::new(schema, vars).unwrap();
 
         let display_output = zerv.to_string();
 
@@ -44,7 +45,7 @@ mod tests {
     #[test]
     fn test_zerv_display_roundtrip() {
         let schema = ZervSchema {
-            core: vec![Component::VarField("major".to_string())],
+            core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
             extra_core: vec![],
             build: vec![],
         };
@@ -52,7 +53,7 @@ mod tests {
             major: Some(1),
             ..Default::default()
         };
-        let original = Zerv::new(schema, vars);
+        let original = Zerv::new(schema, vars).unwrap();
 
         let ron_string = original.to_string();
         let parsed: Zerv = ron::de::from_str(&ron_string).unwrap();

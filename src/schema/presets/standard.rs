@@ -30,7 +30,6 @@ pub fn zerv_standard_tier_3() -> ZervSchema {
     }
 }
 
-// TODO: XXXXXXXXXXX
 pub fn get_standard_schema(vars: &ZervVars) -> ZervSchema {
     let tier = determine_tier(vars);
     match tier {

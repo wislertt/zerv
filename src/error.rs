@@ -24,6 +24,8 @@ pub enum ZervError {
     UnknownSchema(String),
     /// Conflicting schema parameters
     ConflictingSchemas(String),
+    /// Missing schema specification
+    MissingSchema(String),
 
     // CLI errors
     /// Unknown format specified
@@ -34,8 +36,6 @@ pub enum ZervError {
     UnknownSource(String),
     /// Conflicting CLI options
     ConflictingOptions(String),
-    /// Boolean parsing error
-    BooleanParseError(String),
 
     // System errors
     /// IO error
@@ -60,13 +60,13 @@ impl std::fmt::Display for ZervError {
             ZervError::SchemaParseError(msg) => write!(f, "Schema parse error: {msg}"),
             ZervError::UnknownSchema(name) => write!(f, "Unknown schema: {name}"),
             ZervError::ConflictingSchemas(msg) => write!(f, "Conflicting schemas: {msg}"),
+            ZervError::MissingSchema(msg) => write!(f, "Missing schema: {msg}"),
 
             // CLI errors
             ZervError::UnknownFormat(format) => write!(f, "Unknown format: {format}"),
             ZervError::StdinError(msg) => write!(f, "Stdin error: {msg}"),
             ZervError::UnknownSource(source) => write!(f, "Unknown source: {source}"),
             ZervError::ConflictingOptions(msg) => write!(f, "Conflicting options: {msg}"),
-            ZervError::BooleanParseError(msg) => write!(f, "Boolean parse error: {msg}"),
 
             // System errors
             ZervError::Io(err) => write!(f, "IO error: {err}"),
@@ -90,16 +90,11 @@ impl From<io::Error> for ZervError {
     }
 }
 
-/// Convert FuzzyBool parsing errors to ZervError
+/// Convert string errors to ZervError
 impl From<String> for ZervError {
     fn from(err: String) -> Self {
-        // Check if this is a boolean parsing error based on the error message content
-        if err.contains("Invalid boolean value") {
-            ZervError::BooleanParseError(err)
-        } else {
-            // For other string errors, use a generic format error
-            ZervError::InvalidFormat(err)
-        }
+        // For string errors, use a generic format error
+        ZervError::InvalidFormat(err)
     }
 }
 
@@ -122,7 +117,6 @@ impl PartialEq for ZervError {
             (ZervError::StdinError(a), ZervError::StdinError(b)) => a == b,
             (ZervError::UnknownSource(a), ZervError::UnknownSource(b)) => a == b,
             (ZervError::ConflictingOptions(a), ZervError::ConflictingOptions(b)) => a == b,
-            (ZervError::BooleanParseError(a), ZervError::BooleanParseError(b)) => a == b,
             _ => false,
         }
     }
@@ -151,7 +145,6 @@ mod tests {
     #[case(ZervError::StdinError("no input".to_string()), "Stdin error: no input")]
     #[case(ZervError::UnknownSource("unknown".to_string()), "Unknown source: unknown")]
     #[case(ZervError::ConflictingOptions("--clean with --dirty".to_string()), "Conflicting options: --clean with --dirty")]
-    #[case(ZervError::BooleanParseError("invalid bool".to_string()), "Boolean parse error: invalid bool")]
     fn test_error_display(#[case] error: ZervError, #[case] expected: &str) {
         assert_eq!(error.to_string(), expected);
     }
@@ -194,7 +187,6 @@ mod tests {
     #[case(ZervError::StdinError("no input".to_string()), false)]
     #[case(ZervError::UnknownSource("unknown".to_string()), false)]
     #[case(ZervError::ConflictingOptions("conflict".to_string()), false)]
-    #[case(ZervError::BooleanParseError("invalid".to_string()), false)]
     fn test_error_source(#[case] error: ZervError, #[case] has_source: bool) {
         assert_eq!(error.source().is_some(), has_source);
     }
@@ -278,11 +270,6 @@ mod tests {
     #[case(
         ZervError::ConflictingOptions("--clean with --dirty".to_string()),
         ZervError::ConflictingOptions("--clean with --dirty".to_string()),
-        true
-    )]
-    #[case(
-        ZervError::BooleanParseError("invalid".to_string()),
-        ZervError::BooleanParseError("invalid".to_string()),
         true
     )]
     #[case(
@@ -396,49 +383,15 @@ mod tests {
         let _: &dyn Error = &error; // Ensure Error trait is implemented
     }
 
-    /// Test conversion from String to ZervError for boolean parsing errors
+    /// Test conversion from String to ZervError
     #[rstest]
     #[case(
-        "Invalid boolean value: 'maybe'. Supported values: true/false, t/f, yes/no, y/n, 1/0, on/off (case-insensitive)",
-        ZervError::BooleanParseError("Invalid boolean value: 'maybe'. Supported values: true/false, t/f, yes/no, y/n, 1/0, on/off (case-insensitive)".to_string())
-    )]
-    #[case(
-        "Invalid boolean value: 'xyz'",
-        ZervError::BooleanParseError("Invalid boolean value: 'xyz'".to_string())
-    )]
-    #[case(
-        "Some other format error",
-        ZervError::InvalidFormat("Some other format error".to_string())
+        "Some format error",
+        ZervError::InvalidFormat("Some format error".to_string())
     )]
     fn test_string_to_zerv_error_conversion(#[case] input: &str, #[case] expected: ZervError) {
         let result: ZervError = input.to_string().into();
         assert_eq!(result, expected);
-    }
-
-    /// Test that FuzzyBool parsing errors are properly converted to ZervError
-    #[test]
-    fn test_fuzzy_bool_error_integration() {
-        use crate::cli::utils::fuzzy_bool::FuzzyBool;
-        use std::str::FromStr;
-
-        let invalid_values = vec!["maybe", "xyz", "invalid", "2", "-1"];
-
-        for value in invalid_values {
-            let parse_result = FuzzyBool::from_str(value);
-            assert!(parse_result.is_err(), "Should fail to parse '{value}'");
-
-            let error_string = parse_result.unwrap_err();
-            let zerv_error: ZervError = error_string.into();
-
-            match zerv_error {
-                ZervError::BooleanParseError(msg) => {
-                    assert!(msg.contains("Invalid boolean value"));
-                    assert!(msg.contains(value));
-                    assert!(msg.contains("Supported values"));
-                }
-                _ => panic!("Expected BooleanParseError, got: {zerv_error:?}"),
-            }
-        }
     }
 
     /// Test that error message consistency is maintained across all variants
@@ -661,13 +614,6 @@ mod tests {
             stdin_error.to_string(),
             "Stdin error: No input provided via stdin"
         );
-
-        // Test BooleanParseError error
-        let bool_error = ZervError::BooleanParseError("Invalid boolean value: 'maybe'".to_string());
-        assert_eq!(
-            bool_error.to_string(),
-            "Boolean parse error: Invalid boolean value: 'maybe'"
-        );
     }
 
     /// Test that all error messages provide actionable guidance where appropriate
@@ -680,16 +626,6 @@ mod tests {
         assert!(
             msg.contains("--source git"),
             "Should indicate which source was attempted"
-        );
-
-        // Test that boolean errors provide supported values
-        let bool_error = ZervError::BooleanParseError(
-            "Invalid boolean value: 'maybe'. Supported values: true/false, t/f, yes/no, y/n, 1/0, on/off".to_string()
-        );
-        let msg = bool_error.to_string();
-        assert!(
-            msg.contains("Supported values"),
-            "Should list supported boolean values"
         );
 
         // Test that git command errors provide installation guidance

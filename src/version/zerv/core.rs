@@ -1,5 +1,6 @@
-use std::collections::HashMap;
-
+use crate::error::ZervError;
+use crate::version::zerv::schema::ZervSchema;
+use crate::version::zerv::vars::ZervVars;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,66 +17,26 @@ pub struct Zerv {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ZervSchema {
-    pub core: Vec<Component>,
-    pub extra_core: Vec<Component>,
-    pub build: Vec<Component>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Component {
-    String(String),
-    Integer(u64),
-    VarField(String),
-    VarTimestamp(String),
-    VarCustom(String),
-}
-
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-pub struct ZervVars {
-    // from version string
-    pub major: Option<u64>,
-    pub minor: Option<u64>,
-    pub patch: Option<u64>,
-    pub epoch: Option<u64>,
-    pub pre_release: Option<PreReleaseVar>,
-    pub post: Option<u64>,
-    pub dev: Option<u64>,
-
-    // from vcs
-    pub tag_timestamp: Option<u64>,
-    pub tag_branch: Option<String>,
-    pub current_branch: Option<String>,
-    pub distance: Option<u64>,
-    pub dirty: Option<bool>,
-    pub tag_commit_hash: Option<String>,
-    pub current_commit_hash: Option<String>,
-
-    pub custom: HashMap<String, VarValue>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PreReleaseVar {
     pub label: PreReleaseLabel,
     pub number: Option<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum VarValue {
-    String(String),
-    Integer(u64),
-    Boolean(bool),
-}
-
 impl Zerv {
-    pub fn new(schema: ZervSchema, vars: ZervVars) -> Self {
-        Self { schema, vars }
+    /// Create a new Zerv object with validation
+    pub fn new(schema: ZervSchema, vars: ZervVars) -> Result<Self, ZervError> {
+        // Validate schema structure first
+        schema.validate()?;
+
+        Ok(Self { schema, vars })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::ron_fields;
+    use crate::version::zerv::Component;
 
     mod construction {
         use super::*;
@@ -83,12 +44,15 @@ mod tests {
         #[test]
         fn test_zerv_new() {
             let schema = ZervSchema {
-                core: vec![Component::VarField("major".to_string())],
+                core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
                 extra_core: vec![],
                 build: vec![],
             };
-            let vars = ZervVars::default();
-            let zerv = Zerv::new(schema.clone(), vars.clone());
+            let vars = ZervVars {
+                major: Some(1), // Add required field for validation
+                ..Default::default()
+            };
+            let zerv = Zerv::new(schema.clone(), vars.clone()).unwrap();
 
             assert_eq!(zerv.schema, schema);
             assert_eq!(zerv.vars, vars);
@@ -101,7 +65,7 @@ mod tests {
             assert_eq!(vars.major, None);
             assert_eq!(vars.minor, None);
             assert_eq!(vars.patch, None);
-            assert!(vars.custom.is_empty());
+            assert!(vars.custom.as_object().is_none_or(|obj| obj.is_empty()));
         }
 
         #[test]
@@ -116,86 +80,6 @@ mod tests {
         }
     }
 
-    mod components {
-        use super::*;
-
-        #[test]
-        fn test_component_string() {
-            let comp = Component::String("test".to_string());
-            match comp {
-                Component::String(s) => assert_eq!(s, "test"),
-                _ => panic!("Expected String component"),
-            }
-        }
-
-        #[test]
-        fn test_component_integer() {
-            let comp = Component::Integer(42);
-            match comp {
-                Component::Integer(n) => assert_eq!(n, 42),
-                _ => panic!("Expected Integer component"),
-            }
-        }
-
-        #[test]
-        fn test_component_var_field() {
-            let comp = Component::VarField("major".to_string());
-            match comp {
-                Component::VarField(field) => assert_eq!(field, "major"),
-                _ => panic!("Expected VarField component"),
-            }
-        }
-
-        #[test]
-        fn test_component_var_timestamp() {
-            let comp = Component::VarTimestamp("YYYY".to_string());
-            match comp {
-                Component::VarTimestamp(pattern) => assert_eq!(pattern, "YYYY"),
-                _ => panic!("Expected VarTimestamp component"),
-            }
-        }
-
-        #[test]
-        fn test_component_var_custom() {
-            let comp = Component::VarCustom("custom_var".to_string());
-            match comp {
-                Component::VarCustom(key) => assert_eq!(key, "custom_var"),
-                _ => panic!("Expected VarCustom component"),
-            }
-        }
-    }
-
-    mod var_values {
-        use super::*;
-
-        #[test]
-        fn test_var_value_string() {
-            let val = VarValue::String("test".to_string());
-            match val {
-                VarValue::String(s) => assert_eq!(s, "test"),
-                _ => panic!("Expected String value"),
-            }
-        }
-
-        #[test]
-        fn test_var_value_integer() {
-            let val = VarValue::Integer(123);
-            match val {
-                VarValue::Integer(n) => assert_eq!(n, 123),
-                _ => panic!("Expected Integer value"),
-            }
-        }
-
-        #[test]
-        fn test_var_value_boolean() {
-            let val = VarValue::Boolean(true);
-            match val {
-                VarValue::Boolean(b) => assert!(b),
-                _ => panic!("Expected Boolean value"),
-            }
-        }
-    }
-
     mod variables {
         use super::*;
 
@@ -205,7 +89,7 @@ mod tests {
                 major: Some(1),
                 minor: Some(2),
                 patch: Some(3),
-                current_branch: Some("main".to_string()),
+                bumped_branch: Some("main".to_string()),
                 dirty: Some(true),
                 ..Default::default()
             };
@@ -213,26 +97,29 @@ mod tests {
             assert_eq!(vars.major, Some(1));
             assert_eq!(vars.minor, Some(2));
             assert_eq!(vars.patch, Some(3));
-            assert_eq!(vars.current_branch, Some("main".to_string()));
+            assert_eq!(vars.bumped_branch, Some("main".to_string()));
             assert_eq!(vars.dirty, Some(true));
         }
 
         #[test]
         fn test_custom_variables() {
-            let mut vars = ZervVars::default();
-            vars.custom
-                .insert("build_id".to_string(), VarValue::Integer(456));
-            vars.custom
-                .insert("env".to_string(), VarValue::String("prod".to_string()));
-            vars.custom
-                .insert("debug".to_string(), VarValue::Boolean(false));
+            let vars = ZervVars {
+                custom: serde_json::json!({
+                    "build_id": 456,
+                    "env": "prod",
+                    "debug": false,
+                    "metadata": {
+                        "author": "ci",
+                        "timestamp": 1703123456
+                    }
+                }),
+                ..Default::default()
+            };
 
-            assert_eq!(vars.custom.get("build_id"), Some(&VarValue::Integer(456)));
-            assert_eq!(
-                vars.custom.get("env"),
-                Some(&VarValue::String("prod".to_string()))
-            );
-            assert_eq!(vars.custom.get("debug"), Some(&VarValue::Boolean(false)));
+            assert_eq!(vars.custom["build_id"], serde_json::json!(456));
+            assert_eq!(vars.custom["env"], serde_json::json!("prod"));
+            assert_eq!(vars.custom["debug"], serde_json::json!(false));
+            assert_eq!(vars.custom["metadata"]["author"], serde_json::json!("ci"));
         }
     }
 
@@ -247,11 +134,9 @@ mod tests {
                 build: vec![],
             };
             let vars = ZervVars::default();
-            let zerv = Zerv::new(schema, vars);
-
-            assert!(zerv.schema.core.is_empty());
-            assert!(zerv.schema.extra_core.is_empty());
-            assert!(zerv.schema.build.is_empty());
+            // Empty schema should fail validation
+            let result = Zerv::new(schema, vars);
+            assert!(result.is_err());
         }
 
         #[test]
@@ -280,13 +165,13 @@ mod tests {
         #[test]
         fn test_empty_strings() {
             let vars = ZervVars {
-                current_branch: Some("".to_string()),
-                tag_commit_hash: Some("".to_string()),
+                bumped_branch: Some("".to_string()),
+                last_commit_hash: Some("".to_string()),
                 ..Default::default()
             };
 
-            assert_eq!(vars.current_branch, Some("".to_string()));
-            assert_eq!(vars.tag_commit_hash, Some("".to_string()));
+            assert_eq!(vars.bumped_branch, Some("".to_string()));
+            assert_eq!(vars.last_commit_hash, Some("".to_string()));
         }
     }
 
@@ -297,11 +182,11 @@ mod tests {
         fn test_semver_like_structure() {
             let schema = ZervSchema {
                 core: vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
-                extra_core: vec![Component::VarField("pre_release".to_string())],
+                extra_core: vec![Component::VarField(ron_fields::PRE_RELEASE.to_string())],
                 build: vec![
                     Component::String("build".to_string()),
                     Component::Integer(123),
@@ -319,7 +204,7 @@ mod tests {
                 ..Default::default()
             };
 
-            let zerv = Zerv::new(schema, vars);
+            let zerv = Zerv::new(schema, vars).unwrap();
             assert_eq!(zerv.vars.major, Some(1));
             assert_eq!(
                 zerv.vars
@@ -338,7 +223,7 @@ mod tests {
                     Component::VarTimestamp("YYYY".to_string()),
                     Component::VarTimestamp("MM".to_string()),
                     Component::VarTimestamp("DD".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core: vec![],
                 build: vec![],
@@ -346,13 +231,13 @@ mod tests {
 
             let vars = ZervVars {
                 patch: Some(1),
-                tag_timestamp: Some(1710547200),
+                last_timestamp: Some(1710547200),
                 ..Default::default()
             };
 
-            let zerv = Zerv::new(schema, vars);
+            let zerv = Zerv::new(schema, vars).unwrap();
             assert_eq!(zerv.vars.patch, Some(1));
-            assert_eq!(zerv.vars.tag_timestamp, Some(1710547200));
+            assert_eq!(zerv.vars.last_timestamp, Some(1710547200));
         }
     }
 }

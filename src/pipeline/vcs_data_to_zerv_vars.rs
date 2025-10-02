@@ -18,10 +18,10 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
 
     // VCS-specific fields
     vars.distance = Some(vcs_data.distance as u64);
-    vars.current_branch = vcs_data.current_branch;
+    vars.bumped_branch = vcs_data.current_branch;
     vars.dirty = Some(vcs_data.is_dirty);
-    vars.current_commit_hash = Some(vcs_data.commit_hash_short);
-    vars.tag_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
+    vars.bumped_commit_hash = Some(vcs_data.commit_hash);
+    vars.last_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
 
     Ok(vars)
 }
@@ -64,11 +64,11 @@ mod tests {
             "Distance should be 1 commit after tag for {format_name}"
         );
         assert!(
-            vars.current_commit_hash.is_some(),
+            vars.bumped_commit_hash.is_some(),
             "Commit hash should be present for {format_name}"
         );
         assert!(
-            vars.tag_timestamp.is_some(),
+            vars.last_timestamp.is_some(),
             "Tag timestamp should be present for {format_name}"
         );
     }
@@ -77,6 +77,7 @@ mod tests {
     fn test_vcs_data_to_zerv_vars_no_tag() {
         let vcs_data = VcsData {
             tag_version: None,
+            commit_hash: "abc1234".to_string(),
             ..Default::default()
         };
         let result = vcs_data_to_zerv_vars(vcs_data);
@@ -104,6 +105,7 @@ mod tests {
     fn test_vcs_data_to_zerv_vars_invalid_tag_formats(#[case] invalid_tag: &str) {
         let vcs_data = VcsData {
             tag_version: Some(invalid_tag.to_string()),
+            commit_hash: "abc1234".to_string(),
             ..Default::default()
         };
         let result = vcs_data_to_zerv_vars(vcs_data);

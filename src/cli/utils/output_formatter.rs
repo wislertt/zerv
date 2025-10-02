@@ -1,4 +1,4 @@
-use crate::constants::{FORMAT_PEP440, FORMAT_SEMVER, FORMAT_ZERV, SUPPORTED_FORMATS};
+use crate::constants::{SUPPORTED_FORMATS, formats};
 use crate::error::ZervError;
 use crate::version::Zerv;
 use crate::version::pep440::PEP440;
@@ -34,9 +34,9 @@ impl OutputFormatter {
     /// Generate base output according to the specified format
     fn format_base_output(zerv_object: &Zerv, output_format: &str) -> Result<String, ZervError> {
         match output_format {
-            FORMAT_PEP440 => Ok(PEP440::from(zerv_object.clone()).to_string()),
-            FORMAT_SEMVER => Ok(SemVer::from(zerv_object.clone()).to_string()),
-            FORMAT_ZERV => Ok(zerv_object.to_string()),
+            formats::PEP440 => Ok(PEP440::from(zerv_object.clone()).to_string()),
+            formats::SEMVER => Ok(SemVer::from(zerv_object.clone()).to_string()),
+            formats::ZERV => Ok(zerv_object.to_string()),
             format => Err(ZervError::UnknownFormat(format!(
                 "Unknown output format: '{}'. Supported formats: {}",
                 format,
@@ -61,19 +61,6 @@ impl OutputFormatter {
         }
     }
 
-    /// Validate that the output format is supported
-    pub fn validate_output_format(format: &str) -> Result<(), ZervError> {
-        if SUPPORTED_FORMATS.contains(&format) {
-            Ok(())
-        } else {
-            Err(ZervError::UnknownFormat(format!(
-                "Unknown output format: '{}'. Supported formats: {}",
-                format,
-                SUPPORTED_FORMATS.join(", ")
-            )))
-        }
-    }
-
     /// Get list of supported output formats
     pub fn supported_formats() -> &'static [&'static str] {
         SUPPORTED_FORMATS
@@ -83,6 +70,7 @@ impl OutputFormatter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::ron_fields;
     use crate::version::{ZervSchema, ZervVars};
     use rstest::rstest;
 
@@ -92,9 +80,9 @@ mod tests {
         Zerv {
             schema: ZervSchema {
                 core: vec![
-                    Component::VarField("major".to_string()),
-                    Component::VarField("minor".to_string()),
-                    Component::VarField("patch".to_string()),
+                    Component::VarField(ron_fields::MAJOR.to_string()),
+                    Component::VarField(ron_fields::MINOR.to_string()),
+                    Component::VarField(ron_fields::PATCH.to_string()),
                 ],
                 extra_core: vec![],
                 build: vec![],
@@ -105,18 +93,18 @@ mod tests {
                 patch: Some(3),
                 distance: Some(0),
                 dirty: Some(false),
-                current_branch: Some("main".to_string()),
-                current_commit_hash: Some("abc123".to_string()),
+                bumped_branch: Some("main".to_string()),
+                bumped_commit_hash: Some("abc123".to_string()),
                 dev: None,
-                tag_timestamp: Some(1234567890),
+                last_timestamp: Some(1234567890),
                 ..Default::default()
             },
         }
     }
 
     #[rstest]
-    #[case(FORMAT_SEMVER, "1.2.3")]
-    #[case(FORMAT_PEP440, "1.2.3")]
+    #[case(formats::SEMVER, "1.2.3")]
+    #[case(formats::PEP440, "1.2.3")]
     fn test_format_output_basic_formats(#[case] format: &str, #[case] expected: &str) {
         let zerv = create_test_zerv();
         let result = OutputFormatter::format_output(&zerv, format, None, None);
@@ -130,7 +118,7 @@ mod tests {
     #[test]
     fn test_format_output_zerv() {
         let zerv = create_test_zerv();
-        let result = OutputFormatter::format_output(&zerv, FORMAT_ZERV, None, None);
+        let result = OutputFormatter::format_output(&zerv, formats::ZERV, None, None);
         assert!(result.is_ok(), "Zerv formatting should succeed");
 
         let output = result.unwrap();
@@ -164,7 +152,7 @@ mod tests {
         #[case] expected: &str,
     ) {
         let zerv = create_test_zerv();
-        let result = OutputFormatter::format_output(&zerv, FORMAT_SEMVER, prefix, template);
+        let result = OutputFormatter::format_output(&zerv, formats::SEMVER, prefix, template);
         assert!(result.is_ok(), "Formatting should succeed");
 
         let output = result.unwrap();
@@ -180,24 +168,11 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_output_format() {
-        // Test valid formats
-        assert!(OutputFormatter::validate_output_format(FORMAT_SEMVER).is_ok());
-        assert!(OutputFormatter::validate_output_format(FORMAT_PEP440).is_ok());
-        assert!(OutputFormatter::validate_output_format(FORMAT_ZERV).is_ok());
-
-        // Test invalid format
-        let result = OutputFormatter::validate_output_format("invalid");
-        assert!(result.is_err());
-        assert!(matches!(result, Err(ZervError::UnknownFormat(_))));
-    }
-
-    #[test]
     fn test_supported_formats() {
         let formats = OutputFormatter::supported_formats();
-        assert!(formats.contains(&FORMAT_SEMVER));
-        assert!(formats.contains(&FORMAT_PEP440));
-        assert!(formats.contains(&FORMAT_ZERV));
+        assert!(formats.contains(&formats::SEMVER));
+        assert!(formats.contains(&formats::PEP440));
+        assert!(formats.contains(&formats::ZERV));
         assert_eq!(formats.len(), 3);
     }
 

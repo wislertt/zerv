@@ -139,3 +139,79 @@ fn run_check_command(args: CheckArgs) -> Result<()> {
 -   `--output-format <format>` - Target format: pep440, semver
 -   `--output-template <template>` - Custom template string
 -   `--output-prefix [prefix]` - Add prefix (defaults to "v")
+
+## Constants Usage
+
+**MANDATORY: Always use constants instead of bare strings**
+
+### Field Names
+- Use `fields::MAJOR` instead of `"major"`
+- Use `fields::MINOR` instead of `"minor"`
+- Use `fields::PATCH` instead of `"patch"`
+- Use `fields::EPOCH` instead of `"epoch"`
+- Use `fields::PRE_RELEASE` instead of `"pre_release"`
+- Use `fields::POST` instead of `"post"`
+- Use `fields::DEV` instead of `"dev"`
+- Use `fields::DISTANCE` instead of `"distance"`
+- Use `fields::DIRTY` instead of `"dirty"`
+- Use `fields::BUMPED_BRANCH` instead of `"bumped_branch"`
+- Use `fields::BUMPED_COMMIT_HASH` instead of `"bumped_commit_hash"`
+- Use `fields::LAST_COMMIT_HASH` instead of `"last_commit_hash"`
+- Use `fields::LAST_TIMESTAMP` instead of `"last_timestamp"`
+- Use `fields::LAST_BRANCH` instead of `"last_branch"`
+
+### Format Names
+- Use `formats::SEMVER` instead of `"semver"`
+- Use `formats::PEP440` instead of `"pep440"`
+- Use `formats::ZERV` instead of `"zerv"`
+- Use `formats::AUTO` instead of `"auto"`
+
+### Source Names
+- Use `sources::GIT` instead of `"git"`
+- Use `sources::STDIN` instead of `"stdin"`
+
+### Schema Names
+- Use `schema_names::ZERV_STANDARD` instead of `"zerv-standard"`
+- Use `schema_names::ZERV_CALVER` instead of `"zerv-calver"`
+
+## Benefits of Using Constants
+
+1. **Type Safety**: Compile-time checking for typos
+2. **Refactoring**: Easy to rename fields across codebase
+3. **Consistency**: Single source of truth for field names
+4. **IDE Support**: Better autocomplete and navigation
+5. **Maintenance**: Changes in one place affect all usage
+
+## Anti-Patterns to Avoid
+
+❌ **DON'T: Use bare strings**
+```rust
+match field_name.as_str() {
+    "major" => // BAD
+    "minor" => // BAD
+    "patch" => // BAD
+}
+```
+
+✅ **DO: Use constants**
+```rust
+match field_name.as_str() {
+    fields::MAJOR => // GOOD
+    fields::MINOR => // GOOD
+    fields::PATCH => // GOOD
+}
+```
+
+## Validation
+
+When user mentions:
+- "check constants usage"
+- "find bare strings"
+- "audit string literals"
+- "constant compliance check"
+
+→ Search codebase for violations:
+- Bare string literals in match statements
+- Hardcoded field names
+- Magic strings in validation logic
+- String literals that should be constants

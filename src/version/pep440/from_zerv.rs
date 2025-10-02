@@ -1,6 +1,9 @@
 use super::{LocalSegment, PEP440};
+use crate::constants::ron_fields;
 use crate::version::pep440::core::{DevLabel, PostLabel};
-use crate::version::zerv::{Component, Zerv, resolve_timestamp, utils::extract_core_values};
+use crate::version::zerv::Component;
+use crate::version::zerv::core::Zerv;
+use crate::version::zerv::{resolve_timestamp, utils::extract_core_values};
 
 struct PEP440Components {
     epoch: u32,
@@ -62,18 +65,18 @@ fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
 
 fn add_var_field_to_local(field: &str, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
     match field {
-        "current_branch" => {
-            if let Some(branch) = &zerv.vars.current_branch {
+        ron_fields::BRANCH => {
+            if let Some(branch) = &zerv.vars.bumped_branch {
                 local_overflow.push(LocalSegment::String(branch.clone()));
             }
         }
-        "distance" => {
+        ron_fields::DISTANCE => {
             if let Some(distance) = zerv.vars.distance {
                 local_overflow.push(LocalSegment::Integer(distance as u32));
             }
         }
-        "current_commit_hash" => {
-            if let Some(hash) = &zerv.vars.current_commit_hash {
+        ron_fields::COMMIT_HASH_SHORT => {
+            if let Some(hash) = &zerv.vars.bumped_commit_hash {
                 local_overflow.push(LocalSegment::String(hash.clone()));
             }
         }
@@ -84,7 +87,7 @@ fn add_var_field_to_local(field: &str, zerv: &Zerv, local_overflow: &mut Vec<Loc
 fn add_component_to_local(
     comp: &Component,
     local_overflow: &mut Vec<LocalSegment>,
-    tag_timestamp: Option<u64>,
+    last_timestamp: Option<u64>,
     zerv: &Zerv,
 ) {
     match comp {
@@ -95,13 +98,16 @@ fn add_component_to_local(
             add_integer_to_local(*n, local_overflow);
         }
         Component::VarTimestamp(pattern) => {
-            let val = resolve_timestamp(pattern, tag_timestamp).unwrap_or(0);
-            add_integer_to_local(val, local_overflow);
+            if let Some(ts) = last_timestamp
+                && let Ok(result) = resolve_timestamp(pattern, ts)
+                && let Ok(val) = result.parse::<u64>()
+            {
+                add_integer_to_local(val, local_overflow);
+            }
         }
         Component::VarField(field) => {
             add_var_field_to_local(field, zerv, local_overflow);
         }
-        _ => {}
     }
 }
 
@@ -123,7 +129,7 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
             _ => add_component_to_local(
                 comp,
                 &mut components.local_overflow,
-                zerv.vars.tag_timestamp,
+                zerv.vars.last_timestamp,
                 zerv,
             ),
         }
@@ -134,25 +140,28 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
 
 fn process_build_components(
     components: &[Component],
-    tag_timestamp: Option<u64>,
+    last_timestamp: Option<u64>,
     zerv: &Zerv,
 ) -> Vec<LocalSegment> {
     let mut local_overflow = Vec::new();
     for comp in components {
-        add_component_to_local(comp, &mut local_overflow, tag_timestamp, zerv);
+        add_component_to_local(comp, &mut local_overflow, last_timestamp, zerv);
     }
     local_overflow
 }
 
 impl From<Zerv> for PEP440 {
     fn from(zerv: Zerv) -> Self {
+        if let Err(e) = zerv.schema.validate() {
+            panic!("Invalid schema in PEP440::from(Zerv): {e}");
+        }
         let core_values = extract_core_values(&zerv);
         let release = extract_release_values(&core_values);
         let mut components = process_extra_core_components(&zerv);
 
         components.local_overflow.extend(process_build_components(
             &zerv.schema.build,
-            zerv.vars.tag_timestamp,
+            zerv.vars.last_timestamp,
             &zerv,
         ));
 
@@ -179,74 +188,98 @@ impl From<Zerv> for PEP440 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::zerv::test_utils::*;
+    use crate::test_utils::zerv::*;
 
     use rstest::rstest;
 
     #[rstest]
     // Basic conversions
-    #[case(pep_zerv_1_2_3(), "1.2.3")]
-    #[case(pep_zerv_1_2_3_epoch_2(), "2!1.2.3")]
-    #[case(pep_zerv_1_2_3_alpha_1(), "1.2.3a1")]
-    #[case(pep_zerv_1_2_3_post_1(), "1.2.3.post1")]
-    #[case(pep_zerv_1_2_3_dev_1(), "1.2.3.dev1")]
-    #[case(pep_zerv_1_2_3_ubuntu_build(), "1.2.3+ubuntu.20.4")]
+    #[case(ZervFixture::pep_zerv_1_2_3(), "1.2.3")]
+    #[case(ZervFixture::pep_zerv_1_2_3_epoch_2(), "2!1.2.3")]
+    #[case(ZervFixture::pep_zerv_1_2_3_alpha_1(), "1.2.3a1")]
+    #[case(ZervFixture::pep_zerv_1_2_3_post_1(), "1.2.3.post1")]
+    #[case(ZervFixture::pep_zerv_1_2_3_dev_1(), "1.2.3.dev1")]
+    #[case(ZervFixture::pep_zerv_1_2_3_ubuntu_build(), "1.2.3+ubuntu.20.4")]
     #[case(
-        pep_zerv_complex_2_1_2_3_alpha_1_post_1_dev_1_local_1(),
+        ZervFixture::pep_zerv_complex_2_1_2_3_alpha_1_post_1_dev_1_local_1(),
         "2!1.2.3a1.post1.dev1+local.1"
     )]
     // Epoch handling
-    #[case(pep_zerv_1_0_0_epoch_1(), "1!1.0.0")]
-    #[case(pep_zerv_1_0_0_epoch_5(), "5!1.0.0")]
-    #[case(pep_zerv_1_0_0_epoch_999(), "999!1.0.0")]
+    #[case(ZervFixture::pep_zerv_1_0_0_epoch_1(), "1!1.0.0")]
+    #[case(ZervFixture::pep_zerv_1_0_0_epoch_5(), "5!1.0.0")]
+    #[case(ZervFixture::pep_zerv_1_0_0_epoch_999(), "999!1.0.0")]
     // Post handling
-    #[case(pep_zerv_1_0_0_post_5(), "1.0.0.post5")]
-    #[case(pep_zerv_1_0_0_post_0(), "1.0.0.post0")]
+    #[case(ZervFixture::pep_zerv_1_0_0_post_5(), "1.0.0.post5")]
+    #[case(ZervFixture::pep_zerv_1_0_0_post_0(), "1.0.0.post0")]
     // Dev handling
-    #[case(pep_zerv_1_0_0_dev_0(), "1.0.0.dev0")]
-    #[case(pep_zerv_1_0_0_dev_10(), "1.0.0.dev10")]
+    #[case(ZervFixture::pep_zerv_1_0_0_dev_0(), "1.0.0.dev0")]
+    #[case(ZervFixture::pep_zerv_1_0_0_dev_10(), "1.0.0.dev10")]
     // Epoch + pre-release combinations
-    #[case(pep_zerv_1_0_0_epoch_2_alpha_1(), "2!1.0.0a1")]
-    #[case(pep_zerv_1_0_0_epoch_3_beta_2(), "3!1.0.0b2")]
-    #[case(pep_zerv_1_0_0_epoch_1_rc_5(), "1!1.0.0rc5")]
-    #[case(pep_zerv_1_0_0_epoch_4_alpha(), "4!1.0.0a0")]
+    #[case(ZervFixture::pep_zerv_1_0_0_epoch_2_alpha_1(), "2!1.0.0a1")]
+    #[case(ZervFixture::pep_zerv_1_0_0_epoch_3_beta_2(), "3!1.0.0b2")]
+    #[case(ZervFixture::pep_zerv_1_0_0_epoch_1_rc_5(), "1!1.0.0rc5")]
+    #[case(ZervFixture::pep_zerv_1_0_0_epoch_4_alpha(), "4!1.0.0a0")]
     // Post + dev combinations
-    #[case(pep_zerv_1_0_0_post_1_dev_2(), "1.0.0.post1.dev2")]
+    #[case(ZervFixture::pep_zerv_1_0_0_post_1_dev_2(), "1.0.0.post1.dev2")]
     // Pre-release + post combinations
-    #[case(pep_zerv_1_0_0_alpha_1_post_2(), "1.0.0a1.post2")]
-    #[case(pep_zerv_1_0_0_beta_3_post_1(), "1.0.0b3.post1")]
-    #[case(pep_zerv_1_0_0_rc_2_post_5(), "1.0.0rc2.post5")]
+    #[case(ZervFixture::pep_zerv_1_0_0_alpha_1_post_2(), "1.0.0a1.post2")]
+    #[case(ZervFixture::pep_zerv_1_0_0_beta_3_post_1(), "1.0.0b3.post1")]
+    #[case(ZervFixture::pep_zerv_1_0_0_rc_2_post_5(), "1.0.0rc2.post5")]
     // Pre-release + dev combinations
-    #[case(pep_zerv_1_0_0_alpha_1_dev_2(), "1.0.0a1.dev2")]
-    #[case(pep_zerv_1_0_0_beta_2_dev_1(), "1.0.0b2.dev1")]
-    #[case(pep_zerv_1_0_0_rc_1_dev_3(), "1.0.0rc1.dev3")]
+    #[case(ZervFixture::pep_zerv_1_0_0_alpha_1_dev_2(), "1.0.0a1.dev2")]
+    #[case(ZervFixture::pep_zerv_1_0_0_beta_2_dev_1(), "1.0.0b2.dev1")]
+    #[case(ZervFixture::pep_zerv_1_0_0_rc_1_dev_3(), "1.0.0rc1.dev3")]
     // Triple combinations
-    #[case(pep_zerv_1_0_0_alpha_1_post_2_dev_3(), "1.0.0a1.post2.dev3")]
-    #[case(pep_zerv_1_0_0_beta_2_post_3_dev_1(), "1.0.0b2.post3.dev1")]
-    #[case(pep_zerv_1_0_0_rc_1_post_1_dev_1(), "1.0.0rc1.post1.dev1")]
-    // Epoch + post + dev combinations
-    #[case(pep_zerv_1_0_0_epoch_2_post_1_dev_3(), "2!1.0.0.post1.dev3")]
-    #[case(pep_zerv_1_0_0_epoch_1_post_1_dev_2(), "1!1.0.0.post1.dev2")]
-    // All components together
-    #[case(pep_zerv_1_0_0_epoch_3_alpha_1_post_2_dev_1(), "3!1.0.0a1.post2.dev1")]
-    #[case(pep_zerv_1_0_0_epoch_1_beta_2_post_1_dev_3(), "1!1.0.0b2.post1.dev3")]
-    // With build metadata
-    #[case(pep_zerv_1_0_0_epoch_1_build(), "1!1.0.0+build.123")]
-    #[case(pep_zerv_1_0_0_post_1_build(), "1.0.0.post1+build.456")]
-    #[case(pep_zerv_1_0_0_dev_2_build(), "1.0.0.dev2+build.789")]
-    #[case(pep_zerv_1_0_0_epoch_2_alpha_1_build(), "2!1.0.0a1+build.abc")]
-    // Complex local version identifiers
-    #[case(pep_zerv_1_0_0_complex_local(), "1.0.0+foo.bar.123")]
     #[case(
-        pep_zerv_1_0_0_all_components_complex_local(),
+        ZervFixture::pep_zerv_1_0_0_alpha_1_post_2_dev_3(),
+        "1.0.0a1.post2.dev3"
+    )]
+    #[case(
+        ZervFixture::pep_zerv_1_0_0_beta_2_post_3_dev_1(),
+        "1.0.0b2.post3.dev1"
+    )]
+    #[case(ZervFixture::pep_zerv_1_0_0_rc_1_post_1_dev_1(), "1.0.0rc1.post1.dev1")]
+    // Epoch + post + dev combinations
+    #[case(
+        ZervFixture::pep_zerv_1_0_0_epoch_2_post_1_dev_3(),
+        "2!1.0.0.post1.dev3"
+    )]
+    #[case(
+        ZervFixture::pep_zerv_1_0_0_epoch_1_post_1_dev_2(),
+        "1!1.0.0.post1.dev2"
+    )]
+    // All components together
+    #[case(
+        ZervFixture::pep_zerv_1_0_0_epoch_3_alpha_1_post_2_dev_1(),
+        "3!1.0.0a1.post2.dev1"
+    )]
+    #[case(
+        ZervFixture::pep_zerv_1_0_0_epoch_1_beta_2_post_1_dev_3(),
+        "1!1.0.0b2.post1.dev3"
+    )]
+    // With build metadata
+    #[case(ZervFixture::pep_zerv_1_0_0_epoch_1_build(), "1!1.0.0+build.123")]
+    #[case(ZervFixture::pep_zerv_1_0_0_post_1_build(), "1.0.0.post1+build.456")]
+    #[case(ZervFixture::pep_zerv_1_0_0_dev_2_build(), "1.0.0.dev2+build.789")]
+    #[case(
+        ZervFixture::pep_zerv_1_0_0_epoch_2_alpha_1_build(),
+        "2!1.0.0a1+build.abc"
+    )]
+    // Complex local version identifiers
+    #[case(ZervFixture::pep_zerv_1_0_0_complex_local(), "1.0.0+foo.bar.123")]
+    #[case(
+        ZervFixture::pep_zerv_1_0_0_all_components_complex_local(),
         "1!1.0.0a1.post1.dev1+complex.local.456"
     )]
     // VarField build metadata tests
-    #[case(sem_zerv_1_0_0_with_branch(), "1.0.0+dev")]
-    #[case(pep_zerv_1_0_0_with_distance(), "1.0.0+5")]
-    #[case(pep_zerv_1_0_0_with_commit_hash(), "1.0.0+abc123")]
-    #[case(pep_zerv_1_0_0_with_branch_distance_hash(), "1.0.0+dev.3.def456")]
-    #[case(pep_zerv_1_0_0_with_none_varfields(), "1.0.0")]
+    #[case(ZervFixture::sem_zerv_1_0_0_with_branch(), "1.0.0+dev")]
+    #[case(ZervFixture::pep_zerv_1_0_0_with_distance(), "1.0.0+5")]
+    #[case(ZervFixture::pep_zerv_1_0_0_with_commit_hash(), "1.0.0+abc123")]
+    #[case(
+        ZervFixture::pep_zerv_1_0_0_with_branch_distance_hash(),
+        "1.0.0+dev.3.def456"
+    )]
+    #[case(ZervFixture::pep_zerv_1_0_0_with_none_varfields(), "1.0.0")]
     fn test_zerv_to_pep440_conversion(#[case] zerv: Zerv, #[case] expected_pep440_str: &str) {
         let pep440: PEP440 = zerv.into();
         assert_eq!(pep440.to_string(), expected_pep440_str);

@@ -132,14 +132,11 @@ fn test_version_help_comprehensive() {
         "Should document hash override"
     );
 
-    // Should document boolean values
+    // Should document boolean flags
+    assert!(output.contains("--dirty"), "Should document --dirty flag");
     assert!(
-        output.contains("true/false, yes/no, y/n, 1/0, on/off"),
-        "Should document boolean values"
-    );
-    assert!(
-        output.contains("case-insensitive"),
-        "Should mention case insensitivity"
+        output.contains("--no-dirty"),
+        "Should document --no-dirty flag"
     );
 
     // Should document conflicts
@@ -154,7 +151,7 @@ fn test_version_help_comprehensive() {
         "Should show source values"
     );
     assert!(
-        output.contains("[possible values: auto, semver, pep440, zerv]"),
+        output.contains("[possible values: auto, semver, pep440]"),
         "Should show input format values"
     );
     assert!(
@@ -227,60 +224,14 @@ fn test_unknown_option_value_errors(
 }
 
 #[test]
-fn test_invalid_boolean_value_error() {
-    let result = run_zerv_command(&["version", "--dirty", "maybe"]);
-    assert!(!result.success, "Invalid boolean should fail");
-
-    let stderr = result.stderr;
-    assert!(
-        stderr.contains("invalid value 'maybe'"),
-        "Should show invalid value"
-    );
-    assert!(
-        stderr.contains("Invalid boolean value"),
-        "Should show boolean error"
-    );
-    assert!(
-        stderr.contains("Supported values: true/false, t/f, yes/no, y/n, 1/0, on/off"),
-        "Should show supported values"
-    );
-    assert!(
-        stderr.contains("case-insensitive"),
-        "Should mention case insensitivity"
-    );
-    assert!(
-        stderr.contains("For more information, try '--help'"),
-        "Should suggest help"
-    );
-}
-
-#[rstest]
-#[case("true")]
-#[case("t")]
-#[case("yes")]
-#[case("y")]
-#[case("1")]
-#[case("on")]
-#[case("TRUE")]
-#[case("Yes")]
-#[case("ON")]
-#[case("false")]
-#[case("f")]
-#[case("no")]
-#[case("n")]
-#[case("0")]
-#[case("off")]
-#[case("FALSE")]
-#[case("No")]
-#[case("OFF")]
-fn test_boolean_values_accepted(#[case] value: &str) {
-    let result = run_zerv_command(&["version", "--dirty", value, "--tag-version", "1.0.0"]);
-    // Command may fail for other reasons (no git repo), but should not fail on boolean parsing
+fn test_dirty_flag_without_values() {
+    // Test that --dirty flag works without requiring values
+    let result = run_zerv_command(&["version", "--dirty", "--tag-version", "1.0.0"]);
+    // Command may fail for other reasons (no git repo), but should not fail on flag parsing
     if !result.success {
         assert!(
             !result.stderr.contains("Invalid boolean value"),
-            "Should accept boolean value '{}', but got error: {}",
-            value,
+            "Should not fail on flag parsing, but got error: {}",
             result.stderr
         );
     }
@@ -288,7 +239,7 @@ fn test_boolean_values_accepted(#[case] value: &str) {
 
 #[rstest]
 #[case(&["--clean", "--distance", "5"], "--distance")]
-#[case(&["--clean", "--dirty", "true"], "--dirty")]
+#[case(&["--clean", "--dirty"], "--dirty")]
 fn test_conflicting_options_error(#[case] args: &[&str], #[case] conflicting_flag: &str) {
     let mut command_args = vec!["version"];
     command_args.extend(args);
@@ -304,22 +255,6 @@ fn test_conflicting_options_error(#[case] args: &[&str], #[case] conflicting_fla
     assert!(
         stderr.contains(conflicting_flag),
         "Should mention {conflicting_flag} flag"
-    );
-}
-
-#[test]
-fn test_help_shows_deprecated_version_arg() {
-    let result = run_zerv_command(&["version", "--help"]);
-    assert!(result.success, "Help should succeed");
-
-    let output = result.stdout;
-    assert!(
-        output.contains("deprecated"),
-        "Should mark version arg as deprecated"
-    );
-    assert!(
-        output.contains("use --tag-version instead"),
-        "Should suggest alternative"
     );
 }
 
@@ -366,24 +301,33 @@ fn test_help_shows_examples_for_overrides() {
 #[rstest]
 #[case("--output-format", "xyz", "possible values:")]
 #[case("--source", "xyz", "possible values:")]
-#[case("--dirty", "xyz", "Supported values:")]
 fn test_error_message_consistency(
     #[case] option: &str,
     #[case] value: &str,
     #[case] expected_values_text: &str,
 ) {
     let result = run_zerv_command(&["version", option, value]);
-    assert!(!result.success, "Should fail");
 
-    let stderr = result.stderr;
-    assert!(
-        stderr.contains(&format!("invalid value '{value}'")),
-        "Should show specific invalid value"
-    );
-    assert!(
-        stderr.contains(expected_values_text),
-        "Should show {expected_values_text} values"
-    );
+    if option == "--dirty" {
+        // --dirty is now a boolean flag, so --dirty xyz should succeed
+        assert!(result.success, "Should succeed for --dirty flag");
+        assert!(
+            result.stdout.contains(expected_values_text),
+            "Should show version output containing {expected_values_text}"
+        );
+    } else {
+        // Other options should still fail with invalid values
+        assert!(!result.success, "Should fail");
+        let stderr = result.stderr;
+        assert!(
+            stderr.contains(&format!("invalid value '{value}'")),
+            "Should show specific invalid value"
+        );
+        assert!(
+            stderr.contains(expected_values_text),
+            "Should show {expected_values_text} values"
+        );
+    }
 }
 
 #[test]

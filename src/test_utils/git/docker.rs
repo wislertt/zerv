@@ -255,10 +255,22 @@ impl GitOperations for DockerGit {
     fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
         self.ensure_container_running(test_dir)?;
 
-        // Verify repository state before creating tag
+        // Enhanced verification: Ensure commit object exists and is accessible with retry logic
         let verify_script = r#"
             set -e
-            git rev-parse HEAD > /dev/null
+            # Verify HEAD exists and is valid with retry logic
+            for i in $(seq 1 5); do
+                if git rev-parse HEAD > /dev/null 2>&1 && \
+                   git cat-file -t HEAD > /dev/null 2>&1 && \
+                   git show --format=fuller HEAD > /dev/null 2>&1; then
+                    break
+                fi
+                if [ $i -eq 5 ]; then
+                    echo "Failed to verify commit object after 5 attempts" >&2
+                    exit 1
+                fi
+                sleep 0.1
+            done
         "#;
 
         self.execute_docker_command(
@@ -266,12 +278,15 @@ impl GitOperations for DockerGit {
             "repository state verification before tag creation",
         )?;
 
-        // Create tag with proper escaping
+        // Create tag with proper escaping and additional verification
         let escaped_tag = tag.replace('\'', "'\"'\"'");
         let tag_script = format!(
             r#"
             set -e
-            git tag '{escaped_tag}'
+            # Create the tag
+            git tag '{escaped_tag}' &&
+            # Verify the tag was created successfully
+            git tag -l '{escaped_tag}' | grep -q '{escaped_tag}'
         "#
         );
 
@@ -283,44 +298,46 @@ impl GitOperations for DockerGit {
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {
         self.ensure_container_running(test_dir)?;
 
-        // Step 1: Initialize repository
-        let init_script = format!(
+        // Atomic script: Initialize repository, create file, commit, and verify in one operation
+        // This prevents race conditions where the commit object might not be available
+        // when create_tag is called immediately after init_repo
+        let atomic_init_script = format!(
             r#"
             set -e
+            # Initialize repository
             git init -b {} &&
             git config user.name '{}' &&
-            git config user.email '{}'
+            git config user.email '{}' &&
+            # Create initial file and commit atomically
+            echo '{}' > {} &&
+            git add . &&
+            git commit -m '{}' &&
+            # Force filesystem sync to ensure commit object is written to disk
+            sync &&
+            # Verify repository state and commit availability with retry logic
+            for i in $(seq 1 5); do
+                if git rev-parse HEAD > /dev/null 2>&1 && \
+                   git log --oneline -1 | grep -q 'Initial commit' && \
+                   git cat-file -t HEAD > /dev/null 2>&1 && \
+                   git show --format=fuller HEAD > /dev/null 2>&1; then
+                    break
+                fi
+                if [ $i -eq 5 ]; then
+                    echo "Failed to verify commit after 5 attempts" >&2
+                    exit 1
+                fi
+                sleep 0.1
+            done
         "#,
             GitTestConstants::DEFAULT_BRANCH,
             GitTestConstants::TEST_USER_NAME,
-            GitTestConstants::TEST_USER_EMAIL
-        );
-
-        self.execute_docker_command(&init_script, "git init")?;
-
-        // Step 2: Create initial file and commit
-        let commit_script = format!(
-            r#"
-            set -e
-            echo '{}' > {} &&
-            git add . &&
-            git commit -m '{}'
-        "#,
+            GitTestConstants::TEST_USER_EMAIL,
             GitTestConstants::INITIAL_FILE_CONTENT,
             GitTestConstants::INITIAL_FILE_NAME,
             GitTestConstants::INITIAL_COMMIT_MESSAGE
         );
 
-        self.execute_docker_command(&commit_script, "initial commit")?;
-
-        // Step 3: Verify repository state
-        let verify_script = r#"
-            set -e
-            git rev-parse HEAD > /dev/null &&
-            git log --oneline -1 | grep -q 'Initial commit'
-        "#;
-
-        self.execute_docker_command(verify_script, "repository verification")?;
+        self.execute_docker_command(&atomic_init_script, "atomic git init and commit")?;
 
         Ok(())
     }

@@ -134,11 +134,6 @@ impl GitVcs {
         self.run_git_command(&["rev-parse", "HEAD"])
     }
 
-    /// Get current commit hash (short)
-    fn get_commit_hash_short(&self) -> Result<String> {
-        self.run_git_command(&["rev-parse", "--short", "HEAD"])
-    }
-
     /// Get current branch name
     fn get_current_branch(&self) -> Result<Option<String>> {
         match self.run_git_command(&["branch", "--show-current"]) {
@@ -203,7 +198,6 @@ impl Vcs for GitVcs {
 
         let mut data = VcsData {
             commit_hash: self.get_commit_hash()?,
-            commit_hash_short: self.get_commit_hash_short()?,
             commit_timestamp: self.get_commit_timestamp()?,
             is_dirty: self.is_dirty()?,
             current_branch: self.get_current_branch().unwrap_or(None),
@@ -340,11 +334,6 @@ mod tests {
             data.commit_hash
         );
         assert!(
-            !data.commit_hash_short.is_empty(),
-            "Short commit hash should not be empty. Got: '{}'. Check if Git commit was created properly.",
-            data.commit_hash_short
-        );
-        assert!(
             data.commit_timestamp > 0,
             "Commit timestamp should be positive. Got: {}. Check if Git commit timestamp is valid.",
             data.commit_timestamp
@@ -371,7 +360,6 @@ mod tests {
         let data = git_vcs.get_vcs_data().expect("should get vcs data");
 
         assert!(!data.commit_hash.is_empty());
-        assert!(!data.commit_hash_short.is_empty());
         assert!(data.commit_timestamp > 0);
         assert_eq!(data.tag_version, Some("v1.0.0".to_string()));
         assert_eq!(data.distance, 0);

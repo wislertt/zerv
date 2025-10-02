@@ -1,14 +1,15 @@
 use super::{determine_tier, tier_1_extra_core, tier_2_build, tier_3_build, tier_3_extra_core};
+use crate::constants::{ron_fields, timestamp_patterns};
 use crate::version::zerv::{Component, ZervSchema, ZervVars};
 
 // Tier 1: Tagged, clean - YYYY-MM-DD-PATCH
 pub fn zerv_calver_tier_1() -> ZervSchema {
     ZervSchema {
         core: vec![
-            Component::VarTimestamp("YYYY".to_string()),
-            Component::VarTimestamp("MM".to_string()),
-            Component::VarTimestamp("DD".to_string()),
-            Component::VarField("patch".to_string()),
+            Component::VarTimestamp(timestamp_patterns::YYYY.to_string()),
+            Component::VarTimestamp(timestamp_patterns::MM.to_string()),
+            Component::VarTimestamp(timestamp_patterns::DD.to_string()),
+            Component::VarField(ron_fields::PATCH.to_string()),
         ],
         extra_core: tier_1_extra_core(),
         build: vec![],
@@ -19,10 +20,10 @@ pub fn zerv_calver_tier_1() -> ZervSchema {
 pub fn zerv_calver_tier_2() -> ZervSchema {
     ZervSchema {
         core: vec![
-            Component::VarTimestamp("YYYY".to_string()),
-            Component::VarTimestamp("MM".to_string()),
-            Component::VarTimestamp("DD".to_string()),
-            Component::VarField("patch".to_string()),
+            Component::VarTimestamp(timestamp_patterns::YYYY.to_string()),
+            Component::VarTimestamp(timestamp_patterns::MM.to_string()),
+            Component::VarTimestamp(timestamp_patterns::DD.to_string()),
+            Component::VarField(ron_fields::PATCH.to_string()),
         ],
         extra_core: tier_1_extra_core(),
         build: tier_2_build(),
@@ -33,10 +34,10 @@ pub fn zerv_calver_tier_2() -> ZervSchema {
 pub fn zerv_calver_tier_3() -> ZervSchema {
     ZervSchema {
         core: vec![
-            Component::VarTimestamp("YYYY".to_string()),
-            Component::VarTimestamp("MM".to_string()),
-            Component::VarTimestamp("DD".to_string()),
-            Component::VarField("patch".to_string()),
+            Component::VarTimestamp(timestamp_patterns::YYYY.to_string()),
+            Component::VarTimestamp(timestamp_patterns::MM.to_string()),
+            Component::VarTimestamp(timestamp_patterns::DD.to_string()),
+            Component::VarField(ron_fields::PATCH.to_string()),
         ],
         extra_core: tier_3_extra_core(),
         build: tier_3_build(),
