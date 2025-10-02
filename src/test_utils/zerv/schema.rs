@@ -1,133 +1,73 @@
-use crate::constants::ron_fields;
-use crate::version::zerv::{Component, ZervSchema};
+use crate::schema::{
+    zerv_calver_tier_1, zerv_calver_tier_2, zerv_calver_tier_3, zerv_standard_tier_1,
+    zerv_standard_tier_2, zerv_standard_tier_3,
+};
+use crate::version::zerv::ZervSchema;
 
-/// Fixture for creating ZervSchema test data with RON string support
+/// Fixture for creating ZervSchema test data using presets
 pub struct ZervSchemaFixture {
     schema: ZervSchema,
 }
 
 impl ZervSchemaFixture {
-    /// Create a basic schema with core components
-    pub fn basic() -> Self {
+    /// Create a new fixture with standard tier 1 schema (major.minor.patch)
+    pub fn new() -> Self {
         Self {
-            schema: ZervSchema::new(
-                vec![
-                    Component::VarField(ron_fields::MAJOR.to_string()),
-                    Component::VarField(ron_fields::MINOR.to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
-                ],
-                vec![],
-                vec![],
-            )
-            .unwrap_or_else(|e| panic!("Failed to create basic schema: {e}")),
+            schema: zerv_standard_tier_1(),
         }
     }
 
-    /// Create a schema with pre-release support
-    pub fn with_pre_release() -> Self {
-        let mut fixture = Self::basic();
-        fixture
-            .schema
-            .extra_core
-            .push(Component::VarField(ron_fields::PRE_RELEASE.to_string()));
-        fixture
+    /// Build and return the final ZervSchema
+    pub fn build(self) -> ZervSchema {
+        self.schema
     }
 
-    /// Create a schema with epoch support
-    pub fn with_epoch() -> Self {
-        let mut fixture = Self::basic();
-        fixture
-            .schema
-            .extra_core
-            .push(Component::VarField(ron_fields::EPOCH.to_string()));
-        fixture
-    }
-
-    /// Create a schema with post support
-    pub fn with_post() -> Self {
-        let mut fixture = Self::basic();
-        fixture
-            .schema
-            .extra_core
-            .push(Component::VarField(ron_fields::POST.to_string()));
-        fixture
-    }
-
-    /// Create a schema with dev support
-    pub fn with_dev() -> Self {
-        let mut fixture = Self::basic();
-        fixture
-            .schema
-            .extra_core
-            .push(Component::VarField(ron_fields::DEV.to_string()));
-        fixture
-    }
-
-    /// Create a schema with build metadata
-    pub fn with_build(components: Vec<Component>) -> Self {
-        let mut fixture = Self::basic();
-        fixture.schema.build = components;
-        fixture
-    }
-
-    /// Create a schema with custom extra core components
-    pub fn with_extra_core(components: Vec<Component>) -> Self {
-        let mut fixture = Self::basic();
-        fixture.schema.extra_core = components;
-        fixture
-    }
-
-    /// Create a complex schema with all components
-    pub fn with_all_components() -> Self {
+    /// Create standard tier 1 schema (major.minor.patch)
+    pub fn standard_tier_1() -> Self {
         Self {
-            schema: ZervSchema::new(
-                vec![
-                    Component::VarField(ron_fields::MAJOR.to_string()),
-                    Component::VarField(ron_fields::MINOR.to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
-                ],
-                vec![
-                    Component::VarField(ron_fields::EPOCH.to_string()),
-                    Component::VarField(ron_fields::PRE_RELEASE.to_string()),
-                    Component::VarField(ron_fields::POST.to_string()),
-                    Component::VarField(ron_fields::DEV.to_string()),
-                ],
-                vec![
-                    Component::String("build".to_string()),
-                    Component::Integer(123),
-                ],
-            )
-            .unwrap_or_else(|e| panic!("Failed to create complex schema: {e}")),
+            schema: zerv_standard_tier_1(),
         }
     }
 
-    /// Add a component to extra_core
-    pub fn add_extra_core(mut self, component: Component) -> Self {
-        self.schema.extra_core.push(component);
-        self
+    /// Create standard tier 2 schema (with build metadata)
+    pub fn standard_tier_2() -> Self {
+        Self {
+            schema: zerv_standard_tier_2(),
+        }
     }
 
-    /// Add a component to build
-    pub fn add_build(mut self, component: Component) -> Self {
-        self.schema.build.push(component);
-        self
+    /// Create standard tier 3 schema (with dev components)
+    pub fn standard_tier_3() -> Self {
+        Self {
+            schema: zerv_standard_tier_3(),
+        }
     }
 
-    /// Get the schema
-    pub fn schema(&self) -> &ZervSchema {
-        &self.schema
+    /// Create calver tier 1 schema
+    pub fn calver_tier_1() -> Self {
+        Self {
+            schema: zerv_calver_tier_1(),
+        }
     }
 
-    /// Get the schema as RON string
-    pub fn to_ron_string(&self) -> String {
-        ron::ser::to_string_pretty(&self.schema, ron::ser::PrettyConfig::default())
-            .unwrap_or_else(|e| panic!("Failed to serialize schema to RON: {e}"))
+    /// Create calver tier 2 schema
+    pub fn calver_tier_2() -> Self {
+        Self {
+            schema: zerv_calver_tier_2(),
+        }
     }
 
-    /// Create from RON string
-    pub fn from_ron_string(ron_string: &str) -> Result<Self, ron::error::SpannedError> {
-        let schema: ZervSchema = ron::de::from_str(ron_string)?;
-        Ok(Self { schema })
+    /// Create calver tier 3 schema
+    pub fn calver_tier_3() -> Self {
+        Self {
+            schema: zerv_calver_tier_3(),
+        }
+    }
+}
+
+impl Default for ZervSchemaFixture {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -148,27 +88,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_basic_schema_fixture() {
-        let fixture = ZervSchemaFixture::basic();
-        let schema = fixture.schema();
-
-        // Print the schema to see what it looks like
-        println!("Basic ZervSchema:");
-        println!("{schema:#?}");
-
-        // Print the RON string representation
-        let ron_string = fixture.to_ron_string();
-        println!("\nBasic ZervSchema RON string:");
-        println!("{ron_string}");
+    fn test_new_schema_fixture() {
+        let schema = ZervSchemaFixture::new().build();
 
         // Verify the structure
         assert_eq!(schema.core.len(), 3);
-        assert!(schema.extra_core.is_empty());
+        assert!(!schema.extra_core.is_empty()); // standard_tier_1 has extra_core
         assert!(schema.build.is_empty());
+    }
 
-        // Verify core components
-        assert!(matches!(schema.core[0], Component::VarField(ref name) if name == "major"));
-        assert!(matches!(schema.core[1], Component::VarField(ref name) if name == "minor"));
-        assert!(matches!(schema.core[2], Component::VarField(ref name) if name == "patch"));
+    #[test]
+    fn test_preset_constructors() {
+        let tier1 = ZervSchemaFixture::standard_tier_1().build();
+        let tier2 = ZervSchemaFixture::standard_tier_2().build();
+        let tier3 = ZervSchemaFixture::standard_tier_3().build();
+
+        // All should have core components
+        assert_eq!(tier1.core.len(), 3);
+        assert_eq!(tier2.core.len(), 3);
+        assert_eq!(tier3.core.len(), 3);
+
+        // Tier 2 and 3 should have build components
+        assert!(tier1.build.is_empty());
+        assert!(!tier2.build.is_empty());
+        assert!(!tier3.build.is_empty());
     }
 }
