@@ -2,6 +2,8 @@ use super::Zerv;
 use crate::cli::version::args::VersionArgs;
 use crate::error::ZervError;
 
+pub mod reset;
+pub mod types;
 pub mod vars_primary;
 pub mod vars_secondary;
 pub mod vars_timestamp;

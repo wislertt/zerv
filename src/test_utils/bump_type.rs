@@ -1,4 +1,4 @@
-use crate::constants::shared_fields;
+use crate::constants::shared_constants;
 
 /// Enum for bump types - uses constants for field names
 /// This is a test utility for organizing bump operations in tests
@@ -18,14 +18,14 @@ impl BumpType {
     /// Get the field name constant for this bump type
     pub fn field_name(&self) -> &'static str {
         match self {
-            BumpType::Major => shared_fields::MAJOR,
-            BumpType::Minor => shared_fields::MINOR,
-            BumpType::Patch => shared_fields::PATCH,
-            BumpType::Distance => shared_fields::DISTANCE,
-            BumpType::Post => shared_fields::POST,
-            BumpType::Dev => shared_fields::DEV,
-            BumpType::Epoch => shared_fields::EPOCH,
-            BumpType::PreRelease => shared_fields::PRE_RELEASE,
+            BumpType::Major => shared_constants::MAJOR,
+            BumpType::Minor => shared_constants::MINOR,
+            BumpType::Patch => shared_constants::PATCH,
+            BumpType::Distance => shared_constants::DISTANCE,
+            BumpType::Post => shared_constants::POST,
+            BumpType::Dev => shared_constants::DEV,
+            BumpType::Epoch => shared_constants::EPOCH,
+            BumpType::PreRelease => shared_constants::PRE_RELEASE,
         }
     }
 }

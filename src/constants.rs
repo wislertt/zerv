@@ -1,7 +1,7 @@
 // RON Schema field names (for var() components)
 pub mod ron_fields {
-    // Re-export shared fields
-    pub use super::shared_fields::*;
+    // Re-export shared constants
+    pub use super::shared_constants::*;
 
     // RON-specific VCS fields
     pub const BRANCH: &str = "branch";
@@ -10,8 +10,8 @@ pub mod ron_fields {
 
 // Template variable names (for output templates)
 pub mod template_vars {
-    // Re-export shared fields
-    pub use super::shared_fields::*;
+    // Re-export shared constants
+    pub use super::shared_constants::*;
 
     // Template-specific VCS context fields
     pub const BUMPED_BRANCH: &str = "bumped_branch";
@@ -20,8 +20,17 @@ pub mod template_vars {
     pub const BUMPED_TIMESTAMP: &str = "bumped_timestamp";
 }
 
-// Shared field names (same for both RON and template)
-pub mod shared_fields {
+// Pre-release label constants
+pub mod pre_release_labels {
+    pub const ALPHA: &str = "alpha";
+    pub const BETA: &str = "beta";
+    pub const RC: &str = "rc";
+
+    pub const VALID_LABELS: &[&str] = &[ALPHA, BETA, RC];
+}
+
+// Shared field names (same for both RON and template) - renamed from shared_fields
+pub mod shared_constants {
     // Core version fields
     pub const MAJOR: &str = "major";
     pub const MINOR: &str = "minor";
@@ -48,6 +57,25 @@ pub mod shared_fields {
 
     // Custom fields
     pub const CUSTOM: &str = "custom";
+}
+
+// Bump type field constants - defined from shared_constants
+pub mod bump_types {
+    use super::shared_constants;
+
+    pub const EPOCH: &str = shared_constants::EPOCH;
+    pub const MAJOR: &str = shared_constants::MAJOR;
+    pub const MINOR: &str = shared_constants::MINOR;
+    pub const PATCH: &str = shared_constants::PATCH;
+    pub const PRE_RELEASE_LABEL: &str = "pre_release_label";
+    pub const PRE_RELEASE_NUM: &str = shared_constants::PRE_RELEASE;
+    pub const POST: &str = shared_constants::POST;
+    pub const DEV: &str = shared_constants::DEV;
+}
+
+// Legacy alias for backward compatibility
+pub mod shared_fields {
+    pub use super::shared_constants::*;
 }
 
 // Timestamp patterns
