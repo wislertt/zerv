@@ -1,8 +1,7 @@
 use super::{BuildMetadata, PreReleaseIdentifier, SemVer};
 use crate::constants::ron_fields;
-use crate::version::zerv::{
-    Component, PreReleaseVar, Zerv, ZervSchema, ZervVars, normalize_pre_release_label,
-};
+use crate::version::zerv::core::PreReleaseLabel;
+use crate::version::zerv::{Component, PreReleaseVar, Zerv, ZervSchema, ZervVars};
 
 type ProcessResult = (
     Option<PreReleaseVar>,
@@ -66,7 +65,7 @@ impl PreReleaseProcessor {
     }
 
     fn try_pre_release_pattern(&mut self, label: &str, number: Option<u64>) -> bool {
-        if let Some(normalized_label) = normalize_pre_release_label(label)
+        if let Some(normalized_label) = PreReleaseLabel::try_from_str(label)
             && self.pre_release.is_none()
         {
             self.pre_release = Some(PreReleaseVar {

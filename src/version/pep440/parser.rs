@@ -41,15 +41,6 @@ static PEP440_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     .unwrap()
 });
 
-fn normalize_pre_label(label: &str) -> PreReleaseLabel {
-    match label.to_lowercase().as_str() {
-        "alpha" | "a" => PreReleaseLabel::Alpha,
-        "beta" | "b" => PreReleaseLabel::Beta,
-        "rc" | "c" | "preview" | "pre" => PreReleaseLabel::Rc,
-        _ => PreReleaseLabel::Alpha, // fallback
-    }
-}
-
 pub fn parse_local_segments(local: &str) -> Vec<LocalSegment> {
     // Normalize separators: replace - and _ with .
     let normalized = local.replace(['-', '_'], ".");
@@ -91,7 +82,7 @@ impl FromStr for PEP440 {
         }
 
         if let Some(pre_l) = captures.name("pre_l") {
-            let label = normalize_pre_label(pre_l.as_str());
+            let label = PreReleaseLabel::from_str_or_alpha(pre_l.as_str());
             let number = captures.name("pre_n").and_then(|m| m.as_str().parse().ok());
             version = version.with_pre_release(label, number);
         }

@@ -1,13 +1,65 @@
+use crate::constants::pre_release_labels;
 use crate::error::ZervError;
 use crate::version::zerv::schema::ZervSchema;
 use crate::version::zerv::vars::ZervVars;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PreReleaseLabel {
     Alpha,
     Beta,
     Rc,
+}
+
+impl PreReleaseLabel {
+    /// Get string representation of the label
+    pub fn label_str(&self) -> &'static str {
+        match self {
+            PreReleaseLabel::Alpha => pre_release_labels::ALPHA,
+            PreReleaseLabel::Beta => pre_release_labels::BETA,
+            PreReleaseLabel::Rc => pre_release_labels::RC,
+        }
+    }
+
+    /// Get all valid label strings
+    pub fn valid_labels() -> &'static [&'static str] {
+        pre_release_labels::VALID_LABELS
+    }
+
+    /// Flexible parsing with alternative forms
+    /// This replaces the existing normalize_pre_release_label function
+    pub fn try_from_str(label: &str) -> Option<Self> {
+        match label.to_lowercase().as_str() {
+            pre_release_labels::ALPHA | "a" => Some(PreReleaseLabel::Alpha),
+            pre_release_labels::BETA | "b" => Some(PreReleaseLabel::Beta),
+            pre_release_labels::RC | "c" | "preview" | "pre" => Some(PreReleaseLabel::Rc),
+            _ => None,
+        }
+    }
+
+    /// Flexible parsing with alpha fallback (for PEP440 parser compatibility)
+    /// This replaces the existing normalize_pre_label function
+    pub fn from_str_or_alpha(label: &str) -> Self {
+        Self::try_from_str(label).unwrap_or(PreReleaseLabel::Alpha)
+    }
+}
+
+impl FromStr for PreReleaseLabel {
+    type Err = ZervError;
+
+    fn from_str(label: &str) -> Result<Self, Self::Err> {
+        match label {
+            pre_release_labels::ALPHA => Ok(PreReleaseLabel::Alpha),
+            pre_release_labels::BETA => Ok(PreReleaseLabel::Beta),
+            pre_release_labels::RC => Ok(PreReleaseLabel::Rc),
+            _ => Err(ZervError::InvalidPreReleaseLabel(format!(
+                "Invalid pre-release label '{}'. Valid labels: {:?}",
+                label,
+                pre_release_labels::VALID_LABELS
+            ))),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -160,6 +212,118 @@ mod tests {
 
             assert_eq!(vars.major, Some(u64::MAX));
             assert_eq!(vars.distance, Some(u64::MAX));
+        }
+
+        #[test]
+        fn test_pre_release_label_label_str() {
+            assert_eq!(PreReleaseLabel::Alpha.label_str(), "alpha");
+            assert_eq!(PreReleaseLabel::Beta.label_str(), "beta");
+            assert_eq!(PreReleaseLabel::Rc.label_str(), "rc");
+        }
+
+        #[test]
+        fn test_pre_release_label_valid_labels() {
+            let valid_labels = PreReleaseLabel::valid_labels();
+            assert_eq!(valid_labels, &["alpha", "beta", "rc"]);
+        }
+
+        #[test]
+        fn test_pre_release_label_from_str() {
+            assert_eq!(
+                "alpha".parse::<PreReleaseLabel>().unwrap(),
+                PreReleaseLabel::Alpha
+            );
+            assert_eq!(
+                "beta".parse::<PreReleaseLabel>().unwrap(),
+                PreReleaseLabel::Beta
+            );
+            assert_eq!(
+                "rc".parse::<PreReleaseLabel>().unwrap(),
+                PreReleaseLabel::Rc
+            );
+
+            assert!("invalid".parse::<PreReleaseLabel>().is_err());
+            assert!("gamma".parse::<PreReleaseLabel>().is_err());
+        }
+
+        #[test]
+        fn test_pre_release_label_try_from_str() {
+            // Valid exact matches
+            assert_eq!(
+                PreReleaseLabel::try_from_str("alpha"),
+                Some(PreReleaseLabel::Alpha)
+            );
+            assert_eq!(
+                PreReleaseLabel::try_from_str("beta"),
+                Some(PreReleaseLabel::Beta)
+            );
+            assert_eq!(
+                PreReleaseLabel::try_from_str("rc"),
+                Some(PreReleaseLabel::Rc)
+            );
+
+            // Valid alternative forms
+            assert_eq!(
+                PreReleaseLabel::try_from_str("a"),
+                Some(PreReleaseLabel::Alpha)
+            );
+            assert_eq!(
+                PreReleaseLabel::try_from_str("b"),
+                Some(PreReleaseLabel::Beta)
+            );
+            assert_eq!(
+                PreReleaseLabel::try_from_str("c"),
+                Some(PreReleaseLabel::Rc)
+            );
+            assert_eq!(
+                PreReleaseLabel::try_from_str("preview"),
+                Some(PreReleaseLabel::Rc)
+            );
+            assert_eq!(
+                PreReleaseLabel::try_from_str("pre"),
+                Some(PreReleaseLabel::Rc)
+            );
+
+            // Case insensitive
+            assert_eq!(
+                PreReleaseLabel::try_from_str("ALPHA"),
+                Some(PreReleaseLabel::Alpha)
+            );
+            assert_eq!(
+                PreReleaseLabel::try_from_str("Beta"),
+                Some(PreReleaseLabel::Beta)
+            );
+            assert_eq!(
+                PreReleaseLabel::try_from_str("RC"),
+                Some(PreReleaseLabel::Rc)
+            );
+
+            // Invalid
+            assert_eq!(PreReleaseLabel::try_from_str("invalid"), None);
+            assert_eq!(PreReleaseLabel::try_from_str("gamma"), None);
+        }
+
+        #[test]
+        fn test_pre_release_label_from_str_or_alpha() {
+            // Valid labels
+            assert_eq!(
+                PreReleaseLabel::from_str_or_alpha("beta"),
+                PreReleaseLabel::Beta
+            );
+            assert_eq!(
+                PreReleaseLabel::from_str_or_alpha("rc"),
+                PreReleaseLabel::Rc
+            );
+
+            // Invalid labels default to Alpha
+            assert_eq!(
+                PreReleaseLabel::from_str_or_alpha("invalid"),
+                PreReleaseLabel::Alpha
+            );
+            assert_eq!(
+                PreReleaseLabel::from_str_or_alpha("gamma"),
+                PreReleaseLabel::Alpha
+            );
         }
 
         #[test]

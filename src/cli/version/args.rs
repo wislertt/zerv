@@ -1,4 +1,4 @@
-use crate::constants::{SUPPORTED_FORMATS_ARRAY, formats, sources};
+use crate::constants::{SUPPORTED_FORMATS_ARRAY, formats, pre_release_labels, sources};
 use crate::error::ZervError;
 use clap::Parser;
 
@@ -145,7 +145,8 @@ pub struct VersionArgs {
     pub dev: Option<u32>,
 
     /// Override pre-release label
-    #[arg(long, help = "Override pre-release label (alpha, beta, rc, etc.)")]
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(pre_release_labels::VALID_LABELS),
+          help = "Override pre-release label (alpha, beta, rc)")]
     pub pre_release_label: Option<String>,
 
     /// Override pre-release number
@@ -186,6 +187,11 @@ pub struct VersionArgs {
     /// Add to epoch number (default: 1)
     #[arg(long, help = "Add to epoch number (default: 1)")]
     pub bump_epoch: Option<Option<u32>>,
+
+    /// Bump pre-release label (alpha, beta, rc) and reset number to 0
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(pre_release_labels::VALID_LABELS),
+          help = "Bump pre-release label (alpha, beta, rc) and reset number to 0")]
+    pub bump_pre_release_label: Option<String>,
 
     // Context control options
     /// Include VCS context qualifiers (default behavior)
@@ -250,6 +256,7 @@ impl Default for VersionArgs {
             bump_dev: None,
             bump_pre_release_num: None,
             bump_epoch: None,
+            bump_pre_release_label: None,
             bump_context: false,
             no_bump_context: false,
             output_template: None,
@@ -301,6 +308,9 @@ impl VersionArgs {
 
         // Resolve default bump values
         self.resolve_bump_defaults()?;
+
+        // Validate pre-release flags
+        self.validate_pre_release_flags()?;
 
         Ok(())
     }
@@ -371,6 +381,16 @@ impl VersionArgs {
         Ok(())
     }
 
+    /// Validate pre-release flags for conflicts
+    fn validate_pre_release_flags(&self) -> Result<(), ZervError> {
+        if self.pre_release_label.is_some() && self.bump_pre_release_label.is_some() {
+            return Err(ZervError::ConflictingOptions(
+                "Cannot use --pre-release-label with --bump-pre-release-label".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
     /// Get the dirty override state (None = use VCS, Some(bool) = override)
     pub fn dirty_override(&self) -> Option<bool> {
         match (self.dirty, self.no_dirty) {
@@ -432,6 +452,7 @@ mod tests {
         assert!(args.bump_dev.is_none());
         assert!(args.bump_pre_release_num.is_none());
         assert!(args.bump_epoch.is_none());
+        assert!(args.bump_pre_release_label.is_none());
 
         // Context control options should be false by default
         assert!(!args.bump_context);
@@ -741,5 +762,40 @@ mod tests {
         assert!(args_with_bumps.bump_major.is_some());
         assert!(args_with_bumps.bump_minor.is_some());
         assert!(args_with_bumps.bump_patch.is_some());
+    }
+
+    #[test]
+    fn test_validate_pre_release_flag_conflicts() {
+        // Test conflicting pre-release flags
+        let mut args = VersionArgsFixture::new()
+            .with_pre_release_label("alpha")
+            .with_bump_pre_release_label("beta")
+            .build();
+        let result = args.validate();
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::ConflictingOptions(_)));
+        assert!(error.to_string().contains("--pre-release-label"));
+        assert!(error.to_string().contains("--bump-pre-release-label"));
+        assert!(error.to_string().contains("Cannot use"));
+    }
+
+    #[test]
+    fn test_validate_pre_release_flags_no_conflict() {
+        // Test that individual pre-release flags don't conflict
+        let mut args = VersionArgsFixture::new()
+            .with_pre_release_label("alpha")
+            .build();
+        assert_eq!(args.pre_release_label, Some("alpha".to_string()));
+        assert_eq!(args.bump_pre_release_label, None);
+        assert!(args.validate().is_ok());
+
+        let mut args = VersionArgsFixture::new()
+            .with_bump_pre_release_label("beta")
+            .build();
+        assert_eq!(args.pre_release_label, None);
+        assert_eq!(args.bump_pre_release_label, Some("beta".to_string()));
+        assert!(args.validate().is_ok());
     }
 }

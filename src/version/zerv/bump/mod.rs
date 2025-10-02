@@ -26,8 +26,9 @@ impl Zerv {
         // Patch
         self.process_patch(args)?;
 
-        // Pre-release
-        self.process_pre_release(args)?;
+        // Pre-release (label first, then number)
+        self.process_pre_release_label(args)?;
+        self.process_pre_release_num(args)?;
 
         // Post
         self.process_post(args)?;

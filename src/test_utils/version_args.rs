@@ -229,6 +229,12 @@ impl VersionArgsFixture {
         self
     }
 
+    /// Set bump pre-release label
+    pub fn with_bump_pre_release_label(mut self, label: &str) -> Self {
+        self.args.bump_pre_release_label = Some(label.to_string());
+        self
+    }
+
     /// Set bump context flag
     pub fn with_bump_context(mut self, bump_context: bool) -> Self {
         self.args.bump_context = bump_context;
