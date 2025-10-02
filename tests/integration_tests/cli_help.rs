@@ -224,23 +224,6 @@ fn test_unknown_option_value_errors(
 }
 
 #[test]
-fn test_dirty_flag_behavior() {
-    // Test that --dirty is a boolean flag that doesn't accept values
-    // Since --dirty is now a boolean flag, --dirty xyz should succeed (xyz becomes a positional arg)
-    let result = run_zerv_command(&["version", "--dirty", "maybe"]);
-    assert!(
-        result.success,
-        "Should succeed since --dirty is a boolean flag"
-    );
-
-    // The output should contain the version string
-    assert!(
-        result.stdout.contains("0."),
-        "Should output a version string"
-    );
-}
-
-#[test]
 fn test_dirty_flag_without_values() {
     // Test that --dirty flag works without requiring values
     let result = run_zerv_command(&["version", "--dirty", "--tag-version", "1.0.0"]);
@@ -272,22 +255,6 @@ fn test_conflicting_options_error(#[case] args: &[&str], #[case] conflicting_fla
     assert!(
         stderr.contains(conflicting_flag),
         "Should mention {conflicting_flag} flag"
-    );
-}
-
-#[test]
-fn test_help_shows_deprecated_version_arg() {
-    let result = run_zerv_command(&["version", "--help"]);
-    assert!(result.success, "Help should succeed");
-
-    let output = result.stdout;
-    assert!(
-        output.contains("deprecated"),
-        "Should mark version arg as deprecated"
-    );
-    assert!(
-        output.contains("use --tag-version instead"),
-        "Should suggest alternative"
     );
 }
 
@@ -334,7 +301,6 @@ fn test_help_shows_examples_for_overrides() {
 #[rstest]
 #[case("--output-format", "xyz", "possible values:")]
 #[case("--source", "xyz", "possible values:")]
-#[case("--dirty", "xyz", "0.")]
 fn test_error_message_consistency(
     #[case] option: &str,
     #[case] value: &str,

@@ -9,6 +9,9 @@ pub enum OverrideType {
     Dirty(bool),
     CurrentBranch(String),
     CommitHash(String),
+    Major(u32),
+    Minor(u32),
+    Patch(u32),
     Post(u32),
     Dev(u32),
     PreReleaseLabel(String),
@@ -32,14 +35,6 @@ impl VersionArgsFixture {
     /// Build and return the final VersionArgs
     pub fn build(self) -> VersionArgs {
         self.args
-    }
-
-    // Chainable methods for basic configuration
-
-    /// Set version string
-    pub fn with_version(mut self, version: &str) -> Self {
-        self.args.version = Some(version.to_string());
-        self
     }
 
     /// Set source
@@ -166,6 +161,24 @@ impl VersionArgsFixture {
         self
     }
 
+    /// Set major version
+    pub fn with_major(mut self, major: u32) -> Self {
+        self.args.major = Some(major);
+        self
+    }
+
+    /// Set minor version
+    pub fn with_minor(mut self, minor: u32) -> Self {
+        self.args.minor = Some(minor);
+        self
+    }
+
+    /// Set patch version
+    pub fn with_patch(mut self, patch: u32) -> Self {
+        self.args.patch = Some(patch);
+        self
+    }
+
     /// Set custom variables
     pub fn with_custom(mut self, custom: &str) -> Self {
         self.args.custom = Some(custom.to_string());
@@ -261,6 +274,9 @@ impl VersionArgsFixture {
                 OverrideType::Dirty(dirty) => self.args.dirty = dirty,
                 OverrideType::CurrentBranch(branch) => self.args.current_branch = Some(branch),
                 OverrideType::CommitHash(hash) => self.args.commit_hash = Some(hash),
+                OverrideType::Major(major) => self.args.major = Some(major),
+                OverrideType::Minor(minor) => self.args.minor = Some(minor),
+                OverrideType::Patch(patch) => self.args.patch = Some(patch),
                 OverrideType::Post(post) => self.args.post = Some(post),
                 OverrideType::Dev(dev) => self.args.dev = Some(dev),
                 OverrideType::PreReleaseLabel(label) => self.args.pre_release_label = Some(label),
@@ -292,7 +308,7 @@ mod tests {
         assert_eq!(args.source, sources::GIT);
         assert_eq!(args.input_format, formats::AUTO);
         assert_eq!(args.output_format, formats::SEMVER);
-        assert_eq!(args.version, None);
+        assert_eq!(args.tag_version, None);
         assert_eq!(args.schema, None);
         assert!(!args.dirty);
         assert!(!args.clean);
@@ -301,14 +317,14 @@ mod tests {
     #[test]
     fn test_chainable_basic_configuration() {
         let args = VersionArgsFixture::new()
-            .with_version("2.0.0")
+            .with_tag_version("2.0.0")
             .with_source("custom")
             .with_schema("test-schema")
             .with_output_format(formats::PEP440)
             .with_directory("/test/dir")
             .build();
 
-        assert_eq!(args.version, Some("2.0.0".to_string()));
+        assert_eq!(args.tag_version, Some("2.0.0".to_string()));
         assert_eq!(args.source, "custom");
         assert_eq!(args.schema, Some("test-schema".to_string()));
         assert_eq!(args.output_format, formats::PEP440);
@@ -401,7 +417,6 @@ mod tests {
         assert_eq!(args1.source, args2.source);
         assert_eq!(args1.input_format, args2.input_format);
         assert_eq!(args1.output_format, args2.output_format);
-        assert_eq!(args1.version, args2.version);
         assert_eq!(args1.dirty, args2.dirty);
     }
 }

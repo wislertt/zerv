@@ -50,15 +50,26 @@ EXAMPLES:
   zerv version --tag-version 2.0.0-alpha.1 --input-format semver"
 )]
 pub struct VersionArgs {
-    /// Version string (deprecated - use --tag-version instead)
-    #[arg(help = "Version string (deprecated - use --tag-version instead)")]
-    pub version: Option<String>,
-
+    // ============================================================================
+    // 1. INPUT CONTROL
+    // ============================================================================
     /// Input source for version data
     #[arg(long, default_value = sources::GIT, value_parser = [sources::GIT, sources::STDIN],
           help = "Input source: 'git' (extract from repository) or 'stdin' (read Zerv RON format)")]
     pub source: String,
 
+    /// Input format for version string parsing
+    #[arg(long, default_value = formats::AUTO, value_parser = [formats::AUTO, formats::SEMVER, formats::PEP440],
+          help = "Input format: 'auto' (detect), 'semver', or 'pep440'")]
+    pub input_format: String,
+
+    /// Change to directory before running command
+    #[arg(short = 'C', help = "Change to directory before running command")]
+    pub directory: Option<String>,
+
+    // ============================================================================
+    // 2. SCHEMA
+    // ============================================================================
     /// Schema preset name
     #[arg(long, help = "Schema preset name (standard, calver, etc.)")]
     pub schema: Option<String>,
@@ -67,16 +78,9 @@ pub struct VersionArgs {
     #[arg(long, help = "Custom schema in RON format")]
     pub schema_ron: Option<String>,
 
-    /// Input format for version string parsing
-    #[arg(long, default_value = formats::AUTO, value_parser = [formats::AUTO, formats::SEMVER, formats::PEP440],
-          help = "Input format: 'auto' (detect), 'semver', or 'pep440'")]
-    pub input_format: String,
-
-    /// Output format for generated version
-    #[arg(long, default_value = formats::SEMVER, value_parser = SUPPORTED_FORMATS_ARRAY,
-          help = format!("Output format: '{}' (default), '{}', or '{}' (RON format for piping)", formats::SEMVER, formats::PEP440, formats::ZERV))]
-    pub output_format: String,
-
+    // ============================================================================
+    // 3. OVERRIDE
+    // ============================================================================
     // VCS override options
     /// Override the detected tag version
     #[arg(
@@ -115,7 +119,23 @@ pub struct VersionArgs {
     #[arg(long, help = "Override commit hash (full or short form)")]
     pub commit_hash: Option<String>,
 
-    // Additional override options
+    // Version component override options
+    /// Override major version number
+    #[arg(long, help = "Override major version number")]
+    pub major: Option<u32>,
+
+    /// Override minor version number
+    #[arg(long, help = "Override minor version number")]
+    pub minor: Option<u32>,
+
+    /// Override patch version number
+    #[arg(long, help = "Override patch version number")]
+    pub patch: Option<u32>,
+
+    /// Override epoch number
+    #[arg(long, help = "Override epoch number")]
+    pub epoch: Option<u32>,
+
     /// Override post number
     #[arg(long, help = "Override post number")]
     pub post: Option<u32>,
@@ -132,15 +152,13 @@ pub struct VersionArgs {
     #[arg(long, help = "Override pre-release number")]
     pub pre_release_num: Option<u32>,
 
-    /// Override epoch number
-    #[arg(long, help = "Override epoch number")]
-    pub epoch: Option<u32>,
-
     /// Override custom variables in JSON format
     #[arg(long, help = "Override custom variables in JSON format")]
     pub custom: Option<String>,
 
-    // Bump options (relative modifications)
+    // ============================================================================
+    // 4. BUMP
+    // ============================================================================
     /// Add to major version (default: 1)
     #[arg(long, help = "Add to major version (default: 1)")]
     pub bump_major: Option<Option<u32>>,
@@ -178,7 +196,14 @@ pub struct VersionArgs {
     #[arg(long, help = "Pure tag version, no VCS context")]
     pub no_bump_context: bool,
 
-    // Output options for future extension
+    // ============================================================================
+    // 5. OUTPUT CONTROL
+    // ============================================================================
+    /// Output format for generated version
+    #[arg(long, default_value = formats::SEMVER, value_parser = SUPPORTED_FORMATS_ARRAY,
+          help = format!("Output format: '{}' (default), '{}', or '{}' (RON format for piping)", formats::SEMVER, formats::PEP440, formats::ZERV))]
+    pub output_format: String,
+
     /// Output template for custom formatting (future extension)
     #[arg(
         long,
@@ -192,17 +217,15 @@ pub struct VersionArgs {
         help = "Prefix to add to version output (e.g., 'v' for 'v1.0.0')"
     )]
     pub output_prefix: Option<String>,
-
-    /// Change to directory before running command
-    #[arg(short = 'C', help = "Change to directory before running command")]
-    pub directory: Option<String>,
 }
 
 impl Default for VersionArgs {
     fn default() -> Self {
         Self {
-            version: None,
             source: sources::GIT.to_string(),
+            major: None,
+            minor: None,
+            patch: None,
             schema: None,
             schema_ron: None,
             input_format: formats::AUTO.to_string(),
@@ -380,7 +403,6 @@ mod tests {
     #[test]
     fn test_version_args_defaults() {
         let args = VersionArgs::try_parse_from(["version"]).unwrap();
-        assert!(args.version.is_none());
         assert_eq!(args.source, sources::GIT);
         assert!(args.schema.is_none());
         assert!(args.schema_ron.is_none());
