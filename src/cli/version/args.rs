@@ -153,10 +153,6 @@ pub struct VersionArgs {
     #[arg(long, help = "Add to patch version (default: 1)")]
     pub bump_patch: Option<Option<u32>>,
 
-    /// Add to distance from tag (default: 1)
-    #[arg(long, help = "Add to distance from tag (default: 1)")]
-    pub bump_distance: Option<Option<u32>>,
-
     /// Add to post number (default: 1)
     #[arg(long, help = "Add to post number (default: 1)")]
     pub bump_post: Option<Option<u32>>,
@@ -227,7 +223,6 @@ impl Default for VersionArgs {
             bump_major: None,
             bump_minor: None,
             bump_patch: None,
-            bump_distance: None,
             bump_post: None,
             bump_dev: None,
             bump_pre_release_num: None,
@@ -330,11 +325,6 @@ impl VersionArgs {
             self.bump_patch = Some(Some(1));
         }
 
-        // Resolve bump_distance: Some(None) -> Some(Some(1))
-        if let Some(None) = self.bump_distance {
-            self.bump_distance = Some(Some(1));
-        }
-
         // Resolve bump_post: Some(None) -> Some(Some(1))
         if let Some(None) = self.bump_post {
             self.bump_post = Some(Some(1));
@@ -416,7 +406,6 @@ mod tests {
         assert!(args.bump_major.is_none());
         assert!(args.bump_minor.is_none());
         assert!(args.bump_patch.is_none());
-        assert!(args.bump_distance.is_none());
         assert!(args.bump_post.is_none());
         assert!(args.bump_dev.is_none());
         assert!(args.bump_pre_release_num.is_none());

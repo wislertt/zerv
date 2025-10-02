@@ -1,6 +1,6 @@
 use crate::cli::version::args::VersionArgs;
 use crate::constants::{formats, sources};
-use crate::test_utils::BumpType;
+use crate::version::zerv::bump::types::BumpType;
 
 /// Test fixture for creating VersionArgs with sensible defaults
 pub struct VersionArgsFixture;
@@ -31,7 +31,6 @@ impl VersionArgsFixture {
             bump_major: None,
             bump_minor: None,
             bump_patch: None,
-            bump_distance: None,
             bump_post: None,
             bump_dev: None,
             bump_pre_release_num: None,
@@ -93,19 +92,24 @@ impl VersionArgsFixture {
     }
 
     /// Create a VersionArgs with specific bump operations from BumpType specifications
-    pub fn with_bump_specs(bumps: Vec<(BumpType, u64)>) -> VersionArgs {
+    pub fn with_bump_specs(bumps: Vec<BumpType>) -> VersionArgs {
         let mut args = Self::create();
 
-        for (bump_type, increment) in bumps {
+        for bump_type in bumps {
             match bump_type {
-                BumpType::Major => args.bump_major = Some(Some(increment as u32)),
-                BumpType::Minor => args.bump_minor = Some(Some(increment as u32)),
-                BumpType::Patch => args.bump_patch = Some(Some(increment as u32)),
-                BumpType::Distance => args.bump_distance = Some(Some(increment as u32)),
-                BumpType::Post => args.bump_post = Some(Some(increment as u32)),
-                BumpType::Dev => args.bump_dev = Some(Some(increment as u32)),
-                BumpType::Epoch => args.bump_epoch = Some(Some(increment as u32)),
-                BumpType::PreRelease => args.bump_pre_release_num = Some(Some(increment as u32)),
+                BumpType::Major(increment) => args.bump_major = Some(Some(increment as u32)),
+                BumpType::Minor(increment) => args.bump_minor = Some(Some(increment as u32)),
+                BumpType::Patch(increment) => args.bump_patch = Some(Some(increment as u32)),
+                BumpType::Post(increment) => args.bump_post = Some(Some(increment as u32)),
+                BumpType::Dev(increment) => args.bump_dev = Some(Some(increment as u32)),
+                BumpType::Epoch(increment) => args.bump_epoch = Some(Some(increment as u32)),
+                BumpType::PreReleaseNum(increment) => {
+                    args.bump_pre_release_num = Some(Some(increment as u32))
+                }
+                BumpType::PreReleaseLabel(_) => {
+                    // For now, we don't handle pre-release label bumps in test fixtures
+                    // This can be extended later when needed
+                }
             }
         }
 

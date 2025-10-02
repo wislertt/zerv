@@ -2,12 +2,6 @@ use super::Zerv;
 use crate::error::ZervError;
 
 impl Zerv {
-    /// Bump distance by the specified increment
-    pub fn bump_distance(&mut self, increment: u64) -> Result<(), ZervError> {
-        self.vars.distance = Some(self.vars.distance.unwrap_or(0) + increment);
-        Ok(())
-    }
-
     /// Bump post-release version by the specified increment
     pub fn bump_post(&mut self, increment: u64) -> Result<(), ZervError> {
         self.vars.post = Some(self.vars.post.unwrap_or(0) + increment);
@@ -44,19 +38,6 @@ mod tests {
     use crate::test_utils::zerv::ZervFixture;
     use crate::version::zerv::core::PreReleaseLabel;
     use rstest::*;
-
-    #[rstest]
-    #[case((1, 0, 0), 2, Some(2))]
-    #[case((1, 0, 0), 0, Some(0))]
-    fn test_bump_distance(
-        #[case] version: (u64, u64, u64),
-        #[case] increment: u64,
-        #[case] expected: Option<u64>,
-    ) {
-        let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
-        zerv.bump_distance(increment).unwrap();
-        assert_eq!(zerv.vars.distance, expected);
-    }
 
     #[rstest]
     #[case((1, 0, 0), 3, Some(3))]

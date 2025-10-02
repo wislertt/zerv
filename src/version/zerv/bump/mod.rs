@@ -23,10 +23,6 @@ impl Zerv {
             self.bump_patch(increment as u64)?;
         }
 
-        if let Some(Some(increment)) = args.bump_distance {
-            self.bump_distance(increment as u64)?;
-        }
-
         if let Some(Some(increment)) = args.bump_post {
             self.bump_post(increment as u64)?;
         }
@@ -52,17 +48,18 @@ impl Zerv {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::{BumpType, VersionArgsFixture, ZervFixture};
+    use crate::test_utils::{VersionArgsFixture, ZervFixture};
+    use crate::version::zerv::bump::types::BumpType;
     use rstest::*;
 
     // Test apply_bumps method - only test the main coordinator method
     #[rstest]
-    #[case((1, 0, 0), vec![(BumpType::Major, 1), (BumpType::Minor, 2)], (Some(2), Some(2), Some(0)))]
-    #[case((2, 5, 3), vec![(BumpType::Major, 0), (BumpType::Patch, 7)], (Some(2), Some(5), Some(10)))]
-    #[case((0, 0, 0), vec![(BumpType::Major, 3), (BumpType::Minor, 2), (BumpType::Patch, 1)], (Some(3), Some(2), Some(1)))]
+    #[case((1, 0, 0), vec![BumpType::Major(1), BumpType::Minor(2)], (Some(2), Some(2), Some(0)))]
+    #[case((2, 5, 3), vec![BumpType::Major(0), BumpType::Patch(7)], (Some(2), Some(5), Some(10)))]
+    #[case((0, 0, 0), vec![BumpType::Major(3), BumpType::Minor(2), BumpType::Patch(1)], (Some(3), Some(2), Some(1)))]
     fn test_apply_bumps_method(
         #[case] version: (u64, u64, u64),
-        #[case] bumps: Vec<(BumpType, u64)>,
+        #[case] bumps: Vec<BumpType>,
         #[case] expected: (Option<u64>, Option<u64>, Option<u64>),
     ) {
         let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
@@ -75,52 +72,15 @@ mod tests {
         assert_eq!(zerv.vars.patch, expected.2);
     }
 
-    // Test apply_bumps with distance, post, and dev fields
-    #[test]
-    fn test_apply_bumps_distance_post_dev() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
-        let bumps = vec![
-            (BumpType::Distance, 5),
-            (BumpType::Post, 3),
-            (BumpType::Dev, 2),
-        ];
-        let args = VersionArgsFixture::with_bump_specs(bumps);
-
-        zerv.apply_bumps(&args).unwrap();
-
-        assert_eq!(zerv.vars.distance, Some(5));
-        assert_eq!(zerv.vars.post, Some(3));
-        assert_eq!(zerv.vars.dev, Some(2));
-    }
-
-    // Test apply_bumps with epoch and distance fields
-    #[test]
-    fn test_apply_bumps_epoch_distance() {
-        let mut zerv = ZervFixture::zerv_version(2, 1, 0);
-        let bumps = vec![(BumpType::Epoch, 1), (BumpType::Distance, 4)];
-        let args = VersionArgsFixture::with_bump_specs(bumps);
-
-        zerv.apply_bumps(&args).unwrap();
-
-        assert_eq!(zerv.vars.epoch, Some(1));
-        assert_eq!(zerv.vars.distance, Some(4));
-        assert_eq!(zerv.vars.post, None); // Not bumped
-    }
-
     // Test apply_bumps with zero increments
     #[test]
     fn test_apply_bumps_zero_increments() {
         let mut zerv = ZervFixture::zerv_version(0, 0, 0);
-        let bumps = vec![
-            (BumpType::Distance, 0),
-            (BumpType::Post, 0),
-            (BumpType::Dev, 0),
-        ];
+        let bumps = vec![BumpType::Post(0), BumpType::Dev(0)];
         let args = VersionArgsFixture::with_bump_specs(bumps);
 
         zerv.apply_bumps(&args).unwrap();
 
-        assert_eq!(zerv.vars.distance, Some(0));
         assert_eq!(zerv.vars.post, Some(0));
         assert_eq!(zerv.vars.dev, Some(0));
     }
@@ -148,12 +108,11 @@ mod tests {
 
         // Apply multiple bumps
         let bumps = vec![
-            (BumpType::Major, 1),
-            (BumpType::Minor, 2),
-            (BumpType::Distance, 3),
-            (BumpType::Post, 2),
-            (BumpType::Dev, 5),
-            (BumpType::Epoch, 1),
+            BumpType::Major(1),
+            BumpType::Minor(2),
+            BumpType::Post(2),
+            BumpType::Dev(5),
+            BumpType::Epoch(1),
         ];
         let args = VersionArgsFixture::with_bump_specs(bumps);
         zerv.apply_bumps(&args).unwrap();
@@ -164,7 +123,6 @@ mod tests {
         assert_eq!(zerv.vars.patch, Some(0)); // unchanged
 
         // Verify secondary fields
-        assert_eq!(zerv.vars.distance, Some(6)); // 3 + 3
         assert_eq!(zerv.vars.post, Some(7)); // 5 + 2
         assert_eq!(zerv.vars.dev, Some(15)); // 10 + 5
         assert_eq!(zerv.vars.epoch, Some(3)); // 2 + 1
@@ -206,13 +164,12 @@ mod tests {
         zerv.vars.bumped_timestamp = Some(old_timestamp);
 
         // Apply bumps
-        let bumps = vec![(BumpType::Patch, 1), (BumpType::Distance, 1)];
+        let bumps = vec![BumpType::Patch(1)];
         let args = VersionArgsFixture::with_bump_specs(bumps);
         zerv.apply_bumps(&args).unwrap();
 
         // Verify fields were bumped
         assert_eq!(zerv.vars.patch, Some(1)); // 0 + 1
-        assert_eq!(zerv.vars.distance, Some(3)); // 2 + 1
 
         // Verify VCS fields (should be preserved from original)
         assert_eq!(zerv.vars.dirty, Some(false)); // clean
@@ -238,7 +195,7 @@ mod tests {
         let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(3));
 
         // Apply pre-release bump
-        let bumps = vec![(BumpType::PreRelease, 2)];
+        let bumps = vec![BumpType::PreReleaseNum(2)];
         let args = VersionArgsFixture::with_bump_specs(bumps);
         zerv.apply_bumps(&args).unwrap();
 
@@ -258,24 +215,11 @@ mod tests {
         let mut zerv = ZervFixture::zerv_version(1, 0, 0);
 
         // Try to apply pre-release bump
-        let bumps = vec![(BumpType::PreRelease, 1)];
+        let bumps = vec![BumpType::PreReleaseNum(1)];
         let args = VersionArgsFixture::with_bump_specs(bumps);
         let result = zerv.apply_bumps(&args);
 
         // Should fail because there's no pre-release to bump
         assert!(result.is_err());
-    }
-
-    // Test BumpType enum functionality
-    #[test]
-    fn test_bump_type_field_names() {
-        assert_eq!(BumpType::Major.field_name(), "major");
-        assert_eq!(BumpType::Minor.field_name(), "minor");
-        assert_eq!(BumpType::Patch.field_name(), "patch");
-        assert_eq!(BumpType::Distance.field_name(), "distance");
-        assert_eq!(BumpType::Post.field_name(), "post");
-        assert_eq!(BumpType::Dev.field_name(), "dev");
-        assert_eq!(BumpType::Epoch.field_name(), "epoch");
-        assert_eq!(BumpType::PreRelease.field_name(), "pre_release");
     }
 }
