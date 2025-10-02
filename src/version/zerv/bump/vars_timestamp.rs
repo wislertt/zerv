@@ -2,18 +2,10 @@ use super::Zerv;
 use crate::error::ZervError;
 
 impl Zerv {
-    /// Bump bumped_timestamp based on dirty state
-    /// Context control has already been applied, so we just respect the dirty state
     pub fn bump_bumped_timestamp(&mut self) -> Result<(), ZervError> {
-        // bumped_timestamp should represent the timestamp of the current commit
-        // If dirty, use current timestamp (uncommitted changes)
-        // If clean, use the VCS commit timestamp (already set from VCS data)
         if self.vars.dirty == Some(true) {
             self.vars.bumped_timestamp = Some(chrono::Utc::now().timestamp() as u64);
         }
-        // If dirty is false (either naturally or forced by --no-bump-context),
-        // keep the existing timestamp (from VCS data)
-
         Ok(())
     }
 }

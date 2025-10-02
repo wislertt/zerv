@@ -48,14 +48,28 @@ Arguments are organized into logical groups for better usability:
 
 #### Bump Options (Relative Modifications)
 
-- `--bump-major [<NUM>]` - Add to major version (default: 1)
-- `--bump-minor [<NUM>]` - Add to minor version (default: 1)
-- `--bump-patch [<NUM>]` - Add to patch version (default: 1)
-- `--bump-distance [<NUM>]` - Add to distance from tag (default: 1)
+**Version Bumps (Semantic Versioning Rules):**
+
+- `--bump-major [<NUM>]` - Increment major version, reset minor and patch to 0 (default: 1)
+    - `1.2.3` → `2.0.0` (with `--bump-major`)
+    - `1.2.3` → `3.0.0` (with `--bump-major 2`)
+- `--bump-minor [<NUM>]` - Increment minor version, reset patch to 0 (default: 1)
+    - `1.2.3` → `1.3.0` (with `--bump-minor`)
+    - `1.2.3` → `1.5.0` (with `--bump-minor 3`)
+- `--bump-patch [<NUM>]` - Increment patch version only (default: 1)
+    - `1.2.3` → `1.2.4` (with `--bump-patch`)
+    - `1.2.3` → `1.2.6` (with `--bump-patch 3`)
+
+**Pre-release Bumps:**
+
+- `--bump-pre-release-num [<NUM>]` - Add to prerelease number, creates alpha label if none exists (default: 1)
+- `--bump-pre-release-label <LABEL>` - Change prerelease label, reset number to 0
+
+**Other Bumps (Additive Only):**
+
 - `--bump-post [<NUM>]` - Add to post number (default: 1)
 - `--bump-dev [<NUM>]` - Add to dev number (default: 1)
-- `--bump-pre-release-num [<NUM>]` - Add to prerelease number (default: 1)
-- `--bump-epoch [<NUM>]` - Add to epoch number (default: 1)
+- `--bump-epoch [<NUM>]` - Add to epoch number, resets all lower precedence components (default: 1)
 
 ##### Context Control Options
 
@@ -108,6 +122,169 @@ $ zerv version  # Uncommitted changes
 - **Tier 1** (Clean): `YYYY.MM.DD.PATCH`
 - **Tier 2** (Distance): `YYYY.MM.DD.PATCH.post<post>+branch.<commit>`
 - **Tier 3** (Dirty): `YYYY.MM.DD.PATCH.dev<timestamp>+branch.<distance>.<commit>`
+
+## Semantic Versioning Bump Behavior
+
+**Critical Design Principle**: Version bumps follow standard semantic versioning rules where higher-level bumps reset lower-level components to zero.
+
+### Current vs Ideal Behavior
+
+**Current Implementation Issues (Additive Only):**
+
+- `1.2.3` + `--bump-major` → `2.2.3` ❌ (Wrong! Should reset minor/patch)
+- `1.2.3` + `--bump-minor` → `1.3.3` ❌ (Wrong! Should reset patch)
+- `1.2.3` + `--bump-patch` → `1.2.4` ✅ (Correct)
+
+**Ideal Behavior (Semantic Versioning Compliant):**
+
+- `1.2.3` + `--bump-major` → `2.0.0` ✅ (Resets minor/patch to 0)
+- `1.2.3` + `--bump-minor` → `1.3.0` ✅ (Resets patch to 0)
+- `1.2.3` + `--bump-patch` → `1.2.4` ✅ (No reset needed)
+
+### Bump Hierarchy and Reset Rules
+
+1. **Major Bump** (`--bump-major`):
+    - Increments major version
+    - **Resets minor and patch to 0**
+    - Example: `1.2.3` → `2.0.0`
+
+2. **Minor Bump** (`--bump-minor`):
+    - Increments minor version
+    - **Resets patch to 0**
+    - Example: `1.2.3` → `1.3.0`
+
+3. **Patch Bump** (`--bump-patch`):
+    - Increments patch version only
+    - Example: `1.2.3` → `1.2.4`
+
+### Multiple Bump Interactions
+
+When multiple bumps are specified, higher precedence bumps reset lower precedence components, then explicitly specified components are bumped from 0:
+
+```bash
+# Major bump resets minor and patch, then minor is bumped from 0
+zerv version --bump-major --bump-minor 2 --bump-patch 3
+# 1.2.3 → 2.2.3 (major to 2, minor from 0 to 2, patch from 0 to 3)
+
+# Minor bump resets patch, then patch is bumped from 0
+zerv version --bump-minor --bump-patch 5
+# 1.2.3 → 1.3.5 (minor to 3, patch from 0 to 5)
+
+# Only patch bump
+zerv version --bump-patch 2
+# 1.2.3 → 1.2.5
+```
+
+### Component Precedence Hierarchy
+
+**Precedence Order**: Epoch → Major → Minor → Patch → Pre-release → Post → Dev
+
+- **Epoch bumps**: Reset all lower precedence components
+- **Version bumps**: Reset lower precedence version components
+- **Pre-release bumps**: Reset post/dev components
+- **Post/Dev bumps**: Additive only (no reset behavior)
+
+### Pre-release Bump Behavior
+
+**Detailed Pre-release Examples:**
+
+```bash
+# Pre-release number bumps
+1.2.3-alpha.1 + --bump-pre-release-num 2 → 1.2.3-alpha.3 ✅
+1.2.3-beta.5 + --bump-pre-release-num → 1.2.3-beta.6 ✅ (default increment: 1)
+1.2.3 + --bump-pre-release-num 2 → 1.2.3-alpha.2 ✅ (creates alpha label)
+
+# Pre-release label overrides (preserve number)
+1.2.3-alpha.1 + --pre-release-label beta → 1.2.3-beta.1 ✅
+1.2.3-beta.5 + --pre-release-label rc → 1.2.3-rc.5 ✅
+1.2.3 + --pre-release-label alpha → 1.2.3-alpha.0 ✅ (creates if doesn't exist)
+
+# Pre-release label bumps (reset number to 0)
+1.2.3-alpha.5 + --bump-pre-release-label beta → 1.2.3-beta.0 ✅
+1.2.3-beta.3 + --bump-pre-release-label rc → 1.2.3-rc.0 ✅
+1.2.3 + --bump-pre-release-label alpha → 1.2.3-alpha.0 ✅ (creates with reset)
+
+# Pre-release with post/dev components (reset behavior)
+1.2.3-alpha.1.post2.dev5 + --bump-pre-release-num 2 → 1.2.3-alpha.3 ✅ (resets post/dev)
+1.2.3-alpha.1.post2.dev5 + --pre-release-label beta → 1.2.3-beta.1.post2.dev5 ✅ (preserves post/dev)
+1.2.3-alpha.1.post2.dev5 + --bump-pre-release-label rc → 1.2.3-rc.0 ✅ (resets post/dev)
+1.2.3.post2.dev5 + --pre-release-label alpha → 1.2.3-alpha.0.post2.dev5 ✅
+1.2.3.post2.dev5 + --bump-pre-release-label beta → 1.2.3-beta.0 ✅ (resets post/dev)
+
+# Combined pre-release operations
+1.2.3-alpha.1 + --pre-release-label beta --bump-pre-release-num 2 → 1.2.3-beta.3 ✅
+1.2.3-beta.5 + --pre-release-label rc --bump-pre-release-num 1 → 1.2.3-rc.6 ✅
+1.2.3 + --pre-release-label alpha --bump-pre-release-num 3 → 1.2.3-alpha.3 ✅ (creates with bump)
+
+# Pre-release with post/dev bumps
+1.2.3-alpha.1.post2.dev5 + --bump-post 1 --bump-dev 2 → 1.2.3-alpha.1.post3.dev7 ✅
+1.2.3-alpha.1.post2.dev5 + --bump-pre-release-num 1 --bump-post 2 --bump-dev 3 → 1.2.3-alpha.2.post2.dev3 ✅
+```
+
+### Post-release and Dev Bump Behavior
+
+**Post-release and Dev bumps are additive only (no reset behavior):**
+
+```bash
+# Post-release bumps
+1.2.3.post1 + --bump-post 2 → 1.2.3.post3 ✅
+1.2.3.dev5 + --bump-dev 3 → 1.2.3.dev8 ✅
+1.2.3 + --bump-post 1 → 1.2.3.post1 ✅ (creates if doesn't exist)
+1.2.3 + --bump-dev 1 → 1.2.3.dev1 ✅ (creates if doesn't exist)
+```
+
+### Epoch Bump Behavior
+
+**Epoch bumps reset ALL lower precedence components:**
+
+```bash
+# Epoch bumps (highest precedence - resets everything)
+1!1.2.3 + --bump-epoch 1 → 2!0.0.0 ✅ (resets major/minor/patch)
+1.2.3 + --bump-epoch 1 → 1!0.0.0 ✅ (creates epoch, resets major/minor/patch)
+1.2.3-alpha.1.post2.dev5 + --bump-epoch 1 → 1!0.0.0 ✅ (resets all components)
+```
+
+### Mixed Component Bump Examples
+
+**Complex scenarios combining multiple bump types:**
+
+```bash
+# Version + metadata bumps
+1.2.3 + --bump-major --bump-post 2 --bump-dev 1 → 2.0.0.post2.dev1 ✅
+1.2.3-alpha.1 + --bump-minor --bump-pre-release-num 3 → 1.3.0-alpha.3 ✅
+1.2.3 + --bump-patch --bump-epoch 1 → 1!0.0.1 ✅
+
+# Complex pre-release scenarios
+1.2.3-alpha.1.post2.dev5 + --bump-major → 2.0.0 ✅ (major resets all lower precedence)
+1.2.3-alpha.1.post2.dev5 + --bump-minor --bump-pre-release-num 2 → 1.3.0-alpha.2 ✅ (minor resets patch/pre/post/dev, pre-release creates alpha)
+1.2.3-alpha.1.post2.dev5 + --bump-patch --bump-post 1 --bump-dev 1 → 1.2.4.post1.dev1 ✅ (patch resets pre/post/dev, then bumps post/dev)
+1.2.3-alpha.1.post2.dev5 + --bump-major --bump-minor 2 --bump-patch 3 --bump-pre-release-num 1 --bump-post 1 --bump-dev 1 → 2.2.3-alpha.1.post1.dev1 ✅ (all explicit)
+```
+
+### Edge Cases and Validation
+
+**Pre-release Label Validation:**
+
+- **Valid labels**: `alpha`, `beta`, `rc` (case-sensitive)
+- **Invalid labels**: Labels with special characters, numbers, or invalid formats
+- **Error example**: `--pre-release-label "invalid!"` → **Error** (invalid characters)
+
+**Conflicting Operations:**
+
+- **Error**: `--pre-release-label` and `--bump-pre-release-label` together → **Early validation error**
+- **Resolution**: Only one pre-release label operation allowed per command
+
+**None Value Handling:**
+
+- If version component is `None`, treat as `0` before bumping
+- If metadata component is `None`, create it with the bump value
+- Reset behavior applies to `None` values (set to `0` or remove)
+
+**Override vs Bump Interaction:**
+
+- **Overrides** (`--major 2`) set absolute values, no reset behavior
+- **Bumps** (`--bump-major`) follow semantic versioning rules with reset
+- **Precedence**: Overrides take precedence over bumps when both specified
 
 ## Processing Order
 
@@ -534,14 +711,26 @@ zerv version --tag-version v1.5.0 --current-branch feature --dirty
 ### Version Bumps
 
 ```bash
-# Bump patch version
+# Bump patch version (1.2.3 → 1.2.4)
 zerv version --bump-patch
 
-# Bump major version
+# Bump minor version (1.2.3 → 1.3.0)
+zerv version --bump-minor
+
+# Bump major version (1.2.3 → 2.0.0)
 zerv version --bump-major
 
-# Multiple bumps
-zerv version --bump-major 2 --bump-patch 1
+# Multiple bumps - higher precedence resets lower, then explicit bumps applied
+zerv version --bump-major --bump-minor 2 --bump-patch 3
+# Result: 1.2.3 → 2.2.3 (major resets minor/patch to 0, then bumps to 2/3)
+
+# Pre-release bumps reset post/dev components
+zerv version --bump-pre-release-num 2
+# Result: 1.2.3-alpha.1.post5.dev10 → 1.2.3-alpha.3 (post/dev reset)
+
+# Epoch bumps reset all lower precedence components
+zerv version --bump-epoch 1
+# Result: 1.2.3 → 1!0.0.0 (epoch creates, resets major/minor/patch)
 ```
 
 ### Templating Examples
