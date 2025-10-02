@@ -15,44 +15,68 @@ fn tokenize_pattern(pattern: &str) -> Result<Vec<String>> {
     let mut previous_c = None;
 
     for c in pattern.chars() {
-        if c == '0' {
-            // Start a new token with '0'
-            if !current_token.is_empty() {
-                tokens.push(current_token.clone());
-                current_token.clear();
+        let action = determine_character_action(c, previous_c);
+
+        match action {
+            CharacterAction::StartNewToken => {
+                finalize_current_token(&mut tokens, &mut current_token);
+                current_token.push(c);
             }
-            current_token.push(c);
-        } else if previous_c == Some('0') || (previous_c == Some(c) && is_pattern_char(c)) {
-            // Continue current token if previous was '0' or same pattern character
-            current_token.push(c);
-        } else if is_pattern_char(c) {
-            // Start a new pattern token
-            if !current_token.is_empty() {
-                tokens.push(current_token.clone());
-                current_token.clear();
+            CharacterAction::ContinueToken => {
+                current_token.push(c);
             }
-            current_token.push(c);
-        } else {
-            // Reject any non-pattern characters
-            return Err(create_invalid_pattern_error(pattern));
+            CharacterAction::Invalid => {
+                return Err(create_invalid_pattern_error(pattern));
+            }
         }
+
         previous_c = Some(c);
     }
 
-    // Process the last token
-    if !current_token.is_empty() {
-        tokens.push(current_token);
-    }
+    finalize_current_token(&mut tokens, &mut current_token);
+    validate_all_tokens(&tokens, pattern)?;
 
-    // Validate that all tokens are valid timestamp patterns
+    Ok(tokens)
+}
+
+#[derive(Debug, PartialEq)]
+enum CharacterAction {
+    StartNewToken,
+    ContinueToken,
+    Invalid,
+}
+
+fn determine_character_action(c: char, previous_c: Option<char>) -> CharacterAction {
+    if c == '0' {
+        CharacterAction::StartNewToken
+    } else if should_continue_token(c, previous_c) {
+        CharacterAction::ContinueToken
+    } else if is_pattern_char(c) {
+        CharacterAction::StartNewToken
+    } else {
+        CharacterAction::Invalid
+    }
+}
+
+fn should_continue_token(c: char, previous_c: Option<char>) -> bool {
+    previous_c == Some('0') || (previous_c == Some(c) && is_pattern_char(c))
+}
+
+fn finalize_current_token(tokens: &mut Vec<String>, current_token: &mut String) {
+    if !current_token.is_empty() {
+        tokens.push(current_token.clone());
+        current_token.clear();
+    }
+}
+
+fn validate_all_tokens(tokens: &[String], pattern: &str) -> Result<()> {
     let valid_patterns = timestamp_patterns::get_valid_timestamp_patterns();
-    for token in &tokens {
+    for token in tokens {
         if !valid_patterns.contains(&token.as_str()) {
             return Err(create_invalid_pattern_error(pattern));
         }
     }
-
-    Ok(tokens)
+    Ok(())
 }
 
 fn is_pattern_char(c: char) -> bool {
