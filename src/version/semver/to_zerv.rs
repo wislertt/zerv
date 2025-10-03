@@ -160,227 +160,91 @@ impl From<SemVer> for Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::zerv::PreReleaseLabel;
+    use crate::test_utils::zerv::zerv_semver::to;
+    use crate::version::zerv::Zerv;
     use rstest::rstest;
 
-    use crate::test_utils::zerv::ZervFixture;
-
     #[rstest]
-    // Basic conversions
-    #[case("1.2.3", ZervFixture::sem_zerv_1_2_3())]
-    #[case("1.0.0-alpha.1", ZervFixture::sem_zerv_1_0_0_alpha_1())]
-    #[case("1.0.0-something.1", ZervFixture::sem_zerv_1_0_0_something_1())]
-    #[case("1.0.0+build.123", ZervFixture::sem_zerv_1_0_0_build_123())]
-    #[case(
-        "1.0.0-alpha.1+build.123",
-        ZervFixture::sem_zerv_1_0_0_alpha_1_build_123()
-    )]
+    #[case("1.2.3", to::v1_2_3().build())]
+    #[case("1.0.0-alpha.1", to::v1_0_0_a1().build())]
+    #[case("1.0.0-something.1", to::v1_0_0_something_1().build())]
+    #[case("1.0.0+build.123", to::v1_0_0_build().build())]
+    #[case("1.0.0-alpha.1+build.123", to::v1_0_0_a1_build().build())]
     #[case(
         "1.0.0-alpha.1.lowercase.4.UPPERCASE.5+build.123",
-        ZervFixture::sem_zerv_1_0_0_alpha_1_lowercase_4_uppercase_5_build_123()
+        to::v1_0_0_a1_complex().build()
     )]
-    #[case(
-        "1.0.0-foo.bar.beta.2.baz",
-        ZervFixture::sem_zerv_1_0_0_foo_bar_beta_2_baz()
-    )]
-    #[case("1.0.0-alpha.1.beta.2", ZervFixture::sem_zerv_1_0_0_alpha_1_beta_2())]
-    #[case(
-        "1.0.0-rc.1.alpha.2.beta.3",
-        ZervFixture::sem_zerv_1_0_0_rc_1_alpha_2_beta_3()
-    )]
-    #[case("1.0.0-pre.alpha.1", ZervFixture::sem_zerv_1_0_0_rc_alpha_1())]
-    #[case(
-        "1.0.0-test.alpha.beta.rc.1",
-        ZervFixture::sem_zerv_1_0_0_test_alpha_beta_rc_1()
-    )]
-    // Case variations
-    #[case(
-        "1.0.0-ALPHA.1",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(1))
-    )]
-    #[case(
-        "1.0.0-BETA.2",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, Some(2))
-    )]
-    #[case(
-        "1.0.0-RC.3",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Rc, Some(3))
-    )]
-    #[case(
-        "1.0.0-Preview.4",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Rc, Some(4))
-    )]
-    #[case(
-        "1.0.0-a.1",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(1))
-    )]
-    #[case(
-        "1.0.0-b.2",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, Some(2))
-    )]
-    #[case(
-        "1.0.0-c.3",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Rc, Some(3))
-    )]
-    #[case(
-        "1.0.0-alpha",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, None)
-    )]
-    #[case(
-        "1.0.0-beta",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, None)
-    )]
-    #[case(
-        "1.0.0-rc",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Rc, None)
-    )]
-    #[case(
-        "1.0.0-alpha.0",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(0))
-    )]
-    #[case(
-        "1.0.0-beta.0",
-        ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, Some(0))
-    )]
-    #[case("1.0.0-foo.1.alpha", ZervFixture::sem_zerv_1_0_0_foo_1_alpha())]
-    #[case("1.0.0-bar.2.beta", ZervFixture::sem_zerv_1_0_0_bar_2_beta())]
+    #[case("1.0.0-foo.bar.beta.2.baz", to::v1_0_0_foo_bar_beta_2_baz().build())]
+    #[case("1.0.0-alpha.1.beta.2", to::v1_0_0_alpha_1_beta_2().build())]
+    #[case("1.0.0-rc.1.alpha.2.beta.3", to::v1_0_0_rc_1_alpha_2_beta_3().build())]
+    #[case("1.0.0-pre.alpha.1", to::v1_0_0_pre_alpha_1().build())]
+    #[case("1.0.0-test.alpha.beta.rc.1", to::v1_0_0_test_alpha_beta_rc_1().build())]
+    #[case("1.0.0-ALPHA.1", to::v1_0_0_alpha_1().build())]
+    #[case("1.0.0-epoch.1", to::v1_0_0_epoch_1().build())]
+    #[case("1.0.0-post.1", to::v1_0_0_post_1().build())]
+    #[case("1.0.0-dev.1", to::v1_0_0_dev_1().build())]
+    // Case variations - Beta
+    #[case("1.0.0-BETA.2", to::v1_0_0_beta_2().build())]
+    // Case variations - RC
+    #[case("1.0.0-RC.3", to::v1_0_0_rc_3().build())]
+    // Case variations - Preview (treated as regular string)
+    #[case("1.0.0-Preview.4", to::v1_0_0_preview_4().build())]
+    // Case variations - short forms
+    #[case("1.0.0-a.1", to::v1_0_0_a_1().build())]
+    #[case("1.0.0-b.2", to::v1_0_0_b_2().build())]
+    #[case("1.0.0-c.3", to::v1_0_0_c_3().build())]
+    // Case variations - without numbers
+    #[case("1.0.0-alpha", to::v1_0_0_alpha().build())]
+    #[case("1.0.0-beta", to::v1_0_0_beta().build())]
+    #[case("1.0.0-rc", to::v1_0_0_rc().build())]
+    // Case variations - with zero
+    #[case("1.0.0-alpha.0", to::v1_0_0_alpha_0().build())]
+    #[case("1.0.0-beta.0", to::v1_0_0_beta_0().build())]
+    // Case variations - with prefix (alpha/beta found later in sequence)
+    #[case("1.0.0-foo.1.alpha", to::v1_0_0_foo_1_alpha().build())]
+    #[case("1.0.0-bar.2.beta", to::v1_0_0_bar_2_beta().build())]
     // Epoch handling
-    #[case("1.0.0-epoch.1", ZervFixture::zerv_1_0_0_with_epoch(1))]
-    #[case("1.0.0-epoch.5", ZervFixture::zerv_1_0_0_with_epoch(5))]
-    #[case("1.0.0-epoch.0", ZervFixture::zerv_1_0_0_with_epoch(0))]
-    #[case("1.0.0-epoch.999", ZervFixture::zerv_1_0_0_with_epoch(999))]
+    #[case("1.0.0-epoch.1", to::v1_0_0_epoch_1().build())]
+    #[case("1.0.0-epoch.5", to::v1_0_0_epoch_5().build())]
+    #[case("1.0.0-epoch.0", to::v1_0_0_epoch_0().build())]
+    #[case("1.0.0-epoch.999", to::v1_0_0_epoch_999().build())]
     // Post handling
-    #[case("1.0.0-post.1", ZervFixture::zerv_1_0_0_with_post(1))]
-    #[case("1.0.0-post.5", ZervFixture::zerv_1_0_0_with_post(5))]
-    #[case("1.0.0-post.0", ZervFixture::zerv_1_0_0_with_post(0))]
+    #[case("1.0.0-post.1", to::v1_0_0_post_1().build())]
+    #[case("1.0.0-post.5", to::v1_0_0_post_5().build())]
+    #[case("1.0.0-post.0", to::v1_0_0_post_0().build())]
     // Dev handling
-    #[case("1.0.0-dev.1", ZervFixture::zerv_1_0_0_with_dev(1))]
-    #[case("1.0.0-dev.0", ZervFixture::zerv_1_0_0_with_dev(0))]
-    #[case("1.0.0-dev.10", ZervFixture::zerv_1_0_0_with_dev(10))]
-    // Epoch + pre-release combinations
-    #[case(
-        "1.0.0-epoch.2.alpha.1",
-        ZervFixture::zerv_1_0_0_with_epoch_and_pre_release(2, PreReleaseLabel::Alpha, Some(1))
-    )]
-    #[case(
-        "1.0.0-epoch.3.beta.2",
-        ZervFixture::zerv_1_0_0_with_epoch_and_pre_release(3, PreReleaseLabel::Beta, Some(2))
-    )]
-    #[case(
-        "1.0.0-epoch.1.rc.5",
-        ZervFixture::zerv_1_0_0_with_epoch_and_pre_release(1, PreReleaseLabel::Rc, Some(5))
-    )]
-    #[case(
-        "1.0.0-epoch.4.alpha",
-        ZervFixture::zerv_1_0_0_with_epoch_and_pre_release(4, PreReleaseLabel::Alpha, None)
-    )]
-    // Post + dev combinations
-    #[case("1.0.0-post.1.dev.2", ZervFixture::zerv_1_0_0_with_post_and_dev(1, 2))]
-    #[case("1.0.0-dev.3.post.4", ZervFixture::zerv_1_0_0_with_dev_and_post(3, 4))]
-    // Pre-release + post combinations
-    #[case(
-        "1.0.0-alpha.1.post.2",
-        ZervFixture::zerv_1_0_0_with_pre_release_and_post(PreReleaseLabel::Alpha, Some(1), 2)
-    )]
-    #[case(
-        "1.0.0-beta.3.post.1",
-        ZervFixture::zerv_1_0_0_with_pre_release_and_post(PreReleaseLabel::Beta, Some(3), 1)
-    )]
-    #[case(
-        "1.0.0-rc.2.post.5",
-        ZervFixture::zerv_1_0_0_with_pre_release_and_post(PreReleaseLabel::Rc, Some(2), 5)
-    )]
-    // Pre-release + dev combinations
-    #[case(
-        "1.0.0-alpha.1.dev.2",
-        ZervFixture::zerv_1_0_0_with_pre_release_and_dev(PreReleaseLabel::Alpha, Some(1), 2)
-    )]
-    #[case(
-        "1.0.0-beta.2.dev.1",
-        ZervFixture::zerv_1_0_0_with_pre_release_and_dev(PreReleaseLabel::Beta, Some(2), 1)
-    )]
-    #[case(
-        "1.0.0-rc.1.dev.3",
-        ZervFixture::zerv_1_0_0_with_pre_release_and_dev(PreReleaseLabel::Rc, Some(1), 3)
-    )]
-    // Triple combinations
-    #[case(
-        "1.0.0-alpha.1.post.2.dev.3",
-        ZervFixture::zerv_1_0_0_with_pre_release_post_and_dev(
-            PreReleaseLabel::Alpha,
-            Some(1),
-            2,
-            3
-        )
-    )]
-    #[case(
-        "1.0.0-beta.2.dev.1.post.3",
-        ZervFixture::zerv_1_0_0_with_pre_release_dev_and_post(
-            PreReleaseLabel::Beta,
-            Some(2),
-            1,
-            3
-        )
-    )]
-    #[case(
-        "1.0.0-rc.1.post.1.dev.1",
-        ZervFixture::zerv_1_0_0_with_pre_release_post_and_dev(PreReleaseLabel::Rc, Some(1), 1, 1)
-    )]
-    // Epoch + post + dev combinations
-    #[case(
-        "1.0.0-epoch.2.post.1.dev.3",
-        ZervFixture::zerv_1_0_0_with_epoch_post_and_dev(2, 1, 3)
-    )]
-    #[case(
-        "1.0.0-epoch.1.dev.2.post.1",
-        ZervFixture::zerv_1_0_0_with_epoch_dev_and_post(1, 2, 1)
-    )]
-    // All components together
-    #[case(
-        "1.0.0-epoch.3.alpha.1.post.2.dev.1",
-        ZervFixture::zerv_1_0_0_with_all_components(3, PreReleaseLabel::Alpha, Some(1), 2, 1)
-    )]
-    #[case(
-        "1.0.0-epoch.1.beta.2.dev.3.post.1",
-        ZervFixture::zerv_1_0_0_with_all_components_reordered(
-            1,
-            PreReleaseLabel::Beta,
-            Some(2),
-            3,
-            1
-        )
-    )]
-    // With build metadata
-    #[case(
-        "1.0.0-epoch.1+build.123",
-        ZervFixture::zerv_1_0_0_with_epoch_and_build(1)
-    )]
-    #[case(
-        "1.0.0-post.1+build.456",
-        ZervFixture::zerv_1_0_0_with_post_and_build(1)
-    )]
-    #[case("1.0.0-dev.2+build.789", ZervFixture::zerv_1_0_0_with_dev_and_build(2))]
-    #[case(
-        "1.0.0-epoch.2.alpha.1+build.abc",
-        ZervFixture::zerv_1_0_0_with_epoch_pre_release_and_build(
-            2,
-            PreReleaseLabel::Alpha,
-            Some(1)
-        )
-    )]
-    // Mixed with other identifiers
-    #[case(
-        "1.0.0-foo.epoch.1.alpha.2",
-        ZervFixture::zerv_1_0_0_with_foo_epoch_and_alpha_original_order(1, 2)
-    )]
-    #[case(
-        "1.0.0-epoch.1.foo.post.2",
-        ZervFixture::zerv_1_0_0_with_epoch_foo_and_post(1, 2)
-    )]
-    #[case(
-        "1.0.0-bar.dev.1.epoch.2",
-        ZervFixture::zerv_1_0_0_with_bar_dev_and_epoch_original_order(1, 2)
-    )]
+    #[case("1.0.0-dev.1", to::v1_0_0_dev_1().build())]
+    #[case("1.0.0-dev.0", to::v1_0_0_dev_0().build())]
+    #[case("1.0.0-dev.10", to::v1_0_0_dev_10().build())]
+    // Complex combinations
+    #[case("1.0.0-epoch.2.alpha.1", to::v1_0_0_epoch_2_alpha_1().build())]
+    #[case("1.0.0-epoch.3.beta.2", to::v1_0_0_epoch_3_beta_2().build())]
+    #[case("1.0.0-epoch.1.rc.5", to::v1_0_0_epoch_1_rc_5().build())]
+    #[case("1.0.0-epoch.4.alpha", to::v1_0_0_epoch_4_alpha().build())]
+    #[case("1.0.0-post.1.dev.2", to::v1_0_0_post_1_dev_2().build())]
+    #[case("1.0.0-dev.3.post.4", to::v1_0_0_dev_3_post_4().build())]
+    #[case("1.0.0-alpha.1.post.2", to::v1_0_0_alpha_1_post_2().build())]
+    #[case("1.0.0-beta.3.post.1", to::v1_0_0_beta_3_post_1().build())]
+    #[case("1.0.0-rc.2.post.5", to::v1_0_0_rc_2_post_5().build())]
+    #[case("1.0.0-alpha.1.dev.2", to::v1_0_0_alpha_1_dev_2().build())]
+    #[case("1.0.0-beta.2.dev.1", to::v1_0_0_beta_2_dev_1().build())]
+    #[case("1.0.0-rc.1.dev.3", to::v1_0_0_rc_1_dev_3().build())]
+    #[case("1.0.0-alpha.1.post.2.dev.3", to::v1_0_0_alpha_1_post_2_dev_3().build())]
+    #[case("1.0.0-beta.2.dev.1.post.3", to::v1_0_0_beta_2_dev_1_post_3().build())]
+    #[case("1.0.0-rc.1.post.1.dev.1", to::v1_0_0_rc_1_post_1_dev_1().build())]
+    #[case("1.0.0-epoch.2.post.1.dev.3", to::v1_0_0_epoch_2_post_1_dev_3().build())]
+    #[case("1.0.0-epoch.1.dev.2.post.1", to::v1_0_0_epoch_1_dev_2_post_1().build())]
+    #[case("1.0.0-epoch.3.alpha.1.post.2.dev.1", to::v1_0_0_epoch_3_alpha_1_post_2_dev_1().build())]
+    #[case("1.0.0-epoch.1.beta.2.dev.3.post.1", to::v1_0_0_epoch_1_beta_2_dev_3_post_1().build())]
+    // Build metadata combinations
+    #[case("1.0.0-epoch.1+build.123", to::v1_0_0_epoch_1_build().build())]
+    #[case("1.0.0-post.1+build.456", to::v1_0_0_post_1_build().build())]
+    #[case("1.0.0-dev.2+build.789", to::v1_0_0_dev_2_build().build())]
+    #[case("1.0.0-epoch.2.alpha.1+build.abc", to::v1_0_0_epoch_2_alpha_1_build().build())]
+    // Mixed order cases
+    #[case("1.0.0-foo.epoch.1.alpha.2", to::v1_0_0_foo_epoch_1_alpha_2().build())]
+    #[case("1.0.0-epoch.1.foo.post.2", to::v1_0_0_epoch_1_foo_post_2().build())]
+    #[case("1.0.0-bar.dev.1.epoch.2", to::v1_0_0_bar_dev_1_epoch_2().build())]
     fn test_semver_to_zerv_conversion(#[case] semver_str: &str, #[case] expected: Zerv) {
         let semver: SemVer = semver_str.parse().unwrap();
         let zerv: Zerv = semver.into();

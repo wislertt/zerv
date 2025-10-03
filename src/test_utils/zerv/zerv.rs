@@ -63,6 +63,70 @@ impl ZervFixture {
         self
     }
 
+    /// Add build component (chainable)
+    pub fn with_build(mut self, component: crate::version::zerv::Component) -> Self {
+        self.zerv.schema.build.push(component);
+        self
+    }
+
+    /// Add extra core component (chainable)
+    pub fn with_extra_core(mut self, component: crate::version::zerv::Component) -> Self {
+        self.zerv.schema.extra_core.push(component);
+        self
+    }
+
+    /// Set branch (chainable)
+    pub fn with_branch(mut self, branch: String) -> Self {
+        self.zerv.vars.bumped_branch = Some(branch);
+        // Add VarField to build schema if not already present
+        let branch_field = crate::version::zerv::Component::VarField(
+            crate::constants::ron_fields::BRANCH.to_string(),
+        );
+        if !self.zerv.schema.build.contains(&branch_field) {
+            self.zerv.schema.build.push(branch_field);
+        }
+        self
+    }
+
+    /// Set distance (chainable)
+    pub fn with_distance(mut self, distance: u64) -> Self {
+        self.zerv.vars.distance = Some(distance);
+        // Add VarField to build schema if not already present
+        let distance_field = crate::version::zerv::Component::VarField(
+            crate::constants::ron_fields::DISTANCE.to_string(),
+        );
+        if !self.zerv.schema.build.contains(&distance_field) {
+            self.zerv.schema.build.push(distance_field);
+        }
+        self
+    }
+
+    /// Set commit hash (chainable)
+    pub fn with_commit_hash(mut self, hash: String) -> Self {
+        self.zerv.vars.bumped_commit_hash = Some(hash);
+        // Add VarField to build schema if not already present
+        let hash_field = crate::version::zerv::Component::VarField(
+            crate::constants::ron_fields::COMMIT_HASH_SHORT.to_string(),
+        );
+        if !self.zerv.schema.build.contains(&hash_field) {
+            self.zerv.schema.build.push(hash_field);
+        }
+        self
+    }
+
+    /// Set core values directly (chainable)
+    pub fn with_core_values(mut self, values: Vec<u64>) -> Self {
+        // Clear existing core and rebuild with integers
+        self.zerv.schema.core.clear();
+        for value in values {
+            self.zerv
+                .schema
+                .core
+                .push(crate::version::zerv::Component::Integer(value));
+        }
+        self
+    }
+
     /// Use standard tier 1 schema (major.minor.patch) - chainable
     pub fn with_standard_tier_1(mut self) -> Self {
         self.zerv.schema = ZervSchemaFixture::standard_tier_1().build();
@@ -96,6 +160,47 @@ impl ZervFixture {
     /// Use calver tier 3 schema - chainable
     pub fn with_calver_tier_3(mut self) -> Self {
         self.zerv.schema = ZervSchemaFixture::calver_tier_3().build();
+        self
+    }
+
+    /// Create with empty schema - chainable
+    pub fn with_empty_schema(mut self) -> Self {
+        self.zerv.schema.core.clear();
+        self.zerv.schema.extra_core.clear();
+        self.zerv.schema.build.clear();
+        self
+    }
+
+    /// Add core component - chainable
+    pub fn with_core(mut self, component: crate::version::zerv::Component) -> Self {
+        self.zerv.schema.core.push(component);
+        self
+    }
+
+    /// Set core components directly - chainable
+    pub fn with_core_components(
+        mut self,
+        components: Vec<crate::version::zerv::Component>,
+    ) -> Self {
+        self.zerv.schema.core = components;
+        self
+    }
+
+    /// Set extra_core components directly - chainable
+    pub fn with_extra_core_components(
+        mut self,
+        components: Vec<crate::version::zerv::Component>,
+    ) -> Self {
+        self.zerv.schema.extra_core = components;
+        self
+    }
+
+    /// Set build components directly - chainable
+    pub fn with_build_components(
+        mut self,
+        components: Vec<crate::version::zerv::Component>,
+    ) -> Self {
+        self.zerv.schema.build = components;
         self
     }
 

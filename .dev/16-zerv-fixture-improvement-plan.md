@@ -88,10 +88,10 @@ impl ZervFixture {
 
 **Key Insight:** ZervSchemaFixture should primarily use existing schema presets from `src/schema/presets/*`, but keep advanced methods for rare edge cases:
 
--   `zerv_standard_tier_1()` - Basic major.minor.patch
--   `zerv_standard_tier_2()` - With build metadata
--   `zerv_standard_tier_3()` - With dev components
--   `zerv_calver_tier_1/2/3()` - CalVer variants
+- `zerv_standard_tier_1()` - Basic major.minor.patch
+- `zerv_standard_tier_2()` - With build metadata
+- `zerv_standard_tier_3()` - With dev components
+- `zerv_calver_tier_1/2/3()` - CalVer variants
 
 **Target Design (Phase 0 - Minimal):**
 
@@ -121,10 +121,10 @@ impl ZervSchemaFixture {
 
 **Current Issues:**
 
--   Missing `new()` + `build()` pattern
--   `with_version()` is static constructor (not chainable)
--   Has unused RON methods (`to_ron_string`, `from_ron_string`)
--   Mix of static constructors and chainable methods
+- Missing `new()` + `build()` pattern
+- `with_version()` is static constructor (not chainable)
+- Has unused RON methods (`to_ron_string`, `from_ron_string`)
+- Mix of static constructors and chainable methods
 
 **Target Design (Phase 0 - Minimal):**
 
@@ -379,23 +379,23 @@ impl ZervFixture {
 
 **Remove these methods:**
 
--   `base_zerv()` → Use `ZervFixture::new().build()`
--   `zerv_1_0_0_with_pre_release()` → Use `ZervFixture::new().with_pre_release().build()`
--   `zerv_1_0_0_with_build()` → Use `ZervFixture::new().with_build().build()`
--   `zerv_1_0_0_with_epoch()` → Use `ZervFixture::new().with_epoch().build()`
--   `zerv_1_0_0_with_post()` → Use `ZervFixture::new().with_post().build()`
--   `zerv_1_0_0_with_dev()` → Use `ZervFixture::new().with_dev().build()`
--   `zerv_version()` → Use `ZervFixture::new().with_version().build()`
+- `base_zerv()` → Use `ZervFixture::new().build()`
+- `zerv_1_0_0_with_pre_release()` → Use `ZervFixture::new().with_pre_release().build()`
+- `zerv_1_0_0_with_build()` → Use `ZervFixture::new().with_build().build()`
+- `zerv_1_0_0_with_epoch()` → Use `ZervFixture::new().with_epoch().build()`
+- `zerv_1_0_0_with_post()` → Use `ZervFixture::new().with_post().build()`
+- `zerv_1_0_0_with_dev()` → Use `ZervFixture::new().with_dev().build()`
+- `zerv_version()` → Use `ZervFixture::new().with_version().build()`
 
 #### 2.2 Remove Specialized PEP440/SemVer Methods
 
 **Remove these methods:**
 
--   `pep_zerv_1_2_3()` → Use `ZervFixture::new().with_version(1, 2, 3).build()`
--   `pep_zerv_1_2_3_epoch_2()` → Use `ZervFixture::new().with_version(1, 2, 3).with_epoch(2).build()`
--   `pep_zerv_1_2_3_alpha_1()` → Use `ZervFixture::new().with_version(1, 2, 3).with_pre_release(PreReleaseLabel::Alpha, Some(1)).build()`
--   `sem_zerv_1_2_3()` → Use `ZervFixture::new().with_version(1, 2, 3).build()`
--   `sem_zerv_1_0_0_alpha_1()` → Use `ZervFixture::new().with_pre_release(PreReleaseLabel::Alpha, Some(1)).build()`
+- `pep_zerv_1_2_3()` → Use `ZervFixture::new().with_version(1, 2, 3).build()`
+- `pep_zerv_1_2_3_epoch_2()` → Use `ZervFixture::new().with_version(1, 2, 3).with_epoch(2).build()`
+- `pep_zerv_1_2_3_alpha_1()` → Use `ZervFixture::new().with_version(1, 2, 3).with_pre_release(PreReleaseLabel::Alpha, Some(1)).build()`
+- `sem_zerv_1_2_3()` → Use `ZervFixture::new().with_version(1, 2, 3).build()`
+- `sem_zerv_1_0_0_alpha_1()` → Use `ZervFixture::new().with_pre_release(PreReleaseLabel::Alpha, Some(1)).build()`
 
 #### 2.3 Simplify Complex Methods
 
@@ -489,49 +489,49 @@ let zerv = ZervFixture::new()
 
 ### 1. Consistency
 
--   Follows the same pattern as VersionArgsFixture
--   Consistent method naming and behavior
--   Single way to do things
+- Follows the same pattern as VersionArgsFixture
+- Consistent method naming and behavior
+- Single way to do things
 
 ### 2. Maintainability
 
--   Fewer methods to maintain
--   Clear separation of concerns
--   Easy to extend with new components
+- Fewer methods to maintain
+- Clear separation of concerns
+- Easy to extend with new components
 
 ### 3. Usability
 
--   Chainable API is more intuitive
--   Self-documenting method names
--   Flexible composition
+- Chainable API is more intuitive
+- Self-documenting method names
+- Flexible composition
 
 ### 4. Testability
 
--   Easy to create complex test scenarios
--   Clear test setup code
--   Reusable patterns
+- Easy to create complex test scenarios
+- Clear test setup code
+- Reusable patterns
 
 ## Migration Strategy
 
 ### Phase 1: Add New Methods (Non-breaking)
 
--   Add new chainable methods alongside existing ones
--   Update documentation to prefer new methods
+- Add new chainable methods alongside existing ones
+- Update documentation to prefer new methods
 
 ### Phase 2: Update Tests (Non-breaking)
 
--   Update test files to use new methods
--   Keep old methods for backward compatibility
+- Update test files to use new methods
+- Keep old methods for backward compatibility
 
 ### Phase 3: Deprecate Old Methods (Breaking)
 
--   Mark old methods as deprecated
--   Add deprecation warnings
+- Mark old methods as deprecated
+- Add deprecation warnings
 
 ### Phase 4: Remove Old Methods (Breaking)
 
--   Remove deprecated methods
--   Clean up unused code
+- Remove deprecated methods
+- Clean up unused code
 
 ## Example Usage
 
@@ -574,22 +574,22 @@ let zerv = ZervFixture::new()
 
 ### Phase 0: Foundation
 
--   `src/test_utils/zerv/schema.rs` - ZervSchemaFixture redesign (use presets first, keep advanced methods)
--   `src/test_utils/zerv/vars.rs` - ZervVarsFixture redesign (add new() + build())
+- `src/test_utils/zerv/schema.rs` - ZervSchemaFixture redesign (use presets first, keep advanced methods)
+- `src/test_utils/zerv/vars.rs` - ZervVarsFixture redesign (add new() + build())
 
 ### Phase 1: Core Implementation
 
--   `src/test_utils/zerv/zerv.rs` - Main ZervFixture implementation
+- `src/test_utils/zerv/zerv.rs` - Main ZervFixture implementation
 
 ### Test Files (Update usage patterns)
 
--   All test files that use ZervFixture methods
--   Update to use new chainable API
+- All test files that use ZervFixture methods
+- Update to use new chainable API
 
 ### Documentation
 
--   Update examples in comments
--   Update README if it references ZervFixture
+- Update examples in comments
+- Update README if it references ZervFixture
 
 ## Success Criteria
 
@@ -603,15 +603,15 @@ let zerv = ZervFixture::new()
 
 ### Breaking Changes
 
--   **Risk**: Existing tests will break
--   **Mitigation**: Update tests incrementally, keep old methods during transition
+- **Risk**: Existing tests will break
+- **Mitigation**: Update tests incrementally, keep old methods during transition
 
 ### Complexity
 
--   **Risk**: New API might be too complex
--   **Mitigation**: Start with simple cases, add complexity gradually
+- **Risk**: New API might be too complex
+- **Mitigation**: Start with simple cases, add complexity gradually
 
 ### Performance
 
--   **Risk**: Chaining might impact performance
--   **Mitigation**: Benchmark critical paths, optimize if needed
+- **Risk**: Chaining might impact performance
+- **Mitigation**: Benchmark critical paths, optimize if needed

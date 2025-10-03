@@ -45,7 +45,8 @@ mod tests {
 
     /// Helper function to create the standard starting fixture for reset tests
     fn full_vars_fixture() -> ZervVarsFixture {
-        ZervVarsFixture::with_version(2, 3, 4)
+        ZervVarsFixture::new()
+            .with_version(2, 3, 4)
             .with_epoch(1)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(5)
@@ -56,41 +57,44 @@ mod tests {
     #[case(
         crate::constants::bump_types::EPOCH,
         full_vars_fixture(),
-        ZervVarsFixture::with_version(0, 0, 0).with_epoch(1)
+        ZervVarsFixture::new().with_version(0, 0, 0).with_epoch(1)
     )]
     #[case(
         crate::constants::bump_types::MAJOR,
         full_vars_fixture(),
-        ZervVarsFixture::with_version(2, 0, 0).with_epoch(1)
+        ZervVarsFixture::new().with_version(2, 0, 0).with_epoch(1)
     )]
     #[case(
         crate::constants::bump_types::MINOR,
         full_vars_fixture(),
-        ZervVarsFixture::with_version(2, 3, 0).with_epoch(1)
+        ZervVarsFixture::new().with_version(2, 3, 0).with_epoch(1)
     )]
     #[case(
         crate::constants::bump_types::PATCH,
         full_vars_fixture(),
-        ZervVarsFixture::with_version(2, 3, 4).with_epoch(1)
+        ZervVarsFixture::new().with_version(2, 3, 4).with_epoch(1)
     )]
     #[case(
         crate::constants::bump_types::PRE_RELEASE_LABEL,
         full_vars_fixture(),
-        ZervVarsFixture::with_version(2, 3, 4)
+        ZervVarsFixture::new()
+            .with_version(2, 3, 4)
             .with_epoch(1)
             .with_pre_release(PreReleaseLabel::Alpha, Some(0))
     )]
     #[case(
         crate::constants::bump_types::PRE_RELEASE_NUM,
         full_vars_fixture(),
-        ZervVarsFixture::with_version(2, 3, 4)
+        ZervVarsFixture::new()
+            .with_version(2, 3, 4)
             .with_epoch(1)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
     )]
     #[case(
         crate::constants::bump_types::POST,
         full_vars_fixture(),
-        ZervVarsFixture::with_version(2, 3, 4)
+        ZervVarsFixture::new()
+            .with_version(2, 3, 4)
             .with_epoch(1)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(5)

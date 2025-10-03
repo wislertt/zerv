@@ -141,7 +141,9 @@ mod tests {
         #[case] increment: u64,
         #[case] expected: Option<u64>,
     ) {
-        let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
+        let mut zerv = ZervFixture::new()
+            .with_version(version.0, version.1, version.2)
+            .build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_post_flag(increment as u32)
             .build();
@@ -157,7 +159,9 @@ mod tests {
         #[case] increment: u64,
         #[case] expected: Option<u64>,
     ) {
-        let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
+        let mut zerv = ZervFixture::new()
+            .with_version(version.0, version.1, version.2)
+            .build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_dev_flag(increment as u32)
             .build();
@@ -173,7 +177,9 @@ mod tests {
         #[case] increment: u64,
         #[case] expected: Option<u64>,
     ) {
-        let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
+        let mut zerv = ZervFixture::new()
+            .with_version(version.0, version.1, version.2)
+            .build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_epoch_flag(increment as u32)
             .build();
@@ -183,7 +189,9 @@ mod tests {
 
     #[test]
     fn test_bump_pre_release_success() {
-        let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(1));
+        let mut zerv = ZervFixture::new()
+            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
+            .build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_pre_release_num_flag(2)
             .build();
@@ -194,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_bump_pre_release_no_pre_release() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_pre_release_num_flag(1)
             .build();
@@ -211,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_bump_pre_release_label_alpha() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_pre_release_label("alpha")
             .build();
@@ -226,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_bump_pre_release_label_beta() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_pre_release_label("beta")
             .build();
@@ -241,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_bump_pre_release_label_rc() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_pre_release_label("rc")
             .build();
@@ -256,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_bump_pre_release_label_invalid() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_pre_release_label("invalid")
             .build();
@@ -274,7 +282,7 @@ mod tests {
     #[test]
     fn test_bump_pre_release_label_resets_lower_precedence() {
         // Start with version 1.0.0 with post and dev components
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         zerv.vars.post = Some(5);
         zerv.vars.dev = Some(10);
 
@@ -303,7 +311,9 @@ mod tests {
     #[test]
     fn test_bump_pre_release_label_overwrites_existing() {
         // Start with existing pre-release
-        let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, Some(5));
+        let mut zerv = ZervFixture::new()
+            .with_pre_release(PreReleaseLabel::Beta, Some(5))
+            .build();
 
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_pre_release_label("rc")
@@ -321,7 +331,9 @@ mod tests {
     #[test]
     fn test_override_pre_release_label_preserves_existing_number() {
         // Start with existing pre-release
-        let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(5));
+        let mut zerv = ZervFixture::new()
+            .with_pre_release(PreReleaseLabel::Alpha, Some(5))
+            .build();
 
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_pre_release_label("beta")
@@ -339,7 +351,7 @@ mod tests {
     #[test]
     fn test_override_pre_release_label_uses_zero_when_no_existing_number() {
         // Start with no pre-release
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
 
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_pre_release_label("alpha")
@@ -357,7 +369,9 @@ mod tests {
     #[test]
     fn test_override_pre_release_num_only() {
         // Start with existing pre-release
-        let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, Some(2));
+        let mut zerv = ZervFixture::new()
+            .with_pre_release(PreReleaseLabel::Beta, Some(2))
+            .build();
 
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_pre_release_num(7)
@@ -375,7 +389,9 @@ mod tests {
     #[test]
     fn test_override_both_pre_release_label_and_num() {
         // Start with existing pre-release
-        let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(3));
+        let mut zerv = ZervFixture::new()
+            .with_pre_release(PreReleaseLabel::Alpha, Some(3))
+            .build();
 
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_pre_release_label("rc")
@@ -394,7 +410,9 @@ mod tests {
     #[test]
     fn test_override_pre_release_label_with_none_number() {
         // Start with pre-release that has None number
-        let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Beta, None);
+        let mut zerv = ZervFixture::new()
+            .with_pre_release(PreReleaseLabel::Beta, None)
+            .build();
 
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_pre_release_label("alpha")
@@ -412,7 +430,7 @@ mod tests {
     #[test]
     fn test_override_pre_release_num_creates_alpha_when_none_exists() {
         // Start with no pre-release
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
 
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_pre_release_num(5)

@@ -378,20 +378,24 @@ mod tests {
         use crate::version::zerv::PreReleaseLabel;
 
         // Test with pre-release Zerv
-        let pre_release_zerv = ZervFixture::with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .zerv()
+        let pre_release_zerv = ZervFixture::new()
+            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
+            .build()
             .clone();
         let ron_string = pre_release_zerv.to_string();
         let result = InputFormatHandler::parse_and_validate_zerv_ron(&ron_string);
         assert!(result.is_ok(), "Should parse pre-release Zerv successfully");
 
         // Test with complex PEP440 Zerv
-        let complex_zerv =
-            ZervFixture::with_all_components(2, PreReleaseLabel::Alpha, Some(1), 1, 1)
-                .add_build(crate::version::zerv::Component::String("local".to_string()))
-                .add_build(crate::version::zerv::Component::Integer(1))
-                .zerv()
-                .clone();
+        let complex_zerv = ZervFixture::new()
+            .with_epoch(2)
+            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
+            .with_post(1)
+            .with_dev(1)
+            .with_build(crate::version::zerv::Component::String("local".to_string()))
+            .with_build(crate::version::zerv::Component::Integer(1))
+            .build()
+            .clone();
         let ron_string = complex_zerv.to_string();
         let result = InputFormatHandler::parse_and_validate_zerv_ron(&ron_string);
         assert!(result.is_ok(), "Should parse complex Zerv successfully");

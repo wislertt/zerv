@@ -89,88 +89,64 @@ impl From<PEP440> for Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::zerv::*;
+    use crate::test_utils::zerv::zerv_pep440::to;
 
     use rstest::rstest;
 
     #[rstest]
     // Basic conversions
-    #[case("1.2.3", ZervFixture::pep_zerv_1_2_3())]
-    #[case("2!1.2.3", ZervFixture::pep_zerv_1_2_3_epoch_2())]
-    #[case("1.2.3a1", ZervFixture::pep_zerv_1_2_3_alpha_1())]
-    #[case("1.2.3.post1", ZervFixture::pep_zerv_1_2_3_post_1())]
-    #[case("1.2.3.dev1", ZervFixture::pep_zerv_1_2_3_dev_1())]
-    #[case("1.2.3+ubuntu.20.4", ZervFixture::pep_zerv_1_2_3_ubuntu_build())]
-    #[case(
-        "2!1.2.3a1.post1.dev1+local.1",
-        ZervFixture::pep_zerv_complex_2_1_2_3_alpha_1_post_1_dev_1_local_1()
-    )]
+    #[case("1.2.3", to::v1_2_3().build())]
+    #[case("2!1.2.3", to::v1_2_3_e2().build())]
+    #[case("1.2.3a1", to::v1_2_3_a1().build())]
+    #[case("1.2.3.post1", to::v1_2_3_post1().build())]
+    #[case("1.2.3.dev1", to::v1_2_3_dev1().build())]
+    #[case("1.2.3+ubuntu.20.4", to::v1_2_3_ubuntu_build().build())]
+    #[case("2!1.2.3a1.post1.dev1+local.1", to::v1_2_3_e2_a1_post1_dev1_local().build())]
     // Epoch handling
-    #[case("1!1.0.0", ZervFixture::pep_zerv_1_0_0_epoch_1())]
-    #[case("5!1.0.0", ZervFixture::pep_zerv_1_0_0_epoch_5())]
-    #[case("999!1.0.0", ZervFixture::pep_zerv_1_0_0_epoch_999())]
+    #[case("1!1.0.0", to::v1_0_0_e1().build())]
+    #[case("5!1.0.0", to::v1_0_0_e5().build())]
+    #[case("999!1.0.0", to::v1_0_0_e999().build())]
     // Post handling
-    #[case("1.0.0.post5", ZervFixture::pep_zerv_1_0_0_post_5())]
-    #[case("1.0.0.post0", ZervFixture::pep_zerv_1_0_0_post_0())]
+    #[case("1.0.0.post5", to::v1_0_0_post5().build())]
+    #[case("1.0.0.post0", to::v1_0_0_post0().build())]
     // Dev handling
-    #[case("1.0.0.dev0", ZervFixture::pep_zerv_1_0_0_dev_0())]
-    #[case("1.0.0.dev10", ZervFixture::pep_zerv_1_0_0_dev_10())]
+    #[case("1.0.0.dev0", to::v1_0_0_dev0().build())]
+    #[case("1.0.0.dev10", to::v1_0_0_dev10().build())]
     // Epoch + pre-release combinations
-    #[case("2!1.0.0a1", ZervFixture::pep_zerv_1_0_0_epoch_2_alpha_1())]
-    #[case("3!1.0.0b2", ZervFixture::pep_zerv_1_0_0_epoch_3_beta_2())]
-    #[case("1!1.0.0rc5", ZervFixture::pep_zerv_1_0_0_epoch_1_rc_5())]
-    #[case("4!1.0.0a0", ZervFixture::pep_zerv_1_0_0_epoch_4_alpha())]
+    #[case("2!1.0.0a1", to::v1_0_0_e2_a1().build())]
+    #[case("3!1.0.0b2", to::v1_0_0_e3_b2().build())]
+    #[case("1!1.0.0rc5", to::v1_0_0_e1_rc5().build())]
+    #[case("4!1.0.0a0", to::v1_0_0_e4_a0().build())]
     // Post + dev combinations
-    #[case("1.0.0.post1.dev2", ZervFixture::pep_zerv_1_0_0_post_1_dev_2())]
+    #[case("1.0.0.post1.dev2", to::v1_0_0_post1_dev2().build())]
     // Pre-release + post combinations
-    #[case("1.0.0a1.post2", ZervFixture::pep_zerv_1_0_0_alpha_1_post_2())]
-    #[case("1.0.0b3.post1", ZervFixture::pep_zerv_1_0_0_beta_3_post_1())]
-    #[case("1.0.0rc2.post5", ZervFixture::pep_zerv_1_0_0_rc_2_post_5())]
+    #[case("1.0.0a1.post2", to::v1_0_0_a1_post2().build())]
+    #[case("1.0.0b3.post1", to::v1_0_0_b3_post1().build())]
+    #[case("1.0.0rc2.post5", to::v1_0_0_rc2_post5().build())]
     // Pre-release + dev combinations
-    #[case("1.0.0a1.dev2", ZervFixture::pep_zerv_1_0_0_alpha_1_dev_2())]
-    #[case("1.0.0b2.dev1", ZervFixture::pep_zerv_1_0_0_beta_2_dev_1())]
-    #[case("1.0.0rc1.dev3", ZervFixture::pep_zerv_1_0_0_rc_1_dev_3())]
+    #[case("1.0.0a1.dev2", to::v1_0_0_a1_dev2().build())]
+    #[case("1.0.0b2.dev1", to::v1_0_0_b2_dev1().build())]
+    #[case("1.0.0rc1.dev3", to::v1_0_0_rc1_dev3().build())]
     // Triple combinations
-    #[case(
-        "1.0.0a1.post2.dev3",
-        ZervFixture::pep_zerv_1_0_0_alpha_1_post_2_dev_3()
-    )]
-    #[case(
-        "1.0.0b2.post3.dev1",
-        ZervFixture::pep_zerv_1_0_0_beta_2_post_3_dev_1()
-    )]
-    #[case("1.0.0rc1.post1.dev1", ZervFixture::pep_zerv_1_0_0_rc_1_post_1_dev_1())]
+    #[case("1.0.0a1.post2.dev3", to::v1_0_0_a1_post2_dev3().build())]
+    #[case("1.0.0b2.post3.dev1", to::v1_0_0_b2_post3_dev1().build())]
+    #[case("1.0.0rc1.post1.dev1", to::v1_0_0_rc1_post1_dev1().build())]
     // Epoch + post + dev combinations
-    #[case(
-        "2!1.0.0.post1.dev3",
-        ZervFixture::pep_zerv_1_0_0_epoch_2_post_1_dev_3()
-    )]
-    #[case(
-        "1!1.0.0.post1.dev2",
-        ZervFixture::pep_zerv_1_0_0_epoch_1_post_1_dev_2()
-    )]
+    #[case("2!1.0.0.post1.dev3", to::v1_0_0_e2_post1_dev3().build())]
+    #[case("1!1.0.0.post1.dev2", to::v1_0_0_e1_post1_dev2().build())]
     // All components together
-    #[case(
-        "3!1.0.0a1.post2.dev1",
-        ZervFixture::pep_zerv_1_0_0_epoch_3_alpha_1_post_2_dev_1()
-    )]
-    #[case(
-        "1!1.0.0b2.post1.dev3",
-        ZervFixture::pep_zerv_1_0_0_epoch_1_beta_2_post_1_dev_3()
-    )]
+    #[case("3!1.0.0a1.post2.dev1", to::v1_0_0_e3_a1_post2_dev1().build())]
+    #[case("1!1.0.0b2.post1.dev3", to::v1_0_0_e1_b2_post1_dev3().build())]
     // With build metadata
-    #[case("1!1.0.0+build.123", ZervFixture::pep_zerv_1_0_0_epoch_1_build())]
-    #[case("1.0.0.post1+build.456", ZervFixture::pep_zerv_1_0_0_post_1_build())]
-    #[case("1.0.0.dev2+build.789", ZervFixture::pep_zerv_1_0_0_dev_2_build())]
-    #[case(
-        "2!1.0.0a1+build.abc",
-        ZervFixture::pep_zerv_1_0_0_epoch_2_alpha_1_build()
-    )]
+    #[case("1!1.0.0+build.123", to::v1_0_0_e1_build().build())]
+    #[case("1.0.0.post1+build.456", to::v1_0_0_post1_build().build())]
+    #[case("1.0.0.dev2+build.789", to::v1_0_0_dev2_build().build())]
+    #[case("2!1.0.0a1+build.abc", to::v1_0_0_e2_a1_build().build())]
     // Complex local version identifiers
-    #[case("1.0.0+foo.bar.123", ZervFixture::pep_zerv_1_0_0_complex_local())]
+    #[case("1.0.0+foo.bar.123", to::v1_0_0_complex_build().build())]
     #[case(
         "1!1.0.0a1.post1.dev1+complex.local.456",
-        ZervFixture::pep_zerv_1_0_0_all_components_complex_local()
+        to::v1_0_0_e1_a1_post1_dev1_complex().build()
     )]
     fn test_pep440_to_zerv_conversion(#[case] pep440_str: &str, #[case] expected: Zerv) {
         let pep440: PEP440 = pep440_str.parse().unwrap();

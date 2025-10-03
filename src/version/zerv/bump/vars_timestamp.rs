@@ -17,7 +17,7 @@ mod tests {
 
     #[test]
     fn test_bumped_timestamp_dirty_with_bump_context() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         zerv.vars.dirty = Some(true);
 
         // Set an old timestamp (1 hour ago)
@@ -34,7 +34,7 @@ mod tests {
 
     #[test]
     fn test_bumped_timestamp_clean_with_bump_context() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         zerv.vars.dirty = Some(false);
 
         // Set a VCS commit timestamp (2 hours ago)
@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn test_bumped_timestamp_no_bump_context() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         // With --no-bump-context, dirty should be false (set by context control)
         zerv.vars.dirty = Some(false);
 
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn test_bumped_timestamp_clean_no_bump_context() {
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
         zerv.vars.dirty = Some(false);
 
         // Set a VCS timestamp (1 day ago)
