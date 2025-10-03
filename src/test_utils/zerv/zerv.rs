@@ -227,17 +227,19 @@ impl ZervFixture {
     }
 
     /// Create from SemVer string (chainable)
-    pub fn from_semver_str(semver_str: &str) -> Result<Self, crate::error::ZervError> {
-        let semver = SemVer::from_str(semver_str)?;
+    pub fn from_semver_str(semver_str: &str) -> Self {
+        let semver = SemVer::from_str(semver_str)
+            .unwrap_or_else(|e| panic!("Failed to parse SemVer '{semver_str}': {e}"));
         let zerv: Zerv = semver.into();
-        Ok(Self { zerv })
+        Self { zerv }
     }
 
     /// Create from PEP440 string (chainable)
-    pub fn from_pep440_str(pep440_str: &str) -> Result<Self, crate::error::ZervError> {
-        let pep440 = PEP440::from_str(pep440_str)?;
+    pub fn from_pep440_str(pep440_str: &str) -> Self {
+        let pep440 = PEP440::from_str(pep440_str)
+            .unwrap_or_else(|e| panic!("Failed to parse PEP440 '{pep440_str}': {e}"));
         let zerv: Zerv = pep440.into();
-        Ok(Self { zerv })
+        Self { zerv }
     }
 
     /// Get the Zerv reference
@@ -313,9 +315,7 @@ mod tests {
 
     #[test]
     fn test_from_semver_str() {
-        let zerv = ZervFixture::from_semver_str("1.2.3-alpha.1+build.123")
-            .unwrap()
-            .build();
+        let zerv = ZervFixture::from_semver_str("1.2.3-alpha.1+build.123").build();
 
         assert_eq!(zerv.vars.major, Some(1));
         assert_eq!(zerv.vars.minor, Some(2));
@@ -326,9 +326,7 @@ mod tests {
 
     #[test]
     fn test_from_pep440_str() {
-        let zerv = ZervFixture::from_pep440_str("2!1.2.3a1.post1.dev1+local.123")
-            .unwrap()
-            .build();
+        let zerv = ZervFixture::from_pep440_str("2!1.2.3a1.post1.dev1+local.123").build();
 
         assert_eq!(zerv.vars.major, Some(1));
         assert_eq!(zerv.vars.minor, Some(2));
@@ -341,15 +339,20 @@ mod tests {
     }
 
     #[test]
-    fn test_from_invalid_strings() {
-        assert!(ZervFixture::from_semver_str("invalid").is_err());
-        assert!(ZervFixture::from_pep440_str("invalid").is_err());
+    #[should_panic(expected = "Failed to parse SemVer")]
+    fn test_from_invalid_semver_string() {
+        ZervFixture::from_semver_str("invalid");
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to parse PEP440")]
+    fn test_from_invalid_pep440_string() {
+        ZervFixture::from_pep440_str("invalid");
     }
 
     #[test]
     fn test_chainable_with_string_parsing() {
         let zerv = ZervFixture::from_semver_str("1.0.0")
-            .unwrap()
             .with_version(2, 1, 0)
             .with_epoch(1)
             .build();

@@ -188,43 +188,43 @@ impl VersionArgsFixture {
     // Chainable methods for bump operations
 
     /// Set bump major
-    pub fn with_bump_major_flag(mut self, increment: u32) -> Self {
+    pub fn with_bump_major(mut self, increment: u32) -> Self {
         self.args.bump_major = Some(Some(increment));
         self
     }
 
     /// Set bump minor
-    pub fn with_bump_minor_flag(mut self, increment: u32) -> Self {
+    pub fn with_bump_minor(mut self, increment: u32) -> Self {
         self.args.bump_minor = Some(Some(increment));
         self
     }
 
     /// Set bump patch
-    pub fn with_bump_patch_flag(mut self, increment: u32) -> Self {
+    pub fn with_bump_patch(mut self, increment: u32) -> Self {
         self.args.bump_patch = Some(Some(increment));
         self
     }
 
     /// Set bump post
-    pub fn with_bump_post_flag(mut self, increment: u32) -> Self {
+    pub fn with_bump_post(mut self, increment: u32) -> Self {
         self.args.bump_post = Some(Some(increment));
         self
     }
 
     /// Set bump dev
-    pub fn with_bump_dev_flag(mut self, increment: u32) -> Self {
+    pub fn with_bump_dev(mut self, increment: u32) -> Self {
         self.args.bump_dev = Some(Some(increment));
         self
     }
 
     /// Set bump pre-release number
-    pub fn with_bump_pre_release_num_flag(mut self, increment: u32) -> Self {
+    pub fn with_bump_pre_release_num(mut self, increment: u32) -> Self {
         self.args.bump_pre_release_num = Some(Some(increment));
         self
     }
 
     /// Set bump epoch
-    pub fn with_bump_epoch_flag(mut self, increment: u32) -> Self {
+    pub fn with_bump_epoch(mut self, increment: u32) -> Self {
         self.args.bump_epoch = Some(Some(increment));
         self
     }
@@ -357,13 +357,13 @@ mod tests {
     #[test]
     fn test_chainable_bump_operations() {
         let args = VersionArgsFixture::new()
-            .with_bump_major_flag(2)
-            .with_bump_minor_flag(3)
-            .with_bump_patch_flag(4)
-            .with_bump_post_flag(5)
-            .with_bump_dev_flag(6)
-            .with_bump_epoch_flag(7)
-            .with_bump_pre_release_num_flag(8)
+            .with_bump_major(2)
+            .with_bump_minor(3)
+            .with_bump_patch(4)
+            .with_bump_post(5)
+            .with_bump_dev(6)
+            .with_bump_epoch(7)
+            .with_bump_pre_release_num(8)
             .build();
 
         assert_eq!(args.bump_major, Some(Some(2)));

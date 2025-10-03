@@ -755,9 +755,9 @@ mod tests {
         assert!(args_with_clean.clean);
 
         let args_with_bumps = VersionArgsFixture::new()
-            .with_bump_major_flag(1)
-            .with_bump_minor_flag(1)
-            .with_bump_patch_flag(1)
+            .with_bump_major(1)
+            .with_bump_minor(1)
+            .with_bump_patch(1)
             .build();
         assert!(args_with_bumps.bump_major.is_some());
         assert!(args_with_bumps.bump_minor.is_some());
