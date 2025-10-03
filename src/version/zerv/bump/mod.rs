@@ -265,7 +265,7 @@ mod tests {
         assert_eq!(zerv.vars.pre_release.as_ref().unwrap().number, Some(5)); // 3 + 2
     }
 
-    // Test apply_bumps with no pre-release (should fail)
+    // Test apply_bumps with no pre-release (should create alpha label)
     #[test]
     fn test_apply_bumps_pre_release_no_pre_release() {
         // Create a Zerv without pre-release
@@ -274,10 +274,13 @@ mod tests {
         // Try to apply pre-release bump
         let bumps = vec![BumpType::PreReleaseNum(1)];
         let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
-        let result = zerv.apply_component_processing(&args);
+        zerv.apply_component_processing(&args).unwrap();
 
-        // Should fail because there's no pre-release to bump
-        assert!(result.is_err());
+        // Should create alpha label with the increment when no pre-release exists
+        assert!(zerv.vars.pre_release.is_some());
+        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
+        assert_eq!(pre_release.label, PreReleaseLabel::Alpha);
+        assert_eq!(pre_release.number, Some(1));
     }
 
     // Tests for combined bump and override specifications

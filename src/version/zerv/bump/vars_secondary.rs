@@ -98,9 +98,13 @@ impl Zerv {
                 self.vars
                     .reset_lower_precedence_components(shared_constants::PRE_RELEASE)?;
             } else {
-                return Err(ZervError::InvalidVersion(
-                    "Cannot bump pre-release number: no pre-release exists".to_string(),
-                ));
+                // Create alpha label with the increment when no pre-release exists
+                self.vars.pre_release = Some(PreReleaseVar {
+                    label: PreReleaseLabel::Alpha,
+                    number: Some(increment as u64),
+                });
+                self.vars
+                    .reset_lower_precedence_components(shared_constants::PRE_RELEASE)?;
             }
         }
 
@@ -207,14 +211,29 @@ mod tests {
             .with_bump_pre_release_num_flag(1)
             .build();
         zerv.process_pre_release_label(&args).unwrap();
-        let result = zerv.process_pre_release_num(&args);
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Cannot bump pre-release number: no pre-release exists")
-        );
+        zerv.process_pre_release_num(&args).unwrap();
+
+        // Should create alpha label with the increment when no pre-release exists
+        assert!(zerv.vars.pre_release.is_some());
+        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
+        assert_eq!(pre_release.label, PreReleaseLabel::Alpha);
+        assert_eq!(pre_release.number, Some(1));
+    }
+
+    #[test]
+    fn test_bump_pre_release_no_pre_release_large_increment() {
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
+        let args = crate::test_utils::VersionArgsFixture::new()
+            .with_bump_pre_release_num_flag(5)
+            .build();
+        zerv.process_pre_release_label(&args).unwrap();
+        zerv.process_pre_release_num(&args).unwrap();
+
+        // Should create alpha label with the increment when no pre-release exists
+        assert!(zerv.vars.pre_release.is_some());
+        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
+        assert_eq!(pre_release.label, PreReleaseLabel::Alpha);
+        assert_eq!(pre_release.number, Some(5));
     }
 
     #[test]
