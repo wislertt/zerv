@@ -96,7 +96,7 @@ impl Zerv {
             if let Some(ref mut pre_release) = self.vars.pre_release {
                 pre_release.number = Some(pre_release.number.unwrap_or(0) + increment as u64);
                 self.vars
-                    .reset_lower_precedence_components(shared_constants::PRE_RELEASE)?;
+                    .reset_lower_precedence_components(bump_types::PRE_RELEASE_NUM)?;
             } else {
                 // Create alpha label with the increment when no pre-release exists
                 self.vars.pre_release = Some(PreReleaseVar {
@@ -104,7 +104,7 @@ impl Zerv {
                     number: Some(increment as u64),
                 });
                 self.vars
-                    .reset_lower_precedence_components(shared_constants::PRE_RELEASE)?;
+                    .reset_lower_precedence_components(bump_types::PRE_RELEASE_NUM)?;
             }
         }
 

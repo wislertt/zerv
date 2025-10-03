@@ -39,8 +39,6 @@ pub mod shared_constants {
 
     // Pre-release fields
     pub const PRE_RELEASE: &str = "pre_release";
-    pub const PRE_RELEASE_LABEL: &str = "pre_release.label";
-    pub const PRE_RELEASE_NUM: &str = "pre_release.num";
 
     // Post-release fields
     pub const POST: &str = "post";
@@ -68,7 +66,7 @@ pub mod bump_types {
     pub const MINOR: &str = shared_constants::MINOR;
     pub const PATCH: &str = shared_constants::PATCH;
     pub const PRE_RELEASE_LABEL: &str = "pre_release_label";
-    pub const PRE_RELEASE_NUM: &str = shared_constants::PRE_RELEASE;
+    pub const PRE_RELEASE_NUM: &str = "pre_release_num";
     pub const POST: &str = shared_constants::POST;
     pub const DEV: &str = shared_constants::DEV;
 }
