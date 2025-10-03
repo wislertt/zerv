@@ -82,6 +82,12 @@ impl Zerv {
 
         Ok(Self { schema, vars })
     }
+
+    pub fn normalize(&mut self) {
+        if self.vars.epoch == Some(0) {
+            self.vars.epoch = None;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -108,6 +114,27 @@ mod tests {
 
             assert_eq!(zerv.schema, schema);
             assert_eq!(zerv.vars, vars);
+        }
+
+        use crate::test_utils::zerv::ZervFixture;
+        use rstest::*;
+
+        #[rstest]
+        #[case(Some(0), None)]
+        #[case(Some(1), Some(1))]
+        #[case(Some(5), Some(5))]
+        #[case(None, None)]
+        fn test_normalize_epoch(
+            #[case] initial_epoch: Option<u64>,
+            #[case] expected_epoch: Option<u64>,
+        ) {
+            let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
+
+            zerv.vars.epoch = initial_epoch;
+            assert_eq!(zerv.vars.epoch, initial_epoch);
+
+            zerv.normalize();
+            assert_eq!(zerv.vars.epoch, expected_epoch);
         }
 
         #[test]

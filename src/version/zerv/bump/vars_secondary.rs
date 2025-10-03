@@ -5,7 +5,6 @@ use crate::error::ZervError;
 use crate::version::zerv::core::{PreReleaseLabel, PreReleaseVar};
 
 impl Zerv {
-    /// Process post-release component with override, bump, and reset logic
     pub fn process_post(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
         if let Some(override_value) = args.post {
@@ -13,10 +12,10 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_post {
+        if let Some(Some(increment)) = args.bump_post
+            && increment > 0
+        {
             self.vars.post = Some(self.vars.post.unwrap_or(0) + increment as u64);
-
-            // Apply reset logic for lower precedence components
             self.vars
                 .reset_lower_precedence_components(shared_constants::POST)?;
         }
@@ -24,7 +23,6 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process dev component with override, bump, and reset logic
     pub fn process_dev(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
         if let Some(override_value) = args.dev {
@@ -32,10 +30,10 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_dev {
+        if let Some(Some(increment)) = args.bump_dev
+            && increment > 0
+        {
             self.vars.dev = Some(self.vars.dev.unwrap_or(0) + increment as u64);
-
-            // Apply reset logic for lower precedence components
             self.vars
                 .reset_lower_precedence_components(shared_constants::DEV)?;
         }
@@ -43,7 +41,6 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process pre-release label component with override, bump, and reset logic
     pub fn process_pre_release_label(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
         if let Some(ref label) = args.pre_release_label {
@@ -74,7 +71,6 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process pre-release number component with override, bump, and reset logic
     pub fn process_pre_release_num(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
         if let Some(pre_release_num) = args.pre_release_num {
@@ -92,22 +88,27 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_pre_release_num {
+        if let Some(Some(increment)) = args.bump_pre_release_num
+            && increment > 0
+        {
             if let Some(ref mut pre_release) = self.vars.pre_release {
                 pre_release.number = Some(pre_release.number.unwrap_or(0) + increment as u64);
                 self.vars
-                    .reset_lower_precedence_components(shared_constants::PRE_RELEASE)?;
+                    .reset_lower_precedence_components(bump_types::PRE_RELEASE_NUM)?;
             } else {
-                return Err(ZervError::InvalidVersion(
-                    "Cannot bump pre-release number: no pre-release exists".to_string(),
-                ));
+                // Create alpha label with the increment when no pre-release exists
+                self.vars.pre_release = Some(PreReleaseVar {
+                    label: PreReleaseLabel::Alpha,
+                    number: Some(increment as u64),
+                });
+                self.vars
+                    .reset_lower_precedence_components(bump_types::PRE_RELEASE_NUM)?;
             }
         }
 
         Ok(())
     }
 
-    /// Process epoch component with override, bump, and reset logic
     pub fn process_epoch(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
         if let Some(override_value) = args.epoch {
@@ -115,10 +116,10 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_epoch {
+        if let Some(Some(increment)) = args.bump_epoch
+            && increment > 0
+        {
             self.vars.epoch = Some(self.vars.epoch.unwrap_or(0) + increment as u64);
-
-            // Apply reset logic for lower precedence components
             self.vars
                 .reset_lower_precedence_components(shared_constants::EPOCH)?;
         }
@@ -129,147 +130,216 @@ impl Zerv {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_utils::VersionArgsFixture;
     use crate::test_utils::zerv::ZervFixture;
-    use crate::version::zerv::core::PreReleaseLabel;
+    use crate::version::semver::SemVer;
     use rstest::*;
 
     #[rstest]
-    #[case((1, 0, 0), 3, Some(3))]
-    #[case((1, 0, 0), 0, Some(0))]
-    fn test_bump_post(
-        #[case] version: (u64, u64, u64),
-        #[case] increment: u64,
-        #[case] expected: Option<u64>,
+    // Bump only tests
+    #[case("1.0.0", None, Some(3), "1.0.0-post.3")]
+    #[case("1.2.3-alpha.1", None, Some(2), "1.2.3-alpha.1.post.2")]
+    // Override only tests
+    #[case("1.0.0", Some(5), None, "1.0.0-post.5")]
+    #[case("1.2.3-alpha.1", Some(0), None, "1.2.3-alpha.1.post.0")]
+    // Override + Bump tests (override first, then bump)
+    #[case("1.0.0", Some(2), Some(1), "1.0.0-post.3")]
+    // No operation tests
+    #[case("1.2.3", None, None, "1.2.3")]
+    // Bump with 0 - should be no-op (no reset logic applied)
+    #[case("1.2.3", None, Some(0), "1.2.3")]
+    fn test_process_post(
+        #[case] starting_version: &str,
+        #[case] override_value: Option<u32>,
+        #[case] bump_increment: Option<u32>,
+        #[case] expected_version: &str,
     ) {
-        let mut zerv = ZervFixture::new()
-            .with_version(version.0, version.1, version.2)
+        let mut zerv = ZervFixture::from_semver_str(starting_version)
+            .with_standard_tier_2()
             .build();
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_post_flag(increment as u32)
-            .build();
+        let mut args_fixture = VersionArgsFixture::new();
+        if let Some(override_val) = override_value {
+            args_fixture = args_fixture.with_post(override_val);
+        }
+        if let Some(bump_val) = bump_increment {
+            args_fixture = args_fixture.with_bump_post(bump_val);
+        }
+        let args = args_fixture.build();
         zerv.process_post(&args).unwrap();
-        assert_eq!(zerv.vars.post, expected);
+        let result_version: SemVer = zerv.into();
+        assert_eq!(result_version.to_string(), expected_version);
     }
 
     #[rstest]
-    #[case((1, 0, 0), 2, Some(2))]
-    #[case((1, 0, 0), 0, Some(0))]
-    fn test_bump_dev(
-        #[case] version: (u64, u64, u64),
-        #[case] increment: u64,
-        #[case] expected: Option<u64>,
+    // Bump only tests
+    #[case("1.0.0", None, Some(2), "1.0.0-dev.2")]
+    #[case("1.2.3-alpha.1", None, Some(3), "1.2.3-alpha.1.dev.3")]
+    // Override only tests
+    #[case("1.0.0", Some(7), None, "1.0.0-dev.7")]
+    #[case("1.2.3-alpha.1", Some(0), None, "1.2.3-alpha.1.dev.0")]
+    // Override + Bump tests (override first, then bump)
+    #[case("1.0.0", Some(1), Some(2), "1.0.0-dev.3")]
+    // No operation tests
+    #[case("1.2.3", None, None, "1.2.3")]
+    // Bump with 0 - should be no-op (no reset logic applied)
+    #[case("1.2.3", None, Some(0), "1.2.3")]
+    fn test_process_dev(
+        #[case] starting_version: &str,
+        #[case] override_value: Option<u32>,
+        #[case] bump_increment: Option<u32>,
+        #[case] expected_version: &str,
     ) {
-        let mut zerv = ZervFixture::new()
-            .with_version(version.0, version.1, version.2)
+        let mut zerv = ZervFixture::from_semver_str(starting_version)
+            .with_standard_tier_3()
             .build();
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_dev_flag(increment as u32)
-            .build();
+        let mut args_fixture = VersionArgsFixture::new();
+        if let Some(override_val) = override_value {
+            args_fixture = args_fixture.with_dev(override_val);
+        }
+        if let Some(bump_val) = bump_increment {
+            args_fixture = args_fixture.with_bump_dev(bump_val);
+        }
+        let args = args_fixture.build();
         zerv.process_dev(&args).unwrap();
-        assert_eq!(zerv.vars.dev, expected);
+        let result_version: SemVer = zerv.into();
+        assert_eq!(result_version.to_string(), expected_version);
     }
 
     #[rstest]
-    #[case((1, 0, 0), 1, Some(1))]
-    #[case((1, 0, 0), 0, Some(0))]
-    fn test_bump_epoch(
-        #[case] version: (u64, u64, u64),
-        #[case] increment: u64,
-        #[case] expected: Option<u64>,
+    // Bump only tests
+    #[case("1.0.0", None, Some(1), "0.0.0-epoch.1")]
+    #[case("1.2.3-alpha.1", None, Some(2), "0.0.0-epoch.2")]
+    // Override only tests
+    #[case("1.0.0", Some(3), None, "1.0.0-epoch.3")]
+    #[case("1.2.3-alpha.1", Some(0), None, "1.2.3-epoch.0.alpha.1")]
+    // Override + Bump tests (override first, then bump)
+    #[case("1.0.0", Some(1), Some(2), "0.0.0-epoch.3")]
+    // No operation tests
+    #[case("1.2.3", None, None, "1.2.3")]
+    // Bump with 0 - should be no-op (no reset logic applied)
+    #[case("1.2.3", None, Some(0), "1.2.3")]
+    fn test_process_epoch(
+        #[case] starting_version: &str,
+        #[case] override_value: Option<u32>,
+        #[case] bump_increment: Option<u32>,
+        #[case] expected_version: &str,
     ) {
-        let mut zerv = ZervFixture::new()
-            .with_version(version.0, version.1, version.2)
+        let mut zerv = ZervFixture::from_semver_str(starting_version)
+            .with_standard_tier_3()
             .build();
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_epoch_flag(increment as u32)
-            .build();
+        let mut args_fixture = VersionArgsFixture::new();
+        if let Some(override_val) = override_value {
+            args_fixture = args_fixture.with_epoch(override_val);
+        }
+        if let Some(bump_val) = bump_increment {
+            args_fixture = args_fixture.with_bump_epoch(bump_val);
+        }
+        let args = args_fixture.build();
         zerv.process_epoch(&args).unwrap();
-        assert_eq!(zerv.vars.epoch, expected);
+        let result_version: SemVer = zerv.into();
+        assert_eq!(result_version.to_string(), expected_version);
     }
 
-    #[test]
-    fn test_bump_pre_release_success() {
-        let mut zerv = ZervFixture::new()
-            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
+    #[rstest]
+    // Override only tests
+    #[case("1.0.0-alpha.5", Some("beta"), None, "1.0.0-beta.5")] // Override preserves number
+    #[case("1.0.0-beta", Some("alpha"), None, "1.0.0-alpha.0")] // None number becomes 0
+    #[case("1.0.0", Some("alpha"), None, "1.0.0-alpha.0")] // No pre-release defaults to 0
+    // Bump only tests
+    #[case("1.0.0", None, Some("beta"), "1.0.0-beta.0")] // Bump creates new label with reset
+    #[case("1.0.0-alpha.5", None, Some("rc"), "1.0.0-rc.0")] // Bump resets number to 0
+    #[case("1.0.0-post.5.dev.10", None, Some("alpha"), "1.0.0-alpha.0")] // Bump resets lower precedence
+    // No operation tests
+    #[case("1.2.3-alpha.1", None, None, "1.2.3-alpha.1")]
+    fn test_process_pre_release_label(
+        #[case] starting_version: &str,
+        #[case] override_label: Option<&str>,
+        #[case] bump_label: Option<&str>,
+        #[case] expected_version: &str,
+    ) {
+        let mut zerv = ZervFixture::from_semver_str(starting_version)
+            .with_standard_tier_3()
             .build();
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_pre_release_num_flag(2)
-            .build();
+        let mut args_fixture = VersionArgsFixture::new();
+        if let Some(label) = override_label {
+            args_fixture = args_fixture.with_pre_release_label(label);
+        }
+        if let Some(label) = bump_label {
+            args_fixture = args_fixture.with_bump_pre_release_label(label);
+        }
+        let args = args_fixture.build();
         zerv.process_pre_release_label(&args).unwrap();
+        let result_version: SemVer = zerv.into();
+        assert_eq!(result_version.to_string(), expected_version);
+    }
+
+    // ================================================================================================
+    // #[rstest]
+    // #[case("1.0.0", "alpha", "1.0.0-alpha.0")]
+    // #[case("1.0.0", "beta", "1.0.0-beta.0")]
+    // #[case("1.0.0", "rc", "1.0.0-rc.0")]
+    // fn test_process_pre_release_label(
+    //     #[case] starting_version: &str,
+    //     #[case] label: &str,
+    //     #[case] expected_version: &str,
+    // ) {
+    //     let mut zerv = ZervFixture::from_semver_str(starting_version)
+    //         .with_extra_core(Component::VarField(
+    //             "pre_release".to_string(),
+    //         ))
+    //         .build();
+    //     let args = VersionArgsFixture::new()
+    //         .with_bump_pre_release_label(label)
+    //         .build();
+    //     zerv.process_pre_release_label(&args).unwrap();
+    //     zerv.process_pre_release_num(&args).unwrap();
+    //     let result_version: SemVer = zerv.into();
+    //     assert_eq!(result_version.to_string(), expected_version);
+    // }
+
+    #[rstest]
+    // Bump only tests
+    #[case("1.0.0-alpha.1", None, Some(2), "1.0.0-alpha.3")]
+    #[case("1.0.0", None, Some(1), "1.0.0-alpha.1")]
+    #[case("1.0.0", None, Some(5), "1.0.0-alpha.5")]
+    // Override only tests
+    #[case("1.0.0-beta.2", Some(7), None, "1.0.0-beta.7")]
+    #[case("1.0.0", Some(5), None, "1.0.0-alpha.5")]
+    // Override + Bump tests (override first, then bump)
+    #[case("1.0.0-alpha.1", Some(3), Some(2), "1.0.0-alpha.5")]
+    // No operation tests
+    #[case("1.2.3-alpha.1", None, None, "1.2.3-alpha.1")]
+    // Bump with 0 - should be no-op (no reset logic applied)
+    #[case("1.2.3-alpha.1", None, Some(0), "1.2.3-alpha.1")]
+    fn test_process_pre_release_num(
+        #[case] starting_version: &str,
+        #[case] override_value: Option<u32>,
+        #[case] bump_increment: Option<u32>,
+        #[case] expected_version: &str,
+    ) {
+        let mut zerv = ZervFixture::from_semver_str(starting_version)
+            .with_standard_tier_3()
+            .build();
+        let mut args_fixture = VersionArgsFixture::new();
+        if let Some(override_val) = override_value {
+            args_fixture = args_fixture.with_pre_release_num(override_val);
+        }
+        if let Some(bump_val) = bump_increment {
+            args_fixture = args_fixture.with_bump_pre_release_num(bump_val);
+        }
+        let args = args_fixture.build();
         zerv.process_pre_release_num(&args).unwrap();
-        assert_eq!(zerv.vars.pre_release.as_ref().unwrap().number, Some(3));
-    }
-
-    #[test]
-    fn test_bump_pre_release_no_pre_release() {
-        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_pre_release_num_flag(1)
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        let result = zerv.process_pre_release_num(&args);
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Cannot bump pre-release number: no pre-release exists")
-        );
-    }
-
-    #[test]
-    fn test_bump_pre_release_label_alpha() {
-        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_pre_release_label("alpha")
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Alpha);
-        assert_eq!(pre_release.number, Some(0));
-    }
-
-    #[test]
-    fn test_bump_pre_release_label_beta() {
-        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_pre_release_label("beta")
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Beta);
-        assert_eq!(pre_release.number, Some(0));
-    }
-
-    #[test]
-    fn test_bump_pre_release_label_rc() {
-        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_pre_release_label("rc")
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Rc);
-        assert_eq!(pre_release.number, Some(0));
+        let result_version: SemVer = zerv.into();
+        assert_eq!(result_version.to_string(), expected_version);
     }
 
     #[test]
     fn test_bump_pre_release_label_invalid() {
-        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
-        let args = crate::test_utils::VersionArgsFixture::new()
+        let mut zerv = ZervFixture::from_semver_str("1.0.0").build();
+        let args = VersionArgsFixture::new()
             .with_bump_pre_release_label("invalid")
             .build();
         let result = zerv.process_pre_release_label(&args);
-
         assert!(result.is_err());
         assert!(
             result
@@ -277,171 +347,5 @@ mod tests {
                 .to_string()
                 .contains("Invalid pre-release label")
         );
-    }
-
-    #[test]
-    fn test_bump_pre_release_label_resets_lower_precedence() {
-        // Start with version 1.0.0 with post and dev components
-        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
-        zerv.vars.post = Some(5);
-        zerv.vars.dev = Some(10);
-
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_pre_release_label("alpha")
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        // Verify pre-release was set
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Alpha);
-        assert_eq!(pre_release.number, Some(0));
-
-        // Verify lower precedence components were reset
-        assert_eq!(zerv.vars.post, None);
-        assert_eq!(zerv.vars.dev, None);
-
-        // Verify higher precedence components were preserved
-        assert_eq!(zerv.vars.major, Some(1));
-        assert_eq!(zerv.vars.minor, Some(0));
-        assert_eq!(zerv.vars.patch, Some(0));
-    }
-
-    #[test]
-    fn test_bump_pre_release_label_overwrites_existing() {
-        // Start with existing pre-release
-        let mut zerv = ZervFixture::new()
-            .with_pre_release(PreReleaseLabel::Beta, Some(5))
-            .build();
-
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_bump_pre_release_label("rc")
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        // Verify pre-release was overwritten
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Rc);
-        assert_eq!(pre_release.number, Some(0)); // Reset to 0
-    }
-
-    #[test]
-    fn test_override_pre_release_label_preserves_existing_number() {
-        // Start with existing pre-release
-        let mut zerv = ZervFixture::new()
-            .with_pre_release(PreReleaseLabel::Alpha, Some(5))
-            .build();
-
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_pre_release_label("beta")
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        // Verify label changed but number preserved
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Beta);
-        assert_eq!(pre_release.number, Some(5)); // Should preserve existing number
-    }
-
-    #[test]
-    fn test_override_pre_release_label_uses_zero_when_no_existing_number() {
-        // Start with no pre-release
-        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
-
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_pre_release_label("alpha")
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        // Verify label set and number defaults to 0
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Alpha);
-        assert_eq!(pre_release.number, Some(0)); // Should default to 0
-    }
-
-    #[test]
-    fn test_override_pre_release_num_only() {
-        // Start with existing pre-release
-        let mut zerv = ZervFixture::new()
-            .with_pre_release(PreReleaseLabel::Beta, Some(2))
-            .build();
-
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_pre_release_num(7)
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        // Verify number changed but label preserved
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Beta); // Should preserve existing label
-        assert_eq!(pre_release.number, Some(7)); // Should use new number
-    }
-
-    #[test]
-    fn test_override_both_pre_release_label_and_num() {
-        // Start with existing pre-release
-        let mut zerv = ZervFixture::new()
-            .with_pre_release(PreReleaseLabel::Alpha, Some(3))
-            .build();
-
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_pre_release_label("rc")
-            .with_pre_release_num(9)
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        // Verify both label and number changed
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Rc);
-        assert_eq!(pre_release.number, Some(9));
-    }
-
-    #[test]
-    fn test_override_pre_release_label_with_none_number() {
-        // Start with pre-release that has None number
-        let mut zerv = ZervFixture::new()
-            .with_pre_release(PreReleaseLabel::Beta, None)
-            .build();
-
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_pre_release_label("alpha")
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        // Verify label changed and number defaults to 0
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Alpha);
-        assert_eq!(pre_release.number, Some(0));
-    }
-
-    #[test]
-    fn test_override_pre_release_num_creates_alpha_when_none_exists() {
-        // Start with no pre-release
-        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
-
-        let args = crate::test_utils::VersionArgsFixture::new()
-            .with_pre_release_num(5)
-            .build();
-        zerv.process_pre_release_label(&args).unwrap();
-        zerv.process_pre_release_num(&args).unwrap();
-
-        // Verify alpha label created with specified number
-        assert!(zerv.vars.pre_release.is_some());
-        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
-        assert_eq!(pre_release.label, PreReleaseLabel::Alpha);
-        assert_eq!(pre_release.number, Some(5));
     }
 }

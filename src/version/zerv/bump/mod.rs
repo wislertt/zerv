@@ -1,5 +1,6 @@
 use super::Zerv;
 use crate::cli::version::args::VersionArgs;
+use crate::constants::bump_types;
 use crate::error::ZervError;
 
 pub mod reset;
@@ -9,36 +10,26 @@ pub mod vars_secondary;
 pub mod vars_timestamp;
 
 impl Zerv {
-    /// Apply component processing from VersionArgs using new process methods
+    /// Apply component processing from VersionArgs following BumpType::PRECEDENCE_NAMES order
     pub fn apply_component_processing(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Process components in precedence order (highest to lowest)
-        // This ensures reset logic works correctly
+        use types::BumpType;
 
-        // Epoch (highest precedence)
-        self.process_epoch(args)?;
+        // Process components in BumpType::PRECEDENCE_NAMES order
+        for &component_name in BumpType::PRECEDENCE_NAMES {
+            match component_name {
+                bump_types::EPOCH => self.process_epoch(args)?,
+                bump_types::MAJOR => self.process_major(args)?,
+                bump_types::MINOR => self.process_minor(args)?,
+                bump_types::PATCH => self.process_patch(args)?,
+                bump_types::PRE_RELEASE_LABEL => self.process_pre_release_label(args)?,
+                bump_types::PRE_RELEASE_NUM => self.process_pre_release_num(args)?,
+                bump_types::POST => self.process_post(args)?,
+                bump_types::DEV => self.process_dev(args)?,
+                _ => unreachable!("Unknown component in PRECEDENCE_NAMES: {}", component_name),
+            }
+        }
 
-        // Major
-        self.process_major(args)?;
-
-        // Minor
-        self.process_minor(args)?;
-
-        // Patch
-        self.process_patch(args)?;
-
-        // Pre-release (label first, then number)
-        self.process_pre_release_label(args)?;
-        self.process_pre_release_num(args)?;
-
-        // Post
-        self.process_post(args)?;
-
-        // Dev (lowest precedence)
-        self.process_dev(args)?;
-
-        // Update bumped_timestamp based on dirty state and context
         self.process_bumped_timestamp(args)?;
-
         Ok(())
     }
 }
@@ -81,8 +72,8 @@ mod tests {
 
         zerv.apply_component_processing(&args).unwrap();
 
-        assert_eq!(zerv.vars.post, Some(0));
-        assert_eq!(zerv.vars.dev, Some(0));
+        assert_eq!(zerv.vars.post, None);
+        assert_eq!(zerv.vars.dev, None);
     }
 
     // Test apply_component_processing with complex combinations following reset logic
@@ -265,7 +256,7 @@ mod tests {
         assert_eq!(zerv.vars.pre_release.as_ref().unwrap().number, Some(5)); // 3 + 2
     }
 
-    // Test apply_bumps with no pre-release (should fail)
+    // Test apply_bumps with no pre-release (should create alpha label)
     #[test]
     fn test_apply_bumps_pre_release_no_pre_release() {
         // Create a Zerv without pre-release
@@ -274,10 +265,13 @@ mod tests {
         // Try to apply pre-release bump
         let bumps = vec![BumpType::PreReleaseNum(1)];
         let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
-        let result = zerv.apply_component_processing(&args);
+        zerv.apply_component_processing(&args).unwrap();
 
-        // Should fail because there's no pre-release to bump
-        assert!(result.is_err());
+        // Should create alpha label with the increment when no pre-release exists
+        assert!(zerv.vars.pre_release.is_some());
+        let pre_release = zerv.vars.pre_release.as_ref().unwrap();
+        assert_eq!(pre_release.label, PreReleaseLabel::Alpha);
+        assert_eq!(pre_release.number, Some(1));
     }
 
     // Tests for combined bump and override specifications

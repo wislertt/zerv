@@ -26,6 +26,7 @@ impl ZervDraft {
 
         // Apply component processing (bumps with reset logic)
         zerv.apply_component_processing(args)?;
+        zerv.normalize();
 
         Ok(zerv)
     }
