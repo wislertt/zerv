@@ -1,5 +1,6 @@
 use super::Zerv;
 use crate::cli::version::args::VersionArgs;
+use crate::constants::bump_types;
 use crate::error::ZervError;
 
 pub mod reset;
@@ -9,36 +10,26 @@ pub mod vars_secondary;
 pub mod vars_timestamp;
 
 impl Zerv {
-    /// Apply component processing from VersionArgs using new process methods
+    /// Apply component processing from VersionArgs following BumpType::PRECEDENCE_NAMES order
     pub fn apply_component_processing(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Process components in precedence order (highest to lowest)
-        // This ensures reset logic works correctly
+        use types::BumpType;
 
-        // Epoch (highest precedence)
-        self.process_epoch(args)?;
+        // Process components in BumpType::PRECEDENCE_NAMES order
+        for &component_name in BumpType::PRECEDENCE_NAMES {
+            match component_name {
+                bump_types::EPOCH => self.process_epoch(args)?,
+                bump_types::MAJOR => self.process_major(args)?,
+                bump_types::MINOR => self.process_minor(args)?,
+                bump_types::PATCH => self.process_patch(args)?,
+                bump_types::PRE_RELEASE_LABEL => self.process_pre_release_label(args)?,
+                bump_types::PRE_RELEASE_NUM => self.process_pre_release_num(args)?,
+                bump_types::POST => self.process_post(args)?,
+                bump_types::DEV => self.process_dev(args)?,
+                _ => unreachable!("Unknown component in PRECEDENCE_NAMES: {}", component_name),
+            }
+        }
 
-        // Major
-        self.process_major(args)?;
-
-        // Minor
-        self.process_minor(args)?;
-
-        // Patch
-        self.process_patch(args)?;
-
-        // Pre-release (label first, then number)
-        self.process_pre_release_label(args)?;
-        self.process_pre_release_num(args)?;
-
-        // Post
-        self.process_post(args)?;
-
-        // Dev (lowest precedence)
-        self.process_dev(args)?;
-
-        // Update bumped_timestamp based on dirty state and context
         self.process_bumped_timestamp(args)?;
-
         Ok(())
     }
 }
