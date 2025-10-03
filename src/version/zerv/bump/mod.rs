@@ -72,8 +72,8 @@ mod tests {
 
         zerv.apply_component_processing(&args).unwrap();
 
-        assert_eq!(zerv.vars.post, Some(0));
-        assert_eq!(zerv.vars.dev, Some(0));
+        assert_eq!(zerv.vars.post, None);
+        assert_eq!(zerv.vars.dev, None);
     }
 
     // Test apply_component_processing with complex combinations following reset logic

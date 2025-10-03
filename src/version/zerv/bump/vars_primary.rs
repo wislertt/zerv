@@ -4,9 +4,6 @@ use crate::constants::shared_constants;
 use crate::error::ZervError;
 
 impl Zerv {
-    /// Process major version component with override, bump, and reset logic
-    ///
-    /// Reset logic only applies when increment > 0 (actual bump occurs)
     pub fn process_major(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
         if let Some(override_value) = args.major {
@@ -25,9 +22,6 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process minor version component with override, bump, and reset logic
-    ///
-    /// Reset logic only applies when increment > 0 (actual bump occurs)
     pub fn process_minor(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
         if let Some(override_value) = args.minor {
@@ -46,9 +40,6 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process patch version component with override, bump, and reset logic
-    ///
-    /// Reset logic only applies when increment > 0 (actual bump occurs)
     pub fn process_patch(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
         if let Some(override_value) = args.patch {
@@ -101,7 +92,9 @@ mod tests {
         #[case] bump_increment: Option<u32>,
         #[case] expected_version: &str,
     ) {
-        let mut zerv = ZervFixture::from_semver_str(starting_version).build();
+        let mut zerv = ZervFixture::from_semver_str(starting_version)
+            .with_standard_tier_3()
+            .build();
         let mut args_fixture = VersionArgsFixture::new();
         if let Some(override_val) = override_value {
             args_fixture = args_fixture.with_major(override_val);
@@ -139,7 +132,9 @@ mod tests {
         #[case] bump_increment: Option<u32>,
         #[case] expected_version: &str,
     ) {
-        let mut zerv = ZervFixture::from_semver_str(starting_version).build();
+        let mut zerv = ZervFixture::from_semver_str(starting_version)
+            .with_standard_tier_3()
+            .build();
         let mut args_fixture = VersionArgsFixture::new();
         if let Some(override_val) = override_value {
             args_fixture = args_fixture.with_minor(override_val);
@@ -177,7 +172,9 @@ mod tests {
         #[case] bump_increment: Option<u32>,
         #[case] expected_version: &str,
     ) {
-        let mut zerv = ZervFixture::from_semver_str(starting_version).build();
+        let mut zerv = ZervFixture::from_semver_str(starting_version)
+            .with_standard_tier_3()
+            .build();
         let mut args_fixture = VersionArgsFixture::new();
         if let Some(override_val) = override_value {
             args_fixture = args_fixture.with_patch(override_val);
