@@ -1,6 +1,6 @@
 use super::timestamp::resolve_timestamp;
 use crate::constants::ron_fields;
-use crate::version::zerv::{Component, PreReleaseLabel, Zerv};
+use crate::version::zerv::{Component, Zerv};
 
 pub fn extract_core_values(zerv: &Zerv) -> Vec<u64> {
     let mut core_values = Vec::new();
@@ -28,13 +28,4 @@ pub fn extract_core_values(zerv: &Zerv) -> Vec<u64> {
         core_values.push(val);
     }
     core_values
-}
-
-pub fn normalize_pre_release_label(label: &str) -> Option<PreReleaseLabel> {
-    match label.to_lowercase().as_str() {
-        "alpha" | "a" => Some(PreReleaseLabel::Alpha),
-        "beta" | "b" => Some(PreReleaseLabel::Beta),
-        "rc" | "c" | "preview" | "pre" => Some(PreReleaseLabel::Rc),
-        _ => None,
-    }
 }

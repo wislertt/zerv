@@ -19,4 +19,4 @@ pub use components::{Component, ComponentConfig};
 // Schema config types
 pub use schema_config::{SchemaConfig, parse_ron_schema};
 // Utilities
-pub use utils::{normalize_pre_release_label, resolve_timestamp};
+pub use utils::resolve_timestamp;

@@ -76,7 +76,9 @@ mod tests {
         #[case] increment: u64,
         #[case] expected: Option<u64>,
     ) {
-        let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
+        let mut zerv = ZervFixture::new()
+            .with_version(version.0, version.1, version.2)
+            .build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_major_flag(increment as u32)
             .build();
@@ -93,7 +95,9 @@ mod tests {
         #[case] increment: u64,
         #[case] expected: Option<u64>,
     ) {
-        let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
+        let mut zerv = ZervFixture::new()
+            .with_version(version.0, version.1, version.2)
+            .build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_minor_flag(increment as u32)
             .build();
@@ -110,7 +114,9 @@ mod tests {
         #[case] increment: u64,
         #[case] expected: Option<u64>,
     ) {
-        let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
+        let mut zerv = ZervFixture::new()
+            .with_version(version.0, version.1, version.2)
+            .build();
         let args = crate::test_utils::VersionArgsFixture::new()
             .with_bump_patch_flag(increment as u32)
             .build();

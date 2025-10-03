@@ -1,13 +1,13 @@
 use crate::version::zerv::{PreReleaseLabel, PreReleaseVar, ZervVars};
 
-/// Fixture for creating ZervVars test data with RON string support
+/// Fixture for creating ZervVars test data
 pub struct ZervVarsFixture {
     vars: ZervVars,
 }
 
 impl ZervVarsFixture {
-    /// Create basic vars with version 1.0.0
-    pub fn basic() -> Self {
+    /// Create a new fixture with default 1.0.0 version
+    pub fn new() -> Self {
         Self {
             vars: ZervVars {
                 major: Some(1),
@@ -18,16 +18,17 @@ impl ZervVarsFixture {
         }
     }
 
-    /// Create vars with specific version
-    pub fn with_version(major: u64, minor: u64, patch: u64) -> Self {
-        Self {
-            vars: ZervVars {
-                major: Some(major),
-                minor: Some(minor),
-                patch: Some(patch),
-                ..Default::default()
-            },
-        }
+    /// Build and return the final ZervVars
+    pub fn build(self) -> ZervVars {
+        self.vars
+    }
+
+    /// Set version components (chainable)
+    pub fn with_version(mut self, major: u64, minor: u64, patch: u64) -> Self {
+        self.vars.major = Some(major);
+        self.vars.minor = Some(minor);
+        self.vars.patch = Some(patch);
+        self
     }
 
     /// Add pre-release information
@@ -118,21 +119,15 @@ impl ZervVarsFixture {
         self
     }
 
-    /// Get the vars
-    pub fn vars(&self) -> &ZervVars {
-        &self.vars
+    // Legacy compatibility - keep basic() as alias for new()
+    pub fn basic() -> Self {
+        Self::new()
     }
+}
 
-    /// Get the vars as RON string
-    pub fn to_ron_string(&self) -> String {
-        ron::ser::to_string_pretty(&self.vars, ron::ser::PrettyConfig::default())
-            .unwrap_or_else(|e| panic!("Failed to serialize vars to RON: {e}"))
-    }
-
-    /// Create from RON string
-    pub fn from_ron_string(ron_string: &str) -> Result<Self, ron::error::SpannedError> {
-        let vars: ZervVars = ron::de::from_str(ron_string)?;
-        Ok(Self { vars })
+impl Default for ZervVarsFixture {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -16,6 +16,8 @@ pub enum ZervError {
     InvalidFormat(String),
     /// Invalid version string
     InvalidVersion(String),
+    /// Invalid pre-release label
+    InvalidPreReleaseLabel(String),
 
     // Schema errors
     /// Schema parsing error
@@ -55,6 +57,7 @@ impl std::fmt::Display for ZervError {
             // Version errors
             ZervError::InvalidFormat(msg) => write!(f, "Invalid version format: {msg}"),
             ZervError::InvalidVersion(msg) => write!(f, "Invalid version: {msg}"),
+            ZervError::InvalidPreReleaseLabel(msg) => write!(f, "Invalid pre-release label: {msg}"),
 
             // Schema errors
             ZervError::SchemaParseError(msg) => write!(f, "Schema parse error: {msg}"),
@@ -105,6 +108,7 @@ impl PartialEq for ZervError {
             (ZervError::NoTagsFound, ZervError::NoTagsFound) => true,
             (ZervError::InvalidFormat(a), ZervError::InvalidFormat(b)) => a == b,
             (ZervError::InvalidVersion(a), ZervError::InvalidVersion(b)) => a == b,
+            (ZervError::InvalidPreReleaseLabel(a), ZervError::InvalidPreReleaseLabel(b)) => a == b,
             (ZervError::CommandFailed(a), ZervError::CommandFailed(b)) => a == b,
             (ZervError::Io(a), ZervError::Io(b)) => {
                 a.kind() == b.kind() && a.to_string() == b.to_string()

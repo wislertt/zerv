@@ -26,8 +26,9 @@ impl Zerv {
         // Patch
         self.process_patch(args)?;
 
-        // Pre-release
-        self.process_pre_release(args)?;
+        // Pre-release (label first, then number)
+        self.process_pre_release_label(args)?;
+        self.process_pre_release_num(args)?;
 
         // Post
         self.process_post(args)?;
@@ -59,7 +60,9 @@ mod tests {
         #[case] bumps: Vec<BumpType>,
         #[case] expected: (Option<u64>, Option<u64>, Option<u64>),
     ) {
-        let mut zerv = ZervFixture::zerv_version(version.0, version.1, version.2);
+        let mut zerv = ZervFixture::new()
+            .with_version(version.0, version.1, version.2)
+            .build();
         let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
 
         zerv.apply_component_processing(&args).unwrap();
@@ -72,7 +75,7 @@ mod tests {
     // Test apply_bumps with zero increments
     #[test]
     fn test_apply_bumps_zero_increments() {
-        let mut zerv = ZervFixture::zerv_version(0, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(0, 0, 0).build();
         let bumps = vec![BumpType::Post(0), BumpType::Dev(0)];
         let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
 
@@ -86,17 +89,17 @@ mod tests {
     #[test]
     fn test_apply_bumps_complex_combination() {
         // Create a Zerv with VCS data and secondary fields
-        let mut zerv = ZervFixture::with_vcs_data(
-            3,    // distance
-            true, // dirty
-            "feature/test".to_string(),
-            "abc123def456".to_string(),
-            "last123hash".to_string(),
-            1234567890, // last_timestamp
-            "main".to_string(),
-        )
-        .zerv()
-        .clone();
+        let mut zerv = ZervFixture::new()
+            .with_vcs_data(
+                3,    // distance
+                true, // dirty
+                "feature/test".to_string(),
+                "abc123def456".to_string(),
+                "last123hash".to_string(),
+                1234567890, // last_timestamp
+                "main".to_string(),
+            )
+            .build();
 
         // Set up some initial version fields (these should be reset by epoch bump)
         zerv.vars.major = Some(1);
@@ -148,7 +151,7 @@ mod tests {
     #[test]
     fn test_apply_bumps_semantic_versioning_reset() {
         // Start with version 1.2.3 with some post/dev components
-        let mut zerv = ZervFixture::zerv_version(1, 2, 3);
+        let mut zerv = ZervFixture::new().with_version(1, 2, 3).build();
         zerv.vars.post = Some(5);
         zerv.vars.dev = Some(10);
 
@@ -175,7 +178,7 @@ mod tests {
     #[test]
     fn test_apply_bumps_minor_reset() {
         // Start with version 1.2.3 with some post/dev components
-        let mut zerv = ZervFixture::zerv_version(1, 2, 3);
+        let mut zerv = ZervFixture::new().with_version(1, 2, 3).build();
         zerv.vars.post = Some(5);
         zerv.vars.dev = Some(10);
 
@@ -201,17 +204,17 @@ mod tests {
     #[test]
     fn test_apply_bumps_clean_state() {
         // Create a Zerv with clean VCS data
-        let mut zerv = ZervFixture::with_vcs_data(
-            2,     // distance
-            false, // clean
-            "main".to_string(),
-            "def456ghi789".to_string(),
-            "last456hash".to_string(),
-            9876543210, // last_timestamp
-            "main".to_string(),
-        )
-        .zerv()
-        .clone();
+        let mut zerv = ZervFixture::new()
+            .with_vcs_data(
+                2,     // distance
+                false, // clean
+                "main".to_string(),
+                "def456ghi789".to_string(),
+                "last456hash".to_string(),
+                9876543210, // last_timestamp
+                "main".to_string(),
+            )
+            .build();
 
         // Set an initial bumped_timestamp
         let old_timestamp = 1234567890;
@@ -244,7 +247,9 @@ mod tests {
     #[test]
     fn test_apply_bumps_pre_release() {
         // Create a Zerv with pre-release
-        let mut zerv = ZervFixture::zerv_1_0_0_with_pre_release(PreReleaseLabel::Alpha, Some(3));
+        let mut zerv = ZervFixture::new()
+            .with_pre_release(PreReleaseLabel::Alpha, Some(3))
+            .build();
 
         // Apply pre-release bump
         let bumps = vec![BumpType::PreReleaseNum(2)];
@@ -264,7 +269,7 @@ mod tests {
     #[test]
     fn test_apply_bumps_pre_release_no_pre_release() {
         // Create a Zerv without pre-release
-        let mut zerv = ZervFixture::zerv_version(1, 0, 0);
+        let mut zerv = ZervFixture::new().with_version(1, 0, 0).build();
 
         // Try to apply pre-release bump
         let bumps = vec![BumpType::PreReleaseNum(1)];
@@ -283,7 +288,7 @@ mod tests {
         #[test]
         fn test_bump_and_override_basic_combination() {
             // Create a Zerv with initial version 1.2.3
-            let mut zerv = ZervFixture::zerv_version(1, 2, 3);
+            let mut zerv = ZervFixture::new().with_version(1, 2, 3).build();
 
             // Apply both bumps and overrides using chaining approach
             // According to spec: "Overrides take precedence over bumps when both specified"
