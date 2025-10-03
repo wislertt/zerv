@@ -1,5 +1,7 @@
 use crate::constants::bump_types;
 use crate::version::zerv::core::PreReleaseLabel;
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
 /// Enum for bump types - stores increment value and label
 /// This defines the core bump operations and their precedence
@@ -16,29 +18,37 @@ pub enum BumpType {
 }
 
 impl BumpType {
-    /// Single source of truth for precedence order (highest to lowest precedence)
-    /// To change precedence order, only modify this array
-    pub const PRECEDENCE_ORDER: &'static [BumpType] = &[
-        BumpType::Epoch(0),                                // 0 - highest precedence
-        BumpType::Major(0),                                // 1
-        BumpType::Minor(0),                                // 2
-        BumpType::Patch(0),                                // 3
-        BumpType::PreReleaseLabel(PreReleaseLabel::Alpha), // 4
-        BumpType::PreReleaseNum(0),                        // 5
-        BumpType::Post(0),                                 // 6
-        BumpType::Dev(0),                                  // 7 - lowest precedence
+    /// Single source of truth - just list of names
+    pub const PRECEDENCE_NAMES: &'static [&'static str] = &[
+        bump_types::EPOCH,             // 0
+        bump_types::MAJOR,             // 1
+        bump_types::MINOR,             // 2
+        bump_types::PATCH,             // 3
+        bump_types::PRE_RELEASE_LABEL, // 4
+        bump_types::PRE_RELEASE_NUM,   // 5
+        bump_types::POST,              // 6
+        bump_types::DEV,               // 7
     ];
 
-    /// Get precedence level for this bump type (lower number = higher precedence)
-    pub fn precedence(&self) -> usize {
-        Self::PRECEDENCE_ORDER
-            .iter()
-            .position(|bump_type| std::mem::discriminant(self) == std::mem::discriminant(bump_type))
-            .unwrap_or(0) // Default to highest precedence if not found
+    /// O(1) string -> index lookup map
+    fn name_to_index() -> &'static HashMap<&'static str, usize> {
+        static NAME_TO_INDEX: Lazy<HashMap<&'static str, usize>> = Lazy::new(|| {
+            BumpType::PRECEDENCE_NAMES
+                .iter()
+                .enumerate()
+                .map(|(i, &name)| (name, i))
+                .collect()
+        });
+        &NAME_TO_INDEX
     }
 
-    /// Get the field name constant for this bump type
-    pub fn field_name(&self) -> &'static str {
+    /// O(1) precedence from BumpType
+    pub fn precedence(&self) -> usize {
+        Self::name_to_index()[self.to_str()]
+    }
+
+    /// Convert BumpType to string representation
+    pub fn to_str(&self) -> &'static str {
         match self {
             BumpType::Epoch(_) => bump_types::EPOCH,
             BumpType::Major(_) => bump_types::MAJOR,
@@ -51,13 +61,17 @@ impl BumpType {
         }
     }
 
-    /// Get precedence level from component string
+    /// O(1) precedence from string
     pub fn precedence_from_str(component: &str) -> usize {
-        // Find the position in PRECEDENCE_ORDER by matching field names
-        Self::PRECEDENCE_ORDER
-            .iter()
-            .position(|bump_type| bump_type.field_name() == component)
-            .unwrap_or(0) // Default to highest precedence for unknown components
+        Self::name_to_index()
+            .get(component)
+            .copied()
+            .unwrap_or_else(|| panic!("Unknown component name: {component}"))
+    }
+
+    /// O(1) get string from precedence index
+    pub fn str_from_precedence(index: usize) -> Option<&'static str> {
+        Self::PRECEDENCE_NAMES.get(index).copied()
     }
 }
 
@@ -68,15 +82,24 @@ mod tests {
 
     #[test]
     fn test_precedence_order() {
-        let types = BumpType::PRECEDENCE_ORDER;
+        // Verify precedence is in ascending order by checking each component
+        let components = [
+            BumpType::Epoch(0),
+            BumpType::Major(0),
+            BumpType::Minor(0),
+            BumpType::Patch(0),
+            BumpType::PreReleaseLabel(PreReleaseLabel::Alpha),
+            BumpType::PreReleaseNum(0),
+            BumpType::Post(0),
+            BumpType::Dev(0),
+        ];
 
-        // Verify precedence is in ascending order
-        for i in 1..types.len() {
+        for i in 1..components.len() {
             assert!(
-                types[i - 1].precedence() < types[i].precedence(),
+                components[i - 1].precedence() < components[i].precedence(),
                 "Precedence should be in ascending order: {} < {}",
-                types[i - 1].precedence(),
-                types[i].precedence()
+                components[i - 1].precedence(),
+                components[i].precedence()
             );
         }
     }
@@ -122,7 +145,27 @@ mod tests {
     #[case(BumpType::PreReleaseNum(0), bump_types::PRE_RELEASE_NUM)]
     #[case(BumpType::Post(0), bump_types::POST)]
     #[case(BumpType::Dev(0), bump_types::DEV)]
-    fn test_field_names(#[case] bump_type: BumpType, #[case] expected_field_name: &str) {
-        assert_eq!(bump_type.field_name(), expected_field_name);
+    fn test_to_str(#[case] bump_type: BumpType, #[case] expected_field_name: &str) {
+        assert_eq!(bump_type.to_str(), expected_field_name);
+    }
+
+    #[rstest]
+    #[case(0, Some(bump_types::EPOCH))]
+    #[case(1, Some(bump_types::MAJOR))]
+    #[case(2, Some(bump_types::MINOR))]
+    #[case(3, Some(bump_types::PATCH))]
+    #[case(4, Some(bump_types::PRE_RELEASE_LABEL))]
+    #[case(5, Some(bump_types::PRE_RELEASE_NUM))]
+    #[case(6, Some(bump_types::POST))]
+    #[case(7, Some(bump_types::DEV))]
+    #[case(8, None)]
+    fn test_str_from_precedence(#[case] index: usize, #[case] expected: Option<&str>) {
+        assert_eq!(BumpType::str_from_precedence(index), expected);
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown component name: unknown")]
+    fn test_precedence_from_str_invalid() {
+        BumpType::precedence_from_str("unknown");
     }
 }

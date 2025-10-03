@@ -1,3 +1,4 @@
+use crate::constants::bump_types;
 use crate::error::ZervError;
 use crate::version::zerv::bump::types::BumpType;
 use crate::version::zerv::vars::ZervVars;
@@ -8,30 +9,31 @@ impl ZervVars {
         let current_precedence = BumpType::precedence_from_str(component);
 
         // Loop through all bump types in precedence order and reset those with lower precedence
-        for (index, bump_type) in BumpType::PRECEDENCE_ORDER.iter().enumerate() {
+        for (index, &name) in BumpType::PRECEDENCE_NAMES.iter().enumerate() {
             if index > current_precedence {
-                self.reset_component(bump_type);
+                self.reset_component_by_name(name);
             }
         }
 
         Ok(())
     }
 
-    /// Reset a specific component based on its bump type
-    fn reset_component(&mut self, bump_type: &BumpType) {
-        match bump_type {
-            BumpType::Epoch(_) => self.epoch = Some(0),
-            BumpType::Major(_) => self.major = Some(0),
-            BumpType::Minor(_) => self.minor = Some(0),
-            BumpType::Patch(_) => self.patch = Some(0),
-            BumpType::PreReleaseLabel(_) => self.pre_release = None,
-            BumpType::PreReleaseNum(_) => {
+    /// Reset a specific component based on its name
+    fn reset_component_by_name(&mut self, component_name: &str) {
+        match component_name {
+            bump_types::EPOCH => self.epoch = Some(0),
+            bump_types::MAJOR => self.major = Some(0),
+            bump_types::MINOR => self.minor = Some(0),
+            bump_types::PATCH => self.patch = Some(0),
+            bump_types::PRE_RELEASE_LABEL => self.pre_release = None,
+            bump_types::PRE_RELEASE_NUM => {
                 if let Some(ref mut pre_release) = self.pre_release {
                     pre_release.number = Some(0);
                 }
             }
-            BumpType::Post(_) => self.post = None,
-            BumpType::Dev(_) => self.dev = None,
+            bump_types::POST => self.post = None,
+            bump_types::DEV => self.dev = None,
+            _ => panic!("Unknown component name for reset: {component_name}"),
         }
     }
 }
@@ -55,27 +57,27 @@ mod tests {
 
     #[rstest]
     #[case(
-        crate::constants::bump_types::EPOCH,
+        bump_types::EPOCH,
         full_vars_fixture(),
         ZervVarsFixture::new().with_version(0, 0, 0).with_epoch(1)
     )]
     #[case(
-        crate::constants::bump_types::MAJOR,
+        bump_types::MAJOR,
         full_vars_fixture(),
         ZervVarsFixture::new().with_version(2, 0, 0).with_epoch(1)
     )]
     #[case(
-        crate::constants::bump_types::MINOR,
+        bump_types::MINOR,
         full_vars_fixture(),
         ZervVarsFixture::new().with_version(2, 3, 0).with_epoch(1)
     )]
     #[case(
-        crate::constants::bump_types::PATCH,
+        bump_types::PATCH,
         full_vars_fixture(),
         ZervVarsFixture::new().with_version(2, 3, 4).with_epoch(1)
     )]
     #[case(
-        crate::constants::bump_types::PRE_RELEASE_LABEL,
+        bump_types::PRE_RELEASE_LABEL,
         full_vars_fixture(),
         ZervVarsFixture::new()
             .with_version(2, 3, 4)
@@ -83,7 +85,7 @@ mod tests {
             .with_pre_release(PreReleaseLabel::Alpha, Some(0))
     )]
     #[case(
-        crate::constants::bump_types::PRE_RELEASE_NUM,
+        bump_types::PRE_RELEASE_NUM,
         full_vars_fixture(),
         ZervVarsFixture::new()
             .with_version(2, 3, 4)
@@ -91,7 +93,7 @@ mod tests {
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
     )]
     #[case(
-        crate::constants::bump_types::POST,
+        bump_types::POST,
         full_vars_fixture(),
         ZervVarsFixture::new()
             .with_version(2, 3, 4)
@@ -100,7 +102,7 @@ mod tests {
             .with_post(5)
     )]
     #[case(
-        crate::constants::bump_types::DEV,
+        bump_types::DEV,
         full_vars_fixture(),
         full_vars_fixture() // DEV has lowest precedence, so nothing gets reset
     )]
@@ -137,8 +139,8 @@ mod tests {
             ..Default::default()
         };
 
-        // Reset from pre-release label should reset the number part
-        vars.reset_component(&BumpType::PreReleaseNum(0));
+        // Reset from pre-release number should reset the number part
+        vars.reset_component_by_name(bump_types::PRE_RELEASE_NUM);
 
         assert_eq!(
             vars.pre_release,
@@ -157,8 +159,15 @@ mod tests {
         };
 
         // Reset pre-release number when no pre-release exists should do nothing
-        vars.reset_component(&BumpType::PreReleaseNum(0));
+        vars.reset_component_by_name(bump_types::PRE_RELEASE_NUM);
 
         assert_eq!(vars.pre_release, None);
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown component name for reset: unknown")]
+    fn test_reset_component_by_name_invalid() {
+        let mut vars = ZervVars::default();
+        vars.reset_component_by_name("unknown");
     }
 }
