@@ -6,12 +6,12 @@ use crate::error::ZervError;
 impl Zerv {
     pub fn process_major(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(override_value) = args.major {
+        if let Some(override_value) = args.overrides.major {
             self.vars.major = Some(override_value as u64);
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_major
+        if let Some(Some(increment)) = args.bumps.bump_major
             && increment > 0
         {
             self.vars.major = Some(self.vars.major.unwrap_or(0) + increment as u64);
@@ -24,12 +24,12 @@ impl Zerv {
 
     pub fn process_minor(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(override_value) = args.minor {
+        if let Some(override_value) = args.overrides.minor {
             self.vars.minor = Some(override_value as u64);
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_minor
+        if let Some(Some(increment)) = args.bumps.bump_minor
             && increment > 0
         {
             self.vars.minor = Some(self.vars.minor.unwrap_or(0) + increment as u64);
@@ -42,12 +42,12 @@ impl Zerv {
 
     pub fn process_patch(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(override_value) = args.patch {
+        if let Some(override_value) = args.overrides.patch {
             self.vars.patch = Some(override_value as u64);
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_patch
+        if let Some(Some(increment)) = args.bumps.bump_patch
             && increment > 0
         {
             self.vars.patch = Some(self.vars.patch.unwrap_or(0) + increment as u64);

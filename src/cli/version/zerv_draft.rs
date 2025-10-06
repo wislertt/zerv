@@ -103,7 +103,10 @@ mod tests {
 
     #[test]
     fn test_to_zerv_with_overrides() {
-        use crate::cli::version::args::VersionArgs;
+        use crate::cli::version::args::{
+            OverridesConfig,
+            VersionArgs,
+        };
 
         let vars = ZervVars {
             major: Some(1),
@@ -113,7 +116,10 @@ mod tests {
         };
 
         let args = VersionArgs {
-            tag_version: Some("5.0.0".to_string()),
+            overrides: OverridesConfig {
+                tag_version: Some("5.0.0".to_string()),
+                ..Default::default()
+            },
             ..Default::default()
         };
 

@@ -77,7 +77,7 @@ mod tests {
         let cli = Cli::try_parse_from(["zerv", "version", "-C", "/tmp"]).unwrap();
         assert!(matches!(cli.command, Commands::Version(_)));
         if let Commands::Version(version_args) = cli.command {
-            assert_eq!(version_args.directory, Some("/tmp".to_string()));
+            assert_eq!(version_args.main.directory, Some("/tmp".to_string()));
         }
     }
 

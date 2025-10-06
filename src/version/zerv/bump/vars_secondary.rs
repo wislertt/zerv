@@ -13,12 +13,12 @@ use crate::version::zerv::core::{
 impl Zerv {
     pub fn process_post(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(override_value) = args.post {
+        if let Some(override_value) = args.overrides.post {
             self.vars.post = Some(override_value as u64);
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_post
+        if let Some(Some(increment)) = args.bumps.bump_post
             && increment > 0
         {
             self.vars.post = Some(self.vars.post.unwrap_or(0) + increment as u64);
@@ -31,12 +31,12 @@ impl Zerv {
 
     pub fn process_dev(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(override_value) = args.dev {
+        if let Some(override_value) = args.overrides.dev {
             self.vars.dev = Some(override_value as u64);
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_dev
+        if let Some(Some(increment)) = args.bumps.bump_dev
             && increment > 0
         {
             self.vars.dev = Some(self.vars.dev.unwrap_or(0) + increment as u64);
@@ -49,13 +49,14 @@ impl Zerv {
 
     pub fn process_pre_release_label(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(ref label) = args.pre_release_label {
+        if let Some(ref label) = args.overrides.pre_release_label {
             let existing_number = self.vars.pre_release.as_ref().and_then(|pr| pr.number);
             self.vars.pre_release = Some(PreReleaseVar {
                 label: PreReleaseLabel::try_from_str(label).ok_or_else(|| {
                     ZervError::InvalidVersion(format!("Invalid pre-release label: {label}"))
                 })?,
                 number: args
+                    .overrides
                     .pre_release_num
                     .map(|n| n as u64)
                     .or(existing_number)
@@ -64,7 +65,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(ref label) = args.bump_pre_release_label {
+        if let Some(ref label) = args.bumps.bump_pre_release_label {
             let pre_release_label = label.parse::<PreReleaseLabel>()?;
             self.vars
                 .reset_lower_precedence_components(bump_types::PRE_RELEASE_LABEL)?;
@@ -79,9 +80,9 @@ impl Zerv {
 
     pub fn process_pre_release_num(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(pre_release_num) = args.pre_release_num {
+        if let Some(pre_release_num) = args.overrides.pre_release_num {
             // Only process if label wasn't already handled
-            if args.pre_release_label.is_none() {
+            if args.overrides.pre_release_label.is_none() {
                 if self.vars.pre_release.is_none() {
                     self.vars.pre_release = Some(PreReleaseVar {
                         label: PreReleaseLabel::Alpha,
@@ -94,7 +95,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_pre_release_num
+        if let Some(Some(increment)) = args.bumps.bump_pre_release_num
             && increment > 0
         {
             if let Some(ref mut pre_release) = self.vars.pre_release {
@@ -117,12 +118,12 @@ impl Zerv {
 
     pub fn process_epoch(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(override_value) = args.epoch {
+        if let Some(override_value) = args.overrides.epoch {
             self.vars.epoch = Some(override_value as u64);
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bump_epoch
+        if let Some(Some(increment)) = args.bumps.bump_epoch
             && increment > 0
         {
             self.vars.epoch = Some(self.vars.epoch.unwrap_or(0) + increment as u64);

@@ -11,7 +11,7 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDra
     // Get git VCS data
     // If directory was specified via -C, only look in that directory (depth 0)
     // If no directory specified, allow unlimited depth search
-    let max_depth = if args.directory.is_some() {
+    let max_depth = if args.main.directory.is_some() {
         Some(0)
     } else {
         None
@@ -21,7 +21,7 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDra
     // Parse git tag with input format if available and validate it
     if let Some(ref tag_version) = vcs_data.tag_version {
         let _parsed_version =
-            InputFormatHandler::parse_version_string(tag_version, &args.input_format)?;
+            InputFormatHandler::parse_version_string(tag_version, &args.main.input_format)?;
         // Validation passed - the tag is in a valid format
     }
 
