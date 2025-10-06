@@ -38,6 +38,8 @@ pub enum ZervError {
     UnknownSource(String),
     /// Conflicting CLI options
     ConflictingOptions(String),
+    /// Invalid argument provided
+    InvalidArgument(String),
 
     // System errors
     /// IO error
@@ -70,6 +72,7 @@ impl std::fmt::Display for ZervError {
             ZervError::StdinError(msg) => write!(f, "Stdin error: {msg}"),
             ZervError::UnknownSource(source) => write!(f, "Unknown source: {source}"),
             ZervError::ConflictingOptions(msg) => write!(f, "Conflicting options: {msg}"),
+            ZervError::InvalidArgument(msg) => write!(f, "Invalid argument: {msg}"),
 
             // System errors
             ZervError::Io(err) => write!(f, "IO error: {err}"),
@@ -121,6 +124,7 @@ impl PartialEq for ZervError {
             (ZervError::StdinError(a), ZervError::StdinError(b)) => a == b,
             (ZervError::UnknownSource(a), ZervError::UnknownSource(b)) => a == b,
             (ZervError::ConflictingOptions(a), ZervError::ConflictingOptions(b)) => a == b,
+            (ZervError::InvalidArgument(a), ZervError::InvalidArgument(b)) => a == b,
             _ => false,
         }
     }
@@ -131,9 +135,11 @@ pub type Result<T> = std::result::Result<T, ZervError>;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use rstest::rstest;
     use std::error::Error;
+
+    use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case(ZervError::VcsNotFound("git".to_string()), "VCS not found: git")]
@@ -149,6 +155,7 @@ mod tests {
     #[case(ZervError::StdinError("no input".to_string()), "Stdin error: no input")]
     #[case(ZervError::UnknownSource("unknown".to_string()), "Unknown source: unknown")]
     #[case(ZervError::ConflictingOptions("--clean with --dirty".to_string()), "Conflicting options: --clean with --dirty")]
+    #[case(ZervError::InvalidArgument("invalid value".to_string()), "Invalid argument: invalid value")]
     fn test_error_display(#[case] error: ZervError, #[case] expected: &str) {
         assert_eq!(error.to_string(), expected);
     }
@@ -191,6 +198,7 @@ mod tests {
     #[case(ZervError::StdinError("no input".to_string()), false)]
     #[case(ZervError::UnknownSource("unknown".to_string()), false)]
     #[case(ZervError::ConflictingOptions("conflict".to_string()), false)]
+    #[case(ZervError::InvalidArgument("invalid".to_string()), false)]
     fn test_error_source(#[case] error: ZervError, #[case] has_source: bool) {
         assert_eq!(error.source().is_some(), has_source);
     }
@@ -274,6 +282,11 @@ mod tests {
     #[case(
         ZervError::ConflictingOptions("--clean with --dirty".to_string()),
         ZervError::ConflictingOptions("--clean with --dirty".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::InvalidArgument("invalid value".to_string()),
+        ZervError::InvalidArgument("invalid value".to_string()),
         true
     )]
     #[case(
@@ -610,6 +623,13 @@ mod tests {
         assert_eq!(
             conflicting.to_string(),
             "Conflicting options: --clean conflicts with --dirty"
+        );
+
+        // Test InvalidArgument error
+        let invalid_arg = ZervError::InvalidArgument("invalid value provided".to_string());
+        assert_eq!(
+            invalid_arg.to_string(),
+            "Invalid argument: invalid value provided"
         );
 
         // Test StdinError error

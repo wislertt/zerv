@@ -1,5 +1,9 @@
-use super::core::{PreReleaseIdentifier, SemVer};
 use std::cmp::Ordering;
+
+use super::core::{
+    PreReleaseIdentifier,
+    SemVer,
+};
 
 impl PartialOrd for SemVer {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -75,9 +79,10 @@ fn compare_pre_release_identifiers(
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::super::core::BuildMetadata;
     use super::*;
-    use rstest::rstest;
 
     mod basic_ordering {
         use super::*;

@@ -1,10 +1,10 @@
-use crate::cli::utils::format_handler::InputFormatHandler;
-use crate::error::ZervError;
-use crate::pipeline::vcs_data_to_zerv_vars;
 use std::path::Path;
 
 use super::args::VersionArgs;
 use super::zerv_draft::ZervDraft;
+use crate::cli::utils::format_handler::InputFormatHandler;
+use crate::error::ZervError;
+use crate::pipeline::vcs_data_to_zerv_vars;
 
 /// Process git source and return a ZervDraft object
 pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDraft, ZervError> {
@@ -35,8 +35,11 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDra
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::should_run_docker_tests;
-    use crate::test_utils::{GitRepoFixture, VersionArgsFixture};
+    use crate::test_utils::{
+        GitRepoFixture,
+        VersionArgsFixture,
+        should_run_docker_tests,
+    };
 
     #[test]
     fn test_process_git_source_basic() {

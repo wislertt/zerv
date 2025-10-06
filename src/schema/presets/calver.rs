@@ -1,6 +1,20 @@
-use super::{determine_tier, tier_1_extra_core, tier_2_build, tier_3_build, tier_3_extra_core};
-use crate::constants::{ron_fields, timestamp_patterns};
-use crate::version::zerv::{Component, ZervSchema, ZervVars};
+use super::{
+    determine_tier,
+    tier_1_extra_core,
+    tier_2_build,
+    tier_3_build,
+    tier_3_extra_core,
+};
+use crate::constants::{
+    ron_fields,
+    timestamp_patterns,
+};
+use crate::version::zerv::bump::precedence::PrecedenceOrder;
+use crate::version::zerv::{
+    Component,
+    ZervSchema,
+    ZervVars,
+};
 
 // Tier 1: Tagged, clean - YYYY-MM-DD-PATCH
 pub fn zerv_calver_tier_1() -> ZervSchema {
@@ -13,6 +27,7 @@ pub fn zerv_calver_tier_1() -> ZervSchema {
         ],
         extra_core: tier_1_extra_core(),
         build: vec![],
+        precedence_order: PrecedenceOrder::default(),
     }
 }
 
@@ -27,6 +42,7 @@ pub fn zerv_calver_tier_2() -> ZervSchema {
         ],
         extra_core: tier_1_extra_core(),
         build: tier_2_build(),
+        precedence_order: PrecedenceOrder::default(),
     }
 }
 
@@ -41,6 +57,7 @@ pub fn zerv_calver_tier_3() -> ZervSchema {
         ],
         extra_core: tier_3_extra_core(),
         build: tier_3_build(),
+        precedence_order: PrecedenceOrder::default(),
     }
 }
 
@@ -56,9 +73,10 @@ pub fn get_calver_schema(vars: &ZervVars) -> ZervSchema {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::version::zerv::ZervVars;
-    use rstest::rstest;
 
     #[rstest]
     #[case(ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, zerv_calver_tier_1())]

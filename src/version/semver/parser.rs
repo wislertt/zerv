@@ -1,8 +1,14 @@
-use crate::error::ZervError;
-use crate::version::semver::core::{BuildMetadata, PreReleaseIdentifier, SemVer};
-use regex::Regex;
 use std::str::FromStr;
 use std::sync::LazyLock;
+
+use regex::Regex;
+
+use crate::error::ZervError;
+use crate::version::semver::core::{
+    BuildMetadata,
+    PreReleaseIdentifier,
+    SemVer,
+};
 
 static SEMVER_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
@@ -105,8 +111,9 @@ impl FromStr for SemVer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     mod basic_parsing {
         use super::*;

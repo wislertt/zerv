@@ -1,5 +1,8 @@
 use crate::constants::timestamp_patterns;
-use crate::error::{Result, ZervError};
+use crate::error::{
+    Result,
+    ZervError,
+};
 
 fn create_invalid_pattern_error(token: &str) -> ZervError {
     let valid_patterns = timestamp_patterns::get_valid_timestamp_patterns();
@@ -136,8 +139,9 @@ pub fn resolve_timestamp(pattern: &str, timestamp: u64) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case(1710511845, timestamp_patterns::YYYY, "2024")] // 2024-03-15 14:10:45

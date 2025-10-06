@@ -1,3 +1,5 @@
+[DONE]
+
 # Implementation Todo Plan: Semantic Versioning Bump Behavior
 
 ## Overview

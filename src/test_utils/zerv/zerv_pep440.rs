@@ -1,5 +1,8 @@
 use super::zerv::ZervFixture;
-use crate::version::zerv::{Component, PreReleaseLabel};
+use crate::version::zerv::{
+    Component,
+    PreReleaseLabel,
+};
 
 /// Fixtures for Zerv → PEP440 conversion (from_zerv.rs)
 pub mod from {

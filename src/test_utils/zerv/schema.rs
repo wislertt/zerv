@@ -1,6 +1,10 @@
 use crate::schema::{
-    zerv_calver_tier_1, zerv_calver_tier_2, zerv_calver_tier_3, zerv_standard_tier_1,
-    zerv_standard_tier_2, zerv_standard_tier_3,
+    zerv_calver_tier_1,
+    zerv_calver_tier_2,
+    zerv_calver_tier_3,
+    zerv_standard_tier_1,
+    zerv_standard_tier_2,
+    zerv_standard_tier_3,
 };
 use crate::version::zerv::ZervSchema;
 

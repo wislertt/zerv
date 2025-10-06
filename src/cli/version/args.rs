@@ -1,6 +1,12 @@
-use crate::constants::{SUPPORTED_FORMATS_ARRAY, formats, pre_release_labels, sources};
-use crate::error::ZervError;
 use clap::Parser;
+
+use crate::constants::{
+    SUPPORTED_FORMATS_ARRAY,
+    formats,
+    pre_release_labels,
+    sources,
+};
+use crate::error::ZervError;
 
 #[derive(Parser)]
 #[command(about = "Generate version from VCS data")]
@@ -193,6 +199,34 @@ pub struct VersionArgs {
           help = "Bump pre-release label (alpha, beta, rc) and reset number to 0")]
     pub bump_pre_release_label: Option<String>,
 
+    // Schema-based bump options
+    /// Bump core schema component by index and value
+    #[arg(
+        long,
+        value_name = "INDEX VALUE",
+        num_args = 2,
+        help = "Bump core schema component by index and value (pairs of index, value)"
+    )]
+    pub bump_core: Vec<u32>,
+
+    /// Bump extra-core schema component by index and value
+    #[arg(
+        long,
+        value_name = "INDEX VALUE",
+        num_args = 2,
+        help = "Bump extra-core schema component by index and value (pairs of index, value)"
+    )]
+    pub bump_extra_core: Vec<u32>,
+
+    /// Bump build schema component by index and value
+    #[arg(
+        long,
+        value_name = "INDEX VALUE",
+        num_args = 2,
+        help = "Bump build schema component by index and value (pairs of index, value)"
+    )]
+    pub bump_build: Vec<u32>,
+
     // Context control options
     /// Include VCS context qualifiers (default behavior)
     #[arg(long, help = "Include VCS context qualifiers (default behavior)")]
@@ -257,6 +291,9 @@ impl Default for VersionArgs {
             bump_pre_release_num: None,
             bump_epoch: None,
             bump_pre_release_label: None,
+            bump_core: Vec::new(),
+            bump_extra_core: Vec::new(),
+            bump_build: Vec::new(),
             bump_context: false,
             no_bump_context: false,
             output_template: None,
@@ -311,6 +348,9 @@ impl VersionArgs {
 
         // Validate pre-release flags
         self.validate_pre_release_flags()?;
+
+        // Validate schema-based bump arguments
+        self.validate_schema_bump_args()?;
 
         Ok(())
     }
@@ -391,6 +431,32 @@ impl VersionArgs {
         Ok(())
     }
 
+    /// Validate schema-based bump arguments
+    fn validate_schema_bump_args(&self) -> Result<(), ZervError> {
+        // Validate bump_core arguments (must be pairs of index, value)
+        if !self.bump_core.len().is_multiple_of(2) {
+            return Err(ZervError::InvalidArgument(
+                "--bump-core requires pairs of index and value arguments".to_string(),
+            ));
+        }
+
+        // Validate bump_extra_core arguments (must be pairs of index, value)
+        if !self.bump_extra_core.len().is_multiple_of(2) {
+            return Err(ZervError::InvalidArgument(
+                "--bump-extra-core requires pairs of index and value arguments".to_string(),
+            ));
+        }
+
+        // Validate bump_build arguments (must be pairs of index, value)
+        if !self.bump_build.len().is_multiple_of(2) {
+            return Err(ZervError::InvalidArgument(
+                "--bump-build requires pairs of index and value arguments".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
     /// Get the dirty override state (None = use VCS, Some(bool) = override)
     pub fn dirty_override(&self) -> Option<bool> {
         match (self.dirty, self.no_dirty) {
@@ -415,10 +481,14 @@ impl VersionArgs {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::constants::{formats, sources};
-    use crate::test_utils::VersionArgsFixture;
     use clap::Parser;
+
+    use super::*;
+    use crate::constants::{
+        formats,
+        sources,
+    };
+    use crate::test_utils::VersionArgsFixture;
 
     #[test]
     fn test_version_args_defaults() {
@@ -453,6 +523,11 @@ mod tests {
         assert!(args.bump_pre_release_num.is_none());
         assert!(args.bump_epoch.is_none());
         assert!(args.bump_pre_release_label.is_none());
+
+        // Schema-based bump options should be empty by default
+        assert!(args.bump_core.is_empty());
+        assert!(args.bump_extra_core.is_empty());
+        assert!(args.bump_build.is_empty());
 
         // Context control options should be false by default
         assert!(!args.bump_context);
@@ -654,6 +729,63 @@ mod tests {
         assert!(error.to_string().contains("--no-bump-context"));
         assert!(error.to_string().contains("--dirty"));
         assert!(error.to_string().contains("conflicting options"));
+    }
+
+    #[test]
+    fn test_validate_schema_bump_args_valid() {
+        // Test valid schema bump arguments (pairs of index, value)
+        let args = VersionArgs::try_parse_from([
+            "version",
+            "--bump-core",
+            "0",
+            "1",
+            "--bump-core",
+            "2",
+            "3",
+            "--bump-extra-core",
+            "1",
+            "5",
+            "--bump-build",
+            "0",
+            "10",
+            "--bump-build",
+            "1",
+            "20",
+        ])
+        .unwrap();
+
+        let mut args = args;
+        assert!(args.validate().is_ok());
+        assert_eq!(args.bump_core, vec![0, 1, 2, 3]);
+        assert_eq!(args.bump_extra_core, vec![1, 5]);
+        assert_eq!(args.bump_build, vec![0, 10, 1, 20]);
+    }
+
+    #[test]
+    fn test_validate_schema_bump_args_invalid_odd_count() {
+        // Test invalid schema bump arguments (odd number of arguments)
+        // We need to manually create the args with odd count since clap validates pairs
+        let mut args = VersionArgs {
+            bump_core: vec![0, 1, 2], // Odd count: 3 elements
+            ..Default::default()
+        };
+        let result = args.validate();
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::InvalidArgument(_)));
+        assert!(error.to_string().contains("--bump-core requires pairs"));
+    }
+
+    #[test]
+    fn test_validate_schema_bump_args_empty() {
+        // Test empty schema bump arguments (should be valid)
+        let args = VersionArgs::try_parse_from(["version"]).unwrap();
+        let mut args = args;
+        assert!(args.validate().is_ok());
+        assert!(args.bump_core.is_empty());
+        assert!(args.bump_extra_core.is_empty());
+        assert!(args.bump_build.is_empty());
     }
 
     #[test]

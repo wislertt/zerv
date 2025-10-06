@@ -1,10 +1,14 @@
+// use crate::version::zerv::utils::normalize_pre_release_label;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json;
+
 use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::version::VersionArgs;
 use crate::error::ZervError;
 use crate::version::zerv::core::PreReleaseVar;
-// use crate::version::zerv::utils::normalize_pre_release_label;
-use serde::{Deserialize, Serialize};
-use serde_json;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ZervVars {
@@ -190,11 +194,12 @@ impl ZervVars {
 
 #[cfg(test)]
 mod tests {
+    use clap::Parser;
+    use rstest::rstest;
+
     use super::*;
     use crate::test_utils::VersionArgsFixture;
     use crate::version::zerv::core::PreReleaseLabel;
-    use clap::Parser;
-    use rstest::rstest;
 
     #[rstest]
     #[case(Some("abcdef1234567890"), Some("abcdef1"))]

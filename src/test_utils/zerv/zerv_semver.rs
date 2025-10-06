@@ -1,5 +1,8 @@
 use super::ZervFixture;
-use crate::version::zerv::{Component, PreReleaseLabel};
+use crate::version::zerv::{
+    Component,
+    PreReleaseLabel,
+};
 
 /// Fixtures for SemVer → Zerv conversion (to_zerv.rs)
 pub mod to {

@@ -1,8 +1,13 @@
-use crate::cli::check::run_check_command;
-use crate::cli::parser::{Cli, Commands};
-use crate::cli::version::run_version_pipeline;
-use clap::Parser;
 use std::io::Write;
+
+use clap::Parser;
+
+use crate::cli::check::run_check_command;
+use crate::cli::parser::{
+    Cli,
+    Commands,
+};
+use crate::cli::version::run_version_pipeline;
 
 pub fn run_with_args<W: Write>(
     args: Vec<String>,

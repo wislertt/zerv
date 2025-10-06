@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
+use once_cell::sync::Lazy;
+
 use crate::constants::bump_types;
 use crate::version::zerv::core::PreReleaseLabel;
-use once_cell::sync::Lazy;
-use std::collections::HashMap;
 
 /// Enum for bump types - stores increment value and label
 /// This defines the core bump operations and their precedence
@@ -18,26 +20,22 @@ pub enum BumpType {
 }
 
 impl BumpType {
-    /// Single source of truth - just list of names
-    pub const PRECEDENCE_NAMES: &'static [&'static str] = &[
-        bump_types::EPOCH,             // 0
-        bump_types::MAJOR,             // 1
-        bump_types::MINOR,             // 2
-        bump_types::PATCH,             // 3
-        bump_types::PRE_RELEASE_LABEL, // 4
-        bump_types::PRE_RELEASE_NUM,   // 5
-        bump_types::POST,              // 6
-        bump_types::DEV,               // 7
-    ];
-
     /// O(1) string -> index lookup map
     fn name_to_index() -> &'static HashMap<&'static str, usize> {
         static NAME_TO_INDEX: Lazy<HashMap<&'static str, usize>> = Lazy::new(|| {
-            BumpType::PRECEDENCE_NAMES
-                .iter()
-                .enumerate()
-                .map(|(i, &name)| (name, i))
-                .collect()
+            [
+                (bump_types::EPOCH, 0),
+                (bump_types::MAJOR, 1),
+                (bump_types::MINOR, 2),
+                (bump_types::PATCH, 3),
+                (bump_types::PRE_RELEASE_LABEL, 4),
+                (bump_types::PRE_RELEASE_NUM, 5),
+                (bump_types::POST, 6),
+                (bump_types::DEV, 7),
+            ]
+            .iter()
+            .map(|(name, index)| (*name, *index))
+            .collect()
         });
         &NAME_TO_INDEX
     }
@@ -68,17 +66,13 @@ impl BumpType {
             .copied()
             .unwrap_or_else(|| panic!("Unknown component name: {component}"))
     }
-
-    /// O(1) get string from precedence index
-    pub fn str_from_precedence(index: usize) -> Option<&'static str> {
-        Self::PRECEDENCE_NAMES.get(index).copied()
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::*;
+
+    use super::*;
 
     #[test]
     fn test_precedence_order() {
@@ -147,20 +141,6 @@ mod tests {
     #[case(BumpType::Dev(0), bump_types::DEV)]
     fn test_to_str(#[case] bump_type: BumpType, #[case] expected_field_name: &str) {
         assert_eq!(bump_type.to_str(), expected_field_name);
-    }
-
-    #[rstest]
-    #[case(0, Some(bump_types::EPOCH))]
-    #[case(1, Some(bump_types::MAJOR))]
-    #[case(2, Some(bump_types::MINOR))]
-    #[case(3, Some(bump_types::PATCH))]
-    #[case(4, Some(bump_types::PRE_RELEASE_LABEL))]
-    #[case(5, Some(bump_types::PRE_RELEASE_NUM))]
-    #[case(6, Some(bump_types::POST))]
-    #[case(7, Some(bump_types::DEV))]
-    #[case(8, None)]
-    fn test_str_from_precedence(#[case] index: usize, #[case] expected: Option<&str>) {
-        assert_eq!(BumpType::str_from_precedence(index), expected);
     }
 
     #[test]

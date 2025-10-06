@@ -1,8 +1,14 @@
 use super::Zerv;
 use crate::cli::version::args::VersionArgs;
-use crate::constants::{bump_types, shared_constants};
+use crate::constants::{
+    bump_types,
+    shared_constants,
+};
 use crate::error::ZervError;
-use crate::version::zerv::core::{PreReleaseLabel, PreReleaseVar};
+use crate::version::zerv::core::{
+    PreReleaseLabel,
+    PreReleaseVar,
+};
 
 impl Zerv {
     pub fn process_post(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
@@ -130,10 +136,11 @@ impl Zerv {
 
 #[cfg(test)]
 mod tests {
+    use rstest::*;
+
     use crate::test_utils::VersionArgsFixture;
     use crate::test_utils::zerv::ZervFixture;
     use crate::version::semver::SemVer;
-    use rstest::*;
 
     #[rstest]
     // Bump only tests

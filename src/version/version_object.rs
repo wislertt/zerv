@@ -1,5 +1,11 @@
-use crate::version::{PEP440, SemVer, Zerv, ZervVars};
 use std::str::FromStr;
+
+use crate::version::{
+    PEP440,
+    SemVer,
+    Zerv,
+    ZervVars,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum VersionObject {
@@ -41,8 +47,9 @@ impl From<VersionObject> for ZervVars {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case("1.2.3", "semver", "semver")]

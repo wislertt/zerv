@@ -11,7 +11,7 @@ update:
 
 lint:
 	cargo check
-	cargo fmt -- --check || (cargo fmt && exit 1)
+	cargo +nightly fmt -- --check || (cargo +nightly fmt && exit 1)
 	cargo clippy --all-targets --all-features -- -D warnings
 	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 

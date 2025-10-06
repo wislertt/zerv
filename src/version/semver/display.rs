@@ -1,5 +1,10 @@
-use super::core::{BuildMetadata, PreReleaseIdentifier, SemVer};
 use std::fmt;
+
+use super::core::{
+    BuildMetadata,
+    PreReleaseIdentifier,
+    SemVer,
+};
 
 impl fmt::Display for SemVer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -57,8 +62,9 @@ fn format_build_metadata(metadata: &[BuildMetadata]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     mod basic_display {
         use super::*;

@@ -303,7 +303,10 @@ impl Default for VersionArgsFixture {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::{formats, sources};
+    use crate::constants::{
+        formats,
+        sources,
+    };
     use crate::version::zerv::bump::types::BumpType;
 
     #[test]

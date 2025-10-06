@@ -1,7 +1,18 @@
-use super::{BuildMetadata, PreReleaseIdentifier, SemVer};
+use super::{
+    BuildMetadata,
+    PreReleaseIdentifier,
+    SemVer,
+};
 use crate::constants::ron_fields;
+use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::core::PreReleaseLabel;
-use crate::version::zerv::{Component, PreReleaseVar, Zerv, ZervSchema, ZervVars};
+use crate::version::zerv::{
+    Component,
+    PreReleaseVar,
+    Zerv,
+    ZervSchema,
+    ZervVars,
+};
 
 type ProcessResult = (
     Option<PreReleaseVar>,
@@ -142,6 +153,7 @@ impl From<SemVer> for Zerv {
                 ],
                 extra_core,
                 build,
+                precedence_order: PrecedenceOrder::default(),
             },
             vars: ZervVars {
                 major: Some(semver.major),
@@ -159,10 +171,11 @@ impl From<SemVer> for Zerv {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::test_utils::zerv::zerv_semver::to;
     use crate::version::zerv::Zerv;
-    use rstest::rstest;
 
     #[rstest]
     #[case("1.2.3", to::v1_2_3().build())]

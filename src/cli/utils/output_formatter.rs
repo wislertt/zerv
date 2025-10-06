@@ -1,4 +1,7 @@
-use crate::constants::{SUPPORTED_FORMATS, formats};
+use crate::constants::{
+    SUPPORTED_FORMATS,
+    formats,
+};
 use crate::error::ZervError;
 use crate::version::Zerv;
 use crate::version::pep440::PEP440;
@@ -69,10 +72,15 @@ impl OutputFormatter {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::constants::ron_fields;
-    use crate::version::{ZervSchema, ZervVars};
-    use rstest::rstest;
+    use crate::version::zerv::bump::precedence::PrecedenceOrder;
+    use crate::version::{
+        ZervSchema,
+        ZervVars,
+    };
 
     fn create_test_zerv() -> Zerv {
         use crate::version::Component;
@@ -86,6 +94,7 @@ mod tests {
                 ],
                 extra_core: vec![],
                 build: vec![],
+                precedence_order: PrecedenceOrder::default(),
             },
             vars: ZervVars {
                 major: Some(1),

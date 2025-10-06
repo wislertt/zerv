@@ -1,5 +1,12 @@
-use crate::error::{Result, ZervError};
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
+
+use crate::error::{
+    Result,
+    ZervError,
+};
 
 pub mod git;
 pub mod vcs_data;
@@ -77,10 +84,12 @@ pub fn find_vcs_root_with_limit(start_path: &Path, max_depth: Option<usize>) -> 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use rstest::rstest;
     use std::fs;
+
+    use rstest::rstest;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn test_vcs_data_default() {

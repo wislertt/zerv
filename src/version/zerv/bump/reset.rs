@@ -8,12 +8,51 @@ impl ZervVars {
     pub fn reset_lower_precedence_components(&mut self, component: &str) -> Result<(), ZervError> {
         let current_precedence = BumpType::precedence_from_str(component);
 
-        // Loop through all bump types in precedence order and reset those with lower precedence
-        for (index, &name) in BumpType::PRECEDENCE_NAMES.iter().enumerate() {
-            if index > current_precedence {
-                self.reset_component_by_name(name);
-            }
+        // Reset components with lower precedence in order
+        if current_precedence == 0 {
+            // Epoch has highest precedence, reset everything else
+            self.reset_component_by_name(bump_types::MAJOR);
+            self.reset_component_by_name(bump_types::MINOR);
+            self.reset_component_by_name(bump_types::PATCH);
+            self.reset_component_by_name(bump_types::PRE_RELEASE_LABEL);
+            self.reset_component_by_name(bump_types::PRE_RELEASE_NUM);
+            self.reset_component_by_name(bump_types::POST);
+            self.reset_component_by_name(bump_types::DEV);
+        } else if current_precedence == 1 {
+            // Major has precedence 1, reset minor and below
+            self.reset_component_by_name(bump_types::MINOR);
+            self.reset_component_by_name(bump_types::PATCH);
+            self.reset_component_by_name(bump_types::PRE_RELEASE_LABEL);
+            self.reset_component_by_name(bump_types::PRE_RELEASE_NUM);
+            self.reset_component_by_name(bump_types::POST);
+            self.reset_component_by_name(bump_types::DEV);
+        } else if current_precedence == 2 {
+            // Minor has precedence 2, reset patch and below
+            self.reset_component_by_name(bump_types::PATCH);
+            self.reset_component_by_name(bump_types::PRE_RELEASE_LABEL);
+            self.reset_component_by_name(bump_types::PRE_RELEASE_NUM);
+            self.reset_component_by_name(bump_types::POST);
+            self.reset_component_by_name(bump_types::DEV);
+        } else if current_precedence == 3 {
+            // Patch has precedence 3, reset pre_release and below
+            self.reset_component_by_name(bump_types::PRE_RELEASE_LABEL);
+            self.reset_component_by_name(bump_types::PRE_RELEASE_NUM);
+            self.reset_component_by_name(bump_types::POST);
+            self.reset_component_by_name(bump_types::DEV);
+        } else if current_precedence == 4 {
+            // PreReleaseLabel has precedence 4, reset pre_release_num and below
+            self.reset_component_by_name(bump_types::PRE_RELEASE_NUM);
+            self.reset_component_by_name(bump_types::POST);
+            self.reset_component_by_name(bump_types::DEV);
+        } else if current_precedence == 5 {
+            // PreReleaseNum has precedence 5, reset post and below
+            self.reset_component_by_name(bump_types::POST);
+            self.reset_component_by_name(bump_types::DEV);
+        } else if current_precedence == 6 {
+            // Post has precedence 6, reset dev
+            self.reset_component_by_name(bump_types::DEV);
         }
+        // Dev has precedence 7 (lowest), so nothing to reset
 
         Ok(())
     }
@@ -40,10 +79,14 @@ impl ZervVars {
 
 #[cfg(test)]
 mod tests {
+    use rstest::*;
+
     use super::*;
     use crate::test_utils::zerv::ZervVarsFixture;
-    use crate::version::zerv::core::{PreReleaseLabel, PreReleaseVar};
-    use rstest::*;
+    use crate::version::zerv::core::{
+        PreReleaseLabel,
+        PreReleaseVar,
+    };
 
     /// Helper function to create the standard starting fixture for reset tests
     fn full_vars_fixture() -> ZervVarsFixture {

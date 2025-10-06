@@ -1,6 +1,9 @@
 use super::timestamp::resolve_timestamp;
 use crate::constants::ron_fields;
-use crate::version::zerv::{Component, Zerv};
+use crate::version::zerv::{
+    Component,
+    Zerv,
+};
 
 pub fn extract_core_values(zerv: &Zerv) -> Vec<u64> {
     let mut core_values = Vec::new();

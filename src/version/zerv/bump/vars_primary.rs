@@ -61,10 +61,11 @@ impl Zerv {
 
 #[cfg(test)]
 mod tests {
+    use rstest::*;
+
     use crate::test_utils::VersionArgsFixture;
     use crate::test_utils::zerv::ZervFixture;
     use crate::version::semver::SemVer;
-    use rstest::*;
 
     #[rstest]
     // Bump only tests

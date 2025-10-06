@@ -1,8 +1,8 @@
-use super::Zerv;
+use super::core::Zerv;
 use crate::cli::version::args::VersionArgs;
-use crate::constants::bump_types;
 use crate::error::ZervError;
 
+pub mod precedence;
 pub mod reset;
 pub mod types;
 pub mod vars_primary;
@@ -10,24 +10,17 @@ pub mod vars_secondary;
 pub mod vars_timestamp;
 
 impl Zerv {
-    /// Apply component processing from VersionArgs following BumpType::PRECEDENCE_NAMES order
+    /// Apply component processing from VersionArgs in precedence order
     pub fn apply_component_processing(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        use types::BumpType;
-
-        // Process components in BumpType::PRECEDENCE_NAMES order
-        for &component_name in BumpType::PRECEDENCE_NAMES {
-            match component_name {
-                bump_types::EPOCH => self.process_epoch(args)?,
-                bump_types::MAJOR => self.process_major(args)?,
-                bump_types::MINOR => self.process_minor(args)?,
-                bump_types::PATCH => self.process_patch(args)?,
-                bump_types::PRE_RELEASE_LABEL => self.process_pre_release_label(args)?,
-                bump_types::PRE_RELEASE_NUM => self.process_pre_release_num(args)?,
-                bump_types::POST => self.process_post(args)?,
-                bump_types::DEV => self.process_dev(args)?,
-                _ => unreachable!("Unknown component in PRECEDENCE_NAMES: {}", component_name),
-            }
-        }
+        // Process components in precedence order (epoch, major, minor, patch, pre_release_label, pre_release_num, post, dev)
+        self.process_epoch(args)?;
+        self.process_major(args)?;
+        self.process_minor(args)?;
+        self.process_patch(args)?;
+        self.process_pre_release_label(args)?;
+        self.process_pre_release_num(args)?;
+        self.process_post(args)?;
+        self.process_dev(args)?;
 
         self.process_bumped_timestamp(args)?;
         Ok(())
@@ -36,11 +29,15 @@ impl Zerv {
 
 #[cfg(test)]
 mod tests {
+    use rstest::*;
+
     use crate::test_utils::version_args::OverrideType;
-    use crate::test_utils::{VersionArgsFixture, ZervFixture};
+    use crate::test_utils::{
+        VersionArgsFixture,
+        ZervFixture,
+    };
     use crate::version::semver::SemVer;
     use crate::version::zerv::bump::types::BumpType;
-    use rstest::*;
 
     // Test multiple bump combinations with reset logic
     #[rstest]

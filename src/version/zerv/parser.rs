@@ -1,6 +1,7 @@
+use std::str::FromStr;
+
 use crate::error::ZervError;
 use crate::version::zerv::Zerv;
-use std::str::FromStr;
 
 impl FromStr for Zerv {
     type Err = ZervError;
@@ -15,8 +16,12 @@ impl FromStr for Zerv {
 mod tests {
     use super::*;
     use crate::constants::ron_fields;
+    use crate::version::zerv::bump::precedence::PrecedenceOrder;
     use crate::version::zerv::vars::ZervVars;
-    use crate::version::zerv::{Component, ZervSchema};
+    use crate::version::zerv::{
+        Component,
+        ZervSchema,
+    };
 
     #[test]
     fn test_zerv_parse_simple() {
@@ -70,6 +75,7 @@ mod tests {
             ],
             extra_core: vec![],
             build: vec![],
+            precedence_order: PrecedenceOrder::default(),
         };
         let vars = ZervVars {
             major: Some(1),

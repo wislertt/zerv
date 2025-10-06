@@ -1,6 +1,10 @@
+use clap::{
+    Parser,
+    Subcommand,
+};
+
 use crate::cli::check::CheckArgs;
 use crate::cli::version::VersionArgs;
-use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "zerv")]
@@ -54,8 +58,9 @@ Supports SemVer, PEP440, and other version format validation."
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[test]
     fn test_cli_structure() {

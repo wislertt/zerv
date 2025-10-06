@@ -1,7 +1,14 @@
 use crate::cli::version::args::VersionArgs;
 use crate::error::ZervError;
-use crate::schema::{SchemaConfig, get_preset_schema, parse_ron_schema};
-use crate::version::zerv::{Zerv, ZervVars};
+use crate::schema::{
+    SchemaConfig,
+    get_preset_schema,
+    parse_ron_schema,
+};
+use crate::version::zerv::{
+    Zerv,
+    ZervVars,
+};
 
 /// Intermediate structure for version processing before final Zerv creation
 /// Contains ZervVars and optional schema (Some for stdin, None for git)
@@ -88,6 +95,7 @@ mod tests {
             core: vec![],
             extra_core: vec![],
             build: vec![],
+            precedence_order: vec![],
         };
         let draft_with_schema = ZervDraft::new(vars, Some(schema.clone()));
         assert_eq!(draft_with_schema.schema, Some(schema));
@@ -198,6 +206,7 @@ mod tests {
             }],
             extra_core: vec![],
             build: vec![],
+            precedence_order: vec![],
         };
 
         // Test using existing schema when no new schema is provided

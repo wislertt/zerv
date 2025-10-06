@@ -1,7 +1,17 @@
-use crate::error::{Result, ZervError};
-use crate::vcs::{Vcs, VcsData};
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 use std::process::Command;
+
+use crate::error::{
+    Result,
+    ZervError,
+};
+use crate::vcs::{
+    Vcs,
+    VcsData,
+};
 
 /// Git VCS implementation
 pub struct GitVcs {
@@ -227,13 +237,21 @@ impl Vcs for GitVcs {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test_utils::git::{DockerGit, NativeGit};
-    use crate::test_utils::{
-        GitOperations, TestDir, should_run_docker_tests, should_use_native_git,
-    };
-    use rstest::rstest;
     use std::fs;
+
+    use rstest::rstest;
+
+    use super::*;
+    use crate::test_utils::git::{
+        DockerGit,
+        NativeGit,
+    };
+    use crate::test_utils::{
+        GitOperations,
+        TestDir,
+        should_run_docker_tests,
+        should_use_native_git,
+    };
 
     fn get_git_impl() -> Box<dyn GitOperations> {
         if should_use_native_git() {

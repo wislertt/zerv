@@ -7,7 +7,17 @@ pub mod zerv;
 pub mod tests;
 
 pub use pep440::PEP440;
-pub use semver::{BuildMetadata, PreReleaseIdentifier, SemVer};
+pub use semver::{
+    BuildMetadata,
+    PreReleaseIdentifier,
+    SemVer,
+};
 pub use version_object::VersionObject;
-pub use zerv::PreReleaseLabel;
-pub use zerv::{Component, PreReleaseVar, Zerv, ZervSchema, ZervVars};
+pub use zerv::{
+    Component,
+    PreReleaseLabel,
+    PreReleaseVar,
+    Zerv,
+    ZervSchema,
+    ZervVars,
+};

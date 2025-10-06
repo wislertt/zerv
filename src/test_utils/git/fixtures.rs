@@ -1,5 +1,8 @@
 use super::GitOperations;
-use crate::test_utils::{TestDir, get_git_impl};
+use crate::test_utils::{
+    TestDir,
+    get_git_impl,
+};
 
 /// High-level Git repository fixture for testing
 pub struct GitRepoFixture {

@@ -1,5 +1,10 @@
-use crate::version::{PEP440, SemVer, VersionObject};
 use std::str::FromStr;
+
+use crate::version::{
+    PEP440,
+    SemVer,
+    VersionObject,
+};
 
 /// Parse version from tag string with optional format specification
 pub fn parse_version_from_tag(tag: &str, input_format: Option<&str>) -> Option<VersionObject> {
@@ -22,8 +27,9 @@ pub fn parse_version_from_tag(tag: &str, input_format: Option<&str>) -> Option<V
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     // Basic SemVer cases (auto-detection should pick SemVer first)

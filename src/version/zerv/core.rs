@@ -1,9 +1,14 @@
+use std::str::FromStr;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
 use crate::constants::pre_release_labels;
 use crate::error::ZervError;
 use crate::version::zerv::schema::ZervSchema;
 use crate::version::zerv::vars::ZervVars;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PreReleaseLabel {
@@ -95,6 +100,7 @@ mod tests {
     use super::*;
     use crate::constants::ron_fields;
     use crate::version::zerv::Component;
+    use crate::version::zerv::bump::precedence::PrecedenceOrder;
 
     mod construction {
         use super::*;
@@ -105,6 +111,7 @@ mod tests {
                 core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
                 extra_core: vec![],
                 build: vec![],
+                precedence_order: PrecedenceOrder::default(),
             };
             let vars = ZervVars {
                 major: Some(1), // Add required field for validation
@@ -116,8 +123,9 @@ mod tests {
             assert_eq!(zerv.vars, vars);
         }
 
-        use crate::test_utils::zerv::ZervFixture;
         use rstest::*;
+
+        use crate::test_utils::zerv::ZervFixture;
 
         #[rstest]
         #[case(Some(0), None)]
@@ -211,6 +219,7 @@ mod tests {
                 core: vec![],
                 extra_core: vec![],
                 build: vec![],
+                precedence_order: PrecedenceOrder::default(),
             };
             let vars = ZervVars::default();
             // Empty schema should fail validation
@@ -382,6 +391,7 @@ mod tests {
                     Component::String("build".to_string()),
                     Component::Integer(123),
                 ],
+                precedence_order: PrecedenceOrder::default(),
             };
 
             let vars = ZervVars {
@@ -418,6 +428,7 @@ mod tests {
                 ],
                 extra_core: vec![],
                 build: vec![],
+                precedence_order: PrecedenceOrder::default(),
             };
 
             let vars = ZervVars {

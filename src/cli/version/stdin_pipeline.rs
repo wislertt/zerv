@@ -1,8 +1,7 @@
-use crate::cli::utils::format_handler::InputFormatHandler;
-use crate::error::ZervError;
-
 use super::args::VersionArgs;
 use super::zerv_draft::ZervDraft;
+use crate::cli::utils::format_handler::InputFormatHandler;
+use crate::error::ZervError;
 
 /// Process stdin source and return a ZervDraft object
 pub fn process_stdin_source(_args: &VersionArgs) -> Result<ZervDraft, ZervError> {

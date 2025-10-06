@@ -1,9 +1,9 @@
-use crate::cli::utils::output_formatter::OutputFormatter;
-use crate::constants::sources;
-use crate::error::ZervError;
 use std::env::current_dir;
 
 use super::args::VersionArgs;
+use crate::cli::utils::output_formatter::OutputFormatter;
+use crate::constants::sources;
+use crate::error::ZervError;
 
 pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> {
     // 0. Early validation - fail fast on conflicting options
