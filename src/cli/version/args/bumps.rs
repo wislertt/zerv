@@ -44,32 +44,32 @@ pub struct BumpsConfig {
     // ============================================================================
     // SCHEMA-BASED BUMP OPTIONS
     // ============================================================================
-    /// Bump core schema component by index and value
+    /// Bump core schema component by index[=value] (default value: 1)
     #[arg(
         long,
-        value_name = "INDEX VALUE",
-        num_args = 2,
-        help = "Bump core schema component by index and value (pairs of index, value)"
+        value_name = "INDEX[=VALUE]",
+        num_args = 1..,
+        help = "Bump core schema component by index[=value] (e.g., --bump-core 0=5 or --bump-core 0)"
     )]
-    pub bump_core: Vec<u32>,
+    pub bump_core: Vec<String>,
 
-    /// Bump extra-core schema component by index and value
+    /// Bump extra-core schema component by index[=value] (default value: 1)
     #[arg(
         long,
-        value_name = "INDEX VALUE",
-        num_args = 2,
-        help = "Bump extra-core schema component by index and value (pairs of index, value)"
+        value_name = "INDEX[=VALUE]",
+        num_args = 1..,
+        help = "Bump extra-core schema component by index[=value] (e.g., --bump-extra-core 0=5 or --bump-extra-core 0)"
     )]
-    pub bump_extra_core: Vec<u32>,
+    pub bump_extra_core: Vec<String>,
 
-    /// Bump build schema component by index and value
+    /// Bump build schema component by index[=value] (default value: 1)
     #[arg(
         long,
-        value_name = "INDEX VALUE",
-        num_args = 2,
-        help = "Bump build schema component by index and value (pairs of index, value)"
+        value_name = "INDEX[=VALUE]",
+        num_args = 1..,
+        help = "Bump build schema component by index[=value] (e.g., --bump-build 0=5 or --bump-build 0)"
     )]
-    pub bump_build: Vec<u32>,
+    pub bump_build: Vec<String>,
 
     // ============================================================================
     // CONTEXT CONTROL OPTIONS

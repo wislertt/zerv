@@ -276,6 +276,28 @@ impl VersionArgsFixture {
                     // For now, we don't handle pre-release label bumps in test fixtures
                     // This can be extended later when needed
                 }
+                BumpType::SchemaBump {
+                    section,
+                    index,
+                    value,
+                } => {
+                    // Convert to key=value format
+                    let spec = format!("{index}={value}");
+                    match section.as_str() {
+                        "core" => {
+                            self.args.bumps.bump_core.push(spec);
+                        }
+                        "extra_core" => {
+                            self.args.bumps.bump_extra_core.push(spec);
+                        }
+                        "build" => {
+                            self.args.bumps.bump_build.push(spec);
+                        }
+                        _ => {
+                            // Unknown section - ignore for now
+                        }
+                    }
+                }
             }
         }
         self

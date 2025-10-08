@@ -55,26 +55,21 @@ fn test_bumps_config_schema_based() {
     let config = BumpsConfig::try_parse_from([
         "version",
         "--bump-core",
-        "0",
-        "1",
+        "0=1",
         "--bump-core",
-        "2",
-        "3",
+        "2=3",
         "--bump-extra-core",
-        "1",
-        "5",
+        "1=5",
         "--bump-build",
-        "0",
-        "10",
+        "0=10",
         "--bump-build",
-        "1",
-        "20",
+        "1=20",
     ])
     .unwrap();
 
-    assert_eq!(config.bump_core, vec![0, 1, 2, 3]);
-    assert_eq!(config.bump_extra_core, vec![1, 5]);
-    assert_eq!(config.bump_build, vec![0, 10, 1, 20]);
+    assert_eq!(config.bump_core, vec!["0=1", "2=3"]);
+    assert_eq!(config.bump_extra_core, vec!["1=5"]);
+    assert_eq!(config.bump_build, vec!["0=10", "1=20"]);
 }
 
 #[test]
@@ -115,27 +110,22 @@ fn test_validate_bumps_schema_bump_args_valid() {
     let config = BumpsConfig::try_parse_from([
         "version",
         "--bump-core",
-        "0",
-        "1",
+        "0=1",
         "--bump-core",
-        "2",
-        "3",
+        "2=3",
         "--bump-extra-core",
-        "1",
-        "5",
+        "1=5",
         "--bump-build",
-        "0",
-        "10",
+        "0=10",
         "--bump-build",
-        "1",
-        "20",
+        "1=20",
     ])
     .unwrap();
 
     assert!(Validation::validate_bumps(&config).is_ok());
-    assert_eq!(config.bump_core, vec![0, 1, 2, 3]);
-    assert_eq!(config.bump_extra_core, vec![1, 5]);
-    assert_eq!(config.bump_build, vec![0, 10, 1, 20]);
+    assert_eq!(config.bump_core, vec!["0=1", "2=3"]);
+    assert_eq!(config.bump_extra_core, vec!["1=5"]);
+    assert_eq!(config.bump_build, vec!["0=10", "1=20"]);
 }
 
 #[test]
@@ -143,15 +133,11 @@ fn test_validate_bumps_schema_bump_args_invalid_odd_count() {
     // Test invalid schema bump arguments (odd number of arguments)
     // We need to manually create the config with odd count since clap validates pairs
     let config = BumpsConfig {
-        bump_core: vec![0, 1, 2], // Odd count: 3 elements
+        bump_core: vec!["0=1".to_string(), "2".to_string()], // Odd count: 2 elements (one without value)
         ..Default::default()
     };
     let result = Validation::validate_bumps(&config);
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(error, crate::error::ZervError::InvalidArgument(_)));
-    assert!(error.to_string().contains("--bump-core requires pairs"));
+    assert!(result.is_ok()); // Now supports single values without '='
 }
 
 #[test]

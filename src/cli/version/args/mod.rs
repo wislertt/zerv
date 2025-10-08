@@ -11,6 +11,7 @@ mod tests {
     pub mod combination_tests;
     pub mod main_tests;
     pub mod overrides_tests;
+    pub mod validation_tests;
 }
 
 pub use bumps::BumpsConfig;

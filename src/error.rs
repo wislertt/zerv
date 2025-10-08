@@ -40,6 +40,10 @@ pub enum ZervError {
     ConflictingOptions(String),
     /// Invalid argument provided
     InvalidArgument(String),
+    /// Invalid bump target
+    InvalidBumpTarget(String),
+    /// Feature not yet implemented
+    NotImplemented(String),
 
     // System errors
     /// IO error
@@ -73,6 +77,8 @@ impl std::fmt::Display for ZervError {
             ZervError::UnknownSource(source) => write!(f, "Unknown source: {source}"),
             ZervError::ConflictingOptions(msg) => write!(f, "Conflicting options: {msg}"),
             ZervError::InvalidArgument(msg) => write!(f, "Invalid argument: {msg}"),
+            ZervError::InvalidBumpTarget(msg) => write!(f, "Invalid bump target: {msg}"),
+            ZervError::NotImplemented(msg) => write!(f, "Not implemented: {msg}"),
 
             // System errors
             ZervError::Io(err) => write!(f, "IO error: {err}"),
@@ -125,6 +131,8 @@ impl PartialEq for ZervError {
             (ZervError::UnknownSource(a), ZervError::UnknownSource(b)) => a == b,
             (ZervError::ConflictingOptions(a), ZervError::ConflictingOptions(b)) => a == b,
             (ZervError::InvalidArgument(a), ZervError::InvalidArgument(b)) => a == b,
+            (ZervError::InvalidBumpTarget(a), ZervError::InvalidBumpTarget(b)) => a == b,
+            (ZervError::NotImplemented(a), ZervError::NotImplemented(b)) => a == b,
             _ => false,
         }
     }

@@ -1,58 +1,66 @@
 use super::Zerv;
-use crate::cli::version::args::VersionArgs;
-use crate::constants::shared_constants;
 use crate::error::ZervError;
+use crate::version::zerv::bump::precedence::Precedence;
 
 impl Zerv {
-    pub fn process_major(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+    pub fn process_major(
+        &mut self,
+        override_value: Option<u32>,
+        bump_value: Option<u32>,
+    ) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(override_value) = args.overrides.major {
-            self.vars.major = Some(override_value as u64);
+        if let Some(override_val) = override_value {
+            self.vars.major = Some(override_val as u64);
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bumps.bump_major
+        if let Some(increment) = bump_value
             && increment > 0
         {
             self.vars.major = Some(self.vars.major.unwrap_or(0) + increment as u64);
-            self.vars
-                .reset_lower_precedence_components(shared_constants::MAJOR)?;
+            self.reset_lower_precedence_components(&Precedence::Major)?;
         }
 
         Ok(())
     }
 
-    pub fn process_minor(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+    pub fn process_minor(
+        &mut self,
+        override_value: Option<u32>,
+        bump_value: Option<u32>,
+    ) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(override_value) = args.overrides.minor {
-            self.vars.minor = Some(override_value as u64);
+        if let Some(override_val) = override_value {
+            self.vars.minor = Some(override_val as u64);
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bumps.bump_minor
+        if let Some(increment) = bump_value
             && increment > 0
         {
             self.vars.minor = Some(self.vars.minor.unwrap_or(0) + increment as u64);
-            self.vars
-                .reset_lower_precedence_components(shared_constants::MINOR)?;
+            self.reset_lower_precedence_components(&Precedence::Minor)?;
         }
 
         Ok(())
     }
 
-    pub fn process_patch(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+    pub fn process_patch(
+        &mut self,
+        override_value: Option<u32>,
+        bump_value: Option<u32>,
+    ) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
-        if let Some(override_value) = args.overrides.patch {
-            self.vars.patch = Some(override_value as u64);
+        if let Some(override_val) = override_value {
+            self.vars.patch = Some(override_val as u64);
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(Some(increment)) = args.bumps.bump_patch
+        if let Some(increment) = bump_value
             && increment > 0
         {
             self.vars.patch = Some(self.vars.patch.unwrap_or(0) + increment as u64);
-            self.vars
-                .reset_lower_precedence_components(shared_constants::PATCH)?;
+            self.reset_lower_precedence_components(&Precedence::Patch)?;
         }
 
         Ok(())
@@ -63,7 +71,6 @@ impl Zerv {
 mod tests {
     use rstest::*;
 
-    use crate::test_utils::VersionArgsFixture;
     use crate::test_utils::zerv::ZervFixture;
     use crate::version::semver::SemVer;
 
@@ -96,15 +103,7 @@ mod tests {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
             .with_standard_tier_3()
             .build();
-        let mut args_fixture = VersionArgsFixture::new();
-        if let Some(override_val) = override_value {
-            args_fixture = args_fixture.with_major(override_val);
-        }
-        if let Some(bump_val) = bump_increment {
-            args_fixture = args_fixture.with_bump_major(bump_val);
-        }
-        let args = args_fixture.build();
-        zerv.process_major(&args).unwrap();
+        zerv.process_major(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
         assert_eq!(result_version.to_string(), expected_version);
     }
@@ -136,15 +135,7 @@ mod tests {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
             .with_standard_tier_3()
             .build();
-        let mut args_fixture = VersionArgsFixture::new();
-        if let Some(override_val) = override_value {
-            args_fixture = args_fixture.with_minor(override_val);
-        }
-        if let Some(bump_val) = bump_increment {
-            args_fixture = args_fixture.with_bump_minor(bump_val);
-        }
-        let args = args_fixture.build();
-        zerv.process_minor(&args).unwrap();
+        zerv.process_minor(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
         assert_eq!(result_version.to_string(), expected_version);
     }
@@ -176,15 +167,7 @@ mod tests {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
             .with_standard_tier_3()
             .build();
-        let mut args_fixture = VersionArgsFixture::new();
-        if let Some(override_val) = override_value {
-            args_fixture = args_fixture.with_patch(override_val);
-        }
-        if let Some(bump_val) = bump_increment {
-            args_fixture = args_fixture.with_bump_patch(bump_val);
-        }
-        let args = args_fixture.build();
-        zerv.process_patch(&args).unwrap();
+        zerv.process_patch(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
         assert_eq!(result_version.to_string(), expected_version);
     }

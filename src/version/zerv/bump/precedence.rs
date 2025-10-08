@@ -90,6 +90,30 @@ impl PrecedenceOrder {
     pub fn to_vec(&self) -> Vec<Precedence> {
         self.order.keys().cloned().collect()
     }
+
+    /// Get field precedence names in order (for backward compatibility with BumpType::PRECEDENCE_NAMES)
+    pub fn field_precedence_names(&self) -> &[&'static str] {
+        // Return the field-based precedence names in order
+        // This maintains compatibility with existing BumpType logic
+        &[
+            "epoch",
+            "major",
+            "minor",
+            "patch",
+            "pre_release_label",
+            "pre_release_num",
+            "post",
+            "dev",
+            "distance",
+            "dirty",
+            "bumped_branch",
+            "bumped_commit_hash",
+            "bumped_timestamp",
+            "last_branch",
+            "last_commit_hash",
+            "last_timestamp",
+        ]
+    }
 }
 
 impl Default for PrecedenceOrder {

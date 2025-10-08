@@ -4,6 +4,7 @@ use crate::error::ZervError;
 
 pub mod precedence;
 pub mod reset;
+pub mod schema;
 pub mod types;
 pub mod vars_primary;
 pub mod vars_secondary;
@@ -13,14 +14,22 @@ impl Zerv {
     /// Apply component processing from VersionArgs in precedence order
     pub fn apply_component_processing(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Process components in precedence order (epoch, major, minor, patch, pre_release_label, pre_release_num, post, dev)
-        self.process_epoch(args)?;
-        self.process_major(args)?;
-        self.process_minor(args)?;
-        self.process_patch(args)?;
+        self.process_epoch(args.overrides.epoch, args.bumps.bump_epoch.flatten())?;
+        self.process_major(args.overrides.major, args.bumps.bump_major.flatten())?;
+        self.process_minor(args.overrides.minor, args.bumps.bump_minor.flatten())?;
+        self.process_patch(args.overrides.patch, args.bumps.bump_patch.flatten())?;
         self.process_pre_release_label(args)?;
-        self.process_pre_release_num(args)?;
-        self.process_post(args)?;
-        self.process_dev(args)?;
+        self.process_pre_release_num(
+            args.overrides.pre_release_num,
+            args.bumps.bump_pre_release_num.flatten(),
+        )?;
+        self.process_post(args.overrides.post, args.bumps.bump_post.flatten())?;
+        self.process_dev(args.overrides.dev, args.bumps.bump_dev.flatten())?;
+
+        // Process schema-based components (both overrides and bumps)
+        self.process_schema_core(&args.overrides.core, &args.bumps.bump_core)?;
+        self.process_schema_extra_core(&args.overrides.extra_core, &args.bumps.bump_extra_core)?;
+        self.process_schema_build(&args.overrides.build, &args.bumps.bump_build)?;
 
         self.process_bumped_timestamp(args)?;
         Ok(())

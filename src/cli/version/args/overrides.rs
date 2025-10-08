@@ -84,6 +84,36 @@ pub struct OverridesConfig {
     /// Override custom variables in JSON format
     #[arg(long, help = "Override custom variables in JSON format")]
     pub custom: Option<String>,
+
+    // ============================================================================
+    // SCHEMA COMPONENT OVERRIDE OPTIONS
+    // ============================================================================
+    /// Override core schema component by index=value
+    #[arg(
+        long,
+        value_name = "INDEX=VALUE",
+        num_args = 1..,
+        help = "Override core schema component by index=value (e.g., --core 0=5 or --core 1=release)"
+    )]
+    pub core: Vec<String>,
+
+    /// Override extra-core schema component by index=value
+    #[arg(
+        long,
+        value_name = "INDEX=VALUE",
+        num_args = 1..,
+        help = "Override extra-core schema component by index=value (e.g., --extra-core 0=5 or --extra-core 1=beta)"
+    )]
+    pub extra_core: Vec<String>,
+
+    /// Override build schema component by index=value
+    #[arg(
+        long,
+        value_name = "INDEX=VALUE",
+        num_args = 1..,
+        help = "Override build schema component by index=value (e.g., --build 0=5 or --build 1=main)"
+    )]
+    pub build: Vec<String>,
 }
 
 impl OverridesConfig {

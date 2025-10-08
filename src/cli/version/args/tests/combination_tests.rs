@@ -267,65 +267,6 @@ fn test_validate_no_bump_context_with_dirty_conflict() {
 }
 
 #[test]
-fn test_validate_schema_bump_args_valid() {
-    // Test valid schema bump arguments (pairs of index, value)
-    let args = VersionArgs::try_parse_from([
-        "version",
-        "--bump-core",
-        "0",
-        "1",
-        "--bump-core",
-        "2",
-        "3",
-        "--bump-extra-core",
-        "1",
-        "5",
-        "--bump-build",
-        "0",
-        "10",
-        "--bump-build",
-        "1",
-        "20",
-    ])
-    .unwrap();
-
-    let mut args = args;
-    assert!(args.validate().is_ok());
-    assert_eq!(args.bumps.bump_core, vec![0, 1, 2, 3]);
-    assert_eq!(args.bumps.bump_extra_core, vec![1, 5]);
-    assert_eq!(args.bumps.bump_build, vec![0, 10, 1, 20]);
-}
-
-#[test]
-fn test_validate_schema_bump_args_invalid_odd_count() {
-    // Test invalid schema bump arguments (odd number of arguments)
-    let mut args = VersionArgs {
-        bumps: BumpsConfig {
-            bump_core: vec![0, 1, 2], // Odd count: 3 elements
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    let result = args.validate();
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(error, crate::error::ZervError::InvalidArgument(_)));
-    assert!(error.to_string().contains("--bump-core requires pairs"));
-}
-
-#[test]
-fn test_validate_schema_bump_args_empty() {
-    // Test empty schema bump arguments (should be valid)
-    let args = VersionArgs::try_parse_from(["version"]).unwrap();
-    let mut args = args;
-    assert!(args.validate().is_ok());
-    assert!(args.bumps.bump_core.is_empty());
-    assert!(args.bumps.bump_extra_core.is_empty());
-    assert!(args.bumps.bump_build.is_empty());
-}
-
-#[test]
 fn test_validate_multiple_conflicts() {
     // Test that validation fails on the first conflict found
     let mut args = VersionArgs::try_parse_from([

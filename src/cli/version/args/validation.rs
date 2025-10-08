@@ -161,27 +161,66 @@ impl Validation {
 
     /// Validate schema-based bump arguments
     fn validate_schema_bump_args(bumps: &BumpsConfig) -> Result<(), ZervError> {
-        // Validate bump_core arguments (must be pairs of index, value)
-        if !bumps.bump_core.len().is_multiple_of(2) {
-            return Err(ZervError::InvalidArgument(
-                "--bump-core requires pairs of index and value arguments".to_string(),
-            ));
-        }
-
-        // Validate bump_extra_core arguments (must be pairs of index, value)
-        if !bumps.bump_extra_core.len().is_multiple_of(2) {
-            return Err(ZervError::InvalidArgument(
-                "--bump-extra-core requires pairs of index and value arguments".to_string(),
-            ));
-        }
-
-        // Validate bump_build arguments (must be pairs of index, value)
-        if !bumps.bump_build.len().is_multiple_of(2) {
-            return Err(ZervError::InvalidArgument(
-                "--bump-build requires pairs of index and value arguments".to_string(),
-            ));
-        }
-
+        // Validate each section's arguments
+        Self::validate_bump_section(&bumps.bump_core, "--bump-core")?;
+        Self::validate_bump_section(&bumps.bump_extra_core, "--bump-extra-core")?;
+        Self::validate_bump_section(&bumps.bump_build, "--bump-build")?;
         Ok(())
+    }
+
+    /// Validate a single bump section's arguments
+    fn validate_bump_section(specs: &[String], arg_name: &str) -> Result<(), ZervError> {
+        for spec in specs {
+            if !Self::is_valid_bump_spec(spec) {
+                return Err(ZervError::InvalidArgument(format!(
+                    "{arg_name} argument '{spec}' must be in format 'index[=value]'"
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    /// Check if a bump specification is valid
+    fn is_valid_bump_spec(spec: &str) -> bool {
+        if spec.is_empty() {
+            return false;
+        }
+
+        if spec.contains('=') {
+            // Format: index=value
+            let parts: Vec<&str> = spec.split('=').collect();
+            if parts.len() != 2 {
+                return false; // Multiple equals signs
+            }
+            let index_part = parts[0];
+            let value_part = parts[1];
+
+            // Index must be valid (digits or negative number)
+            if !Self::is_valid_index(index_part) {
+                return false;
+            }
+
+            // Value can be anything (string or number)
+            !value_part.is_empty()
+        } else {
+            // Format: index (defaults to value 1)
+            Self::is_valid_index(spec)
+        }
+    }
+
+    /// Check if an index string is valid (digits or negative number)
+    fn is_valid_index(index: &str) -> bool {
+        if index.is_empty() {
+            return false;
+        }
+
+        // Must be all digits, or start with - followed by digits
+        if let Some(digits) = index.strip_prefix('-') {
+            // Negative index: -1, -2, etc.
+            !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit())
+        } else {
+            // Positive index: 0, 1, 2, etc.
+            index.chars().all(|c| c.is_ascii_digit())
+        }
     }
 }

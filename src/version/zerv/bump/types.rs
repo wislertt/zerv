@@ -17,6 +17,11 @@ pub enum BumpType {
     PreReleaseNum(u64),
     Post(u64),
     Dev(u64),
+    SchemaBump {
+        section: String,
+        index: usize,
+        value: u64,
+    },
 }
 
 impl BumpType {
@@ -32,6 +37,7 @@ impl BumpType {
                 (bump_types::PRE_RELEASE_NUM, 5),
                 (bump_types::POST, 6),
                 (bump_types::DEV, 7),
+                ("schema_bump", 8),
             ]
             .iter()
             .map(|(name, index)| (*name, *index))
@@ -56,6 +62,7 @@ impl BumpType {
             BumpType::PreReleaseNum(_) => bump_types::PRE_RELEASE_NUM,
             BumpType::Post(_) => bump_types::POST,
             BumpType::Dev(_) => bump_types::DEV,
+            BumpType::SchemaBump { .. } => "schema_bump",
         }
     }
 
@@ -86,6 +93,11 @@ mod tests {
             BumpType::PreReleaseNum(0),
             BumpType::Post(0),
             BumpType::Dev(0),
+            BumpType::SchemaBump {
+                section: "core".to_string(),
+                index: 0,
+                value: 1,
+            },
         ];
 
         for i in 1..components.len() {
@@ -107,6 +119,7 @@ mod tests {
     #[case(BumpType::PreReleaseNum(0), 5)]
     #[case(BumpType::Post(0), 6)]
     #[case(BumpType::Dev(0), 7)]
+    #[case(BumpType::SchemaBump { section: "core".to_string(), index: 0, value: 1 }, 8)]
     fn test_precedence_values(#[case] bump_type: BumpType, #[case] expected_precedence: usize) {
         assert_eq!(bump_type.precedence(), expected_precedence);
     }
@@ -120,6 +133,7 @@ mod tests {
     #[case(bump_types::PRE_RELEASE_NUM, 5)]
     #[case(bump_types::POST, 6)]
     #[case(bump_types::DEV, 7)]
+    #[case("schema_bump", 8)]
     fn test_precedence_from_str(#[case] component: &str, #[case] expected_precedence: usize) {
         assert_eq!(
             BumpType::precedence_from_str(component),
@@ -139,6 +153,7 @@ mod tests {
     #[case(BumpType::PreReleaseNum(0), bump_types::PRE_RELEASE_NUM)]
     #[case(BumpType::Post(0), bump_types::POST)]
     #[case(BumpType::Dev(0), bump_types::DEV)]
+    #[case(BumpType::SchemaBump { section: "core".to_string(), index: 0, value: 1 }, "schema_bump")]
     fn test_to_str(#[case] bump_type: BumpType, #[case] expected_field_name: &str) {
         assert_eq!(bump_type.to_str(), expected_field_name);
     }
