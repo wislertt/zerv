@@ -4,7 +4,8 @@ use crate::error::ZervError;
 
 pub mod precedence;
 pub mod reset;
-pub mod schema;
+pub mod schema_parsing;
+pub mod schema_processing;
 pub mod types;
 pub mod vars_primary;
 pub mod vars_secondary;
