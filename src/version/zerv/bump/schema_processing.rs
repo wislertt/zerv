@@ -4,58 +4,187 @@ use crate::version::zerv::components::Component;
 use crate::version::zerv::core::Zerv;
 
 impl Zerv {
+    /// Process schema components for a given section
+    ///
+    /// # Arguments
+    /// * `section` - The schema section to process ("core", "extra_core", or "build")
+    /// * `overrides` - Override values for components
+    /// * `bumps` - Bump values for components
+    pub fn process_schema_section(
+        &mut self,
+        section: &str,
+        overrides: &[String],
+        bumps: &[String],
+    ) -> Result<(), ZervError> {
+        let component_count = match section {
+            "core" => self.schema.core.len(),
+            "extra_core" => self.schema.extra_core.len(),
+            "build" => self.schema.build.len(),
+            _ => {
+                return Err(ZervError::InvalidBumpTarget(format!(
+                    "Unknown schema section: {section}"
+                )));
+            }
+        };
+
+        let specs = Self::parse_and_validate_process_specs(overrides, bumps, component_count)?;
+
+        // Process specs in order from lower index to higher index
+        for (index, override_value, bump_value) in specs {
+            self.process_schema_component(section, index, override_value, bump_value)?;
+        }
+        Ok(())
+    }
+
+    /// Process schema core components
     pub fn process_schema_core(
         &mut self,
         core_overrides: &[String],
         core_bumps: &[String],
     ) -> Result<(), ZervError> {
-        let specs = Self::parse_and_validate_process_specs(
-            core_overrides,
-            core_bumps,
-            self.schema.core.len(),
-        )?;
-
-        // Process specs in order from lower index to higher index
-        for (index, override_value, bump_value) in specs {
-            self.process_schema_component("core", index, override_value, bump_value)?;
-        }
-        Ok(())
+        self.process_schema_section("core", core_overrides, core_bumps)
     }
 
+    /// Process schema extra_core components
     pub fn process_schema_extra_core(
         &mut self,
         extra_core_overrides: &[String],
         extra_core_bumps: &[String],
     ) -> Result<(), ZervError> {
-        let specs = Self::parse_and_validate_process_specs(
-            extra_core_overrides,
-            extra_core_bumps,
-            self.schema.extra_core.len(),
-        )?;
-
-        // Process specs in order from lower index to higher index
-        for (index, override_value, bump_value) in specs {
-            self.process_schema_component("extra_core", index, override_value, bump_value)?;
-        }
-        Ok(())
+        self.process_schema_section("extra_core", extra_core_overrides, extra_core_bumps)
     }
 
+    /// Process schema build components
     pub fn process_schema_build(
         &mut self,
         build_overrides: &[String],
         build_bumps: &[String],
     ) -> Result<(), ZervError> {
-        let specs = Self::parse_and_validate_process_specs(
-            build_overrides,
-            build_bumps,
-            self.schema.build.len(),
-        )?;
+        self.process_schema_section("build", build_overrides, build_bumps)
+    }
 
-        // Process specs in order from lower index to higher index
-        for (index, override_value, bump_value) in specs {
-            self.process_schema_component("build", index, override_value, bump_value)?;
+    /// Validate that a field can be processed
+    ///
+    /// # Arguments
+    /// * `field_name` - The field name to validate
+    /// * `precedence_names` - List of valid field names
+    fn validate_field_can_be_processed(
+        field_name: &str,
+        precedence_names: &[String],
+    ) -> Result<(), ZervError> {
+        if !precedence_names.contains(&field_name.to_string()) {
+            return Err(ZervError::InvalidBumpTarget(format!(
+                "Cannot process custom field: {field_name}"
+            )));
         }
         Ok(())
+    }
+
+    /// Parse override and bump values for VarField processing
+    ///
+    /// # Arguments
+    /// * `override_value` - Optional override value string
+    /// * `bump_value` - Optional bump value string
+    ///
+    /// # Returns
+    /// Tuple of (override_val, bump_val) as Option<u32>
+    fn parse_var_field_values(
+        override_value: Option<&str>,
+        bump_value: Option<&str>,
+    ) -> Result<(Option<u32>, Option<u32>), ZervError> {
+        let override_val = Self::parse_optional_u32(override_value, "VarField")?;
+        let bump_val = Self::parse_optional_u32(bump_value, "VarField")?;
+        Ok((override_val, bump_val))
+    }
+
+    /// Process a VarField component with override and bump values
+    ///
+    /// # Arguments
+    /// * `field_name` - The field name to process
+    /// * `override_value` - Optional override value (absolute)
+    /// * `bump_value` - Optional bump value (relative)
+    /// * `precedence_names` - Valid field names for validation
+    fn process_var_field(
+        &mut self,
+        field_name: String,
+        override_value: Option<String>,
+        bump_value: Option<String>,
+        precedence_names: &[String],
+    ) -> Result<(), ZervError> {
+        let field_name_str = field_name.as_str();
+
+        // Validate field can be processed
+        Self::validate_field_can_be_processed(field_name_str, precedence_names)?;
+
+        // Parse override and bump values
+        let (override_val, bump_val) =
+            Self::parse_var_field_values(override_value.as_deref(), bump_value.as_deref())?;
+
+        // Process field with both override and bump values
+        match field_name_str {
+            bump_types::MAJOR => self.process_major(override_val, bump_val)?,
+            bump_types::MINOR => self.process_minor(override_val, bump_val)?,
+            bump_types::PATCH => self.process_patch(override_val, bump_val)?,
+            bump_types::EPOCH => self.process_epoch(override_val, bump_val)?,
+            bump_types::POST => self.process_post(override_val, bump_val)?,
+            bump_types::DEV => self.process_dev(override_val, bump_val)?,
+            bump_types::PRE_RELEASE_NUM => self.process_pre_release_num(override_val, bump_val)?,
+            bump_types::PRE_RELEASE_LABEL => {
+                return Err(ZervError::InvalidBumpTarget(
+                    "Cannot process pre_release_label component - use process_pre_release_label method instead".to_string(),
+                ));
+            }
+            _ => {
+                return Err(ZervError::InvalidBumpTarget(format!(
+                    "Unknown field: {field_name_str}"
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Process an Integer component with override and bump values
+    ///
+    /// # Arguments
+    /// * `component` - The Integer component to process (will be mutated)
+    /// * `override_value` - Optional override value (absolute)
+    /// * `bump_value` - Optional bump value (relative)
+    fn process_integer_component(
+        component: &mut Component,
+        override_value: Option<String>,
+        bump_value: Option<String>,
+    ) -> Result<(), ZervError> {
+        if let Component::Integer(current_value) = component {
+            // Parse override and bump values for Integer components
+            let override_val = Self::parse_optional_u32(override_value.as_deref(), "Integer")?;
+            let bump_val = Self::parse_optional_u32(bump_value.as_deref(), "Integer")?;
+
+            // Calculate new value: override first, then bump from that base
+            let base_value = if let Some(override_val) = override_val {
+                // Override: set absolute value as base
+                override_val as u64
+            } else {
+                // No override: use current value as base
+                *current_value
+            };
+
+            let new_value = if let Some(bump_val) = bump_val {
+                // Bump: add to base value (either override or current)
+                base_value + bump_val as u64
+            } else {
+                // No bump: use base value as-is
+                base_value
+            };
+
+            // Update the component's value
+            *current_value = new_value;
+            Ok(())
+        } else {
+            Err(ZervError::InvalidBumpTarget(
+                "Expected Integer component".to_string(),
+            ))
+        }
     }
 
     /// Process a schema component by section, index, override value, and bump value
@@ -67,6 +196,15 @@ impl Zerv {
         override_value: Option<String>,
         bump_value: Option<String>,
     ) -> Result<(), ZervError> {
+        // Extract precedence names first to avoid borrowing conflicts
+        let precedence_names: Vec<String> = self
+            .schema
+            .precedence_order
+            .field_precedence_names()
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
         // Get mutable reference to components at the beginning
         let components = match section {
             "core" => &mut self.schema.core,
@@ -79,7 +217,7 @@ impl Zerv {
             }
         };
 
-        let component = components.get(index).ok_or_else(|| {
+        let component: &Component = components.get(index).ok_or_else(|| {
             ZervError::InvalidBumpTarget(format!(
                 "Index {index} out of bounds for {section} section"
             ))
@@ -87,80 +225,22 @@ impl Zerv {
 
         match component {
             Component::VarField(field_name) => {
-                let field_name_str = field_name.as_str().to_string();
+                let field_name = field_name.clone();
 
-                // Validate field can be processed
-                if !self
-                    .schema
-                    .precedence_order
-                    .field_precedence_names()
-                    .contains(&field_name_str.as_str())
-                {
-                    return Err(ZervError::InvalidBumpTarget(format!(
-                        "Cannot process custom field: {field_name_str}"
-                    )));
-                }
-
-                // Parse override and bump values
-                let override_val = Self::parse_optional_u32(override_value.as_deref(), "VarField")?;
-                let bump_val = Self::parse_optional_u32(bump_value.as_deref(), "VarField")?;
-
-                // Process field with both override and bump values
-                match field_name_str.as_str() {
-                    bump_types::MAJOR => self.process_major(override_val, bump_val)?,
-                    bump_types::MINOR => self.process_minor(override_val, bump_val)?,
-                    bump_types::PATCH => self.process_patch(override_val, bump_val)?,
-                    bump_types::EPOCH => self.process_epoch(override_val, bump_val)?,
-                    bump_types::POST => self.process_post(override_val, bump_val)?,
-                    bump_types::DEV => self.process_dev(override_val, bump_val)?,
-                    bump_types::PRE_RELEASE_NUM => {
-                        self.process_pre_release_num(override_val, bump_val)?
-                    }
-                    bump_types::PRE_RELEASE_LABEL => {
-                        return Err(ZervError::InvalidBumpTarget(
-                            "Cannot process pre_release_label component - use process_pre_release_label method instead".to_string(),
-                        ));
-                    }
-                    _ => {
-                        return Err(ZervError::InvalidBumpTarget(format!(
-                            "Unknown field: {field_name_str}"
-                        )));
-                    }
-                }
+                self.process_var_field(field_name, override_value, bump_value, &precedence_names)?;
             }
             Component::String(_) => {
                 return Err(ZervError::NotImplemented(
                     "String component processing not yet implemented".to_string(),
                 ));
             }
-            Component::Integer(current_value) => {
-                // Parse override and bump values for Integer components
-                let override_val = Self::parse_optional_u32(override_value.as_deref(), "Integer")?;
-                let bump_val = Self::parse_optional_u32(bump_value.as_deref(), "Integer")?;
-
-                // Calculate new value: override first, then bump from that base
-                let base_value = if let Some(override_val) = override_val {
-                    // Override: set absolute value as base
-                    override_val as u64
-                } else {
-                    // No override: use current value as base
-                    *current_value
-                };
-
-                let new_value = if let Some(bump_val) = bump_val {
-                    // Bump: add to base value (either override or current)
-                    base_value + bump_val as u64
-                } else {
-                    // No bump: use base value as-is
-                    base_value
-                };
-
-                // Update the component's stored value in the schema
-                if let Some(Component::Integer(value)) = components.get_mut(index) {
-                    *value = new_value;
+            Component::Integer(_) => {
+                // Process Integer component directly (mutates the component)
+                if let Some(component) = components.get_mut(index) {
+                    Self::process_integer_component(component, override_value, bump_value)?;
                 } else {
                     return Err(ZervError::InvalidBumpTarget(format!(
-                        "Component at index {index} is not an Integer component"
+                        "Component at index {index} not found"
                     )));
                 }
             }
@@ -218,21 +298,47 @@ mod tests {
         let override_strings: Vec<String> = overrides.iter().map(|s| s.to_string()).collect();
         let bump_strings: Vec<String> = bumps.iter().map(|s| s.to_string()).collect();
 
-        // Process based on section
+        // Process based on section using the generic function
+        zerv.process_schema_section(section, &override_strings, &bump_strings)
+            .unwrap();
+
+        assertions(&mut zerv);
+    }
+
+    // Test the individual wrapper functions still work
+    #[rstest]
+    #[case("core", |zerv: &mut Zerv| zerv.process_schema_core(&["0=5".to_string()], &["0=2".to_string()]))]
+    #[case("extra_core", |zerv: &mut Zerv| zerv.process_schema_extra_core(&["0=5".to_string()], &["0=2".to_string()]))]
+    #[case("build", |zerv: &mut Zerv| zerv.process_schema_build(&["0=5".to_string()], &["0=2".to_string()]))]
+    fn test_individual_schema_processing_functions(
+        #[case] section: &str,
+        #[case] process_fn: impl Fn(&mut Zerv) -> Result<(), ZervError>,
+    ) {
+        let mut zerv_fixture = ZervFixture::new();
+
+        // Set up appropriate components based on section
         match section {
-            "core" => zerv
-                .process_schema_core(&override_strings, &bump_strings)
-                .unwrap(),
-            "extra_core" => zerv
-                .process_schema_extra_core(&override_strings, &bump_strings)
-                .unwrap(),
-            "build" => zerv
-                .process_schema_build(&override_strings, &bump_strings)
-                .unwrap(),
+            "core" => {
+                zerv_fixture = zerv_fixture
+                    .with_core_components(vec![Component::VarField(bump_types::MAJOR.to_string())]);
+            }
+            "extra_core" => {
+                zerv_fixture = zerv_fixture
+                    .with_extra_core(Component::VarField(bump_types::EPOCH.to_string()));
+            }
+            "build" => {
+                zerv_fixture = zerv_fixture.with_build_components(vec![Component::VarField(
+                    bump_types::MINOR.to_string(),
+                )]);
+            }
             _ => panic!("Unknown section: {section}"),
         }
 
-        assertions(&mut zerv);
+        let mut zerv = zerv_fixture.build();
+
+        // Test that the individual functions still work
+        let result = process_fn(&mut zerv);
+        assert!(result.is_ok());
     }
 
     // Test process_schema_component with different field types
