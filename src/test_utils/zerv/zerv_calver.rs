@@ -1,5 +1,11 @@
 use crate::constants::ron_fields;
-use crate::version::zerv::{Component, Zerv, ZervSchema, ZervVars};
+use crate::version::zerv::bump::precedence::PrecedenceOrder;
+use crate::version::zerv::{
+    Component,
+    Zerv,
+    ZervSchema,
+    ZervVars,
+};
 
 /// CalVer helper functions (demonstrating VarTimestamp usage)
 pub fn calver_yy_mm_patch() -> Zerv {
@@ -12,6 +18,7 @@ pub fn calver_yy_mm_patch() -> Zerv {
             ],
             extra_core: vec![],
             build: vec![],
+            precedence_order: PrecedenceOrder::default(),
         },
         vars: ZervVars {
             patch: Some(5),
@@ -31,6 +38,7 @@ pub fn calver_yyyy_mm_patch() -> Zerv {
             ],
             extra_core: vec![],
             build: vec![],
+            precedence_order: PrecedenceOrder::default(),
         },
         vars: ZervVars {
             patch: Some(1),
@@ -54,6 +62,7 @@ pub fn calver_with_timestamp_build() -> Zerv {
                 Component::VarTimestamp("MM".to_string()),
                 Component::VarTimestamp("DD".to_string()),
             ],
+            precedence_order: PrecedenceOrder::default(),
         },
         vars: ZervVars {
             major: Some(1),

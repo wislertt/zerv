@@ -9,14 +9,30 @@ pub mod utils;
 pub mod vars;
 
 // Core types
-pub use core::{PreReleaseLabel, PreReleaseVar, Zerv};
-// Vars types
-pub use vars::ZervVars;
+pub use core::{
+    PreReleaseLabel,
+    PreReleaseVar,
+    Zerv,
+};
+
+// Bump types
+pub use bump::precedence::{
+    Precedence,
+    PrecedenceOrder,
+};
+// Component types (moved from schema)
+pub use components::{
+    Component,
+    ComponentConfig,
+};
 // Schema types
 pub use schema::ZervSchema;
-// Component types (moved from schema)
-pub use components::{Component, ComponentConfig};
 // Schema config types
-pub use schema_config::{SchemaConfig, parse_ron_schema};
+pub use schema_config::{
+    SchemaConfig,
+    parse_ron_schema,
+};
 // Utilities
 pub use utils::resolve_timestamp;
+// Vars types
+pub use vars::ZervVars;

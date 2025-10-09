@@ -35,9 +35,11 @@ impl ZervConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use serial_test::serial;
     use std::env;
+
+    use serial_test::serial;
+
+    use super::*;
 
     struct EnvGuard {
         vars: Vec<(String, Option<String>)>,

@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Component enum for internal use with compact serialization
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

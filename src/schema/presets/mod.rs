@@ -1,13 +1,25 @@
 mod calver;
 mod standard;
 
-pub use calver::{get_calver_schema, zerv_calver_tier_1, zerv_calver_tier_2, zerv_calver_tier_3};
+pub use calver::{
+    get_calver_schema,
+    zerv_calver_tier_1,
+    zerv_calver_tier_2,
+    zerv_calver_tier_3,
+};
 pub use standard::{
-    get_standard_schema, zerv_standard_tier_1, zerv_standard_tier_2, zerv_standard_tier_3,
+    get_standard_schema,
+    zerv_standard_tier_1,
+    zerv_standard_tier_2,
+    zerv_standard_tier_3,
 };
 
 use crate::constants::ron_fields;
-use crate::version::zerv::{Component, ZervSchema, ZervVars};
+use crate::version::zerv::{
+    Component,
+    ZervSchema,
+    ZervVars,
+};
 
 fn determine_tier(vars: &ZervVars) -> u8 {
     if vars.dirty.unwrap_or(false) {
@@ -69,9 +81,10 @@ pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::version::zerv::ZervVars;
-    use rstest::rstest;
 
     #[rstest]
     #[case(ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, 1)]

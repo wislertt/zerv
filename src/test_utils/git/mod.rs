@@ -1,5 +1,6 @@
-use super::TestDir;
 use std::io;
+
+use super::TestDir;
 
 mod docker;
 mod fixtures;

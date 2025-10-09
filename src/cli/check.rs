@@ -1,10 +1,17 @@
-use crate::constants::{SUPPORTED_FORMAT_NAMES, SUPPORTED_FORMATS, format_names, formats};
+use std::fmt::Display;
+use std::str::FromStr;
+
+use clap::Parser;
+
+use crate::constants::{
+    SUPPORTED_FORMAT_NAMES,
+    SUPPORTED_FORMATS,
+    format_names,
+    formats,
+};
 use crate::error::ZervError;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
-use clap::Parser;
-use std::fmt::Display;
-use std::str::FromStr;
 
 #[derive(Parser)]
 pub struct CheckArgs {
@@ -81,8 +88,9 @@ pub fn run_check_command(args: CheckArgs) -> Result<(), ZervError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[test]
     fn test_check_args_defaults() {

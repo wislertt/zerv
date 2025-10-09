@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO="wisarootl/zerv"
+REPO="wislertt/zerv"
 BINARY_NAME="zerv"
 
 get_latest_release() {

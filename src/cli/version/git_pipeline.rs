@@ -1,17 +1,17 @@
-use crate::cli::utils::format_handler::InputFormatHandler;
-use crate::error::ZervError;
-use crate::pipeline::vcs_data_to_zerv_vars;
 use std::path::Path;
 
 use super::args::VersionArgs;
 use super::zerv_draft::ZervDraft;
+use crate::cli::utils::format_handler::InputFormatHandler;
+use crate::error::ZervError;
+use crate::pipeline::vcs_data_to_zerv_vars;
 
 /// Process git source and return a ZervDraft object
 pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDraft, ZervError> {
     // Get git VCS data
     // If directory was specified via -C, only look in that directory (depth 0)
     // If no directory specified, allow unlimited depth search
-    let max_depth = if args.directory.is_some() {
+    let max_depth = if args.main.directory.is_some() {
         Some(0)
     } else {
         None
@@ -21,7 +21,7 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDra
     // Parse git tag with input format if available and validate it
     if let Some(ref tag_version) = vcs_data.tag_version {
         let _parsed_version =
-            InputFormatHandler::parse_version_string(tag_version, &args.input_format)?;
+            InputFormatHandler::parse_version_string(tag_version, &args.main.input_format)?;
         // Validation passed - the tag is in a valid format
     }
 
@@ -35,8 +35,11 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDra
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::should_run_docker_tests;
-    use crate::test_utils::{GitRepoFixture, VersionArgsFixture};
+    use crate::test_utils::{
+        GitRepoFixture,
+        VersionArgsFixture,
+        should_run_docker_tests,
+    };
 
     #[test]
     fn test_process_git_source_basic() {

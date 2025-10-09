@@ -1,7 +1,19 @@
-use super::git::{DockerGit, NativeGit};
-use super::{GitOperations, TestDir, should_use_native_git};
-use crate::vcs::{Vcs, VcsData, git::GitVcs};
 use std::sync::OnceLock;
+
+use super::git::{
+    DockerGit,
+    NativeGit,
+};
+use super::{
+    GitOperations,
+    TestDir,
+    should_use_native_git,
+};
+use crate::vcs::git::GitVcs;
+use crate::vcs::{
+    Vcs,
+    VcsData,
+};
 
 static SEMVER_VCS_DATA: OnceLock<VcsData> = OnceLock::new();
 static PEP440_VCS_DATA: OnceLock<VcsData> = OnceLock::new();

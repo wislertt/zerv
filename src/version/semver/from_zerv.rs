@@ -1,7 +1,16 @@
-use super::{BuildMetadata, PreReleaseIdentifier, SemVer};
+use super::{
+    BuildMetadata,
+    PreReleaseIdentifier,
+    SemVer,
+};
 use crate::constants::ron_fields;
 use crate::version::semver::utils::pre_release_label_to_semver_string;
-use crate::version::zerv::{Component, Zerv, resolve_timestamp, utils::extract_core_values};
+use crate::version::zerv::utils::extract_core_values;
+use crate::version::zerv::{
+    Component,
+    Zerv,
+    resolve_timestamp,
+};
 
 fn extract_version_numbers(core_values: &[u64]) -> (u64, u64, u64) {
     let major = core_values.first().copied().unwrap_or(0);
@@ -144,11 +153,12 @@ impl From<Zerv> for SemVer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test_utils::zerv::{zerv_calver, zerv_semver::from};
-    use crate::version::zerv::core::PreReleaseLabel;
-
     use rstest::rstest;
+
+    use super::*;
+    use crate::test_utils::zerv::zerv_calver;
+    use crate::test_utils::zerv::zerv_semver::from;
+    use crate::version::zerv::core::PreReleaseLabel;
 
     #[rstest]
     #[case(from::v1_2_3().build(), "1.2.3")]

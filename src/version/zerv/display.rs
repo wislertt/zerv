@@ -1,5 +1,6 @@
-use crate::version::zerv::Zerv;
 use std::fmt;
+
+use crate::version::zerv::Zerv;
 
 impl fmt::Display for Zerv {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -14,7 +15,12 @@ impl fmt::Display for Zerv {
 mod tests {
     use super::*;
     use crate::constants::ron_fields;
-    use crate::version::zerv::{Component, ZervSchema, ZervVars};
+    use crate::version::zerv::bump::precedence::PrecedenceOrder;
+    use crate::version::zerv::{
+        Component,
+        ZervSchema,
+        ZervVars,
+    };
 
     #[test]
     fn test_zerv_display() {
@@ -26,6 +32,7 @@ mod tests {
             ],
             extra_core: vec![],
             build: vec![],
+            precedence_order: PrecedenceOrder::default(),
         };
         let vars = ZervVars {
             major: Some(1),
@@ -48,6 +55,7 @@ mod tests {
             core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
             extra_core: vec![],
             build: vec![],
+            precedence_order: PrecedenceOrder::default(),
         };
         let vars = ZervVars {
             major: Some(1),

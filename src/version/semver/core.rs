@@ -57,8 +57,9 @@ impl Default for SemVer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     mod construction {
         use super::*;

@@ -1,5 +1,10 @@
-use crate::version::{PEP440, SemVer, Zerv};
 use rstest::rstest;
+
+use crate::version::{
+    PEP440,
+    SemVer,
+    Zerv,
+};
 
 #[cfg(test)]
 mod tests {

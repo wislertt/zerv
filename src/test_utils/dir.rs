@@ -1,7 +1,10 @@
-use std::fs;
-use std::io;
 use std::path::Path;
 use std::process::Command;
+use std::{
+    fs,
+    io,
+};
+
 use tempfile::TempDir;
 
 /// Temporary directory utility for testing
@@ -63,8 +66,9 @@ impl TestDir {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[test]
     fn test_dir_new() {

@@ -1,9 +1,18 @@
-use super::{LocalSegment, PEP440};
+use super::{
+    LocalSegment,
+    PEP440,
+};
 use crate::constants::ron_fields;
-use crate::version::pep440::core::{DevLabel, PostLabel};
-use crate::version::zerv::Component;
+use crate::version::pep440::core::{
+    DevLabel,
+    PostLabel,
+};
 use crate::version::zerv::core::Zerv;
-use crate::version::zerv::{resolve_timestamp, utils::extract_core_values};
+use crate::version::zerv::utils::extract_core_values;
+use crate::version::zerv::{
+    Component,
+    resolve_timestamp,
+};
 
 struct PEP440Components {
     epoch: u32,
@@ -206,11 +215,12 @@ impl From<Zerv> for PEP440 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test_utils::zerv::{zerv_calver, zerv_pep440::from};
-    use crate::version::zerv::PreReleaseLabel;
-
     use rstest::rstest;
+
+    use super::*;
+    use crate::test_utils::zerv::zerv_calver;
+    use crate::test_utils::zerv::zerv_pep440::from;
+    use crate::version::zerv::PreReleaseLabel;
 
     #[rstest]
     // Basic conversions

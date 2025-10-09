@@ -24,7 +24,7 @@ jobs:
 
             - uses: dtolnay/rust-toolchain@6d653acede28d24f02e3cd41383119e8b1b35921 # stable
               with:
-                  toolchain: stable
+                  toolchain: nightly
                   components: rustfmt, clippy
 
             - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd #v3.0.1

@@ -54,9 +54,11 @@ impl TestOutput {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use rstest::rstest;
     use std::process::Command;
+
+    use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case("test output", "test", true)]

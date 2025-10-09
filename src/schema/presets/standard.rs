@@ -1,7 +1,16 @@
 use super::{
-    determine_tier, tier_1_core, tier_1_extra_core, tier_2_build, tier_3_build, tier_3_extra_core,
+    determine_tier,
+    tier_1_core,
+    tier_1_extra_core,
+    tier_2_build,
+    tier_3_build,
+    tier_3_extra_core,
 };
-use crate::version::zerv::{ZervSchema, ZervVars};
+use crate::version::zerv::bump::precedence::PrecedenceOrder;
+use crate::version::zerv::{
+    ZervSchema,
+    ZervVars,
+};
 
 // Tier 1: Tagged, clean - major.minor.patch
 pub fn zerv_standard_tier_1() -> ZervSchema {
@@ -9,6 +18,7 @@ pub fn zerv_standard_tier_1() -> ZervSchema {
         core: tier_1_core(),
         extra_core: tier_1_extra_core(),
         build: vec![],
+        precedence_order: PrecedenceOrder::default(),
     }
 }
 
@@ -18,6 +28,7 @@ pub fn zerv_standard_tier_2() -> ZervSchema {
         core: tier_1_core(),
         extra_core: tier_1_extra_core(),
         build: tier_2_build(),
+        precedence_order: PrecedenceOrder::default(),
     }
 }
 
@@ -27,6 +38,7 @@ pub fn zerv_standard_tier_3() -> ZervSchema {
         core: tier_1_core(),
         extra_core: tier_3_extra_core(),
         build: tier_3_build(),
+        precedence_order: PrecedenceOrder::default(),
     }
 }
 
@@ -42,9 +54,10 @@ pub fn get_standard_schema(vars: &ZervVars) -> ZervSchema {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::version::zerv::ZervVars;
-    use rstest::rstest;
 
     #[rstest]
     #[case(ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, zerv_standard_tier_1())]

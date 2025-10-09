@@ -1,6 +1,11 @@
-use super::{GitOperations, GitTestConstants, TestDir};
 use std::io;
 use std::process::Command;
+
+use super::{
+    GitOperations,
+    GitTestConstants,
+    TestDir,
+};
 
 /// Native Git implementation for CI testing
 #[derive(Default)]

@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
+use once_cell::sync::Lazy;
+
 use crate::constants::bump_types;
 use crate::version::zerv::core::PreReleaseLabel;
-use once_cell::sync::Lazy;
-use std::collections::HashMap;
 
 /// Enum for bump types - stores increment value and label
 /// This defines the core bump operations and their precedence
@@ -15,29 +17,31 @@ pub enum BumpType {
     PreReleaseNum(u64),
     Post(u64),
     Dev(u64),
+    SchemaBump {
+        section: String,
+        index: usize,
+        value: u64,
+    },
 }
 
 impl BumpType {
-    /// Single source of truth - just list of names
-    pub const PRECEDENCE_NAMES: &'static [&'static str] = &[
-        bump_types::EPOCH,             // 0
-        bump_types::MAJOR,             // 1
-        bump_types::MINOR,             // 2
-        bump_types::PATCH,             // 3
-        bump_types::PRE_RELEASE_LABEL, // 4
-        bump_types::PRE_RELEASE_NUM,   // 5
-        bump_types::POST,              // 6
-        bump_types::DEV,               // 7
-    ];
-
     /// O(1) string -> index lookup map
     fn name_to_index() -> &'static HashMap<&'static str, usize> {
         static NAME_TO_INDEX: Lazy<HashMap<&'static str, usize>> = Lazy::new(|| {
-            BumpType::PRECEDENCE_NAMES
-                .iter()
-                .enumerate()
-                .map(|(i, &name)| (name, i))
-                .collect()
+            [
+                (bump_types::EPOCH, 0),
+                (bump_types::MAJOR, 1),
+                (bump_types::MINOR, 2),
+                (bump_types::PATCH, 3),
+                (bump_types::PRE_RELEASE_LABEL, 4),
+                (bump_types::PRE_RELEASE_NUM, 5),
+                (bump_types::POST, 6),
+                (bump_types::DEV, 7),
+                ("schema_bump", 8),
+            ]
+            .iter()
+            .map(|(name, index)| (*name, *index))
+            .collect()
         });
         &NAME_TO_INDEX
     }
@@ -58,6 +62,7 @@ impl BumpType {
             BumpType::PreReleaseNum(_) => bump_types::PRE_RELEASE_NUM,
             BumpType::Post(_) => bump_types::POST,
             BumpType::Dev(_) => bump_types::DEV,
+            BumpType::SchemaBump { .. } => "schema_bump",
         }
     }
 
@@ -68,17 +73,13 @@ impl BumpType {
             .copied()
             .unwrap_or_else(|| panic!("Unknown component name: {component}"))
     }
-
-    /// O(1) get string from precedence index
-    pub fn str_from_precedence(index: usize) -> Option<&'static str> {
-        Self::PRECEDENCE_NAMES.get(index).copied()
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::*;
+
+    use super::*;
 
     #[test]
     fn test_precedence_order() {
@@ -92,6 +93,11 @@ mod tests {
             BumpType::PreReleaseNum(0),
             BumpType::Post(0),
             BumpType::Dev(0),
+            BumpType::SchemaBump {
+                section: "core".to_string(),
+                index: 0,
+                value: 1,
+            },
         ];
 
         for i in 1..components.len() {
@@ -113,6 +119,7 @@ mod tests {
     #[case(BumpType::PreReleaseNum(0), 5)]
     #[case(BumpType::Post(0), 6)]
     #[case(BumpType::Dev(0), 7)]
+    #[case(BumpType::SchemaBump { section: "core".to_string(), index: 0, value: 1 }, 8)]
     fn test_precedence_values(#[case] bump_type: BumpType, #[case] expected_precedence: usize) {
         assert_eq!(bump_type.precedence(), expected_precedence);
     }
@@ -126,6 +133,7 @@ mod tests {
     #[case(bump_types::PRE_RELEASE_NUM, 5)]
     #[case(bump_types::POST, 6)]
     #[case(bump_types::DEV, 7)]
+    #[case("schema_bump", 8)]
     fn test_precedence_from_str(#[case] component: &str, #[case] expected_precedence: usize) {
         assert_eq!(
             BumpType::precedence_from_str(component),
@@ -145,22 +153,9 @@ mod tests {
     #[case(BumpType::PreReleaseNum(0), bump_types::PRE_RELEASE_NUM)]
     #[case(BumpType::Post(0), bump_types::POST)]
     #[case(BumpType::Dev(0), bump_types::DEV)]
+    #[case(BumpType::SchemaBump { section: "core".to_string(), index: 0, value: 1 }, "schema_bump")]
     fn test_to_str(#[case] bump_type: BumpType, #[case] expected_field_name: &str) {
         assert_eq!(bump_type.to_str(), expected_field_name);
-    }
-
-    #[rstest]
-    #[case(0, Some(bump_types::EPOCH))]
-    #[case(1, Some(bump_types::MAJOR))]
-    #[case(2, Some(bump_types::MINOR))]
-    #[case(3, Some(bump_types::PATCH))]
-    #[case(4, Some(bump_types::PRE_RELEASE_LABEL))]
-    #[case(5, Some(bump_types::PRE_RELEASE_NUM))]
-    #[case(6, Some(bump_types::POST))]
-    #[case(7, Some(bump_types::DEV))]
-    #[case(8, None)]
-    fn test_str_from_precedence(#[case] index: usize, #[case] expected: Option<&str>) {
-        assert_eq!(BumpType::str_from_precedence(index), expected);
     }
 
     #[test]

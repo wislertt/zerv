@@ -1,17 +1,33 @@
+use ron::de::from_str;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
+use super::bump::precedence::{
+    Precedence,
+    PrecedenceOrder,
+};
 use super::components::ComponentConfig;
 use crate::error::ZervError;
-use ron::de::from_str;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SchemaConfig {
     pub core: Vec<ComponentConfig>,
     pub extra_core: Vec<ComponentConfig>,
     pub build: Vec<ComponentConfig>,
+    #[serde(default)]
+    pub precedence_order: Vec<Precedence>,
 }
 
 impl From<SchemaConfig> for crate::version::zerv::schema::ZervSchema {
     fn from(config: SchemaConfig) -> Self {
+        let precedence_order = if config.precedence_order.is_empty() {
+            PrecedenceOrder::default()
+        } else {
+            PrecedenceOrder::from_precedences(config.precedence_order)
+        };
+
         crate::version::zerv::schema::ZervSchema {
             core: config
                 .core
@@ -28,6 +44,7 @@ impl From<SchemaConfig> for crate::version::zerv::schema::ZervSchema {
                 .into_iter()
                 .map(super::components::Component::from)
                 .collect(),
+            precedence_order,
         }
     }
 }
@@ -50,6 +67,7 @@ impl From<&crate::version::zerv::schema::ZervSchema> for SchemaConfig {
                 .iter()
                 .map(super::components::ComponentConfig::from)
                 .collect(),
+            precedence_order: schema.precedence_order.to_vec(),
         }
     }
 }
@@ -86,6 +104,7 @@ mod tests {
             build: vec![ComponentConfig::String {
                 value: "build".to_string(),
             }],
+            precedence_order: vec![],
         };
 
         let zerv_schema: ZervSchema = schema_config.into();
@@ -118,5 +137,50 @@ mod tests {
         assert_eq!(schema.core.len(), 2);
         assert_eq!(schema.extra_core.len(), 0);
         assert_eq!(schema.build.len(), 1);
+        // Should use default precedence order
+        assert_eq!(schema.precedence_order.len(), 11);
+    }
+
+    #[test]
+    fn test_parse_ron_schema_with_precedence() {
+        use crate::version::zerv::bump::precedence::Precedence;
+
+        let ron_schema = r#"
+            SchemaConfig(
+                core: [
+                    VarField(field: "major"),
+                    VarField(field: "minor"),
+                ],
+                extra_core: [],
+                build: [
+                    String(value: "build_id")
+                ],
+                precedence_order: [
+                    Major,
+                    Minor,
+                    Patch,
+                    Core,
+                    Build
+                ]
+            )
+        "#;
+
+        let schema = parse_ron_schema(ron_schema).unwrap();
+        assert_eq!(schema.core.len(), 2);
+        assert_eq!(schema.extra_core.len(), 0);
+        assert_eq!(schema.build.len(), 1);
+        assert_eq!(schema.precedence_order.len(), 5);
+        assert_eq!(
+            schema.precedence_order.get_precedence(0),
+            Some(&Precedence::Major)
+        );
+        assert_eq!(
+            schema.precedence_order.get_precedence(1),
+            Some(&Precedence::Minor)
+        );
+        assert_eq!(
+            schema.precedence_order.get_precedence(4),
+            Some(&Precedence::Build)
+        );
     }
 }

@@ -1,6 +1,10 @@
-use super::core::{LocalSegment, PEP440};
-use crate::version::zerv::PreReleaseLabel;
 use std::cmp::Ordering;
+
+use super::core::{
+    LocalSegment,
+    PEP440,
+};
+use crate::version::zerv::PreReleaseLabel;
 
 impl PartialOrd for PEP440 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -117,9 +121,13 @@ impl Eq for PEP440 {}
 
 #[cfg(test)]
 mod tests {
-    use super::super::core::{DevLabel, PostLabel};
-    use super::*;
     use rstest::rstest;
+
+    use super::super::core::{
+        DevLabel,
+        PostLabel,
+    };
+    use super::*;
 
     #[rstest]
     #[case(PreReleaseLabel::Alpha, PreReleaseLabel::Beta)]

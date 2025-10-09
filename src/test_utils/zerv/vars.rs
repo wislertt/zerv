@@ -1,4 +1,8 @@
-use crate::version::zerv::{PreReleaseLabel, PreReleaseVar, ZervVars};
+use crate::version::zerv::{
+    PreReleaseLabel,
+    PreReleaseVar,
+    ZervVars,
+};
 
 /// Fixture for creating ZervVars test data
 pub struct ZervVarsFixture {

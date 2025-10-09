@@ -1,27 +1,47 @@
-use crate::constants::{ron_fields, timestamp_patterns};
-use crate::error::ZervError;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
+use super::PrecedenceOrder;
 use super::components::Component;
+use crate::constants::{
+    ron_fields,
+    timestamp_patterns,
+};
+use crate::error::ZervError;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZervSchema {
     pub core: Vec<Component>,
     pub extra_core: Vec<Component>,
     pub build: Vec<Component>,
+    #[serde(default)]
+    pub precedence_order: PrecedenceOrder,
 }
 
 impl ZervSchema {
-    /// Create a new ZervSchema with automatic validation
+    /// Create a new ZervSchema with automatic validation and default precedence order
     pub fn new(
         core: Vec<Component>,
         extra_core: Vec<Component>,
         build: Vec<Component>,
     ) -> Result<Self, ZervError> {
+        Self::new_with_precedence(core, extra_core, build, PrecedenceOrder::default())
+    }
+
+    /// Create a new ZervSchema with custom precedence order
+    pub fn new_with_precedence(
+        core: Vec<Component>,
+        extra_core: Vec<Component>,
+        build: Vec<Component>,
+        precedence_order: PrecedenceOrder,
+    ) -> Result<Self, ZervError> {
         let schema = Self {
             core,
             extra_core,
             build,
+            precedence_order,
         };
         schema.validate()?;
         Ok(schema)
@@ -42,6 +62,11 @@ impl ZervSchema {
         Self::validate_components(&self.build)?;
 
         Ok(())
+    }
+
+    /// Get the PEP440-based precedence order
+    pub fn pep440_based_precedence_order() -> PrecedenceOrder {
+        PrecedenceOrder::pep440_based()
     }
 
     /// Validate a single component
@@ -145,8 +170,13 @@ impl ZervSchema {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
+    use crate::version::zerv::bump::precedence::{
+        Precedence,
+        PrecedenceOrder,
+    };
 
     #[rstest]
     #[case("major")]
@@ -258,6 +288,7 @@ mod tests {
             core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
             extra_core: vec![],
             build: vec![],
+            precedence_order: PrecedenceOrder::default(),
         };
         assert!(schema.validate().is_ok());
     }
@@ -268,6 +299,7 @@ mod tests {
             core: vec![],
             extra_core: vec![],
             build: vec![],
+            precedence_order: PrecedenceOrder::default(),
         };
         let result = schema.validate();
         assert!(result.is_err());
@@ -361,6 +393,74 @@ mod tests {
         )
         .unwrap();
         assert_eq!(schema.core.len(), 4);
+    }
+
+    #[test]
+    fn test_zerv_schema_with_precedence_order() {
+        let custom_precedence = PrecedenceOrder::from_precedences(vec![
+            Precedence::Major,
+            Precedence::Minor,
+            Precedence::Patch,
+        ]);
+
+        let schema = ZervSchema::new_with_precedence(
+            vec![Component::VarField(ron_fields::MAJOR.to_string())],
+            vec![],
+            vec![],
+            custom_precedence.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(schema.precedence_order.len(), 3);
+        assert_eq!(
+            schema.precedence_order.get_precedence(0),
+            Some(&Precedence::Major)
+        );
+        assert_eq!(
+            schema.precedence_order.get_precedence(1),
+            Some(&Precedence::Minor)
+        );
+        assert_eq!(
+            schema.precedence_order.get_precedence(2),
+            Some(&Precedence::Patch)
+        );
+    }
+
+    #[test]
+    fn test_zerv_schema_default_precedence_order() {
+        let schema = ZervSchema::new(
+            vec![Component::VarField(ron_fields::MAJOR.to_string())],
+            vec![],
+            vec![],
+        )
+        .unwrap();
+
+        // Should use default PEP440-based precedence order
+        assert_eq!(schema.precedence_order.len(), 11);
+        assert_eq!(
+            schema.precedence_order.get_precedence(0),
+            Some(&Precedence::Epoch)
+        );
+        assert_eq!(
+            schema.precedence_order.get_precedence(1),
+            Some(&Precedence::Major)
+        );
+        assert_eq!(
+            schema.precedence_order.get_precedence(10),
+            Some(&Precedence::Build)
+        );
+    }
+
+    #[test]
+    fn test_zerv_schema_pep440_based_precedence_order() {
+        let precedence_order = ZervSchema::pep440_based_precedence_order();
+        assert_eq!(precedence_order.len(), 11);
+        assert_eq!(precedence_order.get_precedence(0), Some(&Precedence::Epoch));
+        assert_eq!(precedence_order.get_precedence(1), Some(&Precedence::Major));
+        assert_eq!(
+            precedence_order.get_precedence(10),
+            Some(&Precedence::Build)
+        );
     }
 
     #[rstest]

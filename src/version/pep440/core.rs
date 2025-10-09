@@ -142,8 +142,9 @@ impl Default for PEP440 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[test]
     fn test_pep440_version_new() {

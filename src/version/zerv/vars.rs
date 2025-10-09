@@ -1,10 +1,14 @@
+// use crate::version::zerv::utils::normalize_pre_release_label;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json;
+
 use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::version::VersionArgs;
 use crate::error::ZervError;
 use crate::version::zerv::core::PreReleaseVar;
-// use crate::version::zerv::utils::normalize_pre_release_label;
-use serde::{Deserialize, Serialize};
-use serde_json;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ZervVars {
@@ -80,7 +84,7 @@ impl ZervVars {
 
     /// Apply --clean flag (sets distance=0 and dirty=false)
     fn apply_clean_flag(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        if args.clean {
+        if args.overrides.clean {
             self.distance = Some(0);
             self.dirty = Some(false);
         }
@@ -90,7 +94,7 @@ impl ZervVars {
     /// Apply VCS-level overrides (distance, dirty, branch, commit_hash)
     fn apply_vcs_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Apply distance override
-        if let Some(distance) = args.distance {
+        if let Some(distance) = args.overrides.distance {
             self.distance = Some(distance as u64);
         }
 
@@ -100,12 +104,12 @@ impl ZervVars {
         }
 
         // Apply branch override
-        if let Some(ref current_branch) = args.current_branch {
+        if let Some(ref current_branch) = args.overrides.current_branch {
             self.bumped_branch = Some(current_branch.clone());
         }
 
         // Apply commit hash override
-        if let Some(ref commit_hash) = args.commit_hash {
+        if let Some(ref commit_hash) = args.overrides.commit_hash {
             self.bumped_commit_hash = Some(commit_hash.clone());
             // Also update short hash (take first 7 characters)
             self.bumped_commit_hash = Some(commit_hash.chars().take(7).collect());
@@ -126,10 +130,10 @@ impl ZervVars {
     /// Apply version-specific field overrides
     fn apply_tag_version_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Apply tag version override (parse and extract components)
-        if let Some(ref tag_version) = args.tag_version {
+        if let Some(ref tag_version) = args.overrides.tag_version {
             // Use existing InputFormatHandler for parsing
             let version_object =
-                InputFormatHandler::parse_version_string(tag_version, &args.input_format)?;
+                InputFormatHandler::parse_version_string(tag_version, &args.main.input_format)?;
             let parsed_vars = ZervVars::from(version_object);
 
             // Apply parsed version components to self
@@ -164,7 +168,7 @@ impl ZervVars {
         //     self.epoch = Some(epoch as u64);
         // }
 
-        if let Some(ref custom_json) = args.custom {
+        if let Some(ref custom_json) = args.overrides.custom {
             self.custom = serde_json::from_str(custom_json)
                 .map_err(|e| ZervError::InvalidVersion(format!("Invalid custom JSON: {e}")))?;
         }
@@ -174,7 +178,7 @@ impl ZervVars {
 
     /// Apply context control logic (--bump-context vs --no-bump-context)
     fn apply_context_control(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        if args.no_bump_context {
+        if args.bumps.no_bump_context {
             // Force clean state - no VCS metadata
             self.distance = Some(0);
             self.dirty = Some(false);
@@ -190,11 +194,12 @@ impl ZervVars {
 
 #[cfg(test)]
 mod tests {
+    use clap::Parser;
+    use rstest::rstest;
+
     use super::*;
     use crate::test_utils::VersionArgsFixture;
     use crate::version::zerv::core::PreReleaseLabel;
-    use clap::Parser;
-    use rstest::rstest;
 
     #[rstest]
     #[case(Some("abcdef1234567890"), Some("abcdef1"))]

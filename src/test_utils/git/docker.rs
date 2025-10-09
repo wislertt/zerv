@@ -1,11 +1,19 @@
-use super::{GitOperations, GitTestConstants, TestDir};
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 #[cfg(unix)]
 use libc;
+
+use super::{
+    GitOperations,
+    GitTestConstants,
+    TestDir,
+};
 
 #[cfg(test)]
 fn validate_docker_args(args: &[&str]) -> Result<(), String> {
@@ -389,9 +397,10 @@ impl Drop for DockerGit {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::test_utils::should_run_docker_tests;
-    use rstest::rstest;
 
     // Error message constants
     const DOCKER_INIT_ERROR: &str = "Docker git init should succeed";

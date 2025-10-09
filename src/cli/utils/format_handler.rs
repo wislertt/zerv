@@ -1,7 +1,13 @@
-use crate::error::ZervError;
-use crate::version::{PEP440, SemVer, VersionObject, Zerv};
 use std::io::Read;
 use std::str::FromStr;
+
+use crate::error::ZervError;
+use crate::version::{
+    PEP440,
+    SemVer,
+    VersionObject,
+    Zerv,
+};
 
 pub struct InputFormatHandler;
 

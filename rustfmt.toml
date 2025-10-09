@@ -1,0 +1,16 @@
+# rustfmt.toml - Rust formatting configuration for zerv project
+
+# General formatting
+max_width = 100
+tab_spaces = 4
+newline_style = "Unix"
+
+# Import formatting (requires nightly)
+group_imports = "StdExternalCrate"
+imports_layout = "Vertical"
+imports_granularity = "Module"
+
+# Basic formatting options
+use_field_init_shorthand = true
+use_try_shorthand = true
+force_explicit_abi = true

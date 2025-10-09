@@ -1,8 +1,15 @@
-use crate::version::zerv::{PreReleaseLabel, Zerv};
-use crate::version::{pep440::PEP440, semver::SemVer};
 use std::str::FromStr;
 
-use super::{ZervSchemaFixture, ZervVarsFixture};
+use super::{
+    ZervSchemaFixture,
+    ZervVarsFixture,
+};
+use crate::version::pep440::PEP440;
+use crate::version::semver::SemVer;
+use crate::version::zerv::{
+    PreReleaseLabel,
+    Zerv,
+};
 
 /// Fixture for creating complete Zerv test data
 pub struct ZervFixture {

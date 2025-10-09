@@ -1,6 +1,16 @@
-use super::{LocalSegment, PEP440};
+use super::{
+    LocalSegment,
+    PEP440,
+};
 use crate::constants::ron_fields;
-use crate::version::zerv::{Component, PreReleaseVar, Zerv, ZervSchema, ZervVars};
+use crate::version::zerv::bump::precedence::PrecedenceOrder;
+use crate::version::zerv::{
+    Component,
+    PreReleaseVar,
+    Zerv,
+    ZervSchema,
+    ZervVars,
+};
 
 impl From<PEP440> for Zerv {
     fn from(pep440: PEP440) -> Self {
@@ -67,6 +77,7 @@ impl From<PEP440> for Zerv {
                 ],
                 extra_core,
                 build,
+                precedence_order: PrecedenceOrder::default(),
             },
             vars: ZervVars {
                 major,
@@ -88,10 +99,10 @@ impl From<PEP440> for Zerv {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::test_utils::zerv::zerv_pep440::to;
-
-    use rstest::rstest;
 
     #[rstest]
     // Basic conversions

@@ -28,11 +28,14 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::test_utils::{
-        get_real_pep440_vcs_data, get_real_semver_vcs_data, should_run_docker_tests,
+        get_real_pep440_vcs_data,
+        get_real_semver_vcs_data,
+        should_run_docker_tests,
     };
-    use rstest::rstest;
 
     #[rstest]
     #[case::semver(get_real_semver_vcs_data(), (1, 2, 3), "SemVer")]

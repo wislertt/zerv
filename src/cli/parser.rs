@@ -1,6 +1,10 @@
+use clap::{
+    Parser,
+    Subcommand,
+};
+
 use crate::cli::check::CheckArgs;
 use crate::cli::version::VersionArgs;
-use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "zerv")]
@@ -54,8 +58,9 @@ Supports SemVer, PEP440, and other version format validation."
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[test]
     fn test_cli_structure() {
@@ -72,7 +77,7 @@ mod tests {
         let cli = Cli::try_parse_from(["zerv", "version", "-C", "/tmp"]).unwrap();
         assert!(matches!(cli.command, Commands::Version(_)));
         if let Commands::Version(version_args) = cli.command {
-            assert_eq!(version_args.directory, Some("/tmp".to_string()));
+            assert_eq!(version_args.main.directory, Some("/tmp".to_string()));
         }
     }
 
