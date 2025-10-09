@@ -1,15 +1,15 @@
 [package]
 name = "zerv"
 version = "0.0.0" # Use git tag
-authors = ["Wisaroot Lertthaweedech <l.wisaroot@gmail.com>"]
+authors = ["Wisaroot Lertthaweedech <wislertth@gmail.com>"]
 edition = "2024"
 description = """
 Generate versions for any commit from git and other version control -
 perfect for CI/CD builds and multiple formats
 """
 license = "Apache-2.0"
-repository = "https://github.com/wisarootl/zerv"
-homepage = "https://github.com/wisarootl/zerv"
+repository = "https://github.com/wislertt/zerv"
+homepage = "https://github.com/wislertt/zerv"
 readme = "README.md"
 keywords = ["cli", "versioning", "git", "semver"]
 categories = ["command-line-utilities", "development-tools::build-utils", "config", "parsing"]
