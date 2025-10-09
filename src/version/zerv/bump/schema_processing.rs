@@ -4,12 +4,6 @@ use crate::version::zerv::components::Component;
 use crate::version::zerv::core::Zerv;
 
 impl Zerv {
-    /// Process schema components for a given section
-    ///
-    /// # Arguments
-    /// * `section` - The schema section to process ("core", "extra_core", or "build")
-    /// * `overrides` - Override values for components
-    /// * `bumps` - Bump values for components
     pub fn process_schema_section(
         &mut self,
         section: &str,
@@ -36,38 +30,6 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process schema core components
-    pub fn process_schema_core(
-        &mut self,
-        core_overrides: &[String],
-        core_bumps: &[String],
-    ) -> Result<(), ZervError> {
-        self.process_schema_section("core", core_overrides, core_bumps)
-    }
-
-    /// Process schema extra_core components
-    pub fn process_schema_extra_core(
-        &mut self,
-        extra_core_overrides: &[String],
-        extra_core_bumps: &[String],
-    ) -> Result<(), ZervError> {
-        self.process_schema_section("extra_core", extra_core_overrides, extra_core_bumps)
-    }
-
-    /// Process schema build components
-    pub fn process_schema_build(
-        &mut self,
-        build_overrides: &[String],
-        build_bumps: &[String],
-    ) -> Result<(), ZervError> {
-        self.process_schema_section("build", build_overrides, build_bumps)
-    }
-
-    /// Validate that a field can be processed
-    ///
-    /// # Arguments
-    /// * `field_name` - The field name to validate
-    /// * `precedence_names` - List of valid field names
     fn validate_field_can_be_processed(
         field_name: &str,
         precedence_names: &[String],
@@ -80,14 +42,6 @@ impl Zerv {
         Ok(())
     }
 
-    /// Parse override and bump values for VarField processing
-    ///
-    /// # Arguments
-    /// * `override_value` - Optional override value string
-    /// * `bump_value` - Optional bump value string
-    ///
-    /// # Returns
-    /// Tuple of (override_val, bump_val) as Option<u32>
     fn parse_var_field_values(
         override_value: Option<&str>,
         bump_value: Option<&str>,
@@ -97,13 +51,6 @@ impl Zerv {
         Ok((override_val, bump_val))
     }
 
-    /// Process a VarField component with override and bump values
-    ///
-    /// # Arguments
-    /// * `field_name` - The field name to process
-    /// * `override_value` - Optional override value (absolute)
-    /// * `bump_value` - Optional bump value (relative)
-    /// * `precedence_names` - Valid field names for validation
     fn process_var_field(
         &mut self,
         field_name: String,
@@ -144,12 +91,6 @@ impl Zerv {
         Ok(())
     }
 
-    /// Process an Integer component with override and bump values
-    ///
-    /// # Arguments
-    /// * `component` - The Integer component to process (will be mutated)
-    /// * `override_value` - Optional override value (absolute)
-    /// * `bump_value` - Optional bump value (relative)
     fn process_integer_component(
         component: &mut Component,
         override_value: Option<String>,
@@ -187,8 +128,30 @@ impl Zerv {
         }
     }
 
-    /// Process a schema component by section, index, override value, and bump value
-    /// Handles both overrides (absolute values) and bumps (relative values)
+    fn process_string_component(
+        component: &mut Component,
+        override_value: Option<String>,
+        bump_value: Option<String>,
+    ) -> Result<(), ZervError> {
+        if let Component::String(current_value) = component {
+            // 1. Override step - set absolute value if specified
+            if let Some(override_val) = override_value {
+                *current_value = override_val;
+            }
+
+            // 2. Bump step - replace with bump value if specified
+            if let Some(bump_val) = bump_value {
+                *current_value = bump_val;
+            }
+
+            Ok(())
+        } else {
+            Err(ZervError::InvalidBumpTarget(
+                "Expected String component".to_string(),
+            ))
+        }
+    }
+
     pub fn process_schema_component(
         &mut self,
         section: &str,
@@ -230,9 +193,14 @@ impl Zerv {
                 self.process_var_field(field_name, override_value, bump_value, &precedence_names)?;
             }
             Component::String(_) => {
-                return Err(ZervError::NotImplemented(
-                    "String component processing not yet implemented".to_string(),
-                ));
+                // Process String component directly (mutates the component)
+                if let Some(component) = components.get_mut(index) {
+                    Self::process_string_component(component, override_value, bump_value)?;
+                } else {
+                    return Err(ZervError::InvalidBumpTarget(format!(
+                        "Component at index {index} not found"
+                    )));
+                }
             }
             Component::Integer(_) => {
                 // Process Integer component directly (mutates the component)
@@ -267,7 +235,7 @@ mod tests {
 
     // Test schema processing functions (core, extra_core, build)
     #[rstest]
-    #[case("core", vec![Component::VarField(ron_fields::MAJOR.to_string()), Component::String(".".to_string()), Component::VarField(ron_fields::MINOR.to_string())], vec!["0=5"], vec!["2=2"], |zerv: &mut Zerv| {
+    #[case("core", vec![Component::VarField(ron_fields::MAJOR.to_string()), Component::VarField(ron_fields::MINOR.to_string())], vec!["0=5"], vec!["1=2"], |zerv: &mut Zerv| {
         assert_eq!(zerv.vars.major, Some(5)); // Override to 5
         assert_eq!(zerv.vars.minor, Some(2)); // 0 + 2 (bump)
     })] // core processing
@@ -305,51 +273,23 @@ mod tests {
         assertions(&mut zerv);
     }
 
-    // Test the individual wrapper functions still work
-    #[rstest]
-    #[case("core", |zerv: &mut Zerv| zerv.process_schema_core(&["0=5".to_string()], &["0=2".to_string()]))]
-    #[case("extra_core", |zerv: &mut Zerv| zerv.process_schema_extra_core(&["0=5".to_string()], &["0=2".to_string()]))]
-    #[case("build", |zerv: &mut Zerv| zerv.process_schema_build(&["0=5".to_string()], &["0=2".to_string()]))]
-    fn test_individual_schema_processing_functions(
-        #[case] section: &str,
-        #[case] process_fn: impl Fn(&mut Zerv) -> Result<(), ZervError>,
-    ) {
-        let mut zerv_fixture = ZervFixture::new();
-
-        // Set up appropriate components based on section
-        match section {
-            "core" => {
-                zerv_fixture = zerv_fixture
-                    .with_core_components(vec![Component::VarField(bump_types::MAJOR.to_string())]);
-            }
-            "extra_core" => {
-                zerv_fixture = zerv_fixture
-                    .with_extra_core(Component::VarField(bump_types::EPOCH.to_string()));
-            }
-            "build" => {
-                zerv_fixture = zerv_fixture.with_build_components(vec![Component::VarField(
-                    bump_types::MINOR.to_string(),
-                )]);
-            }
-            _ => panic!("Unknown section: {section}"),
-        }
-
-        let mut zerv = zerv_fixture.build();
-
-        // Test that the individual functions still work
-        let result = process_fn(&mut zerv);
-        assert!(result.is_ok());
-    }
-
     // Test process_schema_component with different field types
     #[rstest]
-    #[case(bump_types::MAJOR, "5", None, |zerv: &mut Zerv| assert_eq!(zerv.vars.major, Some(5)))]
-    #[case(bump_types::MINOR, "3", None, |zerv: &mut Zerv| assert_eq!(zerv.vars.minor, Some(3)))]
-    #[case(bump_types::PATCH, "7", None, |zerv: &mut Zerv| assert_eq!(zerv.vars.patch, Some(7)))]
-    #[case(bump_types::EPOCH, "2", None, |zerv: &mut Zerv| assert_eq!(zerv.vars.epoch, Some(2)))]
+    #[case(bump_types::MAJOR, Some("5"), None, |zerv: &mut Zerv| assert_eq!(zerv.vars.major, Some(5)))]
+    #[case(bump_types::MINOR, Some("3"), None, |zerv: &mut Zerv| assert_eq!(zerv.vars.minor, Some(3)))]
+    #[case(bump_types::PATCH, Some("7"), None, |zerv: &mut Zerv| assert_eq!(zerv.vars.patch, Some(7)))]
+    #[case(bump_types::EPOCH, Some("2"), None, |zerv: &mut Zerv| assert_eq!(zerv.vars.epoch, Some(2)))]
+    #[case(bump_types::MAJOR, None, Some("3"), |zerv: &mut Zerv| assert_eq!(zerv.vars.major, Some(4)))]
+    #[case(bump_types::MINOR, None, Some("2"), |zerv: &mut Zerv| assert_eq!(zerv.vars.minor, Some(2)))]
+    #[case(bump_types::PATCH, None, Some("4"), |zerv: &mut Zerv| assert_eq!(zerv.vars.patch, Some(4)))]
+    #[case(bump_types::EPOCH, None, Some("1"), |zerv: &mut Zerv| assert_eq!(zerv.vars.epoch, Some(1)))]
+    #[case(bump_types::MAJOR, Some("10"), Some("2"), |zerv: &mut Zerv| assert_eq!(zerv.vars.major, Some(12)))]
+    #[case(bump_types::MINOR, Some("5"), Some("3"), |zerv: &mut Zerv| assert_eq!(zerv.vars.minor, Some(8)))]
+    #[case(bump_types::PATCH, Some("20"), Some("1"), |zerv: &mut Zerv| assert_eq!(zerv.vars.patch, Some(21)))]
+    #[case(bump_types::EPOCH, Some("3"), Some("2"), |zerv: &mut Zerv| assert_eq!(zerv.vars.epoch, Some(5)))]
     fn test_process_schema_component_field_types(
         #[case] field_type: &str,
-        #[case] override_value: &str,
+        #[case] override_value: Option<&str>,
         #[case] bump_value: Option<&str>,
         #[case] assertions: impl Fn(&mut Zerv),
     ) {
@@ -360,7 +300,7 @@ mod tests {
         zerv.process_schema_component(
             "core",
             0,
-            Some(override_value.to_string()),
+            override_value.map(|s| s.to_string()),
             bump_value.map(|s| s.to_string()),
         )
         .unwrap();
@@ -374,6 +314,9 @@ mod tests {
     #[case(None, Some("5"), Component::Integer(47))] // bump only (42 + 5)
     #[case(Some("100"), Some("5"), Component::Integer(105))] // override + bump (100 + 5)
     #[case(None, None, Component::Integer(42))] // no changes
+    #[case(Some("50"), Some("10"), Component::Integer(60))] // override 50 + bump 10
+    #[case(Some("0"), Some("25"), Component::Integer(25))] // override 0 + bump 25
+    #[case(Some("200"), Some("1"), Component::Integer(201))] // override 200 + bump 1
     fn test_process_schema_component_integer(
         #[case] override_value: Option<&str>,
         #[case] bump_value: Option<&str>,
@@ -381,6 +324,33 @@ mod tests {
     ) {
         let mut zerv = ZervFixture::new()
             .with_core_components(vec![Component::Integer(42)])
+            .build();
+
+        zerv.process_schema_component(
+            "core",
+            0,
+            override_value.map(|s| s.to_string()),
+            bump_value.map(|s| s.to_string()),
+        )
+        .unwrap();
+
+        assert_eq!(zerv.schema.core[0], expected);
+    }
+
+    // Test process_schema_component with String components
+    #[rstest]
+    #[case(Some("release"), None, Component::String("release".to_string()))] // override only
+    #[case(None, Some("beta"), Component::String("beta".to_string()))] // bump only
+    #[case(Some("release"), Some("beta"), Component::String("beta".to_string()))] // override first, then bump
+    #[case(None, None, Component::String("alpha".to_string()))] // no changes
+    #[case(Some("stable"), Some("rc"), Component::String("rc".to_string()))] // override first, then bump
+    fn test_process_schema_component_string(
+        #[case] override_value: Option<&str>,
+        #[case] bump_value: Option<&str>,
+        #[case] expected: Component,
+    ) {
+        let mut zerv = ZervFixture::new()
+            .with_core_components(vec![Component::String("alpha".to_string())])
             .build();
 
         zerv.process_schema_component(

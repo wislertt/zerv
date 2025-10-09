@@ -28,9 +28,13 @@ impl Zerv {
         self.process_dev(args.overrides.dev, args.bumps.bump_dev.flatten())?;
 
         // Process schema-based components (both overrides and bumps)
-        self.process_schema_core(&args.overrides.core, &args.bumps.bump_core)?;
-        self.process_schema_extra_core(&args.overrides.extra_core, &args.bumps.bump_extra_core)?;
-        self.process_schema_build(&args.overrides.build, &args.bumps.bump_build)?;
+        self.process_schema_section("core", &args.overrides.core, &args.bumps.bump_core)?;
+        self.process_schema_section(
+            "extra_core",
+            &args.overrides.extra_core,
+            &args.bumps.bump_extra_core,
+        )?;
+        self.process_schema_section("build", &args.overrides.build, &args.bumps.bump_build)?;
 
         self.process_bumped_timestamp(args)?;
         Ok(())
