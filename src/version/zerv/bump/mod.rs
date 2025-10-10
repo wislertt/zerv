@@ -10,17 +10,13 @@ pub mod types;
 pub mod vars_primary;
 pub mod vars_secondary;
 pub mod vars_timestamp;
+use crate::version::zerv::bump::precedence::Precedence;
 
 impl Zerv {
-    /// Apply component processing from VersionArgs in precedence order
     pub fn apply_component_processing(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        use crate::version::zerv::bump::precedence::Precedence;
-
-        // Collect precedence order to avoid borrowing conflicts
         let precedence_order: Vec<Precedence> =
             self.schema.precedence_order.iter().cloned().collect();
 
-        // Process components in precedence order
         for precedence in precedence_order {
             match precedence {
                 Precedence::Epoch => {
