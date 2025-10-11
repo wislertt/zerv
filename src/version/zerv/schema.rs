@@ -8,10 +8,7 @@ use super::components::{
     Component,
     Var,
 };
-use crate::constants::{
-    ron_fields,
-    timestamp_patterns,
-};
+use crate::constants::timestamp_patterns;
 use crate::error::ZervError;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -76,29 +73,17 @@ impl ZervSchema {
     fn validate_component(component: &Component) -> Result<(), ZervError> {
         match component {
             Component::Var(var) => {
-                match var {
-                    Var::Custom(field_name) => {
-                        if !Self::is_valid_var_field_name(field_name) {
-                            let valid_fields = Self::get_valid_field_names();
-                            return Err(ZervError::StdinError(format!(
-                                "Invalid Zerv RON: unknown field '{}' in var() component. Valid fields are: {}",
-                                field_name,
-                                valid_fields.join(", ")
-                            )));
-                        }
-                    }
-                    Var::Timestamp(pattern) => {
-                        if !Self::is_valid_timestamp_pattern(pattern) {
-                            let valid_patterns = Self::get_valid_timestamp_patterns();
-                            return Err(ZervError::StdinError(format!(
-                                "Invalid Zerv RON: unknown timestamp pattern '{}' in ts() component. Valid patterns are: {} or custom format starting with %",
-                                pattern,
-                                valid_patterns.join(", ")
-                            )));
-                        }
-                    }
-                    _ => {} // Standard enum variants are always valid
+                if let Var::Timestamp(pattern) = var
+                    && !Self::is_valid_timestamp_pattern(pattern)
+                {
+                    let valid_patterns = Self::get_valid_timestamp_patterns();
+                    return Err(ZervError::StdinError(format!(
+                        "Invalid Zerv RON: unknown timestamp pattern '{}' in ts() component. Valid patterns are: {} or custom format starting with %",
+                        pattern,
+                        valid_patterns.join(", ")
+                    )));
                 }
+                // Standard enum variants and custom fields are always valid
             }
             Component::Str(_) => {}
             Component::Int(_) => {}
@@ -112,47 +97,6 @@ impl ZervSchema {
             Self::validate_component(component)?;
         }
         Ok(())
-    }
-
-    /// Get all valid field names for var() components
-    fn get_valid_field_names() -> Vec<&'static str> {
-        vec![
-            // Core version fields
-            ron_fields::MAJOR,
-            ron_fields::MINOR,
-            ron_fields::PATCH,
-            ron_fields::EPOCH,
-            // Pre-release fields
-            ron_fields::PRE_RELEASE,
-            ron_fields::POST,
-            ron_fields::DEV,
-            // VCS state fields
-            ron_fields::DISTANCE,
-            ron_fields::DIRTY,
-            ron_fields::BRANCH,
-            ron_fields::COMMIT_HASH_SHORT,
-            // Last version fields
-            ron_fields::LAST_BRANCH,
-            ron_fields::LAST_COMMIT_HASH,
-            ron_fields::LAST_TIMESTAMP,
-        ]
-    }
-
-    /// Check if a field name is valid for var() components
-    fn is_valid_var_field_name(field_name: &str) -> bool {
-        // Check exact matches first
-        if Self::get_valid_field_names().contains(&field_name) {
-            return true;
-        }
-
-        // Check for custom fields (custom.*) - must have something after the dot
-        if field_name.starts_with(&format!("{}.", ron_fields::CUSTOM))
-            && field_name.len() > ron_fields::CUSTOM.len() + 1
-        {
-            return true;
-        }
-
-        false
     }
 
     /// Get all valid timestamp patterns for ts() components
@@ -187,41 +131,44 @@ mod tests {
     };
 
     #[rstest]
-    #[case("major")]
-    #[case("minor")]
-    #[case("patch")]
-    #[case("epoch")]
-    #[case("pre_release")]
-    #[case("post")]
-    #[case("dev")]
-    #[case("distance")]
-    #[case("dirty")]
-    #[case("branch")]
-    #[case("commit_hash_short")]
-    #[case("last_branch")]
-    #[case("last_commit_hash")]
-    #[case("last_timestamp")]
-    #[case("custom.build_id")]
-    #[case("custom.environment")]
-    #[case("custom.metadata.author")]
-    fn test_validate_component_valid_var_field(#[case] field_name: &str) {
-        let component = Component::Var(Var::Custom(field_name.to_string()));
+    #[case(Var::Major)]
+    #[case(Var::Minor)]
+    #[case(Var::Patch)]
+    #[case(Var::Epoch)]
+    #[case(Var::PreRelease)]
+    #[case(Var::Post)]
+    #[case(Var::Dev)]
+    #[case(Var::Distance)]
+    #[case(Var::Dirty)]
+    #[case(Var::Branch)]
+    #[case(Var::CommitHashShort)]
+    #[case(Var::LastBranch)]
+    #[case(Var::LastCommitHash)]
+    #[case(Var::LastTimestamp)]
+    #[case(Var::Custom("build_id".to_string()))]
+    #[case(Var::Custom("environment".to_string()))]
+    #[case(Var::Custom("metadata.author".to_string()))]
+    fn test_validate_component_valid_var_field(#[case] var: Var) {
+        let component = Component::Var(var);
         assert!(ZervSchema::validate_component(&component).is_ok());
     }
 
-    #[rstest]
-    #[case("invalid_field")]
-    #[case("unknown")]
-    #[case("bad_field")]
-    #[case("invalid.custom")]
-    #[case("custom.")]
-    #[case("")]
-    #[case("custom")]
-    fn test_validate_component_invalid_var_field(#[case] field_name: &str) {
-        let component = Component::Var(Var::Custom(field_name.to_string()));
-        let result = ZervSchema::validate_component(&component);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("unknown field"));
+    #[test]
+    fn test_validate_component_custom_fields_always_valid() {
+        // Custom fields can be any string - no validation needed
+        let test_cases = vec![
+            "build_id",
+            "environment",
+            "custom.field",
+            "any_name",
+            "",
+            "123",
+        ];
+
+        for field_name in test_cases {
+            let component = Component::Var(Var::Custom(field_name.to_string()));
+            assert!(ZervSchema::validate_component(&component).is_ok());
+        }
     }
 
     #[rstest]
@@ -462,10 +409,10 @@ mod tests {
     }
 
     #[rstest]
-    #[case("custom.build_id")]
-    #[case("custom.environment")]
-    #[case("custom.metadata.author")]
-    #[case("custom.build.config.debug")]
+    #[case("build_id")]
+    #[case("environment")]
+    #[case("metadata.author")]
+    #[case("build.config.debug")]
     fn test_zerv_schema_new_valid_custom_fields(#[case] field_name: &str) {
         let schema = ZervSchema::new(
             vec![
@@ -509,24 +456,19 @@ mod tests {
         );
     }
 
-    #[rstest]
-    #[case("invalid_field", "unknown field 'invalid_field'")]
-    #[case("unknown", "unknown field 'unknown'")]
-    #[case("bad_field", "unknown field 'bad_field'")]
-    #[case("custom.", "unknown field 'custom.'")]
-    #[case("", "unknown field ''")]
-    #[case("custom", "unknown field 'custom'")]
-    fn test_zerv_schema_new_error_invalid_var_fields(
-        #[case] field_name: &str,
-        #[case] expected_error: &str,
-    ) {
-        let result = ZervSchema::new(
-            vec![Component::Var(Var::Custom(field_name.to_string()))],
-            vec![],
-            vec![],
-        );
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains(expected_error));
+    #[test]
+    fn test_zerv_schema_new_any_custom_field_valid() {
+        // All custom field names are valid
+        let test_cases = vec!["build_id", "environment", "any_name", ""];
+
+        for field_name in test_cases {
+            let result = ZervSchema::new(
+                vec![Component::Var(Var::Custom(field_name.to_string()))],
+                vec![],
+                vec![],
+            );
+            assert!(result.is_ok());
+        }
     }
 
     #[rstest]
@@ -549,73 +491,48 @@ mod tests {
         assert!(result.unwrap_err().to_string().contains(expected_error));
     }
 
-    #[rstest]
-    #[case(
-        vec![Component::Var(Var::Custom("invalid_field".to_string()))],
-        vec![],
-        vec![],
-        "unknown field 'invalid_field'"
-    )]
-    #[case(
-        vec![],
-        vec![Component::Var(Var::Custom("invalid_field".to_string()))],
-        vec![],
-        "unknown field 'invalid_field'"
-    )]
-    #[case(
-        vec![],
-        vec![],
-        vec![Component::Var(Var::Custom("invalid_field".to_string()))],
-        "unknown field 'invalid_field'"
-    )]
-    fn test_zerv_schema_new_error_invalid_in_different_sections(
-        #[case] core: Vec<Component>,
-        #[case] extra_core: Vec<Component>,
-        #[case] build: Vec<Component>,
-        #[case] expected_error: &str,
-    ) {
-        let result = ZervSchema::new(core, extra_core, build);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains(expected_error));
+    #[test]
+    fn test_zerv_schema_new_valid_custom_fields_in_different_sections() {
+        // Custom fields are valid in all sections
+        let custom_component = Component::Var(Var::Custom("test_field".to_string()));
+
+        // Test in core section
+        let result = ZervSchema::new(vec![custom_component.clone()], vec![], vec![]);
+        assert!(result.is_ok());
+
+        // Test in extra_core section
+        let result = ZervSchema::new(vec![], vec![custom_component.clone()], vec![]);
+        assert!(result.is_ok());
+
+        // Test in build section
+        let result = ZervSchema::new(vec![], vec![], vec![custom_component]);
+        assert!(result.is_ok());
     }
 
     #[test]
-    fn test_zerv_schema_new_error_multiple_invalid_components() {
+    fn test_zerv_schema_new_valid_multiple_custom_components() {
         let result = ZervSchema::new(
             vec![
-                Component::Var(Var::Custom("invalid_field1".to_string())),
-                Component::Var(Var::Custom("invalid_field2".to_string())),
+                Component::Var(Var::Custom("field1".to_string())),
+                Component::Var(Var::Custom("field2".to_string())),
             ],
             vec![],
             vec![],
         );
-        assert!(result.is_err());
-        // Should fail on the first invalid field
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("unknown field 'invalid_field1'")
-        );
+        assert!(result.is_ok());
     }
 
     #[test]
-    fn test_zerv_schema_new_error_mixed_valid_invalid() {
+    fn test_zerv_schema_new_valid_mixed_standard_custom() {
         let result = ZervSchema::new(
             vec![
                 Component::Var(Var::Major),
-                Component::Var(Var::Custom("invalid_field".to_string())),
+                Component::Var(Var::Custom("custom_field".to_string())),
             ],
             vec![],
             vec![],
         );
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("unknown field 'invalid_field'")
-        );
+        assert!(result.is_ok());
     }
 
     // Edge cases
@@ -655,9 +572,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case("custom.metadata.author")]
-    #[case("custom.build.config.debug")]
-    #[case("custom.nested.deep.field")]
+    #[case("metadata.author")]
+    #[case("build.config.debug")]
+    #[case("nested.deep.field")]
     fn test_zerv_schema_new_valid_nested_custom_fields(#[case] field_name: &str) {
         let schema = ZervSchema::new(
             vec![Component::Var(Var::Custom(field_name.to_string()))],
