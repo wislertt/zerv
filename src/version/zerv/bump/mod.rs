@@ -6,7 +6,6 @@ pub mod precedence;
 pub mod reset;
 pub mod schema_parsing;
 pub mod schema_processing;
-pub mod types;
 pub mod vars_primary;
 pub mod vars_secondary;
 pub mod vars_timestamp;
@@ -69,13 +68,15 @@ impl Zerv {
 mod tests {
     use rstest::*;
 
-    use crate::test_utils::version_args::OverrideType;
+    use crate::test_utils::types::{
+        BumpType,
+        OverrideType,
+    };
     use crate::test_utils::{
         VersionArgsFixture,
         ZervFixture,
     };
     use crate::version::semver::SemVer;
-    use crate::version::zerv::bump::types::BumpType;
 
     // Test multiple bump combinations with reset logic
     #[rstest]
