@@ -33,33 +33,36 @@ fn extract_release_values(core_values: &[u64]) -> Vec<u32> {
     release
 }
 
-fn process_var_field_pep440(field: &str, zerv: &Zerv, components: &mut PEP440Components) {
-    match field {
-        "pre_release" => {
+fn process_var_field_pep440(var: &Var, zerv: &Zerv, components: &mut PEP440Components) {
+    match var {
+        Var::PreRelease => {
             if let Some(pr) = &zerv.vars.pre_release {
                 components.pre_label = Some(pr.label.clone());
                 components.pre_number = pr.number.map(|n| n as u32);
             }
         }
-        "epoch" => {
+        Var::Epoch => {
             components.epoch = zerv.vars.epoch.unwrap_or(0) as u32;
         }
-        "post" => {
+        Var::Post => {
             if let Some(post_num) = zerv.vars.post {
                 components.post_label = Some(PostLabel::Post);
                 components.post_number = Some(post_num as u32);
             }
         }
-        "dev" => {
+        Var::Dev => {
             if let Some(dev_num) = zerv.vars.dev {
                 components.dev_label = Some(DevLabel::Dev);
                 components.dev_number = Some(dev_num as u32);
             }
         }
-        _ => {
+        Var::Custom(name) => {
             components
                 .local_overflow
-                .push(LocalSegment::String(field.to_string()));
+                .push(LocalSegment::String(name.clone()));
+        }
+        _ => {
+            add_var_field_to_local(var, zerv, &mut components.local_overflow);
         }
     }
 }
@@ -153,23 +156,7 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
     for comp in &zerv.schema.extra_core {
         match comp {
             Component::Var(var) => {
-                let field_name = match var {
-                    Var::PreRelease => "pre_release",
-                    Var::Epoch => "epoch",
-                    Var::Post => "post",
-                    Var::Dev => "dev",
-                    Var::Custom(name) => name,
-                    _ => {
-                        add_component_to_local(
-                            comp,
-                            &mut components.local_overflow,
-                            zerv.vars.last_timestamp,
-                            zerv,
-                        );
-                        continue;
-                    }
-                };
-                process_var_field_pep440(field_name, zerv, &mut components);
+                process_var_field_pep440(var, zerv, &mut components);
             }
             _ => add_component_to_local(
                 comp,
@@ -302,6 +289,8 @@ mod tests {
     #[case(zerv_calver::calver_yy_mm_patch(), "24.3.5")]
     #[case(zerv_calver::calver_yyyy_mm_patch(), "2024.3.1")]
     #[case(zerv_calver::calver_with_timestamp_build(), "1.0.0+2024.3.16")]
+    // Custom field handling
+    #[case(from::v1_0_0_custom_field().build(), "1.0.0+custom_field")]
     fn test_zerv_to_pep440_conversion(#[case] zerv: Zerv, #[case] expected_pep440_str: &str) {
         let pep440: PEP440 = zerv.into();
         assert_eq!(pep440.to_string(), expected_pep440_str);

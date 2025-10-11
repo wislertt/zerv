@@ -37,9 +37,9 @@ fn add_epoch_identifiers(identifiers: &mut Vec<PreReleaseIdentifier>, epoch: Opt
     }
 }
 
-fn process_var_field(identifiers: &mut Vec<PreReleaseIdentifier>, field: &str, zerv: &Zerv) {
-    match field {
-        "pre_release" => {
+fn process_var_field(identifiers: &mut Vec<PreReleaseIdentifier>, var: &Var, zerv: &Zerv) {
+    match var {
+        Var::PreRelease => {
             if let Some(pr) = &zerv.vars.pre_release {
                 identifiers.push(PreReleaseIdentifier::String(
                     pre_release_label_to_semver_string(&pr.label).to_string(),
@@ -49,17 +49,20 @@ fn process_var_field(identifiers: &mut Vec<PreReleaseIdentifier>, field: &str, z
                 }
             }
         }
-        "post" => {
+        Var::Post => {
             if let Some(post_num) = zerv.vars.post {
                 identifiers.push(PreReleaseIdentifier::String("post".to_string()));
                 identifiers.push(PreReleaseIdentifier::Integer(post_num));
             }
         }
-        "dev" => {
+        Var::Dev => {
             if let Some(dev_num) = zerv.vars.dev {
                 identifiers.push(PreReleaseIdentifier::String("dev".to_string()));
                 identifiers.push(PreReleaseIdentifier::Integer(dev_num));
             }
+        }
+        Var::Custom(name) => {
+            identifiers.push(PreReleaseIdentifier::String(name.clone()));
         }
         _ => {}
     }
@@ -75,14 +78,7 @@ fn build_pre_release_identifiers(
     for comp in &zerv.schema.extra_core {
         match comp {
             Component::Var(var) => {
-                let field_name = match var {
-                    Var::PreRelease => "pre_release",
-                    Var::Post => "post",
-                    Var::Dev => "dev",
-                    Var::Custom(name) => name,
-                    _ => continue,
-                };
-                process_var_field(&mut identifiers, field_name, zerv);
+                process_var_field(&mut identifiers, var, zerv);
             }
             Component::Str(s) => identifiers.push(PreReleaseIdentifier::String(s.clone())),
             Component::Int(n) => identifiers.push(PreReleaseIdentifier::Integer(*n)),
@@ -229,6 +225,8 @@ mod tests {
     #[case(from::v1_0_0_a1_post2_dev3().build(), "1.0.0-alpha.1.post.2.dev.3")]
     #[case(from::v1_0_0_b2_dev1_post3().build(), "1.0.0-beta.2.dev.1.post.3")]
     #[case(from::v1_0_0_rc1_post1_dev1().build(), "1.0.0-rc.1.post.1.dev.1")]
+    // Custom field handling
+    #[case(from::v1_0_0_custom_field().build(), "1.0.0-custom_field")]
     // Epoch + post + dev combinations
     #[case(from::v1_0_0_e2_post1_dev3().build(), "1.0.0-epoch.2.post.1.dev.3")]
     #[case(from::v1_0_0_e1_dev2_post1().build(), "1.0.0-epoch.1.dev.2.post.1")]

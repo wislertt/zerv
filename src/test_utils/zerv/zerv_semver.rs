@@ -980,4 +980,9 @@ pub mod from {
             .with_extra_core(Component::Str("dev".to_string()))
             .with_extra_core(Component::Int(2))
     }
+
+    // Custom field variant
+    pub fn v1_0_0_custom_field() -> ZervFixture {
+        v1_0_0().with_extra_core(Component::Var(Var::Custom("custom_field".to_string())))
+    }
 }

@@ -257,6 +257,11 @@ pub mod from {
             .with_build(Component::Str("local".to_string()))
             .with_build(Component::Int(1))
     }
+
+    // Custom field variant
+    pub fn v1_0_0_custom_field() -> ZervFixture {
+        v1_0_0().with_extra_core(Component::Var(Var::Custom("custom_field".to_string())))
+    }
 }
 
 /// Fixtures for PEP440 → Zerv conversion (to_zerv.rs)
