@@ -32,18 +32,6 @@ impl Zerv {
         Ok(())
     }
 
-    fn validate_field_can_be_processed(
-        field_name: &str,
-        precedence_names: &[String],
-    ) -> Result<(), ZervError> {
-        if !precedence_names.contains(&field_name.to_string()) {
-            return Err(ZervError::InvalidBumpTarget(format!(
-                "Cannot process custom field: {field_name}"
-            )));
-        }
-        Ok(())
-    }
-
     fn parse_var_field_values(
         override_value: Option<&str>,
         bump_value: Option<&str>,
@@ -58,13 +46,7 @@ impl Zerv {
         var: &Var,
         override_value: Option<String>,
         bump_value: Option<String>,
-        precedence_names: &[String],
     ) -> Result<(), ZervError> {
-        // Validate field can be processed (only for custom fields)
-        if let Var::Custom(field_name) = var {
-            Self::validate_field_can_be_processed(field_name, precedence_names)?;
-        }
-
         // Parse override and bump values
         let (override_val, bump_val) =
             Self::parse_var_field_values(override_value.as_deref(), bump_value.as_deref())?;
@@ -161,15 +143,6 @@ impl Zerv {
         override_value: Option<String>,
         bump_value: Option<String>,
     ) -> Result<(), ZervError> {
-        // Extract precedence names first to avoid borrowing conflicts
-        let precedence_names: Vec<String> = self
-            .schema
-            .precedence_order
-            .field_precedence_names()
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
-
         // Get mutable reference to components at the beginning
         let components = match section {
             "core" => &mut self.schema.core,
@@ -198,12 +171,7 @@ impl Zerv {
                 }
                 _ => {
                     let var_clone = var.clone();
-                    self.process_var_field(
-                        &var_clone,
-                        override_value,
-                        bump_value,
-                        &precedence_names,
-                    )?;
+                    self.process_var_field(&var_clone, override_value, bump_value)?;
                 }
             },
             Component::Str(_) => {
@@ -382,7 +350,7 @@ mod tests {
     // Test process_schema_component error cases
     #[rstest]
     #[case(Var::Dirty, "Cannot process field")] // unsupported field
-    #[case(Var::Custom("unknown_field".to_string()), "Cannot process custom field")] // custom field not in precedence
+    #[case(Var::Custom("unknown_field".to_string()), "Unknown field")] // custom field processing
     fn test_process_schema_component_errors(#[case] var: Var, #[case] expected_error: &str) {
         let mut zerv = ZervFixture::new()
             .with_core_components(vec![Component::Var(var)])
