@@ -161,11 +161,11 @@ mod tests {
         let ron_schema = r#"
             SchemaConfig(
                 core: [
-                    VarField(field: "major"),
-                    VarField(field: "minor"),
+                    Var(field: Major),
+                    Var(field: Minor),
                 ],
                 extra_core: [],
-                build: [String(value: "custom")]
+                build: [Str(value: "custom")]
             )
         "#;
 
@@ -204,12 +204,11 @@ mod tests {
     #[test]
     fn test_use_existing_schema_from_stdin() {
         use crate::schema::ComponentConfig;
+        use crate::version::zerv::Var;
 
         let vars = ZervVars::default();
         let existing_schema = SchemaConfig {
-            core: vec![ComponentConfig::VarField {
-                field: "major".to_string(),
-            }],
+            core: vec![ComponentConfig::Var { field: Var::Major }],
             extra_core: vec![],
             build: vec![],
             precedence_order: vec![],
@@ -225,8 +224,10 @@ mod tests {
 
     #[test]
     fn test_zerv_schema_structure() {
-        use crate::constants::ron_fields;
-        use crate::version::zerv::Component;
+        use crate::version::zerv::{
+            Component,
+            Var,
+        };
 
         // Create a simple ZervVars for tier 1 (tagged, clean)
         let vars = ZervVars {
@@ -250,24 +251,17 @@ mod tests {
 
         // Verify core structure
         assert_eq!(zerv.schema.core.len(), 3);
-        assert_eq!(
-            zerv.schema.core[0],
-            Component::VarField(ron_fields::MAJOR.to_string())
-        );
-        assert_eq!(
-            zerv.schema.core[1],
-            Component::VarField(ron_fields::MINOR.to_string())
-        );
-        assert_eq!(
-            zerv.schema.core[2],
-            Component::VarField(ron_fields::PATCH.to_string())
-        );
+        assert_eq!(zerv.schema.core[0], Component::Var(Var::Major));
+        assert_eq!(zerv.schema.core[1], Component::Var(Var::Minor));
+        assert_eq!(zerv.schema.core[2], Component::Var(Var::Patch));
     }
 
     #[test]
     fn test_zerv_ron_roundtrip_schema() {
-        use crate::constants::ron_fields;
-        use crate::version::zerv::Component;
+        use crate::version::zerv::{
+            Component,
+            Var,
+        };
 
         let vars = ZervVars {
             major: Some(1),
@@ -287,18 +281,9 @@ mod tests {
 
         // Verify schema is preserved
         assert_eq!(parsed.schema.core.len(), 3);
-        assert_eq!(
-            parsed.schema.core[0],
-            Component::VarField(ron_fields::MAJOR.to_string())
-        );
-        assert_eq!(
-            parsed.schema.core[1],
-            Component::VarField(ron_fields::MINOR.to_string())
-        );
-        assert_eq!(
-            parsed.schema.core[2],
-            Component::VarField(ron_fields::PATCH.to_string())
-        );
+        assert_eq!(parsed.schema.core[0], Component::Var(Var::Major));
+        assert_eq!(parsed.schema.core[1], Component::Var(Var::Minor));
+        assert_eq!(parsed.schema.core[2], Component::Var(Var::Patch));
 
         // Verify vars are preserved
         assert_eq!(parsed.vars.major, Some(1));

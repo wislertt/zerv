@@ -98,9 +98,11 @@ impl Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::ron_fields;
-    use crate::version::zerv::Component;
     use crate::version::zerv::bump::precedence::PrecedenceOrder;
+    use crate::version::zerv::{
+        Component,
+        Var,
+    };
 
     mod construction {
         use super::*;
@@ -108,7 +110,7 @@ mod tests {
         #[test]
         fn test_zerv_new() {
             let schema = ZervSchema {
-                core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
+                core: vec![Component::Var(Var::Major)],
                 extra_core: vec![],
                 build: vec![],
                 precedence_order: PrecedenceOrder::default(),
@@ -382,15 +384,12 @@ mod tests {
         fn test_semver_like_structure() {
             let schema = ZervSchema {
                 core: vec![
-                    Component::VarField(ron_fields::MAJOR.to_string()),
-                    Component::VarField(ron_fields::MINOR.to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
+                    Component::Var(Var::Major),
+                    Component::Var(Var::Minor),
+                    Component::Var(Var::Patch),
                 ],
-                extra_core: vec![Component::VarField(ron_fields::PRE_RELEASE.to_string())],
-                build: vec![
-                    Component::String("build".to_string()),
-                    Component::Integer(123),
-                ],
+                extra_core: vec![Component::Var(Var::PreRelease)],
+                build: vec![Component::Str("build".to_string()), Component::Int(123)],
                 precedence_order: PrecedenceOrder::default(),
             };
 
@@ -421,10 +420,10 @@ mod tests {
         fn test_calver_like_structure() {
             let schema = ZervSchema {
                 core: vec![
-                    Component::VarTimestamp("YYYY".to_string()),
-                    Component::VarTimestamp("MM".to_string()),
-                    Component::VarTimestamp("DD".to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
+                    Component::Var(Var::Timestamp("YYYY".to_string())),
+                    Component::Var(Var::Timestamp("MM".to_string())),
+                    Component::Var(Var::Timestamp("DD".to_string())),
+                    Component::Var(Var::Patch),
                 ],
                 extra_core: vec![],
                 build: vec![],

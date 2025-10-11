@@ -4,7 +4,10 @@ use serde::{
 };
 
 use super::PrecedenceOrder;
-use super::components::Component;
+use super::components::{
+    Component,
+    Var,
+};
 use crate::constants::{
     ron_fields,
     timestamp_patterns,
@@ -72,28 +75,33 @@ impl ZervSchema {
     /// Validate a single component
     fn validate_component(component: &Component) -> Result<(), ZervError> {
         match component {
-            Component::VarField(field_name) => {
-                if !Self::is_valid_var_field_name(field_name) {
-                    let valid_fields = Self::get_valid_field_names();
-                    return Err(ZervError::StdinError(format!(
-                        "Invalid Zerv RON: unknown field '{}' in var() component. Valid fields are: {}",
-                        field_name,
-                        valid_fields.join(", ")
-                    )));
+            Component::Var(var) => {
+                match var {
+                    Var::Custom(field_name) => {
+                        if !Self::is_valid_var_field_name(field_name) {
+                            let valid_fields = Self::get_valid_field_names();
+                            return Err(ZervError::StdinError(format!(
+                                "Invalid Zerv RON: unknown field '{}' in var() component. Valid fields are: {}",
+                                field_name,
+                                valid_fields.join(", ")
+                            )));
+                        }
+                    }
+                    Var::Timestamp(pattern) => {
+                        if !Self::is_valid_timestamp_pattern(pattern) {
+                            let valid_patterns = Self::get_valid_timestamp_patterns();
+                            return Err(ZervError::StdinError(format!(
+                                "Invalid Zerv RON: unknown timestamp pattern '{}' in ts() component. Valid patterns are: {} or custom format starting with %",
+                                pattern,
+                                valid_patterns.join(", ")
+                            )));
+                        }
+                    }
+                    _ => {} // Standard enum variants are always valid
                 }
             }
-            Component::VarTimestamp(pattern) => {
-                if !Self::is_valid_timestamp_pattern(pattern) {
-                    let valid_patterns = Self::get_valid_timestamp_patterns();
-                    return Err(ZervError::StdinError(format!(
-                        "Invalid Zerv RON: unknown timestamp pattern '{}' in ts() component. Valid patterns are: {} or custom format starting with %",
-                        pattern,
-                        valid_patterns.join(", ")
-                    )));
-                }
-            }
-            Component::String(_) => {}
-            Component::Integer(_) => {}
+            Component::Str(_) => {}
+            Component::Int(_) => {}
         }
         Ok(())
     }
@@ -197,7 +205,7 @@ mod tests {
     #[case("custom.environment")]
     #[case("custom.metadata.author")]
     fn test_validate_component_valid_var_field(#[case] field_name: &str) {
-        let component = Component::VarField(field_name.to_string());
+        let component = Component::Var(Var::Custom(field_name.to_string()));
         assert!(ZervSchema::validate_component(&component).is_ok());
     }
 
@@ -210,7 +218,7 @@ mod tests {
     #[case("")]
     #[case("custom")]
     fn test_validate_component_invalid_var_field(#[case] field_name: &str) {
-        let component = Component::VarField(field_name.to_string());
+        let component = Component::Var(Var::Custom(field_name.to_string()));
         let result = ZervSchema::validate_component(&component);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("unknown field"));
@@ -238,7 +246,7 @@ mod tests {
     #[case("%H:%M:%S")]
     #[case("%Y%m%d%H%M%S")]
     fn test_validate_component_valid_timestamp(#[case] pattern: &str) {
-        let component = Component::VarTimestamp(pattern.to_string());
+        let component = Component::Var(Var::Timestamp(pattern.to_string()));
         assert!(ZervSchema::validate_component(&component).is_ok());
     }
 
@@ -250,7 +258,7 @@ mod tests {
     #[case("invalid_format")]
     #[case("")]
     fn test_validate_component_invalid_timestamp(#[case] pattern: &str) {
-        let component = Component::VarTimestamp(pattern.to_string());
+        let component = Component::Var(Var::Timestamp(pattern.to_string()));
         let result = ZervSchema::validate_component(&component);
         assert!(result.is_err());
         assert!(
@@ -268,7 +276,7 @@ mod tests {
     #[case("special-chars!@#$%")]
     #[case("unicode_测试")]
     fn test_validate_component_string(#[case] value: &str) {
-        let component = Component::String(value.to_string());
+        let component = Component::Str(value.to_string());
         assert!(ZervSchema::validate_component(&component).is_ok());
     }
 
@@ -278,14 +286,14 @@ mod tests {
     #[case(1234567890)]
     #[case(u64::MAX)]
     fn test_validate_component_integer(#[case] value: u64) {
-        let component = Component::Integer(value);
+        let component = Component::Int(value);
         assert!(ZervSchema::validate_component(&component).is_ok());
     }
 
     #[test]
     fn test_validate_schema_structure_valid() {
         let schema = ZervSchema {
-            core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
+            core: vec![Component::Var(Var::Major)],
             extra_core: vec![],
             build: vec![],
             precedence_order: PrecedenceOrder::default(),
@@ -313,12 +321,7 @@ mod tests {
 
     #[test]
     fn test_zerv_schema_new_with_validation() {
-        let schema = ZervSchema::new(
-            vec![Component::VarField(ron_fields::MAJOR.to_string())],
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let schema = ZervSchema::new(vec![Component::Var(Var::Major)], vec![], vec![]).unwrap();
         assert_eq!(schema.core.len(), 1);
     }
 
@@ -331,9 +334,9 @@ mod tests {
     #[rstest]
     #[case(
         vec![
-            Component::VarField(ron_fields::MAJOR.to_string()),
-            Component::String(".".to_string()),
-            Component::VarField(ron_fields::MINOR.to_string()),
+            Component::Var(Var::Major),
+            Component::Str(".".to_string()),
+            Component::Var(Var::Minor),
         ],
         vec![],
         vec![],
@@ -342,9 +345,9 @@ mod tests {
     #[case(
         vec![],
         vec![
-            Component::VarField(ron_fields::PRE_RELEASE.to_string()),
-            Component::String("-".to_string()),
-            Component::Integer(42),
+            Component::Var(Var::PreRelease),
+            Component::Str("-".to_string()),
+            Component::Int(42),
         ],
         vec![],
         0, 3, 0
@@ -353,16 +356,16 @@ mod tests {
         vec![],
         vec![],
         vec![
-            Component::VarField(ron_fields::DISTANCE.to_string()),
-            Component::String("+".to_string()),
-            Component::VarTimestamp("compact_date".to_string()),
+            Component::Var(Var::Distance),
+            Component::Str("+".to_string()),
+            Component::Var(Var::Timestamp("compact_date".to_string())),
         ],
         0, 0, 3
     )]
     #[case(
-        vec![Component::VarField(ron_fields::MAJOR.to_string())],
-        vec![Component::VarField(ron_fields::MINOR.to_string())],
-        vec![Component::VarField(ron_fields::PATCH.to_string())],
+        vec![Component::Var(Var::Major)],
+        vec![Component::Var(Var::Minor)],
+        vec![Component::Var(Var::Patch)],
         1, 1, 1
     )]
     fn test_zerv_schema_new_valid_sections(
@@ -383,10 +386,10 @@ mod tests {
     fn test_zerv_schema_new_valid_all_component_types() {
         let schema = ZervSchema::new(
             vec![
-                Component::VarField(ron_fields::MAJOR.to_string()),
-                Component::String(".".to_string()),
-                Component::Integer(1),
-                Component::VarTimestamp("YYYY".to_string()),
+                Component::Var(Var::Major),
+                Component::Str(".".to_string()),
+                Component::Int(1),
+                Component::Var(Var::Timestamp("YYYY".to_string())),
             ],
             vec![],
             vec![],
@@ -404,7 +407,7 @@ mod tests {
         ]);
 
         let schema = ZervSchema::new_with_precedence(
-            vec![Component::VarField(ron_fields::MAJOR.to_string())],
+            vec![Component::Var(Var::Major)],
             vec![],
             vec![],
             custom_precedence.clone(),
@@ -428,12 +431,7 @@ mod tests {
 
     #[test]
     fn test_zerv_schema_default_precedence_order() {
-        let schema = ZervSchema::new(
-            vec![Component::VarField(ron_fields::MAJOR.to_string())],
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let schema = ZervSchema::new(vec![Component::Var(Var::Major)], vec![], vec![]).unwrap();
 
         // Should use default PEP440-based precedence order
         assert_eq!(schema.precedence_order.len(), 11);
@@ -471,8 +469,8 @@ mod tests {
     fn test_zerv_schema_new_valid_custom_fields(#[case] field_name: &str) {
         let schema = ZervSchema::new(
             vec![
-                Component::VarField(ron_fields::MAJOR.to_string()),
-                Component::VarField(field_name.to_string()),
+                Component::Var(Var::Major),
+                Component::Var(Var::Custom(field_name.to_string())),
             ],
             vec![],
             vec![],
@@ -489,7 +487,7 @@ mod tests {
     #[case("compact_date")]
     fn test_zerv_schema_new_valid_timestamp_patterns(#[case] pattern: &str) {
         let schema = ZervSchema::new(
-            vec![Component::VarTimestamp(pattern.to_string())],
+            vec![Component::Var(Var::Timestamp(pattern.to_string()))],
             vec![],
             vec![],
         )
@@ -523,7 +521,7 @@ mod tests {
         #[case] expected_error: &str,
     ) {
         let result = ZervSchema::new(
-            vec![Component::VarField(field_name.to_string())],
+            vec![Component::Var(Var::Custom(field_name.to_string()))],
             vec![],
             vec![],
         );
@@ -543,7 +541,7 @@ mod tests {
         #[case] expected_error: &str,
     ) {
         let result = ZervSchema::new(
-            vec![Component::VarTimestamp(pattern.to_string())],
+            vec![Component::Var(Var::Timestamp(pattern.to_string()))],
             vec![],
             vec![],
         );
@@ -553,21 +551,21 @@ mod tests {
 
     #[rstest]
     #[case(
-        vec![Component::VarField("invalid_field".to_string())],
+        vec![Component::Var(Var::Custom("invalid_field".to_string()))],
         vec![],
         vec![],
         "unknown field 'invalid_field'"
     )]
     #[case(
         vec![],
-        vec![Component::VarField("invalid_field".to_string())],
+        vec![Component::Var(Var::Custom("invalid_field".to_string()))],
         vec![],
         "unknown field 'invalid_field'"
     )]
     #[case(
         vec![],
         vec![],
-        vec![Component::VarField("invalid_field".to_string())],
+        vec![Component::Var(Var::Custom("invalid_field".to_string()))],
         "unknown field 'invalid_field'"
     )]
     fn test_zerv_schema_new_error_invalid_in_different_sections(
@@ -585,8 +583,8 @@ mod tests {
     fn test_zerv_schema_new_error_multiple_invalid_components() {
         let result = ZervSchema::new(
             vec![
-                Component::VarField("invalid_field1".to_string()),
-                Component::VarField("invalid_field2".to_string()),
+                Component::Var(Var::Custom("invalid_field1".to_string())),
+                Component::Var(Var::Custom("invalid_field2".to_string())),
             ],
             vec![],
             vec![],
@@ -605,8 +603,8 @@ mod tests {
     fn test_zerv_schema_new_error_mixed_valid_invalid() {
         let result = ZervSchema::new(
             vec![
-                Component::VarField(ron_fields::MAJOR.to_string()),
-                Component::VarField("invalid_field".to_string()),
+                Component::Var(Var::Major),
+                Component::Var(Var::Custom("invalid_field".to_string())),
             ],
             vec![],
             vec![],
@@ -632,13 +630,13 @@ mod tests {
         #[case] expected_len: usize,
     ) {
         let schema = ZervSchema::new(
-            vec![Component::String(string_value.to_string())],
+            vec![Component::Str(string_value.to_string())],
             vec![],
             vec![],
         )
         .unwrap();
         assert_eq!(schema.core.len(), 1);
-        if let Component::String(s) = &schema.core[0] {
+        if let Component::Str(s) = &schema.core[0] {
             assert_eq!(s.len(), expected_len);
         }
     }
@@ -649,9 +647,9 @@ mod tests {
     #[case(1234567890)]
     #[case(u64::MAX)]
     fn test_zerv_schema_new_valid_integer_components(#[case] value: u64) {
-        let schema = ZervSchema::new(vec![Component::Integer(value)], vec![], vec![]).unwrap();
+        let schema = ZervSchema::new(vec![Component::Int(value)], vec![], vec![]).unwrap();
         assert_eq!(schema.core.len(), 1);
-        if let Component::Integer(i) = &schema.core[0] {
+        if let Component::Int(i) = &schema.core[0] {
             assert_eq!(*i, value);
         }
     }
@@ -662,7 +660,7 @@ mod tests {
     #[case("custom.nested.deep.field")]
     fn test_zerv_schema_new_valid_nested_custom_fields(#[case] field_name: &str) {
         let schema = ZervSchema::new(
-            vec![Component::VarField(field_name.to_string())],
+            vec![Component::Var(Var::Custom(field_name.to_string()))],
             vec![],
             vec![],
         )

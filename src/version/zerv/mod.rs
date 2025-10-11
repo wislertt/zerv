@@ -24,6 +24,7 @@ pub use bump::precedence::{
 pub use components::{
     Component,
     ComponentConfig,
+    Var,
 };
 // Schema types
 pub use schema::ZervSchema;

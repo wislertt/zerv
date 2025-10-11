@@ -85,10 +85,8 @@ impl ZervFixture {
     /// Set branch (chainable)
     pub fn with_branch(mut self, branch: String) -> Self {
         self.zerv.vars.bumped_branch = Some(branch);
-        // Add VarField to build schema if not already present
-        let branch_field = crate::version::zerv::Component::VarField(
-            crate::constants::ron_fields::BRANCH.to_string(),
-        );
+        // Add Var to build schema if not already present
+        let branch_field = crate::version::zerv::Component::Var(crate::version::zerv::Var::Branch);
         if !self.zerv.schema.build.contains(&branch_field) {
             self.zerv.schema.build.push(branch_field);
         }
@@ -98,10 +96,9 @@ impl ZervFixture {
     /// Set distance (chainable)
     pub fn with_distance(mut self, distance: u64) -> Self {
         self.zerv.vars.distance = Some(distance);
-        // Add VarField to build schema if not already present
-        let distance_field = crate::version::zerv::Component::VarField(
-            crate::constants::ron_fields::DISTANCE.to_string(),
-        );
+        // Add Var to build schema if not already present
+        let distance_field =
+            crate::version::zerv::Component::Var(crate::version::zerv::Var::Distance);
         if !self.zerv.schema.build.contains(&distance_field) {
             self.zerv.schema.build.push(distance_field);
         }
@@ -111,10 +108,9 @@ impl ZervFixture {
     /// Set commit hash (chainable)
     pub fn with_commit_hash(mut self, hash: String) -> Self {
         self.zerv.vars.bumped_commit_hash = Some(hash);
-        // Add VarField to build schema if not already present
-        let hash_field = crate::version::zerv::Component::VarField(
-            crate::constants::ron_fields::COMMIT_HASH_SHORT.to_string(),
-        );
+        // Add Var to build schema if not already present
+        let hash_field =
+            crate::version::zerv::Component::Var(crate::version::zerv::Var::CommitHashShort);
         if !self.zerv.schema.build.contains(&hash_field) {
             self.zerv.schema.build.push(hash_field);
         }
@@ -129,7 +125,7 @@ impl ZervFixture {
             self.zerv
                 .schema
                 .core
-                .push(crate::version::zerv::Component::Integer(value));
+                .push(crate::version::zerv::Component::Int(value));
         }
         self
     }

@@ -3,11 +3,11 @@ use super::{
     PreReleaseIdentifier,
     SemVer,
 };
-use crate::constants::ron_fields;
 use crate::version::semver::utils::pre_release_label_to_semver_string;
 use crate::version::zerv::utils::extract_core_values;
 use crate::version::zerv::{
     Component,
+    Var,
     Zerv,
     resolve_timestamp,
 };
@@ -74,10 +74,18 @@ fn build_pre_release_identifiers(
 
     for comp in &zerv.schema.extra_core {
         match comp {
-            Component::VarField(field) => process_var_field(&mut identifiers, field, zerv),
-            Component::String(s) => identifiers.push(PreReleaseIdentifier::String(s.clone())),
-            Component::Integer(n) => identifiers.push(PreReleaseIdentifier::Integer(*n)),
-            _ => {}
+            Component::Var(var) => {
+                let field_name = match var {
+                    Var::PreRelease => "pre_release",
+                    Var::Post => "post",
+                    Var::Dev => "dev",
+                    Var::Custom(name) => name,
+                    _ => continue,
+                };
+                process_var_field(&mut identifiers, field_name, zerv);
+            }
+            Component::Str(s) => identifiers.push(PreReleaseIdentifier::String(s.clone())),
+            Component::Int(n) => identifiers.push(PreReleaseIdentifier::Integer(*n)),
         }
     }
 
@@ -99,20 +107,20 @@ fn build_metadata_from_components(
         let metadata: Vec<BuildMetadata> = components
             .iter()
             .filter_map(|comp| match comp {
-                Component::String(s) => Some(BuildMetadata::String(s.clone())),
-                Component::Integer(i) => Some(BuildMetadata::Integer(*i)),
-                Component::VarTimestamp(pattern) => last_timestamp
-                    .and_then(|ts| resolve_timestamp(pattern, ts).ok())
-                    .and_then(|result| result.parse::<u64>().ok())
-                    .map(BuildMetadata::Integer),
-                Component::VarField(field) => match field.as_str() {
-                    ron_fields::BRANCH => zerv
+                Component::Str(s) => Some(BuildMetadata::String(s.clone())),
+                Component::Int(i) => Some(BuildMetadata::Integer(*i)),
+                Component::Var(var) => match var {
+                    Var::Timestamp(pattern) => last_timestamp
+                        .and_then(|ts| resolve_timestamp(pattern, ts).ok())
+                        .and_then(|result| result.parse::<u64>().ok())
+                        .map(BuildMetadata::Integer),
+                    Var::Branch => zerv
                         .vars
                         .bumped_branch
                         .as_ref()
                         .map(|s| BuildMetadata::String(s.clone())),
-                    ron_fields::DISTANCE => zerv.vars.distance.map(BuildMetadata::Integer),
-                    ron_fields::COMMIT_HASH_SHORT => zerv
+                    Var::Distance => zerv.vars.distance.map(BuildMetadata::Integer),
+                    Var::CommitHashShort => zerv
                         .vars
                         .bumped_commit_hash
                         .as_ref()

@@ -5,13 +5,11 @@ use super::{
     tier_3_build,
     tier_3_extra_core,
 };
-use crate::constants::{
-    ron_fields,
-    timestamp_patterns,
-};
+use crate::constants::timestamp_patterns;
 use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::{
     Component,
+    Var,
     ZervSchema,
     ZervVars,
 };
@@ -20,10 +18,10 @@ use crate::version::zerv::{
 pub fn zerv_calver_tier_1() -> ZervSchema {
     ZervSchema {
         core: vec![
-            Component::VarTimestamp(timestamp_patterns::YYYY.to_string()),
-            Component::VarTimestamp(timestamp_patterns::MM.to_string()),
-            Component::VarTimestamp(timestamp_patterns::DD.to_string()),
-            Component::VarField(ron_fields::PATCH.to_string()),
+            Component::Var(Var::Timestamp(timestamp_patterns::YYYY.to_string())),
+            Component::Var(Var::Timestamp(timestamp_patterns::MM.to_string())),
+            Component::Var(Var::Timestamp(timestamp_patterns::DD.to_string())),
+            Component::Var(Var::Patch),
         ],
         extra_core: tier_1_extra_core(),
         build: vec![],
@@ -35,10 +33,10 @@ pub fn zerv_calver_tier_1() -> ZervSchema {
 pub fn zerv_calver_tier_2() -> ZervSchema {
     ZervSchema {
         core: vec![
-            Component::VarTimestamp(timestamp_patterns::YYYY.to_string()),
-            Component::VarTimestamp(timestamp_patterns::MM.to_string()),
-            Component::VarTimestamp(timestamp_patterns::DD.to_string()),
-            Component::VarField(ron_fields::PATCH.to_string()),
+            Component::Var(Var::Timestamp(timestamp_patterns::YYYY.to_string())),
+            Component::Var(Var::Timestamp(timestamp_patterns::MM.to_string())),
+            Component::Var(Var::Timestamp(timestamp_patterns::DD.to_string())),
+            Component::Var(Var::Patch),
         ],
         extra_core: tier_1_extra_core(),
         build: tier_2_build(),
@@ -50,10 +48,10 @@ pub fn zerv_calver_tier_2() -> ZervSchema {
 pub fn zerv_calver_tier_3() -> ZervSchema {
     ZervSchema {
         core: vec![
-            Component::VarTimestamp(timestamp_patterns::YYYY.to_string()),
-            Component::VarTimestamp(timestamp_patterns::MM.to_string()),
-            Component::VarTimestamp(timestamp_patterns::DD.to_string()),
-            Component::VarField(ron_fields::PATCH.to_string()),
+            Component::Var(Var::Timestamp(timestamp_patterns::YYYY.to_string())),
+            Component::Var(Var::Timestamp(timestamp_patterns::MM.to_string())),
+            Component::Var(Var::Timestamp(timestamp_patterns::DD.to_string())),
+            Component::Var(Var::Patch),
         ],
         extra_core: tier_3_extra_core(),
         build: tier_3_build(),

@@ -75,7 +75,6 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use crate::constants::ron_fields;
     use crate::version::zerv::bump::precedence::PrecedenceOrder;
     use crate::version::{
         ZervSchema,
@@ -83,14 +82,17 @@ mod tests {
     };
 
     fn create_test_zerv() -> Zerv {
-        use crate::version::Component;
+        use crate::version::zerv::{
+            Component,
+            Var,
+        };
 
         Zerv {
             schema: ZervSchema {
                 core: vec![
-                    Component::VarField(ron_fields::MAJOR.to_string()),
-                    Component::VarField(ron_fields::MINOR.to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
+                    Component::Var(Var::Major),
+                    Component::Var(Var::Minor),
+                    Component::Var(Var::Patch),
                 ],
                 extra_core: vec![],
                 build: vec![],

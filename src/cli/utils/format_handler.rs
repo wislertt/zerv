@@ -398,8 +398,8 @@ mod tests {
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(1)
             .with_dev(1)
-            .with_build(crate::version::zerv::Component::String("local".to_string()))
-            .with_build(crate::version::zerv::Component::Integer(1))
+            .with_build(crate::version::zerv::Component::Str("local".to_string()))
+            .with_build(crate::version::zerv::Component::Int(1))
             .build()
             .clone();
         let ron_string = complex_zerv.to_string();

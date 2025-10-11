@@ -14,9 +14,9 @@ pub use standard::{
     zerv_standard_tier_3,
 };
 
-use crate::constants::ron_fields;
 use crate::version::zerv::{
     Component,
+    Var,
     ZervSchema,
     ZervVars,
 };
@@ -33,41 +33,41 @@ fn determine_tier(vars: &ZervVars) -> u8 {
 
 fn tier_1_core() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::MAJOR.to_string()),
-        Component::VarField(ron_fields::MINOR.to_string()),
-        Component::VarField(ron_fields::PATCH.to_string()),
+        Component::Var(Var::Major),
+        Component::Var(Var::Minor),
+        Component::Var(Var::Patch),
     ]
 }
 
 fn tier_1_extra_core() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::EPOCH.to_string()),
-        Component::VarField(ron_fields::PRE_RELEASE.to_string()),
-        Component::VarField(ron_fields::POST.to_string()),
+        Component::Var(Var::Epoch),
+        Component::Var(Var::PreRelease),
+        Component::Var(Var::Post),
     ]
 }
 
 fn tier_2_build() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::BRANCH.to_string()),
-        Component::VarField(ron_fields::COMMIT_HASH_SHORT.to_string()),
+        Component::Var(Var::Branch),
+        Component::Var(Var::CommitHashShort),
     ]
 }
 
 fn tier_3_extra_core() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::EPOCH.to_string()),
-        Component::VarField(ron_fields::PRE_RELEASE.to_string()),
-        Component::VarField(ron_fields::POST.to_string()),
-        Component::VarField(ron_fields::DEV.to_string()),
+        Component::Var(Var::Epoch),
+        Component::Var(Var::PreRelease),
+        Component::Var(Var::Post),
+        Component::Var(Var::Dev),
     ]
 }
 
 fn tier_3_build() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::BRANCH.to_string()),
-        Component::VarField(ron_fields::DISTANCE.to_string()),
-        Component::VarField(ron_fields::COMMIT_HASH_SHORT.to_string()),
+        Component::Var(Var::Branch),
+        Component::Var(Var::Distance),
+        Component::Var(Var::CommitHashShort),
     ]
 }
 

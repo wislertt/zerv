@@ -2,7 +2,6 @@ use super::{
     LocalSegment,
     PEP440,
 };
-use crate::constants::ron_fields;
 use crate::version::pep440::core::{
     DevLabel,
     PostLabel,
@@ -11,6 +10,7 @@ use crate::version::zerv::core::Zerv;
 use crate::version::zerv::utils::extract_core_values;
 use crate::version::zerv::{
     Component,
+    Var,
     resolve_timestamp,
 };
 
@@ -72,19 +72,19 @@ fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
     }
 }
 
-fn add_var_field_to_local(field: &str, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
-    match field {
-        ron_fields::BRANCH => {
+fn add_var_field_to_local(var: &Var, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
+    match var {
+        Var::Branch => {
             if let Some(branch) = &zerv.vars.bumped_branch {
                 local_overflow.push(LocalSegment::String(branch.clone()));
             }
         }
-        ron_fields::DISTANCE => {
+        Var::Distance => {
             if let Some(distance) = zerv.vars.distance {
                 local_overflow.push(LocalSegment::Integer(distance as u32));
             }
         }
-        ron_fields::COMMIT_HASH_SHORT => {
+        Var::CommitHashShort => {
             if let Some(hash) = &zerv.vars.bumped_commit_hash {
                 local_overflow.push(LocalSegment::String(hash.clone()));
             }
@@ -100,13 +100,13 @@ fn add_component_to_local(
     zerv: &Zerv,
 ) {
     match comp {
-        Component::String(s) => {
+        Component::Str(s) => {
             local_overflow.push(LocalSegment::String(s.clone()));
         }
-        Component::Integer(n) => {
+        Component::Int(n) => {
             add_integer_to_local(*n, local_overflow);
         }
-        Component::VarTimestamp(pattern) => {
+        Component::Var(Var::Timestamp(pattern)) => {
             if let Some(ts) = last_timestamp
                 && let Ok(result) = resolve_timestamp(pattern, ts)
                 && let Ok(val) = result.parse::<u64>()
@@ -114,8 +114,8 @@ fn add_component_to_local(
                 add_integer_to_local(val, local_overflow);
             }
         }
-        Component::VarField(field) => {
-            add_var_field_to_local(field, zerv, local_overflow);
+        Component::Var(var) => {
+            add_var_field_to_local(var, zerv, local_overflow);
         }
     }
 }
@@ -152,7 +152,25 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
 
     for comp in &zerv.schema.extra_core {
         match comp {
-            Component::VarField(field) => process_var_field_pep440(field, zerv, &mut components),
+            Component::Var(var) => {
+                let field_name = match var {
+                    Var::PreRelease => "pre_release",
+                    Var::Epoch => "epoch",
+                    Var::Post => "post",
+                    Var::Dev => "dev",
+                    Var::Custom(name) => name,
+                    _ => {
+                        add_component_to_local(
+                            comp,
+                            &mut components.local_overflow,
+                            zerv.vars.last_timestamp,
+                            zerv,
+                        );
+                        continue;
+                    }
+                };
+                process_var_field_pep440(field_name, zerv, &mut components);
+            }
             _ => add_component_to_local(
                 comp,
                 &mut components.local_overflow,

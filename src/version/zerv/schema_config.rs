@@ -83,7 +83,10 @@ pub fn parse_ron_schema(
 
 #[cfg(test)]
 mod tests {
-    use super::super::components::Component;
+    use super::super::components::{
+        Component,
+        Var,
+    };
     use super::*;
     use crate::version::zerv::schema::ZervSchema;
 
@@ -91,17 +94,11 @@ mod tests {
     fn test_schema_config_to_zerv_schema_conversion() {
         let schema_config = SchemaConfig {
             core: vec![
-                ComponentConfig::VarField {
-                    field: "major".to_string(),
-                },
-                ComponentConfig::VarField {
-                    field: "minor".to_string(),
-                },
+                ComponentConfig::Var { field: Var::Major },
+                ComponentConfig::Var { field: Var::Minor },
             ],
-            extra_core: vec![ComponentConfig::VarField {
-                field: "patch".to_string(),
-            }],
-            build: vec![ComponentConfig::String {
+            extra_core: vec![ComponentConfig::Var { field: Var::Patch }],
+            build: vec![ComponentConfig::Str {
                 value: "build".to_string(),
             }],
             precedence_order: vec![],
@@ -113,9 +110,12 @@ mod tests {
         assert_eq!(zerv_schema.extra_core.len(), 1);
         assert_eq!(zerv_schema.build.len(), 1);
 
-        assert!(matches!(zerv_schema.core[0], Component::VarField(_)));
-        assert!(matches!(zerv_schema.extra_core[0], Component::VarField(_)));
-        assert!(matches!(zerv_schema.build[0], Component::String(_)));
+        assert!(matches!(zerv_schema.core[0], Component::Var(Var::Major)));
+        assert!(matches!(
+            zerv_schema.extra_core[0],
+            Component::Var(Var::Patch)
+        ));
+        assert!(matches!(zerv_schema.build[0], Component::Str(_)));
     }
 
     #[test]
@@ -123,12 +123,12 @@ mod tests {
         let ron_schema = r#"
             SchemaConfig(
                 core: [
-                    VarField(field: "major"),
-                    VarField(field: "minor"),
+                    Var(field: Major),
+                    Var(field: Minor),
                 ],
                 extra_core: [],
                 build: [
-                    String(value: "build_id")
+                    Str(value: "build_id")
                 ]
             )
         "#;
@@ -148,12 +148,12 @@ mod tests {
         let ron_schema = r#"
             SchemaConfig(
                 core: [
-                    VarField(field: "major"),
-                    VarField(field: "minor"),
+                    Var(field: Major),
+                    Var(field: Minor),
                 ],
                 extra_core: [],
                 build: [
-                    String(value: "build_id")
+                    Str(value: "build_id")
                 ],
                 precedence_order: [
                     Major,
