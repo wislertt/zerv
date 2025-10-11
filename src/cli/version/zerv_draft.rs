@@ -1,12 +1,12 @@
 use crate::cli::version::args::VersionArgs;
 use crate::error::ZervError;
 use crate::schema::{
-    SchemaConfig,
     get_preset_schema,
     parse_ron_schema,
 };
 use crate::version::zerv::{
     Zerv,
+    ZervSchema,
     ZervVars,
 };
 
@@ -15,11 +15,11 @@ use crate::version::zerv::{
 #[derive(Debug, Clone)]
 pub struct ZervDraft {
     pub vars: ZervVars,
-    pub schema: Option<SchemaConfig>, // Some for stdin, None for git
+    pub schema: Option<ZervSchema>, // Some for stdin, None for git
 }
 
 impl ZervDraft {
-    pub fn new(vars: ZervVars, schema: Option<SchemaConfig>) -> Self {
+    pub fn new(vars: ZervVars, schema: Option<ZervSchema>) -> Self {
         Self { vars, schema }
     }
 
@@ -66,7 +66,7 @@ impl ZervDraft {
             (None, None) => {
                 // If no new schema requested, use existing schema from stdin source
                 if let Some(existing_schema) = self.schema {
-                    existing_schema.into()
+                    existing_schema
                 } else {
                     return Err(ZervError::MissingSchema(
                         "Either schema_name or schema_ron must be provided".to_string(),
@@ -91,11 +91,13 @@ mod tests {
         assert_eq!(draft.vars, vars);
         assert!(draft.schema.is_none());
 
-        let schema = SchemaConfig {
-            core: vec![],
+        use crate::version::zerv::Component;
+        use crate::version::zerv::bump::precedence::PrecedenceOrder;
+        let schema = ZervSchema {
+            core: vec![Component::Var(crate::version::zerv::Var::Major)],
             extra_core: vec![],
             build: vec![],
-            precedence_order: vec![],
+            precedence_order: PrecedenceOrder::default(),
         };
         let draft_with_schema = ZervDraft::new(vars, Some(schema.clone()));
         assert_eq!(draft_with_schema.schema, Some(schema));
@@ -159,13 +161,14 @@ mod tests {
     fn test_custom_ron_schema() {
         let vars = ZervVars::default();
         let ron_schema = r#"
-            SchemaConfig(
+            ZervSchema(
                 core: [
-                    Var(field: Major),
-                    Var(field: Minor),
+                    var(Major),
+                    var(Minor),
                 ],
                 extra_core: [],
-                build: [Str(value: "custom")]
+                build: [str("custom")],
+                precedence_order: []
             )
         "#;
 
@@ -178,7 +181,7 @@ mod tests {
     #[test]
     fn test_conflicting_schemas_error() {
         let vars = ZervVars::default();
-        let ron_schema = "SchemaConfig(core: [], extra_core: [], build: [])";
+        let ron_schema = "ZervSchema(core: [], extra_core: [], build: [], precedence_order: [])";
         let draft = ZervDraft::new(vars, None);
         let result = draft.create_zerv_version(Some("zerv-standard"), Some(ron_schema));
         assert!(matches!(result, Err(ZervError::ConflictingSchemas(_))));
@@ -203,15 +206,18 @@ mod tests {
 
     #[test]
     fn test_use_existing_schema_from_stdin() {
-        use crate::schema::ComponentConfig;
-        use crate::version::zerv::Var;
+        use crate::version::zerv::bump::precedence::PrecedenceOrder;
+        use crate::version::zerv::{
+            Component,
+            Var,
+        };
 
         let vars = ZervVars::default();
-        let existing_schema = SchemaConfig {
-            core: vec![ComponentConfig::Var { field: Var::Major }],
+        let existing_schema = ZervSchema {
+            core: vec![Component::Var(Var::Major)],
             extra_core: vec![],
             build: vec![],
-            precedence_order: vec![],
+            precedence_order: PrecedenceOrder::default(),
         };
 
         // Test using existing schema when no new schema is provided

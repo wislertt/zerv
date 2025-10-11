@@ -52,9 +52,22 @@ mod tests {
             )
         "#;
 
+        let expected = Zerv {
+            schema: ZervSchema {
+                core: vec![Component::Var(Var::Major)],
+                extra_core: vec![],
+                build: vec![],
+                precedence_order: PrecedenceOrder::default(),
+            },
+            vars: ZervVars {
+                major: Some(1),
+                custom: serde_json::json!({}),
+                ..Default::default()
+            },
+        };
+
         let parsed: Zerv = ron_str.parse().unwrap();
-        assert_eq!(parsed.vars.major, Some(1));
-        assert_eq!(parsed.schema.core.len(), 1);
+        assert_eq!(parsed, expected);
     }
 
     #[test]

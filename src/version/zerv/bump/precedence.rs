@@ -25,9 +25,28 @@ pub enum Precedence {
 }
 
 /// Precedence order management with O(1) bidirectional lookup
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PrecedenceOrder {
     order: IndexMap<Precedence, ()>,
+}
+
+impl Serialize for PrecedenceOrder {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_vec().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for PrecedenceOrder {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let precedences = Vec::<Precedence>::deserialize(deserializer)?;
+        Ok(Self::from_precedences(precedences))
+    }
 }
 
 impl PrecedenceOrder {

@@ -12,8 +12,4 @@ pub use presets::{
     zerv_standard_tier_3,
 };
 
-pub use crate::version::zerv::components::ComponentConfig;
-pub use crate::version::zerv::schema_config::{
-    SchemaConfig,
-    parse_ron_schema,
-};
+pub use crate::version::zerv::schema_parser::parse_ron_schema;

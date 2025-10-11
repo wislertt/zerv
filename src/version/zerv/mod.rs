@@ -4,7 +4,7 @@ pub mod core;
 mod display;
 mod parser;
 pub mod schema;
-pub mod schema_config;
+pub mod schema_parser;
 pub mod utils;
 pub mod vars;
 
@@ -23,16 +23,12 @@ pub use bump::precedence::{
 // Component types (moved from schema)
 pub use components::{
     Component,
-    ComponentConfig,
     Var,
 };
 // Schema types
 pub use schema::ZervSchema;
-// Schema config types
-pub use schema_config::{
-    SchemaConfig,
-    parse_ron_schema,
-};
+// Schema parser types
+pub use schema_parser::parse_ron_schema;
 // Utilities
 pub use utils::resolve_timestamp;
 // Vars types
