@@ -5,8 +5,8 @@ use serde::{
     Serialize,
 };
 
-use crate::constants::pre_release_labels;
 use crate::error::ZervError;
+use crate::utils::constants::pre_release_labels;
 use crate::version::zerv::schema::ZervSchema;
 use crate::version::zerv::vars::ZervVars;
 

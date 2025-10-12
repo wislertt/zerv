@@ -326,11 +326,11 @@ impl Default for VersionArgsFixture {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::{
+    use crate::test_utils::types::BumpType;
+    use crate::utils::constants::{
         formats,
         sources,
     };
-    use crate::test_utils::types::BumpType;
 
     #[test]
     fn test_new_creates_default_fixture() {

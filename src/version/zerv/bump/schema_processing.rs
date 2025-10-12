@@ -205,8 +205,8 @@ mod tests {
     use rstest::*;
 
     use super::*;
-    use crate::constants::bump_types;
     use crate::test_utils::ZervFixture;
+    use crate::utils::constants::bump_types;
     use crate::version::zerv::components::Component;
 
     // Test schema processing functions (core, extra_core, build)

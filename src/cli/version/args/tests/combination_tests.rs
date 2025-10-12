@@ -1,11 +1,11 @@
 use clap::Parser;
 
 use super::super::*;
-use crate::constants::{
+use crate::test_utils::VersionArgsFixture;
+use crate::utils::constants::{
     formats,
     sources,
 };
-use crate::test_utils::VersionArgsFixture;
 
 #[test]
 fn test_version_args_defaults() {

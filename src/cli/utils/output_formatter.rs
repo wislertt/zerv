@@ -1,8 +1,8 @@
-use crate::constants::{
+use crate::error::ZervError;
+use crate::utils::constants::{
     SUPPORTED_FORMATS,
     formats,
 };
-use crate::error::ZervError;
 use crate::version::Zerv;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;

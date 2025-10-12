@@ -8,8 +8,8 @@ use super::components::{
     Component,
     Var,
 };
-use crate::constants::timestamp_patterns;
 use crate::error::ZervError;
+use crate::utils::constants::timestamp_patterns;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZervSchema {
