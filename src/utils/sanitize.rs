@@ -90,6 +90,17 @@ impl Sanitizer {
         }
     }
 
+    /// Key sanitizer - for sanitizing keys
+    pub fn key() -> Self {
+        Self {
+            target: SanitizeTarget::Str,
+            separator: Some(".".to_string()),
+            lowercase: true,
+            keep_zeros: false,
+            max_length: None,
+        }
+    }
+
     /// Sanitize to clean string
     fn sanitize_to_string(&self, input: &str) -> String {
         let mut result = input.to_string();
@@ -306,6 +317,18 @@ mod tests {
         let sanitizer_keep = Sanitizer::uint(true);
         assert_eq!(sanitizer_keep.sanitize("0000"), "0000");
         assert_eq!(sanitizer_keep.sanitize("00123"), "00123");
+    }
+
+    #[test]
+    fn test_key_sanitizer() {
+        let sanitizer = Sanitizer::key();
+
+        // Key sanitizer uses lowercase and dots as separator
+        assert_eq!(sanitizer.sanitize("custom_field"), "custom.field");
+        assert_eq!(sanitizer.sanitize("feature/API-v2"), "feature.api.v2");
+        assert_eq!(sanitizer.sanitize("Build-ID-0051"), "build.id.51");
+        assert_eq!(sanitizer.sanitize("test@#$%branch"), "test.branch");
+        assert_eq!(sanitizer.sanitize(""), "");
     }
 
     use rstest::rstest;
