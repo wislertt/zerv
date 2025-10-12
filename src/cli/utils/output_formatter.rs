@@ -76,17 +76,16 @@ mod tests {
 
     use super::*;
     use crate::version::zerv::bump::precedence::PrecedenceOrder;
+    use crate::version::zerv::{
+        Component,
+        Var,
+    };
     use crate::version::{
         ZervSchema,
         ZervVars,
     };
 
     fn create_test_zerv() -> Zerv {
-        use crate::version::zerv::{
-            Component,
-            Var,
-        };
-
         Zerv {
             schema: ZervSchema {
                 core: vec![

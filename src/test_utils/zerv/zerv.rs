@@ -7,7 +7,10 @@ use super::{
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
 use crate::version::zerv::{
+    Component,
     PreReleaseLabel,
+    PreReleaseVar,
+    Var,
     Zerv,
 };
 
@@ -48,7 +51,7 @@ impl ZervFixture {
 
     /// Set pre-release (chainable)
     pub fn with_pre_release(mut self, label: PreReleaseLabel, number: Option<u64>) -> Self {
-        self.zerv.vars.pre_release = Some(crate::version::zerv::PreReleaseVar { label, number });
+        self.zerv.vars.pre_release = Some(PreReleaseVar { label, number });
         self
     }
 
@@ -71,13 +74,13 @@ impl ZervFixture {
     }
 
     /// Add build component (chainable)
-    pub fn with_build(mut self, component: crate::version::zerv::Component) -> Self {
+    pub fn with_build(mut self, component: Component) -> Self {
         self.zerv.schema.build.push(component);
         self
     }
 
     /// Add extra core component (chainable)
-    pub fn with_extra_core(mut self, component: crate::version::zerv::Component) -> Self {
+    pub fn with_extra_core(mut self, component: Component) -> Self {
         self.zerv.schema.extra_core.push(component);
         self
     }
@@ -86,7 +89,7 @@ impl ZervFixture {
     pub fn with_branch(mut self, branch: String) -> Self {
         self.zerv.vars.bumped_branch = Some(branch);
         // Add Var to build schema if not already present
-        let branch_field = crate::version::zerv::Component::Var(crate::version::zerv::Var::Branch);
+        let branch_field = Component::Var(Var::Branch);
         if !self.zerv.schema.build.contains(&branch_field) {
             self.zerv.schema.build.push(branch_field);
         }
@@ -97,8 +100,7 @@ impl ZervFixture {
     pub fn with_distance(mut self, distance: u64) -> Self {
         self.zerv.vars.distance = Some(distance);
         // Add Var to build schema if not already present
-        let distance_field =
-            crate::version::zerv::Component::Var(crate::version::zerv::Var::Distance);
+        let distance_field = Component::Var(Var::Distance);
         if !self.zerv.schema.build.contains(&distance_field) {
             self.zerv.schema.build.push(distance_field);
         }
@@ -109,8 +111,7 @@ impl ZervFixture {
     pub fn with_commit_hash(mut self, hash: String) -> Self {
         self.zerv.vars.bumped_commit_hash = Some(hash);
         // Add Var to build schema if not already present
-        let hash_field =
-            crate::version::zerv::Component::Var(crate::version::zerv::Var::CommitHashShort);
+        let hash_field = Component::Var(Var::CommitHashShort);
         if !self.zerv.schema.build.contains(&hash_field) {
             self.zerv.schema.build.push(hash_field);
         }
@@ -122,10 +123,7 @@ impl ZervFixture {
         // Clear existing core and rebuild with integers
         self.zerv.schema.core.clear();
         for value in values {
-            self.zerv
-                .schema
-                .core
-                .push(crate::version::zerv::Component::Int(value));
+            self.zerv.schema.core.push(Component::Int(value));
         }
         self
     }
@@ -175,34 +173,25 @@ impl ZervFixture {
     }
 
     /// Add core component - chainable
-    pub fn with_core(mut self, component: crate::version::zerv::Component) -> Self {
+    pub fn with_core(mut self, component: Component) -> Self {
         self.zerv.schema.core.push(component);
         self
     }
 
     /// Set core components directly - chainable
-    pub fn with_core_components(
-        mut self,
-        components: Vec<crate::version::zerv::Component>,
-    ) -> Self {
+    pub fn with_core_components(mut self, components: Vec<Component>) -> Self {
         self.zerv.schema.core = components;
         self
     }
 
     /// Set extra_core components directly - chainable
-    pub fn with_extra_core_components(
-        mut self,
-        components: Vec<crate::version::zerv::Component>,
-    ) -> Self {
+    pub fn with_extra_core_components(mut self, components: Vec<Component>) -> Self {
         self.zerv.schema.extra_core = components;
         self
     }
 
     /// Set build components directly - chainable
-    pub fn with_build_components(
-        mut self,
-        components: Vec<crate::version::zerv::Component>,
-    ) -> Self {
+    pub fn with_build_components(mut self, components: Vec<Component>) -> Self {
         self.zerv.schema.build = components;
         self
     }

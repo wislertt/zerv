@@ -381,7 +381,10 @@ mod tests {
     #[test]
     fn test_stdin_validation_with_complex_zerv_structures() {
         use crate::test_utils::zerv::ZervFixture;
-        use crate::version::zerv::PreReleaseLabel;
+        use crate::version::zerv::{
+            Component,
+            PreReleaseLabel,
+        };
 
         // Test with pre-release Zerv
         let pre_release_zerv = ZervFixture::new()
@@ -398,8 +401,8 @@ mod tests {
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(1)
             .with_dev(1)
-            .with_build(crate::version::zerv::Component::Str("local".to_string()))
-            .with_build(crate::version::zerv::Component::Int(1))
+            .with_build(Component::Str("local".to_string()))
+            .with_build(Component::Int(1))
             .build()
             .clone();
         let ron_string = complex_zerv.to_string();

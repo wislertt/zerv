@@ -10,13 +10,14 @@ use crate::version::zerv::core::Zerv;
 use crate::version::zerv::utils::extract_core_values;
 use crate::version::zerv::{
     Component,
+    PreReleaseLabel,
     Var,
     resolve_timestamp,
 };
 
 struct PEP440Components {
     epoch: u32,
-    pre_label: Option<crate::version::zerv::PreReleaseLabel>,
+    pre_label: Option<PreReleaseLabel>,
     pre_number: Option<u32>,
     post_label: Option<PostLabel>,
     post_number: Option<u32>,

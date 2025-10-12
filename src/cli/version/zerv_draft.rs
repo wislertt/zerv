@@ -91,10 +91,13 @@ mod tests {
         assert_eq!(draft.vars, vars);
         assert!(draft.schema.is_none());
 
-        use crate::version::zerv::Component;
         use crate::version::zerv::bump::precedence::PrecedenceOrder;
+        use crate::version::zerv::{
+            Component,
+            Var,
+        };
         let schema = ZervSchema {
-            core: vec![Component::Var(crate::version::zerv::Var::Major)],
+            core: vec![Component::Var(Var::Major)],
             extra_core: vec![],
             build: vec![],
             precedence_order: PrecedenceOrder::default(),
@@ -283,7 +286,7 @@ mod tests {
             .create_zerv_version(Some("zerv-standard"), None)
             .unwrap();
         let ron_string = original.to_string();
-        let parsed: crate::version::zerv::Zerv = ron_string.parse().unwrap();
+        let parsed: Zerv = ron_string.parse().unwrap();
 
         // Verify schema is preserved
         assert_eq!(parsed.schema.core.len(), 3);
