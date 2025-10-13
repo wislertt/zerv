@@ -53,12 +53,13 @@ mod tests {
         "#;
 
         let expected = Zerv {
-            schema: ZervSchema {
-                core: vec![Component::Var(Var::Major)],
-                extra_core: vec![],
-                build: vec![],
-                precedence_order: PrecedenceOrder::default(),
-            },
+            schema: ZervSchema::new_with_precedence(
+                vec![Component::Var(Var::Major)],
+                vec![],
+                vec![],
+                PrecedenceOrder::default(),
+            )
+            .unwrap(),
             vars: ZervVars {
                 major: Some(1),
                 custom: serde_json::json!({}),
@@ -80,16 +81,17 @@ mod tests {
 
     #[test]
     fn test_zerv_parse_roundtrip() {
-        let schema = ZervSchema {
-            core: vec![
+        let schema = ZervSchema::new_with_precedence(
+            vec![
                 Component::Var(Var::Major),
                 Component::Str(".".to_string()),
                 Component::Var(Var::Minor),
             ],
-            extra_core: vec![],
-            build: vec![],
-            precedence_order: PrecedenceOrder::default(),
-        };
+            vec![],
+            vec![],
+            PrecedenceOrder::default(),
+        )
+        .unwrap();
         let vars = ZervVars {
             major: Some(1),
             minor: Some(2),

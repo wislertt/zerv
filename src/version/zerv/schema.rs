@@ -13,14 +13,74 @@ use crate::utils::constants::timestamp_patterns;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZervSchema {
-    pub core: Vec<Component>,
-    pub extra_core: Vec<Component>,
-    pub build: Vec<Component>,
+    core: Vec<Component>,
+    extra_core: Vec<Component>,
+    build: Vec<Component>,
     #[serde(default)]
-    pub precedence_order: PrecedenceOrder,
+    precedence_order: PrecedenceOrder,
 }
 
 impl ZervSchema {
+    // Getters
+    pub fn core(&self) -> &Vec<Component> {
+        &self.core
+    }
+
+    pub fn extra_core(&self) -> &Vec<Component> {
+        &self.extra_core
+    }
+
+    pub fn build(&self) -> &Vec<Component> {
+        &self.build
+    }
+
+    pub fn precedence_order(&self) -> &PrecedenceOrder {
+        &self.precedence_order
+    }
+
+    // Setters with validation
+    pub fn set_core(&mut self, core: Vec<Component>) -> Result<(), ZervError> {
+        Self::validate_components(&core)?;
+        let temp_schema = Self {
+            core: core.clone(),
+            extra_core: self.extra_core.clone(),
+            build: self.build.clone(),
+            precedence_order: self.precedence_order.clone(),
+        };
+        temp_schema.validate()?;
+        self.core = core;
+        Ok(())
+    }
+
+    pub fn set_extra_core(&mut self, extra_core: Vec<Component>) -> Result<(), ZervError> {
+        Self::validate_components(&extra_core)?;
+        let temp_schema = Self {
+            core: self.core.clone(),
+            extra_core: extra_core.clone(),
+            build: self.build.clone(),
+            precedence_order: self.precedence_order.clone(),
+        };
+        temp_schema.validate()?;
+        self.extra_core = extra_core;
+        Ok(())
+    }
+
+    pub fn set_build(&mut self, build: Vec<Component>) -> Result<(), ZervError> {
+        Self::validate_components(&build)?;
+        let temp_schema = Self {
+            core: self.core.clone(),
+            extra_core: self.extra_core.clone(),
+            build: build.clone(),
+            precedence_order: self.precedence_order.clone(),
+        };
+        temp_schema.validate()?;
+        self.build = build;
+        Ok(())
+    }
+
+    pub fn set_precedence_order(&mut self, precedence_order: PrecedenceOrder) {
+        self.precedence_order = precedence_order;
+    }
     /// Create a new ZervSchema with automatic validation and default precedence order
     pub fn new(
         core: Vec<Component>,

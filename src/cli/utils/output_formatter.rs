@@ -87,16 +87,17 @@ mod tests {
 
     fn create_test_zerv() -> Zerv {
         Zerv {
-            schema: ZervSchema {
-                core: vec![
+            schema: ZervSchema::new_with_precedence(
+                vec![
                     Component::Var(Var::Major),
                     Component::Var(Var::Minor),
                     Component::Var(Var::Patch),
                 ],
-                extra_core: vec![],
-                build: vec![],
-                precedence_order: PrecedenceOrder::default(),
-            },
+                vec![],
+                vec![],
+                PrecedenceOrder::default(),
+            )
+            .unwrap(),
             vars: ZervVars {
                 major: Some(1),
                 minor: Some(2),

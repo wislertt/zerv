@@ -196,7 +196,7 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
         components.dev_number = Some(dev_num as u32);
     }
 
-    for comp in &zerv.schema.extra_core {
+    for comp in zerv.schema.extra_core() {
         match comp {
             Component::Var(var) => {
                 process_var_field_pep440(var, zerv, &mut components);
@@ -235,7 +235,7 @@ impl From<Zerv> for PEP440 {
         let mut components = process_extra_core_components(&zerv);
 
         components.local_overflow.extend(process_build_components(
-            &zerv.schema.build,
+            zerv.schema.build(),
             zerv.vars.last_timestamp,
             &zerv,
         ));

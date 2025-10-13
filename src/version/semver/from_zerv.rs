@@ -75,7 +75,7 @@ fn build_pre_release_identifiers(
     let mut identifiers = extract_overflow_identifiers(core_values);
     add_epoch_identifiers(&mut identifiers, zerv.vars.epoch);
 
-    for comp in &zerv.schema.extra_core {
+    for comp in zerv.schema.extra_core() {
         match comp {
             Component::Var(var) => {
                 process_var_field(&mut identifiers, var, zerv);
@@ -142,7 +142,7 @@ impl From<Zerv> for SemVer {
         let (major, minor, patch) = extract_version_numbers(&core_values);
         let pre_release = build_pre_release_identifiers(&zerv, &core_values);
         let build_metadata =
-            build_metadata_from_components(&zerv.schema.build, zerv.vars.last_timestamp, &zerv);
+            build_metadata_from_components(zerv.schema.build(), zerv.vars.last_timestamp, &zerv);
 
         SemVer {
             major,

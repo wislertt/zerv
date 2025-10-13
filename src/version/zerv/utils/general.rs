@@ -7,7 +7,7 @@ use crate::version::zerv::{
 
 pub fn extract_core_values(zerv: &Zerv) -> Vec<u64> {
     let mut core_values = Vec::new();
-    for comp in &zerv.schema.core {
+    for comp in zerv.schema.core() {
         let val = match comp {
             Component::Var(var) => match var {
                 Var::Major => zerv.vars.major.unwrap_or(0),

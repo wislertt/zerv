@@ -14,7 +14,7 @@ use crate::version::zerv::bump::precedence::Precedence;
 impl Zerv {
     pub fn apply_component_processing(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         let precedence_order: Vec<Precedence> =
-            self.schema.precedence_order.iter().cloned().collect();
+            self.schema.precedence_order().iter().cloned().collect();
 
         for precedence in precedence_order {
             match precedence {

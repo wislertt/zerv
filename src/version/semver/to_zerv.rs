@@ -141,16 +141,17 @@ impl From<SemVer> for Zerv {
             .unwrap_or_default();
 
         Zerv {
-            schema: ZervSchema {
-                core: vec![
+            schema: ZervSchema::new_with_precedence(
+                vec![
                     Component::Var(Var::Major),
                     Component::Var(Var::Minor),
                     Component::Var(Var::Patch),
                 ],
                 extra_core,
                 build,
-                precedence_order: PrecedenceOrder::default(),
-            },
+                PrecedenceOrder::default(),
+            )
+            .unwrap(),
             vars: ZervVars {
                 major: Some(semver.major),
                 minor: Some(semver.minor),

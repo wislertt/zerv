@@ -10,14 +10,14 @@ impl Zerv {
     ) -> Result<(), ZervError> {
         let current_precedence_index = self
             .schema
-            .precedence_order
+            .precedence_order()
             .get_index(precedence)
             .ok_or_else(|| {
                 ZervError::InvalidBumpTarget(format!("Unknown precedence: {precedence:?}"))
             })?;
 
         // Use a for loop over the precedence order
-        for (index, precedence_item) in self.schema.precedence_order.iter().enumerate() {
+        for (index, precedence_item) in self.schema.precedence_order().iter().enumerate() {
             if index > current_precedence_index {
                 // Map precedence to field reset
                 match precedence_item {

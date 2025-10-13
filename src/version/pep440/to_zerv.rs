@@ -67,16 +67,17 @@ impl From<PEP440> for Zerv {
         let patch = pep440.release.get(2).copied().map(|n| n as u64);
 
         Zerv {
-            schema: ZervSchema {
-                core: vec![
+            schema: ZervSchema::new_with_precedence(
+                vec![
                     Component::Var(Var::Major),
                     Component::Var(Var::Minor),
                     Component::Var(Var::Patch),
                 ],
                 extra_core,
                 build,
-                precedence_order: PrecedenceOrder::default(),
-            },
+                PrecedenceOrder::default(),
+            )
+            .unwrap(),
             vars: ZervVars {
                 major,
                 minor,

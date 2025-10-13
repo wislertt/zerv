@@ -13,9 +13,9 @@ impl Zerv {
         bumps: &[String],
     ) -> Result<(), ZervError> {
         let component_count = match section {
-            "core" => self.schema.core.len(),
-            "extra_core" => self.schema.extra_core.len(),
-            "build" => self.schema.build.len(),
+            "core" => self.schema.core().len(),
+            "extra_core" => self.schema.extra_core().len(),
+            "build" => self.schema.build().len(),
             _ => {
                 return Err(ZervError::InvalidBumpTarget(format!(
                     "Unknown schema section: {section}"
@@ -143,11 +143,11 @@ impl Zerv {
         override_value: Option<String>,
         bump_value: Option<String>,
     ) -> Result<(), ZervError> {
-        // Get mutable reference to components at the beginning
-        let components = match section {
-            "core" => &mut self.schema.core,
-            "extra_core" => &mut self.schema.extra_core,
-            "build" => &mut self.schema.build,
+        // Get components for reading first
+        let components_len = match section {
+            "core" => self.schema.core().len(),
+            "extra_core" => self.schema.extra_core().len(),
+            "build" => self.schema.build().len(),
             _ => {
                 return Err(ZervError::InvalidBumpTarget(format!(
                     "Unknown schema section: {section}"
@@ -155,11 +155,18 @@ impl Zerv {
             }
         };
 
-        let component: &Component = components.get(index).ok_or_else(|| {
-            ZervError::InvalidBumpTarget(format!(
+        if index >= components_len {
+            return Err(ZervError::InvalidBumpTarget(format!(
                 "Index {index} out of bounds for {section} section"
-            ))
-        })?;
+            )));
+        }
+
+        let component = match section {
+            "core" => &self.schema.core()[index],
+            "extra_core" => &self.schema.extra_core()[index],
+            "build" => &self.schema.build()[index],
+            _ => unreachable!(),
+        };
 
         match component {
             Component::Var(var) => match var {
@@ -176,22 +183,44 @@ impl Zerv {
             },
             Component::Str(_) => {
                 // Process String component directly (mutates the component)
-                if let Some(component) = components.get_mut(index) {
-                    Self::process_string_component(component, override_value, bump_value)?;
-                } else {
-                    return Err(ZervError::InvalidBumpTarget(format!(
-                        "Component at index {index} not found"
-                    )));
+                // For string components, we need to update through setters
+                let mut components_vec = match section {
+                    "core" => self.schema.core().clone(),
+                    "extra_core" => self.schema.extra_core().clone(),
+                    "build" => self.schema.build().clone(),
+                    _ => unreachable!(),
+                };
+                Self::process_string_component(
+                    &mut components_vec[index],
+                    override_value,
+                    bump_value,
+                )?;
+                match section {
+                    "core" => self.schema.set_core(components_vec)?,
+                    "extra_core" => self.schema.set_extra_core(components_vec)?,
+                    "build" => self.schema.set_build(components_vec)?,
+                    _ => unreachable!(),
                 }
             }
             Component::Int(_) => {
                 // Process UInt component directly (mutates the component)
-                if let Some(component) = components.get_mut(index) {
-                    Self::process_integer_component(component, override_value, bump_value)?;
-                } else {
-                    return Err(ZervError::InvalidBumpTarget(format!(
-                        "Component at index {index} not found"
-                    )));
+                // For integer components, we need to update through setters
+                let mut components_vec = match section {
+                    "core" => self.schema.core().clone(),
+                    "extra_core" => self.schema.extra_core().clone(),
+                    "build" => self.schema.build().clone(),
+                    _ => unreachable!(),
+                };
+                Self::process_integer_component(
+                    &mut components_vec[index],
+                    override_value,
+                    bump_value,
+                )?;
+                match section {
+                    "core" => self.schema.set_core(components_vec)?,
+                    "extra_core" => self.schema.set_extra_core(components_vec)?,
+                    "build" => self.schema.set_build(components_vec)?,
+                    _ => unreachable!(),
                 }
             }
         }
@@ -317,7 +346,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(zerv.schema.core[0], expected);
+        assert_eq!(zerv.schema.core()[0], expected);
     }
 
     // Test process_schema_component with String components
@@ -344,7 +373,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(zerv.schema.core[0], expected);
+        assert_eq!(zerv.schema.core()[0], expected);
     }
 
     // Test process_schema_component error cases

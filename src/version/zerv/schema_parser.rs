@@ -42,12 +42,13 @@ mod tests {
             )
         "#;
 
-        let expected_schema = ZervSchema {
-            core: vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
-            extra_core: vec![],
-            build: vec![Component::Str("build_id".to_string())],
-            precedence_order: PrecedenceOrder::default(),
-        };
+        let expected_schema = ZervSchema::new_with_precedence(
+            vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
+            vec![],
+            vec![Component::Str("build_id".to_string())],
+            PrecedenceOrder::default(),
+        )
+        .unwrap();
 
         let schema: ZervSchema = ron_schema.parse().unwrap();
         assert_eq!(schema, expected_schema);
@@ -75,18 +76,19 @@ mod tests {
             )
         "#;
 
-        let expected_schema = ZervSchema {
-            core: vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
-            extra_core: vec![],
-            build: vec![Component::Str("build_id".to_string())],
-            precedence_order: PrecedenceOrder::from_precedences(vec![
+        let expected_schema = ZervSchema::new_with_precedence(
+            vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
+            vec![],
+            vec![Component::Str("build_id".to_string())],
+            PrecedenceOrder::from_precedences(vec![
                 Precedence::Major,
                 Precedence::Minor,
                 Precedence::Patch,
                 Precedence::Core,
                 Precedence::Build,
             ]),
-        };
+        )
+        .unwrap();
 
         let schema: ZervSchema = ron_schema.parse().unwrap();
         assert_eq!(schema, expected_schema);
@@ -108,12 +110,13 @@ mod tests {
             )
         "#;
 
-        let expected_schema = ZervSchema {
-            core: vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
-            extra_core: vec![],
-            build: vec![Component::Str("build_id".to_string())],
-            precedence_order: PrecedenceOrder::from_precedences(vec![]),
-        };
+        let expected_schema = ZervSchema::new_with_precedence(
+            vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
+            vec![],
+            vec![Component::Str("build_id".to_string())],
+            PrecedenceOrder::from_precedences(vec![]),
+        )
+        .unwrap();
 
         let schema: ZervSchema = ron_schema.parse().unwrap();
         assert_eq!(schema, expected_schema);

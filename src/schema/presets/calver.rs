@@ -16,47 +16,50 @@ use crate::version::zerv::{
 
 // Tier 1: Tagged, clean - YYYY-MM-DD-PATCH
 pub fn zerv_calver_tier_1() -> ZervSchema {
-    ZervSchema {
-        core: vec![
+    ZervSchema::new_with_precedence(
+        vec![
             Component::Var(Var::Timestamp(timestamp_patterns::YYYY.to_string())),
             Component::Var(Var::Timestamp(timestamp_patterns::MM.to_string())),
             Component::Var(Var::Timestamp(timestamp_patterns::DD.to_string())),
             Component::Var(Var::Patch),
         ],
-        extra_core: tier_1_extra_core(),
-        build: vec![],
-        precedence_order: PrecedenceOrder::default(),
-    }
+        tier_1_extra_core(),
+        vec![],
+        PrecedenceOrder::default(),
+    )
+    .unwrap()
 }
 
 // Tier 2: Distance, clean - YYYY-MM-DD-PATCH.post<distance>+branch.<commit>
 pub fn zerv_calver_tier_2() -> ZervSchema {
-    ZervSchema {
-        core: vec![
+    ZervSchema::new_with_precedence(
+        vec![
             Component::Var(Var::Timestamp(timestamp_patterns::YYYY.to_string())),
             Component::Var(Var::Timestamp(timestamp_patterns::MM.to_string())),
             Component::Var(Var::Timestamp(timestamp_patterns::DD.to_string())),
             Component::Var(Var::Patch),
         ],
-        extra_core: tier_1_extra_core(),
-        build: tier_2_build(),
-        precedence_order: PrecedenceOrder::default(),
-    }
+        tier_1_extra_core(),
+        tier_2_build(),
+        PrecedenceOrder::default(),
+    )
+    .unwrap()
 }
 
 // Tier 3: Dirty - YYYY-MM-DD-PATCH.dev<timestamp>+branch.<distance>.<commit>
 pub fn zerv_calver_tier_3() -> ZervSchema {
-    ZervSchema {
-        core: vec![
+    ZervSchema::new_with_precedence(
+        vec![
             Component::Var(Var::Timestamp(timestamp_patterns::YYYY.to_string())),
             Component::Var(Var::Timestamp(timestamp_patterns::MM.to_string())),
             Component::Var(Var::Timestamp(timestamp_patterns::DD.to_string())),
             Component::Var(Var::Patch),
         ],
-        extra_core: tier_3_extra_core(),
-        build: tier_3_build(),
-        precedence_order: PrecedenceOrder::default(),
-    }
+        tier_3_extra_core(),
+        tier_3_build(),
+        PrecedenceOrder::default(),
+    )
+    .unwrap()
 }
 
 pub fn get_calver_schema(vars: &ZervVars) -> ZervSchema {

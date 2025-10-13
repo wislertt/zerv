@@ -109,12 +109,13 @@ mod tests {
 
         #[test]
         fn test_zerv_new() {
-            let schema = ZervSchema {
-                core: vec![Component::Var(Var::Major)],
-                extra_core: vec![],
-                build: vec![],
-                precedence_order: PrecedenceOrder::default(),
-            };
+            let schema = ZervSchema::new_with_precedence(
+                vec![Component::Var(Var::Major)],
+                vec![],
+                vec![],
+                PrecedenceOrder::default(),
+            )
+            .unwrap();
             let vars = ZervVars {
                 major: Some(1), // Add required field for validation
                 ..Default::default()
@@ -217,15 +218,12 @@ mod tests {
 
         #[test]
         fn test_empty_schema() {
-            let schema = ZervSchema {
-                core: vec![],
-                extra_core: vec![],
-                build: vec![],
-                precedence_order: PrecedenceOrder::default(),
-            };
-            let vars = ZervVars::default();
-            // Empty schema should fail validation
-            let result = Zerv::new(schema, vars);
+            // Empty schema should fail validation during construction
+            let result = ZervSchema::new(
+                vec![], // Empty core
+                vec![], // Empty extra_core
+                vec![], // Empty build
+            );
             assert!(result.is_err());
         }
 
@@ -382,16 +380,17 @@ mod tests {
 
         #[test]
         fn test_semver_like_structure() {
-            let schema = ZervSchema {
-                core: vec![
+            let schema = ZervSchema::new_with_precedence(
+                vec![
                     Component::Var(Var::Major),
                     Component::Var(Var::Minor),
                     Component::Var(Var::Patch),
                 ],
-                extra_core: vec![Component::Var(Var::PreRelease)],
-                build: vec![Component::Str("build".to_string()), Component::Int(123)],
-                precedence_order: PrecedenceOrder::default(),
-            };
+                vec![Component::Var(Var::PreRelease)],
+                vec![Component::Str("build".to_string()), Component::Int(123)],
+                PrecedenceOrder::default(),
+            )
+            .unwrap();
 
             let vars = ZervVars {
                 major: Some(1),
@@ -418,17 +417,18 @@ mod tests {
 
         #[test]
         fn test_calver_like_structure() {
-            let schema = ZervSchema {
-                core: vec![
+            let schema = ZervSchema::new_with_precedence(
+                vec![
                     Component::Var(Var::Timestamp("YYYY".to_string())),
                     Component::Var(Var::Timestamp("MM".to_string())),
                     Component::Var(Var::Timestamp("DD".to_string())),
                     Component::Var(Var::Patch),
                 ],
-                extra_core: vec![],
-                build: vec![],
-                precedence_order: PrecedenceOrder::default(),
-            };
+                vec![],
+                vec![],
+                PrecedenceOrder::default(),
+            )
+            .unwrap();
 
             let vars = ZervVars {
                 patch: Some(1),

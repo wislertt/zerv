@@ -10,16 +10,17 @@ use crate::version::zerv::{
 /// CalVer helper functions (demonstrating VarTimestamp usage)
 pub fn calver_yy_mm_patch() -> Zerv {
     Zerv {
-        schema: ZervSchema {
-            core: vec![
+        schema: ZervSchema::new_with_precedence(
+            vec![
                 Component::Var(Var::Timestamp("YY".to_string())),
                 Component::Var(Var::Timestamp("MM".to_string())),
                 Component::Var(Var::Patch),
             ],
-            extra_core: vec![],
-            build: vec![],
-            precedence_order: PrecedenceOrder::default(),
-        },
+            vec![],
+            vec![],
+            PrecedenceOrder::default(),
+        )
+        .unwrap(),
         vars: ZervVars {
             patch: Some(5),
             last_timestamp: Some(1710547200), // 2024-03-15
@@ -30,16 +31,17 @@ pub fn calver_yy_mm_patch() -> Zerv {
 
 pub fn calver_yyyy_mm_patch() -> Zerv {
     Zerv {
-        schema: ZervSchema {
-            core: vec![
+        schema: ZervSchema::new_with_precedence(
+            vec![
                 Component::Var(Var::Timestamp("YYYY".to_string())),
                 Component::Var(Var::Timestamp("MM".to_string())),
                 Component::Var(Var::Patch),
             ],
-            extra_core: vec![],
-            build: vec![],
-            precedence_order: PrecedenceOrder::default(),
-        },
+            vec![],
+            vec![],
+            PrecedenceOrder::default(),
+        )
+        .unwrap(),
         vars: ZervVars {
             patch: Some(1),
             last_timestamp: Some(1710547200),
@@ -50,20 +52,21 @@ pub fn calver_yyyy_mm_patch() -> Zerv {
 
 pub fn calver_with_timestamp_build() -> Zerv {
     Zerv {
-        schema: ZervSchema {
-            core: vec![
+        schema: ZervSchema::new_with_precedence(
+            vec![
                 Component::Var(Var::Major),
                 Component::Var(Var::Minor),
                 Component::Var(Var::Patch),
             ],
-            extra_core: vec![],
-            build: vec![
+            vec![],
+            vec![
                 Component::Var(Var::Timestamp("YYYY".to_string())),
                 Component::Var(Var::Timestamp("MM".to_string())),
                 Component::Var(Var::Timestamp("DD".to_string())),
             ],
-            precedence_order: PrecedenceOrder::default(),
-        },
+            PrecedenceOrder::default(),
+        )
+        .unwrap(),
         vars: ZervVars {
             major: Some(1),
             minor: Some(0),
