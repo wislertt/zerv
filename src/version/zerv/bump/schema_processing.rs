@@ -65,6 +65,20 @@ impl Zerv {
                     "Unknown field: {field_name}"
                 )));
             }
+            Var::Distance
+            | Var::Dirty
+            | Var::BumpedBranch
+            | Var::BumpedCommitHash
+            | Var::BumpedCommitHashShort
+            | Var::BumpedTimestamp
+            | Var::LastBranch
+            | Var::LastCommitHash
+            | Var::LastCommitHashShort
+            | Var::LastTimestamp => {
+                return Err(ZervError::InvalidBumpTarget(format!(
+                    "Cannot process VCS-derived field: {var:?}"
+                )));
+            }
             _ => {
                 return Err(ZervError::InvalidBumpTarget(format!(
                     "Cannot process field: {var:?}"
@@ -244,11 +258,11 @@ mod tests {
         assert_eq!(zerv.vars.major, Some(5)); // Override to 5
         assert_eq!(zerv.vars.minor, Some(2)); // 0 + 2 (bump)
     })] // core processing
-    #[case("extra_core", vec![Component::Var(Var::Epoch)], vec!["0=5"], vec!["0=2"], |zerv: &mut Zerv| {
-        assert_eq!(zerv.vars.epoch, Some(7)); // 5 + 2
+    #[case("extra_core", vec![Component::Var(Var::Dev)], vec!["0=5"], vec!["0=2"], |zerv: &mut Zerv| {
+        assert_eq!(zerv.vars.dev, Some(7)); // 5 + 2
     })] // extra_core processing
-    #[case("build", vec![Component::Var(Var::Minor)], vec!["0=10"], vec!["0=3"], |zerv: &mut Zerv| {
-        assert_eq!(zerv.vars.minor, Some(13)); // 10 + 3
+    #[case("build", vec![Component::Str("initial".to_string())], vec!["0=override"], vec!["0=final"], |zerv: &mut Zerv| {
+        assert_eq!(zerv.schema.build()[0], Component::Str("final".to_string())); // override then bump
     })] // build processing
     fn test_schema_processing_functions(
         #[case] section: &str,
@@ -262,7 +276,12 @@ mod tests {
         // Set up components based on section
         match section {
             "core" => zerv_fixture = zerv_fixture.with_core_components(components),
-            "extra_core" => zerv_fixture = zerv_fixture.with_extra_core(components[0].clone()),
+            "extra_core" => {
+                // For extra_core test, create a clean schema with only the test component
+                zerv_fixture = ZervFixture::new()
+                    .with_core_components(vec![Component::Var(Var::Major)])
+                    .with_extra_core_components(components)
+            }
             "build" => zerv_fixture = zerv_fixture.with_build(components[0].clone()),
             _ => panic!("Unknown section: {section}"),
         }
@@ -298,19 +317,25 @@ mod tests {
         #[case] bump_value: Option<&str>,
         #[case] assertions: impl Fn(&mut Zerv),
     ) {
-        let var = match field_type {
-            "major" => Var::Major,
-            "minor" => Var::Minor,
-            "patch" => Var::Patch,
-            "epoch" => Var::Epoch,
+        let (var, section) = match field_type {
+            "major" => (Var::Major, "core"),
+            "minor" => (Var::Minor, "core"),
+            "patch" => (Var::Patch, "core"),
+            "epoch" => (Var::Epoch, "extra_core"),
             _ => panic!("Unsupported field type in test: {field_type}"),
         };
-        let mut zerv = ZervFixture::new()
-            .with_core_components(vec![Component::Var(var)])
-            .build();
+        let mut zerv = if section == "core" {
+            ZervFixture::new()
+                .with_core_components(vec![Component::Var(var)])
+                .build()
+        } else {
+            ZervFixture::new()
+                .with_extra_core_components(vec![Component::Var(var)])
+                .build()
+        };
 
         zerv.process_schema_component(
-            "core",
+            section,
             0,
             override_value.map(|s| s.to_string()),
             bump_value.map(|s| s.to_string()),
@@ -378,7 +403,7 @@ mod tests {
 
     // Test process_schema_component error cases
     #[rstest]
-    #[case(Var::Dirty, "Cannot process field")] // unsupported field
+    #[case(Var::Dirty, "Cannot process VCS-derived field")] // VCS-derived field
     #[case(Var::Custom("unknown_field".to_string()), "Unknown field")] // custom field processing
     fn test_process_schema_component_errors(#[case] var: Var, #[case] expected_error: &str) {
         let mut zerv = ZervFixture::new()

@@ -4,7 +4,6 @@ pub mod core;
 mod display;
 mod parser;
 pub mod schema;
-pub mod schema_parser;
 pub mod utils;
 pub mod vars;
 
@@ -28,7 +27,7 @@ pub use components::{
 // Schema types
 pub use schema::ZervSchema;
 // Schema parser types
-pub use schema_parser::parse_ron_schema;
+pub use schema::parse_ron_schema;
 // Utilities
 pub use utils::resolve_timestamp;
 // Vars types

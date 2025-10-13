@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
+use super::core::ZervSchema;
 use crate::error::ZervError;
-use crate::version::zerv::schema::ZervSchema;
 
 impl FromStr for ZervSchema {
     type Err = ZervError;
@@ -17,11 +17,11 @@ pub fn parse_ron_schema(ron_str: &str) -> Result<ZervSchema, ZervError> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::bump::precedence::{
+    use super::super::super::bump::precedence::{
         Precedence,
         PrecedenceOrder,
     };
-    use super::super::components::{
+    use super::super::super::components::{
         Component,
         Var,
     };
