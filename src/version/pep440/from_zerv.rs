@@ -78,7 +78,7 @@ fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
 
 fn add_var_field_to_local(var: &Var, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
     match var {
-        Var::Branch => {
+        Var::BumpedBranch => {
             if let Some(branch) = &zerv.vars.bumped_branch {
                 local_overflow.push(LocalSegment::String(branch.clone()));
             }
@@ -88,9 +88,9 @@ fn add_var_field_to_local(var: &Var, zerv: &Zerv, local_overflow: &mut Vec<Local
                 local_overflow.push(LocalSegment::Integer(distance as u32));
             }
         }
-        Var::CommitHashShort => {
-            if let Some(hash) = &zerv.vars.bumped_commit_hash {
-                local_overflow.push(LocalSegment::String(hash.clone()));
+        Var::BumpedCommitHashShort => {
+            if let Some(hash) = zerv.vars.get_bumped_commit_hash_short() {
+                local_overflow.push(LocalSegment::String(hash));
             }
         }
         _ => {}

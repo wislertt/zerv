@@ -110,17 +110,16 @@ fn build_metadata_from_components(
                         .and_then(|ts| resolve_timestamp(pattern, ts).ok())
                         .and_then(|result| result.parse::<u64>().ok())
                         .map(BuildMetadata::Integer),
-                    Var::Branch => zerv
+                    Var::BumpedBranch => zerv
                         .vars
                         .bumped_branch
                         .as_ref()
                         .map(|s| BuildMetadata::String(s.clone())),
                     Var::Distance => zerv.vars.distance.map(BuildMetadata::Integer),
-                    Var::CommitHashShort => zerv
+                    Var::BumpedCommitHashShort => zerv
                         .vars
-                        .bumped_commit_hash
-                        .as_ref()
-                        .map(|s| BuildMetadata::String(s.clone())),
+                        .get_bumped_commit_hash_short()
+                        .map(BuildMetadata::String),
                     _ => None,
                 },
             })

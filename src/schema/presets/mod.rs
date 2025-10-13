@@ -49,8 +49,8 @@ fn tier_1_extra_core() -> Vec<Component> {
 
 fn tier_2_build() -> Vec<Component> {
     vec![
-        Component::Var(Var::Branch),
-        Component::Var(Var::CommitHashShort),
+        Component::Var(Var::BumpedBranch),
+        Component::Var(Var::BumpedCommitHashShort),
     ]
 }
 
@@ -65,9 +65,9 @@ fn tier_3_extra_core() -> Vec<Component> {
 
 fn tier_3_build() -> Vec<Component> {
     vec![
-        Component::Var(Var::Branch),
+        Component::Var(Var::BumpedBranch),
         Component::Var(Var::Distance),
-        Component::Var(Var::CommitHashShort),
+        Component::Var(Var::BumpedCommitHashShort),
     ]
 }
 

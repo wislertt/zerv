@@ -89,7 +89,7 @@ impl ZervFixture {
     pub fn with_branch(mut self, branch: String) -> Self {
         self.zerv.vars.bumped_branch = Some(branch);
         // Add Var to build schema if not already present
-        let branch_field = Component::Var(Var::Branch);
+        let branch_field = Component::Var(Var::BumpedBranch);
         if !self.zerv.schema.build.contains(&branch_field) {
             self.zerv.schema.build.push(branch_field);
         }
@@ -111,7 +111,7 @@ impl ZervFixture {
     pub fn with_commit_hash(mut self, hash: String) -> Self {
         self.zerv.vars.bumped_commit_hash = Some(hash);
         // Add Var to build schema if not already present
-        let hash_field = Component::Var(Var::CommitHashShort);
+        let hash_field = Component::Var(Var::BumpedCommitHashShort);
         if !self.zerv.schema.build.contains(&hash_field) {
             self.zerv.schema.build.push(hash_field);
         }

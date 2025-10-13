@@ -55,11 +55,8 @@ pub enum Var {
     // VCS context fields (last)
     LastBranch,
     LastCommitHash,
+    LastCommitHashShort,
     LastTimestamp,
-
-    // Legacy fields for backward compatibility
-    Branch,
-    CommitHashShort,
 
     // Custom fields
     #[serde(rename = "custom")]
@@ -93,12 +90,10 @@ impl Var {
                 .and_then(|pr| pr.number)
                 .map(|num| sanitizer.sanitize(&num.to_string())),
 
-            // VCS fields - use bumped versions for backward compatibility
-            Var::Branch | Var::BumpedBranch => {
-                vars.bumped_branch.as_ref().map(|b| sanitizer.sanitize(b))
-            }
+            // VCS fields
+            Var::BumpedBranch => vars.bumped_branch.as_ref().map(|b| sanitizer.sanitize(b)),
             Var::Distance => vars.distance.map(|v| sanitizer.sanitize(&v.to_string())),
-            Var::CommitHashShort | Var::BumpedCommitHashShort => vars
+            Var::BumpedCommitHashShort => vars
                 .get_bumped_commit_hash_short()
                 .map(|h| sanitizer.sanitize(&h)),
             Var::BumpedCommitHash => vars
@@ -115,6 +110,9 @@ impl Var {
                 .last_commit_hash
                 .as_ref()
                 .map(|h| sanitizer.sanitize(h)),
+            Var::LastCommitHashShort => vars
+                .get_last_commit_hash_short()
+                .map(|h| sanitizer.sanitize(&h)),
             Var::LastTimestamp => vars
                 .last_timestamp
                 .map(|v| sanitizer.sanitize(&v.to_string())),
@@ -213,7 +211,7 @@ impl Var {
             }
 
             // VCS fields
-            Var::Branch | Var::BumpedBranch => self.resolve_parts_with_value(
+            Var::BumpedBranch => self.resolve_parts_with_value(
                 vars,
                 value_sanitizer,
                 vec![key_sanitizer.sanitize("branch")],
@@ -223,7 +221,7 @@ impl Var {
                 value_sanitizer,
                 vec![key_sanitizer.sanitize("distance")],
             ),
-            Var::CommitHashShort | Var::BumpedCommitHashShort => self.resolve_parts_with_value(
+            Var::BumpedCommitHashShort => self.resolve_parts_with_value(
                 vars,
                 value_sanitizer,
                 vec![key_sanitizer.sanitize("commit")],
@@ -249,6 +247,11 @@ impl Var {
                 vars,
                 value_sanitizer,
                 vec![key_sanitizer.sanitize("last_commit")],
+            ),
+            Var::LastCommitHashShort => self.resolve_parts_with_value(
+                vars,
+                value_sanitizer,
+                vec![key_sanitizer.sanitize("last_commit_short")],
             ),
             Var::LastTimestamp => self.resolve_parts_with_value(
                 vars,
@@ -419,7 +422,7 @@ mod tests {
 
     // VCS field tests
     #[rstest]
-    #[case(Var::Branch, "main")]
+    #[case(Var::BumpedBranch, "main")]
     #[case(Var::BumpedBranch, "develop")]
     fn test_var_branch_fields(#[case] var: Var, #[case] branch: &str) {
         let zerv = base_fixture().with_branch(branch.to_string()).build();
@@ -444,7 +447,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case(Var::CommitHashShort, "abcdef1234567890", "abcdef1")]
+    #[case(Var::BumpedCommitHashShort, "abcdef1234567890", "abcdef1")]
     #[case(Var::BumpedCommitHashShort, "123456789", "1234567")]
     fn test_var_commit_hash_short(#[case] var: Var, #[case] hash: &str, #[case] expected: &str) {
         let zerv = base_fixture().with_commit_hash(hash.to_string()).build();
@@ -574,7 +577,7 @@ mod tests {
     ) {
         let zerv = base_fixture().with_branch(input.to_string()).build();
         assert_eq!(
-            Var::Branch.resolve_value(&zerv.vars, &sanitizer),
+            Var::BumpedBranch.resolve_value(&zerv.vars, &sanitizer),
             Some(expected.to_string())
         );
     }
@@ -647,7 +650,7 @@ mod tests {
 
     // Expanded values tests - VCS fields
     #[rstest]
-    #[case(Var::Branch, "main", vec!["branch", "main"])]
+    #[case(Var::BumpedBranch, "main", vec!["branch", "main"])]
     #[case(Var::Distance, "5", vec!["distance", "5"])]
     fn test_var_expanded_vcs_fields(
         #[case] var: Var,
@@ -655,7 +658,7 @@ mod tests {
         #[case] expected: Vec<&str>,
     ) {
         let zerv = match var {
-            Var::Branch => base_fixture().with_branch(value.to_string()).build(),
+            Var::BumpedBranch => base_fixture().with_branch(value.to_string()).build(),
             Var::Distance => base_fixture().with_distance(value.parse().unwrap()).build(),
             _ => panic!("Invalid var"),
         };
@@ -700,7 +703,7 @@ mod tests {
         let value_sanitizer = Sanitizer::pep440();
         let key_sanitizer = Sanitizer::str(Some("_"), false, false, None);
 
-        let result = Var::Branch.resolve_expanded_values_with_key_sanitizer(
+        let result = Var::BumpedBranch.resolve_expanded_values_with_key_sanitizer(
             &zerv.vars,
             &value_sanitizer,
             &key_sanitizer,
