@@ -1,19 +1,6 @@
 mod calver;
 mod standard;
 
-pub use calver::{
-    get_calver_schema,
-    zerv_calver_tier_1,
-    zerv_calver_tier_2,
-    zerv_calver_tier_3,
-};
-pub use standard::{
-    get_standard_schema,
-    zerv_standard_tier_1,
-    zerv_standard_tier_2,
-    zerv_standard_tier_3,
-};
-
 use crate::version::zerv::{
     Component,
     Var,
@@ -73,8 +60,8 @@ fn tier_3_build() -> Vec<Component> {
 
 pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {
     match name {
-        "zerv-standard" => Some(get_standard_schema(vars)),
-        "zerv-calver" => Some(get_calver_schema(vars)),
+        "zerv-standard" => Some(ZervSchema::get_standard_schema(vars)),
+        "zerv-calver" => Some(ZervSchema::get_calver_schema(vars)),
         _ => None,
     }
 }
@@ -96,8 +83,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case("zerv-standard", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(zerv_standard_tier_1()))]
-    #[case("zerv-calver", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(zerv_calver_tier_1()))]
+    #[case("zerv-standard", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(ZervSchema::zerv_standard_tier_1()))]
+    #[case("zerv-calver", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(ZervSchema::zerv_calver_tier_1()))]
     #[case("unknown", ZervVars::default(), None)]
     fn test_get_preset_schema(
         #[case] name: &str,

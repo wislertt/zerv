@@ -1,11 +1,3 @@
-use crate::schema::{
-    zerv_calver_tier_1,
-    zerv_calver_tier_2,
-    zerv_calver_tier_3,
-    zerv_standard_tier_1,
-    zerv_standard_tier_2,
-    zerv_standard_tier_3,
-};
 use crate::version::zerv::ZervSchema;
 
 /// Fixture for creating ZervSchema test data using presets
@@ -17,7 +9,7 @@ impl ZervSchemaFixture {
     /// Create a new fixture with standard tier 1 schema (major.minor.patch)
     pub fn new() -> Self {
         Self {
-            schema: zerv_standard_tier_1(),
+            schema: ZervSchema::zerv_standard_tier_1(),
         }
     }
 
@@ -29,42 +21,42 @@ impl ZervSchemaFixture {
     /// Create standard tier 1 schema (major.minor.patch)
     pub fn standard_tier_1() -> Self {
         Self {
-            schema: zerv_standard_tier_1(),
+            schema: ZervSchema::zerv_standard_tier_1(),
         }
     }
 
     /// Create standard tier 2 schema (with build metadata)
     pub fn standard_tier_2() -> Self {
         Self {
-            schema: zerv_standard_tier_2(),
+            schema: ZervSchema::zerv_standard_tier_2(),
         }
     }
 
     /// Create standard tier 3 schema (with dev components)
     pub fn standard_tier_3() -> Self {
         Self {
-            schema: zerv_standard_tier_3(),
+            schema: ZervSchema::zerv_standard_tier_3(),
         }
     }
 
     /// Create calver tier 1 schema
     pub fn calver_tier_1() -> Self {
         Self {
-            schema: zerv_calver_tier_1(),
+            schema: ZervSchema::zerv_calver_tier_1(),
         }
     }
 
     /// Create calver tier 2 schema
     pub fn calver_tier_2() -> Self {
         Self {
-            schema: zerv_calver_tier_2(),
+            schema: ZervSchema::zerv_calver_tier_2(),
         }
     }
 
     /// Create calver tier 3 schema
     pub fn calver_tier_3() -> Self {
         Self {
-            schema: zerv_calver_tier_3(),
+            schema: ZervSchema::zerv_calver_tier_3(),
         }
     }
 }

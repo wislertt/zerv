@@ -82,7 +82,6 @@ impl ZervDraft {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::schema::zerv_standard_tier_1;
 
     #[test]
     fn test_zerv_draft_creation() {
@@ -158,7 +157,7 @@ mod tests {
         let zerv = draft
             .create_zerv_version(Some("zerv-standard"), None)
             .unwrap();
-        assert_eq!(zerv.schema, zerv_standard_tier_1());
+        assert_eq!(zerv.schema, ZervSchema::zerv_standard_tier_1());
     }
 
     #[test]

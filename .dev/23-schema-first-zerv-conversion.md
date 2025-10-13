@@ -676,22 +676,42 @@ All operations return `Result<T, ZervError>`:
 - `src/version/zerv/components.rs` - Component categorization methods added
 - `src/version/pep440/utils.rs` - LocalSegment API updated with try_new_str()
 
-### ✅ Completed
+### ✅ Step 1: ZervSchema Validation API - COMPLETED
 
-- **Step 1**: `src/version/zerv/schema.rs` - Private fields, getters/setters implemented
-    - ✅ Fields made private
-    - ✅ Getter methods added (core(), extra_core(), build(), precedence_order())
-    - ✅ Setter methods with validation added (set_core(), set_extra_core(), set_build(), set_precedence_order())
-    - ✅ Updated test utils and major modules to use new API
-    - ⚠️ **Remaining compilation errors** in CLI and other modules need fixing
+**File**: `src/version/zerv/schema/` (refactored into organized folder structure)
+
+**✅ All requirements implemented:**
+
+1. **✅ Fields made private** - All ZervSchema fields are now private
+2. **✅ Getter methods added** - `core()`, `extra_core()`, `build()`, `precedence_order()`
+3. **✅ Validated setter methods** - `set_core()`, `set_extra_core()`, `set_build()`, `set_precedence_order()`
+4. **✅ Extended validate() method** - Component placement validation implemented
+5. **✅ Component categorization** - Methods added to Var enum for component type checking
+
+**✅ Additional improvements beyond plan:**
+
+- **Schema refactoring**: Organized into `mod.rs`, `core.rs`, `validation.rs`, `parser.rs`
+- **Comprehensive validation**: All placement rules enforced (primary→core, secondary→extra_core, context→anywhere)
+- **Test coverage**: 72 tests (13 core + 59 validation) with clean rstest patterns
+- **Preset methods**: Converted preset functions to ZervSchema methods
+- **Error handling**: Proper ZervError usage with descriptive messages
+- **All compilation errors fixed**: CLI, test utils, and all modules updated
+
+**✅ Validation rules implemented:**
+
+- Primary components (Major, Minor, Patch) must be in core section only
+- Secondary components (Epoch, PreRelease, Post, Dev) must be in extra_core section only
+- Context components can be placed anywhere
+- Primary component ordering enforced (major → minor → patch)
+- No duplicate components allowed
+- Comprehensive error messages for all validation failures
 
 ### 🔄 In Progress
 
-- **Step 1 Cleanup**: Fix remaining compilation errors in CLI and test modules
-- `src/version/pep440/from_zerv.rs` - Plan 20 integration
-- `src/version/semver/from_zerv.rs` - Plan 20 integration
-- `src/version/pep440/mod.rs` - Two-tier API
-- `src/version/semver/mod.rs` - Two-tier API
+- **Step 2**: `src/version/pep440/from_zerv.rs` - Plan 20 integration
+- **Step 3**: `src/version/semver/from_zerv.rs` - Plan 20 integration
+- **Step 4**: `src/version/pep440/mod.rs` - Two-tier API
+- **Step 5**: `src/version/semver/mod.rs` - Two-tier API
 
 ### ⚠️ Breaking Changes Expected
 
