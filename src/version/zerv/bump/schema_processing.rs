@@ -81,9 +81,9 @@ impl Zerv {
         bump_value: Option<String>,
     ) -> Result<(), ZervError> {
         if let Component::Int(current_value) = component {
-            // Parse override and bump values for Integer components
-            let override_val = Self::parse_optional_u32(override_value.as_deref(), "Integer")?;
-            let bump_val = Self::parse_optional_u32(bump_value.as_deref(), "Integer")?;
+            // Parse override and bump values for UInt components
+            let override_val = Self::parse_optional_u32(override_value.as_deref(), "UInt")?;
+            let bump_val = Self::parse_optional_u32(bump_value.as_deref(), "UInt")?;
 
             // Calculate new value: override first, then bump from that base
             let base_value = if let Some(override_val) = override_val {
@@ -107,7 +107,7 @@ impl Zerv {
             Ok(())
         } else {
             Err(ZervError::InvalidBumpTarget(
-                "Expected Integer component".to_string(),
+                "Expected UInt component".to_string(),
             ))
         }
     }
@@ -185,7 +185,7 @@ impl Zerv {
                 }
             }
             Component::Int(_) => {
-                // Process Integer component directly (mutates the component)
+                // Process UInt component directly (mutates the component)
                 if let Some(component) = components.get_mut(index) {
                     Self::process_integer_component(component, override_value, bump_value)?;
                 } else {
@@ -291,7 +291,7 @@ mod tests {
         assertions(&mut zerv);
     }
 
-    // Test process_schema_component with Integer components
+    // Test process_schema_component with UInt components
     #[rstest]
     #[case(Some("100"), None, Component::Int(100))] // override only
     #[case(None, Some("5"), Component::Int(47))] // bump only (42 + 5)

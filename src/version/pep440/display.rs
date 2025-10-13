@@ -9,8 +9,8 @@ pub fn format_local_segments(segments: &[LocalSegment]) -> String {
     segments
         .iter()
         .map(|segment| match segment {
-            LocalSegment::Integer(n) => n.to_string(),
-            LocalSegment::String(s) => s.clone(),
+            LocalSegment::UInt(n) => n.to_string(),
+            LocalSegment::Str(s) => s.clone(),
         })
         .collect::<Vec<_>>()
         .join(".")
@@ -68,8 +68,8 @@ impl fmt::Display for PEP440 {
 impl fmt::Display for LocalSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LocalSegment::String(s) => write!(f, "{s}"),
-            LocalSegment::Integer(i) => write!(f, "{i}"),
+            LocalSegment::Str(s) => write!(f, "{s}"),
+            LocalSegment::UInt(i) => write!(f, "{i}"),
         }
     }
 }
@@ -113,17 +113,17 @@ mod tests {
 
     #[test]
     fn test_display_local_segment() {
-        assert_eq!(LocalSegment::String("test".to_string()).to_string(), "test");
-        assert_eq!(LocalSegment::Integer(42).to_string(), "42");
+        assert_eq!(LocalSegment::Str("test".to_string()).to_string(), "test");
+        assert_eq!(LocalSegment::UInt(42).to_string(), "42");
     }
 
     #[test]
     fn test_format_local_segments() {
         let segments = vec![
-            LocalSegment::String("ubuntu".to_string()),
-            LocalSegment::Integer(20),
-            LocalSegment::Integer(4),
-            LocalSegment::String("build123".to_string()),
+            LocalSegment::Str("ubuntu".to_string()),
+            LocalSegment::UInt(20),
+            LocalSegment::UInt(4),
+            LocalSegment::Str("build123".to_string()),
         ];
         assert_eq!(format_local_segments(&segments), "ubuntu.20.4.build123");
     }
@@ -140,13 +140,13 @@ mod tests {
     #[test]
     fn test_format_local_segments_edge_cases() {
         assert_eq!(format_local_segments(&[]), "");
-        assert_eq!(format_local_segments(&[LocalSegment::Integer(42)]), "42");
+        assert_eq!(format_local_segments(&[LocalSegment::UInt(42)]), "42");
         assert_eq!(
-            format_local_segments(&[LocalSegment::String("test".to_string())]),
+            format_local_segments(&[LocalSegment::Str("test".to_string())]),
             "test"
         );
         assert_eq!(
-            format_local_segments(&[LocalSegment::Integer(u32::MAX)]),
+            format_local_segments(&[LocalSegment::UInt(u32::MAX)]),
             "4294967295"
         );
     }

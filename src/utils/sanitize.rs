@@ -41,8 +41,8 @@ impl Sanitizer {
         }
     }
 
-    /// PEP440 compatible: lowercase, dots, no leading zeros
-    pub fn pep440() -> Self {
+    /// PEP440 local string sanitization: lowercase, dots, no leading zeros
+    pub fn pep440_local_str() -> Self {
         Self {
             target: SanitizeTarget::Str,
             separator: Some(".".to_string()),
@@ -52,8 +52,8 @@ impl Sanitizer {
         }
     }
 
-    /// SemVer compatible: preserve case, dots
-    pub fn semver() -> Self {
+    /// SemVer string sanitization: preserve case, dots
+    pub fn semver_str() -> Self {
         Self {
             target: SanitizeTarget::Str,
             separator: Some(".".to_string()),
@@ -64,12 +64,12 @@ impl Sanitizer {
     }
 
     /// Extract unsigned integer from string
-    pub fn uint(keep_zeros: bool) -> Self {
+    pub fn uint() -> Self {
         Self {
             target: SanitizeTarget::UInt,
             separator: None,
             lowercase: false,
-            keep_zeros,
+            keep_zeros: false,
             max_length: None,
         }
     }
@@ -131,21 +131,22 @@ impl Sanitizer {
 
     /// Extract unsigned integer from string
     fn sanitize_to_integer(&self, input: &str) -> String {
-        let digits: String = input.chars().filter(|c| c.is_ascii_digit()).collect();
+        let trimmed = input.trim();
 
-        if digits.is_empty() {
-            return "0".to_string();
-        }
-
-        if self.keep_zeros {
-            digits
-        } else {
-            let trimmed = digits.trim_start_matches('0');
-            if trimmed.is_empty() {
-                "0".to_string()
-            } else {
+        // Only accept strings that are purely digits
+        if trimmed.chars().all(|c| c.is_ascii_digit()) && !trimmed.is_empty() {
+            if self.keep_zeros {
                 trimmed.to_string()
+            } else {
+                let without_leading_zeros = trimmed.trim_start_matches('0');
+                if without_leading_zeros.is_empty() {
+                    "0".to_string()
+                } else {
+                    without_leading_zeros.to_string()
+                }
             }
+        } else {
+            "".to_string()
         }
     }
 
@@ -219,8 +220,8 @@ mod tests {
     }
 
     #[test]
-    fn test_pep440_sanitization() {
-        let sanitizer = Sanitizer::pep440();
+    fn test_pep440_local_str_sanitization() {
+        let sanitizer = Sanitizer::pep440_local_str();
 
         assert_eq!(sanitizer.sanitize("Feature/API-v2"), "feature.api.v2");
         assert_eq!(sanitizer.sanitize("Build-ID-0051"), "build.id.51");
@@ -228,8 +229,8 @@ mod tests {
     }
 
     #[test]
-    fn test_semver_sanitization() {
-        let sanitizer = Sanitizer::semver();
+    fn test_semver_str_sanitization() {
+        let sanitizer = Sanitizer::semver_str();
 
         assert_eq!(sanitizer.sanitize("Feature/API-v2"), "Feature.API.v2");
         assert_eq!(sanitizer.sanitize("build-id-0051"), "build.id.51");
@@ -237,14 +238,19 @@ mod tests {
 
     #[test]
     fn test_uint_extraction() {
-        let sanitizer = Sanitizer::uint(false);
+        let sanitizer = Sanitizer::uint();
 
-        assert_eq!(sanitizer.sanitize("abc123def456"), "123456");
+        // Pure numeric strings
+        assert_eq!(sanitizer.sanitize("123"), "123");
         assert_eq!(sanitizer.sanitize("0051"), "51");
-        assert_eq!(sanitizer.sanitize("no-digits"), "0");
+        assert_eq!(sanitizer.sanitize("0000"), "0");
+        assert_eq!(sanitizer.sanitize("00123"), "123");
 
-        let sanitizer_keep_zeros = Sanitizer::uint(true);
-        assert_eq!(sanitizer_keep_zeros.sanitize("0051"), "0051");
+        // Mixed content - should return empty
+        assert_eq!(sanitizer.sanitize("abc123def456"), "");
+        assert_eq!(sanitizer.sanitize("no-digits"), "");
+        assert_eq!(sanitizer.sanitize("abc"), "");
+        assert_eq!(sanitizer.sanitize(""), "");
     }
 
     #[test]
@@ -303,20 +309,6 @@ mod tests {
             "feature/test-branch"
         );
         assert_eq!(sanitizer.sanitize("Build-ID-0051"), "Build-ID-0051");
-    }
-
-    #[test]
-    fn test_uint_edge_cases() {
-        let sanitizer = Sanitizer::uint(false);
-
-        assert_eq!(sanitizer.sanitize(""), "0");
-        assert_eq!(sanitizer.sanitize("abc"), "0");
-        assert_eq!(sanitizer.sanitize("0000"), "0");
-        assert_eq!(sanitizer.sanitize("00123"), "123");
-
-        let sanitizer_keep = Sanitizer::uint(true);
-        assert_eq!(sanitizer_keep.sanitize("0000"), "0000");
-        assert_eq!(sanitizer_keep.sanitize("00123"), "00123");
     }
 
     #[test]

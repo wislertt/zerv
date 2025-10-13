@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use serde::{
     Deserialize,
     Serialize,
@@ -29,19 +30,18 @@ use crate::version::zerv::vars::ZervVars;
 )]
 #[strum(serialize_all = "snake_case")]
 pub enum Var {
-    // Core version fields
+    // Primary components (schema.core only, correct order when present, used once each)
     Major,
     Minor,
     Patch,
+
+    // Secondary components (schema.extra_core only, used once each, any order)
     Epoch,
-
-    // Pre-release fields
     PreRelease,
-
-    // Post-release fields
     Post,
     Dev,
 
+    // Context components (anywhere, multiple uses allowed)
     // VCS state fields
     Distance,
     Dirty,
@@ -70,6 +70,32 @@ pub enum Var {
 }
 
 impl Var {
+    /// Primary component ordering for schema validation
+    pub fn primary_component_order() -> &'static IndexMap<Var, ()> {
+        static ORDER: std::sync::LazyLock<IndexMap<Var, ()>> = std::sync::LazyLock::new(|| {
+            [Var::Major, Var::Minor, Var::Patch]
+                .into_iter()
+                .map(|v| (v, ()))
+                .collect()
+        });
+        &ORDER
+    }
+
+    /// Check if this is a primary component (major/minor/patch)
+    pub fn is_primary_component(&self) -> bool {
+        matches!(self, Var::Major | Var::Minor | Var::Patch)
+    }
+
+    /// Check if this is a secondary component (epoch/pre_release/post/dev)
+    pub fn is_secondary_component(&self) -> bool {
+        matches!(self, Var::Epoch | Var::PreRelease | Var::Post | Var::Dev)
+    }
+
+    /// Check if this is a context component (everything else)
+    pub fn is_context_component(&self) -> bool {
+        !self.is_primary_component() && !self.is_secondary_component()
+    }
+
     /// Get just the primary value (no labels)
     pub fn resolve_value(&self, vars: &ZervVars, sanitizer: &Sanitizer) -> Option<String> {
         match self {
@@ -568,8 +594,8 @@ mod tests {
     // Sanitization tests
     #[rstest]
     #[case(Sanitizer::default(), "feature/test", "feature.test")]
-    #[case(Sanitizer::pep440(), "Feature/API-v2", "feature.api.v2")]
-    #[case(Sanitizer::semver(), "Feature/API-v2", "Feature.API.v2")]
+    #[case(Sanitizer::pep440_local_str(), "Feature/API-v2", "feature.api.v2")]
+    #[case(Sanitizer::semver_str(), "Feature/API-v2", "Feature.API.v2")]
     fn test_var_sanitization(
         #[case] sanitizer: Sanitizer,
         #[case] input: &str,
@@ -700,7 +726,7 @@ mod tests {
         let zerv = base_fixture()
             .with_branch("feature/test".to_string())
             .build();
-        let value_sanitizer = Sanitizer::pep440();
+        let value_sanitizer = Sanitizer::pep440_local_str();
         let key_sanitizer = Sanitizer::str(Some("_"), false, false, None);
 
         let result = Var::BumpedBranch.resolve_expanded_values_with_key_sanitizer(
@@ -737,5 +763,56 @@ mod tests {
             var.resolve_value(&zerv.vars, &sanitizer),
             Some("2023".to_string())
         );
+    }
+
+    // Component categorization tests
+    #[rstest]
+    #[case(Var::Major, true)]
+    #[case(Var::Minor, true)]
+    #[case(Var::Patch, true)]
+    #[case(Var::Epoch, false)]
+    #[case(Var::PreRelease, false)]
+    #[case(Var::Distance, false)]
+    #[case(Var::Custom("test".to_string()), false)]
+    fn test_is_primary_component(#[case] var: Var, #[case] expected: bool) {
+        assert_eq!(var.is_primary_component(), expected);
+    }
+
+    #[rstest]
+    #[case(Var::Epoch, true)]
+    #[case(Var::PreRelease, true)]
+    #[case(Var::Post, true)]
+    #[case(Var::Dev, true)]
+    #[case(Var::Major, false)]
+    #[case(Var::Distance, false)]
+    #[case(Var::Custom("test".to_string()), false)]
+    fn test_is_secondary_component(#[case] var: Var, #[case] expected: bool) {
+        assert_eq!(var.is_secondary_component(), expected);
+    }
+
+    #[rstest]
+    #[case(Var::Distance, true)]
+    #[case(Var::Dirty, true)]
+    #[case(Var::BumpedBranch, true)]
+    #[case(Var::Custom("test".to_string()), true)]
+    #[case(Var::Timestamp("YYYY".to_string()), true)]
+    #[case(Var::Major, false)]
+    #[case(Var::Epoch, false)]
+    fn test_is_context_component(#[case] var: Var, #[case] expected: bool) {
+        assert_eq!(var.is_context_component(), expected);
+    }
+
+    #[test]
+    fn test_primary_component_order() {
+        let order = Var::primary_component_order();
+
+        // Test correct order
+        assert_eq!(order.get_index_of(&Var::Major), Some(0));
+        assert_eq!(order.get_index_of(&Var::Minor), Some(1));
+        assert_eq!(order.get_index_of(&Var::Patch), Some(2));
+
+        // Test non-primary components not in order
+        assert_eq!(order.get_index_of(&Var::Epoch), None);
+        assert_eq!(order.get_index_of(&Var::Distance), None);
     }
 }

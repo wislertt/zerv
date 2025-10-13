@@ -46,13 +46,20 @@ Current schema inference approach is complex and error-prone. Need schema-first 
 ### Two-Tier API Approach
 
 ```rust
-// Simple API - uses default Tier 3 schema (80% use case)
+// From Zerv (uses schema already in Zerv)
 impl From<Zerv> for PEP440 { ... }
-impl From<PEP440> for Zerv { ... }
+impl From<Zerv> for SemVer { ... }
 
-// Advanced API - explicit schema (20% use case)
+// To Zerv - Simple API (uses default schema)
+impl From<PEP440> for Zerv { ... }
+impl From<SemVer> for Zerv { ... }
+
+// To Zerv - Advanced API (explicit schema for power users)
 impl PEP440 {
-    fn from_zerv_with_schema(zerv: &Zerv, schema: &ZervSchema) -> Result<Self, ConversionError>
+    fn to_zerv_with_schema(&self, schema: &ZervSchema) -> Result<Zerv, ConversionError>
+}
+
+impl SemVer {
     fn to_zerv_with_schema(&self, schema: &ZervSchema) -> Result<Zerv, ConversionError>
 }
 ```
@@ -88,45 +95,53 @@ Enforce rules to reduce complexity:
 - **Simple API**: `From<Zerv>` with default Tier 3 schema?
     - _Context_: Most users just want "convert my version to PEP440/SemVer"
     - _Current issue_: Complex API scares away simple use cases
-- **Advanced API**: `from_zerv_with_schema()` for custom schemas?
-    - _Context_: Power users need control over component placement
-    - _Current issue_: No way to specify custom schemas explicitly
-- **Error handling**: How to handle invalid schemas vs invalid data?
-    - _Context_: Different error types need different handling strategies
-    - _Current issue_: Generic errors, hard to understand what went wrong
+- **Advanced API**: `to_zerv_with_schema()` for custom schemas?
+    - _Context_: Power users need control over schema when converting TO Zerv
+    - _Current issue_: No way to specify custom schemas when creating Zerv from other formats
+
 - **Backward compatibility**: How to migrate existing code?
     - _Context_: Existing tests and usage must continue working
     - _Current issue_: Any API change could break existing code
+    - _Migration Strategy_: No backward compatibility handling in code. For simple changes, update all at once. For complex changes, implement new API first, ensure it works, then delete old API and rename new API to final name.
 
 ### Schema Constraints
 
-- **Core rules**: major/minor/patch must be in schema.core positions 0,1,2?
-    - _Context_: All version formats expect major.minor.patch as base
-    - _Current issue_: Components can appear anywhere, breaking format assumptions
-- **Standard components**: epoch/pre_release/post/dev placement rules?
-    - _Context_: These have semantic meaning in target formats
-    - _Current issue_: No enforcement of where these can appear
-- **Custom components**: Where can they appear? Any restrictions?
-    - _Context_: User flexibility vs format compatibility
-    - _Current issue_: Custom components can break target format parsing
-- **VCS components**: Flexible placement or fixed rules?
-    - _Context_: VCS info is metadata, should be in build/local sections
-    - _Current issue_: VCS components mixed with version semantics
+**Component Categories (documented in Var enum comments):**
+
+- **Primary**: major/minor/patch - schema.core only, correct order when present, used once each
+- **Secondary**: epoch/pre_release/post/dev - schema.extra_core only, used once each, any order
+- **Context**: VCS fields, timestamps, custom - can appear anywhere, multiple uses allowed
+
+**Validation Rules:**
+
+- Primary components MUST be in schema.core only, in correct order (major→minor→patch), no duplicates
+- Secondary components MUST be in schema.extra_core only, used once each
+- Context components have full flexibility for placement and usage
+- Clear error messages for constraint violations
+
+**Examples:**
+
+- Valid: `[major, minor, patch]`, `[yyyy, mm, dd, patch]`, `[major, patch]`
+- Invalid: `[minor, major, patch]` (wrong order), `[major, major, patch]` (duplicate)
+
+**Benefits:**
+
+- Predictable core version parsing for all formats
+- Flexible secondary component ordering per user preference
+- Full extensibility for context components
+- Consistent with existing bump process categories
 
 ### Conversion Strategy
 
 - **Schema validation**: Validate before conversion or during?
     - _Context_: Fail fast vs lazy validation trade-offs
-    - _Current issue_: Validation scattered throughout conversion process
+    - _Solution_: Private fields with validated getters/setters ensure schemas are always valid, eliminating validation timing concerns
 - **Component resolution**: Use Plan 20 methods with schema context?
     - _Context_: Plan 20 provides centralized resolution, need schema awareness
-    - _Current issue_: Manual resolution duplicated across formats
+    - _Solution_: Plan 20 is complete. Use Component::resolve_value() and Var::resolve_expanded_values() exclusively, no manual resolution
 - **Error propagation**: How to handle resolution failures?
     - _Context_: Missing vars vs invalid schemas vs format limitations
-    - _Current issue_: Panics on invalid data, poor error messages
-- **Performance**: Schema validation cost vs conversion cost?
-    - _Context_: Validation overhead vs runtime safety
-    - _Current issue_: No performance benchmarks for current approach
+    - _Solution_: All resolution failures return Result<T, ZervError>, no panics
 
 ### Implementation Approach
 
@@ -145,11 +160,11 @@ Enforce rules to reduce complexity:
 
 ## Files Potentially Affected
 
-- `src/version/zerv/schema.rs` - Schema validation and constraint enforcement
+- `src/version/zerv/schema.rs` - Private fields, getters/setters, validation enforcement
 - `src/version/pep440/from_zerv.rs` - Replace manual resolution with Plan 20 methods
 - `src/version/semver/from_zerv.rs` - Replace manual resolution with Plan 20 methods
 - `src/version/zerv/components.rs` - Add schema-aware resolution methods
-- `src/version/zerv/errors.rs` - New error types for schema/conversion failures
+- `src/version/zerv/errors.rs` - New ValidationError types for schema failures
 
 ## Related Plans
 
@@ -167,6 +182,96 @@ Enforce rules to reduce complexity:
 - **Performance**: No significant regression in conversion speed
 - **Maintainability**: Easy to add new Var types and target formats
 
+## ZervSchema API Design
+
+### Private Fields with Validated Access
+
+```rust
+#[derive(Debug, Clone)]
+pub struct ZervSchema {
+    core: Vec<Component>,           // Private fields
+    extra_core: Vec<Component>,
+    build: Vec<Component>,
+    precedence_order: PrecedenceOrder,
+}
+
+impl ZervSchema {
+    // Getters for read access
+    pub fn core(&self) -> &Vec<Component> {
+        &self.core
+    }
+
+    pub fn extra_core(&self) -> &Vec<Component> {
+        &self.extra_core
+    }
+
+    pub fn build(&self) -> &Vec<Component> {
+        &self.build
+    }
+
+    pub fn precedence_order(&self) -> &PrecedenceOrder {
+        &self.precedence_order
+    }
+
+    // Setters with validation
+    pub fn set_core(&mut self, core: Vec<Component>) -> Result<(), ValidationError> {
+        validate_core(&core)?;
+        self.core = core;
+        Ok(())
+    }
+
+    pub fn set_extra_core(&mut self, extra_core: Vec<Component>) -> Result<(), ValidationError> {
+        validate_extra_core(&extra_core)?;
+        self.extra_core = extra_core;
+        Ok(())
+    }
+
+    // Constructor with validation
+    pub fn new(
+        core: Vec<Component>,
+        extra_core: Vec<Component>,
+        build: Vec<Component>,
+        precedence_order: PrecedenceOrder,
+    ) -> Result<Self, ValidationError> {
+        validate_core(&core)?;
+        validate_extra_core(&extra_core)?;
+        Ok(Self { core, extra_core, build, precedence_order })
+    }
+}
+```
+
+**Benefits:**
+
+- Impossible to create invalid schemas (private fields + validated constructors)
+- Read access via getters returning references
+- Write access only through validated setters
+- Validation enforced at compile time through API design
+
+## Schema Validation Implementation
+
+```rust
+// Validation logic using Var enum comments (no explicit ComponentCategory needed)
+fn validate_component_placement(var: &Var, section: SchemaSection) -> Result<(), Error> {
+    match var {
+        // Primary components (schema.core only, correct order when present, used once each)
+        Var::Major | Var::Minor | Var::Patch => {
+            if section != SchemaSection::Core {
+                return Err("Primary components must be in core section");
+            }
+        }
+        // Secondary components (schema.extra_core only, used once each, any order)
+        Var::Epoch | Var::PreRelease | Var::Post | Var::Dev => {
+            if section != SchemaSection::ExtraCore {
+                return Err("Secondary components must be in extra_core section");
+            }
+        }
+        // Context components (anywhere, multiple uses allowed)
+        _ => {} // No restrictions
+    }
+    Ok(())
+}
+```
+
 ## Next Steps
 
-Review each design question, make decisions, then create concrete implementation plan with specific code changes.
+Implement schema validation with the defined component categories, then create concrete conversion plan.

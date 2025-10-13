@@ -53,10 +53,10 @@ impl From<PEP440> for Zerv {
         if let Some(local_segments) = pep440.local {
             for segment in local_segments {
                 match segment {
-                    LocalSegment::String(s) => {
+                    LocalSegment::Str(s) => {
                         build.push(Component::Str(s));
                     }
-                    LocalSegment::Integer(n) => {
+                    LocalSegment::UInt(n) => {
                         build.push(Component::Int(n as u64));
                     }
                 }

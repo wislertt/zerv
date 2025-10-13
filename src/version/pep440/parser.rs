@@ -53,9 +53,9 @@ pub fn parse_local_segments(local: &str) -> Vec<LocalSegment> {
         .split('.')
         .map(|part| {
             if !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()) {
-                LocalSegment::Integer(part.parse().unwrap_or(0))
+                LocalSegment::UInt(part.parse().unwrap_or(0))
             } else {
-                LocalSegment::String(part.to_string())
+                LocalSegment::Str(part.to_string())
             }
         })
         .collect()
@@ -335,10 +335,10 @@ mod tests {
         assert_eq!(
             segments,
             vec![
-                LocalSegment::String("ubuntu".to_string()),
-                LocalSegment::Integer(20),
-                LocalSegment::Integer(4),
-                LocalSegment::String("build123".to_string())
+                LocalSegment::Str("ubuntu".to_string()),
+                LocalSegment::UInt(20),
+                LocalSegment::UInt(4),
+                LocalSegment::Str("build123".to_string())
             ]
         );
     }
@@ -546,16 +546,13 @@ mod tests {
     #[test]
     fn test_parse_local_segments_edge_cases() {
         let segments = parse_local_segments("");
-        assert_eq!(segments, vec![LocalSegment::String("".to_string())]);
+        assert_eq!(segments, vec![LocalSegment::Str("".to_string())]);
 
         let segments = parse_local_segments("123");
-        assert_eq!(segments, vec![LocalSegment::Integer(123)]);
+        assert_eq!(segments, vec![LocalSegment::UInt(123)]);
 
         let segments = parse_local_segments("007.008");
-        assert_eq!(
-            segments,
-            vec![LocalSegment::Integer(7), LocalSegment::Integer(8)]
-        );
+        assert_eq!(segments, vec![LocalSegment::UInt(7), LocalSegment::UInt(8)]);
     }
 
     #[rstest]

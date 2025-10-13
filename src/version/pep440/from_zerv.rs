@@ -60,7 +60,7 @@ fn process_var_field_pep440(var: &Var, zerv: &Zerv, components: &mut PEP440Compo
         Var::Custom(name) => {
             components
                 .local_overflow
-                .push(LocalSegment::String(name.clone()));
+                .push(LocalSegment::Str(name.clone()));
         }
         _ => {
             add_var_field_to_local(var, zerv, &mut components.local_overflow);
@@ -70,9 +70,9 @@ fn process_var_field_pep440(var: &Var, zerv: &Zerv, components: &mut PEP440Compo
 
 fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
     if value <= u32::MAX as u64 {
-        local_overflow.push(LocalSegment::Integer(value as u32));
+        local_overflow.push(LocalSegment::UInt(value as u32));
     } else {
-        local_overflow.push(LocalSegment::String(value.to_string()));
+        local_overflow.push(LocalSegment::Str(value.to_string()));
     }
 }
 
@@ -80,17 +80,17 @@ fn add_var_field_to_local(var: &Var, zerv: &Zerv, local_overflow: &mut Vec<Local
     match var {
         Var::BumpedBranch => {
             if let Some(branch) = &zerv.vars.bumped_branch {
-                local_overflow.push(LocalSegment::String(branch.clone()));
+                local_overflow.push(LocalSegment::Str(branch.clone()));
             }
         }
         Var::Distance => {
             if let Some(distance) = zerv.vars.distance {
-                local_overflow.push(LocalSegment::Integer(distance as u32));
+                local_overflow.push(LocalSegment::UInt(distance as u32));
             }
         }
         Var::BumpedCommitHashShort => {
             if let Some(hash) = zerv.vars.get_bumped_commit_hash_short() {
-                local_overflow.push(LocalSegment::String(hash));
+                local_overflow.push(LocalSegment::Str(hash));
             }
         }
         _ => {}
@@ -105,7 +105,7 @@ fn add_component_to_local(
 ) {
     match comp {
         Component::Str(s) => {
-            local_overflow.push(LocalSegment::String(s.clone()));
+            local_overflow.push(LocalSegment::Str(s.clone()));
         }
         Component::Int(n) => {
             add_integer_to_local(*n, local_overflow);

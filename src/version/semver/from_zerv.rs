@@ -23,7 +23,7 @@ fn extract_overflow_identifiers(core_values: &[u64]) -> Vec<PreReleaseIdentifier
     if core_values.len() > 3 {
         core_values[3..]
             .iter()
-            .map(|&val| PreReleaseIdentifier::Integer(val))
+            .map(|&val| PreReleaseIdentifier::UInt(val))
             .collect()
     } else {
         Vec::new()
@@ -33,7 +33,7 @@ fn extract_overflow_identifiers(core_values: &[u64]) -> Vec<PreReleaseIdentifier
 fn add_epoch_identifiers(identifiers: &mut Vec<PreReleaseIdentifier>, epoch: Option<u64>) {
     if let Some(epoch) = epoch {
         identifiers.push(PreReleaseIdentifier::String("epoch".to_string()));
-        identifiers.push(PreReleaseIdentifier::Integer(epoch));
+        identifiers.push(PreReleaseIdentifier::UInt(epoch));
     }
 }
 
@@ -45,20 +45,20 @@ fn process_var_field(identifiers: &mut Vec<PreReleaseIdentifier>, var: &Var, zer
                     pre_release_label_to_semver_string(&pr.label).to_string(),
                 ));
                 if let Some(num) = pr.number {
-                    identifiers.push(PreReleaseIdentifier::Integer(num));
+                    identifiers.push(PreReleaseIdentifier::UInt(num));
                 }
             }
         }
         Var::Post => {
             if let Some(post_num) = zerv.vars.post {
                 identifiers.push(PreReleaseIdentifier::String("post".to_string()));
-                identifiers.push(PreReleaseIdentifier::Integer(post_num));
+                identifiers.push(PreReleaseIdentifier::UInt(post_num));
             }
         }
         Var::Dev => {
             if let Some(dev_num) = zerv.vars.dev {
                 identifiers.push(PreReleaseIdentifier::String("dev".to_string()));
-                identifiers.push(PreReleaseIdentifier::Integer(dev_num));
+                identifiers.push(PreReleaseIdentifier::UInt(dev_num));
             }
         }
         Var::Custom(name) => {
@@ -81,7 +81,7 @@ fn build_pre_release_identifiers(
                 process_var_field(&mut identifiers, var, zerv);
             }
             Component::Str(s) => identifiers.push(PreReleaseIdentifier::String(s.clone())),
-            Component::Int(n) => identifiers.push(PreReleaseIdentifier::Integer(*n)),
+            Component::Int(n) => identifiers.push(PreReleaseIdentifier::UInt(*n)),
         }
     }
 
@@ -104,18 +104,18 @@ fn build_metadata_from_components(
             .iter()
             .filter_map(|comp| match comp {
                 Component::Str(s) => Some(BuildMetadata::String(s.clone())),
-                Component::Int(i) => Some(BuildMetadata::Integer(*i)),
+                Component::Int(i) => Some(BuildMetadata::UInt(*i)),
                 Component::Var(var) => match var {
                     Var::Timestamp(pattern) => last_timestamp
                         .and_then(|ts| resolve_timestamp(pattern, ts).ok())
                         .and_then(|result| result.parse::<u64>().ok())
-                        .map(BuildMetadata::Integer),
+                        .map(BuildMetadata::UInt),
                     Var::BumpedBranch => zerv
                         .vars
                         .bumped_branch
                         .as_ref()
                         .map(|s| BuildMetadata::String(s.clone())),
-                    Var::Distance => zerv.vars.distance.map(BuildMetadata::Integer),
+                    Var::Distance => zerv.vars.distance.map(BuildMetadata::UInt),
                     Var::BumpedCommitHashShort => zerv
                         .vars
                         .get_bumped_commit_hash_short()

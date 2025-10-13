@@ -46,7 +46,7 @@ impl PreReleaseProcessor {
             return false;
         }
 
-        if let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::Integer(num)) =
+        if let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::UInt(num)) =
             (&pr[i], &pr[i + 1])
         {
             match label.as_str() {
@@ -89,7 +89,7 @@ impl PreReleaseProcessor {
     fn add_regular_component(&mut self, item: &PreReleaseIdentifier) {
         self.extra_core.push(match item {
             PreReleaseIdentifier::String(s) => Component::Str(s.clone()),
-            PreReleaseIdentifier::Integer(n) => Component::Int(*n),
+            PreReleaseIdentifier::UInt(n) => Component::Int(*n),
         });
     }
 
@@ -128,7 +128,7 @@ impl From<SemVer> for Zerv {
                     .iter()
                     .map(|m| match m {
                         BuildMetadata::String(s) => Component::Str(s.clone()),
-                        BuildMetadata::Integer(i) => Component::Int(*i),
+                        BuildMetadata::UInt(i) => Component::Int(*i),
                     })
                     .collect()
             })
