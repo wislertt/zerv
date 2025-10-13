@@ -53,7 +53,7 @@ pub fn parse_local_segments(local: &str) -> Vec<LocalSegment> {
             if !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()) {
                 LocalSegment::new_uint(part.parse().unwrap_or(0))
             } else {
-                LocalSegment::new_str(part.to_string())
+                LocalSegment::try_new_str(part.to_string()).unwrap()
             }
         })
         .collect()

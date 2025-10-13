@@ -56,9 +56,18 @@ fn process_var_field_pep440(var: &Var, zerv: &Zerv, components: &mut PEP440Compo
             }
         }
         Var::Custom(name) => {
-            components
-                .local_overflow
-                .push(LocalSegment::new_str(name.clone()));
+            // Custom fields may contain dots after sanitization, so we need to flatten
+            let sanitized = crate::utils::sanitize::Sanitizer::pep440_local_str().sanitize(name);
+            for part in sanitized.split('.') {
+                if !part.is_empty() {
+                    let segment = if let Ok(num) = part.parse::<u32>() {
+                        LocalSegment::new_uint(num)
+                    } else {
+                        LocalSegment::try_new_str(part.to_string()).unwrap()
+                    };
+                    components.local_overflow.push(segment);
+                }
+            }
         }
         _ => {
             add_var_field_to_local(var, zerv, &mut components.local_overflow);
@@ -70,7 +79,7 @@ fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
     if value <= u32::MAX as u64 {
         local_overflow.push(LocalSegment::new_uint(value as u32));
     } else {
-        local_overflow.push(LocalSegment::new_str(value.to_string()));
+        local_overflow.push(LocalSegment::try_new_str(value.to_string()).unwrap());
     }
 }
 
@@ -78,7 +87,19 @@ fn add_var_field_to_local(var: &Var, zerv: &Zerv, local_overflow: &mut Vec<Local
     match var {
         Var::BumpedBranch => {
             if let Some(branch) = &zerv.vars.bumped_branch {
-                local_overflow.push(LocalSegment::new_str(branch.clone()));
+                // Branch names may contain dots after sanitization, so we need to flatten
+                let sanitized =
+                    crate::utils::sanitize::Sanitizer::pep440_local_str().sanitize(branch);
+                for part in sanitized.split('.') {
+                    if !part.is_empty() {
+                        let segment = if let Ok(num) = part.parse::<u32>() {
+                            LocalSegment::new_uint(num)
+                        } else {
+                            LocalSegment::try_new_str(part.to_string()).unwrap()
+                        };
+                        local_overflow.push(segment);
+                    }
+                }
             }
         }
         Var::Distance => {
@@ -88,7 +109,19 @@ fn add_var_field_to_local(var: &Var, zerv: &Zerv, local_overflow: &mut Vec<Local
         }
         Var::BumpedCommitHashShort => {
             if let Some(hash) = zerv.vars.get_bumped_commit_hash_short() {
-                local_overflow.push(LocalSegment::new_str(hash));
+                // Hash values may contain dots after sanitization, so we need to flatten
+                let sanitized =
+                    crate::utils::sanitize::Sanitizer::pep440_local_str().sanitize(&hash);
+                for part in sanitized.split('.') {
+                    if !part.is_empty() {
+                        let segment = if let Ok(num) = part.parse::<u32>() {
+                            LocalSegment::new_uint(num)
+                        } else {
+                            LocalSegment::try_new_str(part.to_string()).unwrap()
+                        };
+                        local_overflow.push(segment);
+                    }
+                }
             }
         }
         _ => {}
@@ -103,7 +136,18 @@ fn add_component_to_local(
 ) {
     match comp {
         Component::Str(s) => {
-            local_overflow.push(LocalSegment::new_str(s.clone()));
+            // String components may contain dots after sanitization, so we need to flatten
+            let sanitized = crate::utils::sanitize::Sanitizer::pep440_local_str().sanitize(s);
+            for part in sanitized.split('.') {
+                if !part.is_empty() {
+                    let segment = if let Ok(num) = part.parse::<u32>() {
+                        LocalSegment::new_uint(num)
+                    } else {
+                        LocalSegment::try_new_str(part.to_string()).unwrap()
+                    };
+                    local_overflow.push(segment);
+                }
+            }
         }
         Component::Int(n) => {
             add_integer_to_local(*n, local_overflow);

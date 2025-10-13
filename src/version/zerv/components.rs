@@ -11,6 +11,7 @@ use strum::{
 };
 
 use crate::utils::sanitize::Sanitizer;
+use crate::version::zerv::core::PreReleaseLabel;
 use crate::version::zerv::resolve_timestamp;
 use crate::version::zerv::vars::ZervVars;
 
@@ -94,6 +95,16 @@ impl Var {
     /// Check if this is a context component (everything else)
     pub fn is_context_component(&self) -> bool {
         !self.is_primary_component() && !self.is_secondary_component()
+    }
+
+    /// Try to detect secondary component from string
+    pub fn try_from_secondary_label(s: &str) -> Option<Self> {
+        match s {
+            "epoch" => Some(Var::Epoch),
+            "post" => Some(Var::Post),
+            "dev" => Some(Var::Dev),
+            _ => PreReleaseLabel::try_from_str(s).map(|_| Var::PreRelease),
+        }
     }
 
     /// Get just the primary value (no labels)
@@ -823,5 +834,21 @@ mod tests {
         // Test non-primary components not in order
         assert_eq!(order.get_index_of(&Var::Epoch), None);
         assert_eq!(order.get_index_of(&Var::Distance), None);
+    }
+
+    #[rstest]
+    #[case("epoch", Some(Var::Epoch))]
+    #[case("post", Some(Var::Post))]
+    #[case("dev", Some(Var::Dev))]
+    #[case("alpha", Some(Var::PreRelease))]
+    #[case("beta", Some(Var::PreRelease))]
+    #[case("rc", Some(Var::PreRelease))]
+    #[case("a", Some(Var::PreRelease))]
+    #[case("b", Some(Var::PreRelease))]
+    #[case("major", None)]
+    #[case("invalid", None)]
+    #[case("", None)]
+    fn test_try_from_secondary_label(#[case] input: &str, #[case] expected: Option<Var>) {
+        assert_eq!(Var::try_from_secondary_label(input), expected);
     }
 }

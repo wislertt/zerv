@@ -16,9 +16,15 @@ pub fn pre_release_label_to_pep440_string(label: &PreReleaseLabel) -> &'static s
 }
 
 impl LocalSegment {
-    pub fn new_str(s: impl Into<String>) -> Self {
+    pub fn try_new_str(s: impl Into<String>) -> Result<Self, String> {
         let sanitized = Sanitizer::pep440_local_str().sanitize(&s.into());
-        LocalSegment::Str(sanitized)
+        if sanitized.contains('.') {
+            Err(format!(
+                "LocalSegment cannot contain dots after sanitization: {sanitized}"
+            ))
+        } else {
+            Ok(LocalSegment::Str(sanitized))
+        }
     }
 
     pub fn new_uint(n: u32) -> Self {
@@ -31,38 +37,33 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_local_segment_new_str() {
-        // String inputs that should remain strings
+    fn test_local_segment_try_new_str_success() {
+        // String inputs that should succeed (no dots after sanitization)
         assert_eq!(
-            LocalSegment::new_str("ubuntu"),
+            LocalSegment::try_new_str("ubuntu").unwrap(),
             LocalSegment::Str("ubuntu".to_string())
         );
         assert_eq!(
-            LocalSegment::new_str("Feature/API-v2"),
-            LocalSegment::Str("feature.api.v2".to_string())
-        );
-        assert_eq!(
-            LocalSegment::new_str("TEST_BRANCH"),
-            LocalSegment::Str("test.branch".to_string())
-        );
-        assert_eq!(
-            LocalSegment::new_str("abc123"),
+            LocalSegment::try_new_str("abc123").unwrap(),
             LocalSegment::Str("abc123".to_string())
         );
-
-        // Pure numeric strings are now allowed
         assert_eq!(
-            LocalSegment::new_str("123"),
+            LocalSegment::try_new_str("123").unwrap(),
             LocalSegment::Str("123".to_string())
         );
         assert_eq!(
-            LocalSegment::new_str("000045445"),
-            LocalSegment::Str("45445".to_string())
-        );
-        assert_eq!(
-            LocalSegment::new_str("0"),
+            LocalSegment::try_new_str("0").unwrap(),
             LocalSegment::Str("0".to_string())
         );
+    }
+
+    #[test]
+    fn test_local_segment_try_new_str_failure() {
+        // Inputs that contain dots after sanitization should fail
+        assert!(LocalSegment::try_new_str("Feature/API-v2").is_err());
+        assert!(LocalSegment::try_new_str("TEST_BRANCH").is_err());
+        assert!(LocalSegment::try_new_str("Ubuntu-20.04").is_err());
+        assert!(LocalSegment::try_new_str("test@#$%branch").is_err());
     }
 
     #[test]
@@ -76,19 +77,15 @@ mod tests {
     }
 
     #[test]
-    fn test_local_segment_sanitization() {
-        // Test various sanitization scenarios
+    fn test_local_segment_sanitization_success() {
+        // Test sanitization that doesn't introduce dots
         assert_eq!(
-            LocalSegment::new_str("Ubuntu-20.04"),
-            LocalSegment::Str("ubuntu.20.4".to_string())
-        );
-        assert_eq!(
-            LocalSegment::new_str("  FEATURE  "),
+            LocalSegment::try_new_str("  FEATURE  ").unwrap(),
             LocalSegment::Str("feature".to_string())
         );
         assert_eq!(
-            LocalSegment::new_str("test@#$%branch"),
-            LocalSegment::Str("test.branch".to_string())
+            LocalSegment::try_new_str("test123").unwrap(),
+            LocalSegment::Str("test123".to_string())
         );
     }
 }
