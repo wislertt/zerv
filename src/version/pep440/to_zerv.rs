@@ -1,7 +1,5 @@
-use super::{
-    LocalSegment,
-    PEP440,
-};
+use super::PEP440;
+use super::utils::LocalSegment;
 use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::{
     Component,

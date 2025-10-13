@@ -20,18 +20,6 @@ pub struct Sanitizer {
     pub max_length: Option<usize>,
 }
 
-impl Default for Sanitizer {
-    fn default() -> Self {
-        Self {
-            target: SanitizeTarget::Str,
-            separator: Some(".".to_string()),
-            lowercase: false,
-            keep_zeros: false,
-            max_length: None,
-        }
-    }
-}
-
 impl Sanitizer {
     /// Apply sanitization to input string
     pub fn sanitize(&self, input: &str) -> String {
@@ -207,50 +195,58 @@ impl Sanitizer {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_basic_sanitization() {
-        let sanitizer = Sanitizer::default();
-
-        assert_eq!(
-            sanitizer.sanitize("feature/test-branch"),
-            "feature.test.branch"
-        );
-        assert_eq!(sanitizer.sanitize("Build-ID-0051"), "Build.ID.51");
-        assert_eq!(sanitizer.sanitize("test@#$%branch"), "test.branch");
+    fn semver() -> Sanitizer {
+        Sanitizer::semver_str()
     }
-
-    #[test]
-    fn test_pep440_local_str_sanitization() {
-        let sanitizer = Sanitizer::pep440_local_str();
-
-        assert_eq!(sanitizer.sanitize("Feature/API-v2"), "feature.api.v2");
-        assert_eq!(sanitizer.sanitize("Build-ID-0051"), "build.id.51");
-        assert_eq!(sanitizer.sanitize("TEST_BRANCH"), "test.branch");
+    fn pep440() -> Sanitizer {
+        Sanitizer::pep440_local_str()
+    }
+    fn uint() -> Sanitizer {
+        Sanitizer::uint()
+    }
+    fn key() -> Sanitizer {
+        Sanitizer::key()
     }
 
     #[test]
     fn test_semver_str_sanitization() {
-        let sanitizer = Sanitizer::semver_str();
+        let s = semver();
+        assert_eq!(s.sanitize("feature/test-branch"), "feature.test.branch");
+        assert_eq!(s.sanitize("Build-ID-0051"), "Build.ID.51");
+        assert_eq!(s.sanitize("test@#$%branch"), "test.branch");
+        assert_eq!(s.sanitize("Feature/API-v2"), "Feature.API.v2");
+        assert_eq!(s.sanitize("build-id-0051"), "build.id.51");
+        assert_eq!(s.sanitize("123"), "123");
+        assert_eq!(s.sanitize("000045445"), "45445");
+    }
 
-        assert_eq!(sanitizer.sanitize("Feature/API-v2"), "Feature.API.v2");
-        assert_eq!(sanitizer.sanitize("build-id-0051"), "build.id.51");
+    #[test]
+    fn test_pep440_local_str_sanitization() {
+        let s = pep440();
+        assert_eq!(s.sanitize("Feature/API-v2"), "feature.api.v2");
+        assert_eq!(s.sanitize("Build-ID-0051"), "build.id.51");
+        assert_eq!(s.sanitize("TEST_BRANCH"), "test.branch");
+        assert_eq!(s.sanitize("000045445"), "45445");
+        assert_eq!(s.sanitize("123"), "123");
+        assert_eq!(s.sanitize("0"), "0");
+        assert_eq!(s.sanitize("999999"), "999999");
+        assert_eq!(s.sanitize("  42  "), "42");
+        assert_eq!(s.sanitize("abc123"), "abc123");
+        assert_eq!(s.sanitize("123abc"), "123abc");
+        assert_eq!(s.sanitize("v1.2.3"), "v1.2.3");
     }
 
     #[test]
     fn test_uint_extraction() {
-        let sanitizer = Sanitizer::uint();
-
-        // Pure numeric strings
-        assert_eq!(sanitizer.sanitize("123"), "123");
-        assert_eq!(sanitizer.sanitize("0051"), "51");
-        assert_eq!(sanitizer.sanitize("0000"), "0");
-        assert_eq!(sanitizer.sanitize("00123"), "123");
-
-        // Mixed content - should return empty
-        assert_eq!(sanitizer.sanitize("abc123def456"), "");
-        assert_eq!(sanitizer.sanitize("no-digits"), "");
-        assert_eq!(sanitizer.sanitize("abc"), "");
-        assert_eq!(sanitizer.sanitize(""), "");
+        let s = uint();
+        assert_eq!(s.sanitize("123"), "123");
+        assert_eq!(s.sanitize("0051"), "51");
+        assert_eq!(s.sanitize("0000"), "0");
+        assert_eq!(s.sanitize("00123"), "123");
+        assert_eq!(s.sanitize("abc123def456"), "");
+        assert_eq!(s.sanitize("no-digits"), "");
+        assert_eq!(s.sanitize("abc"), "");
+        assert_eq!(s.sanitize(""), "");
     }
 
     #[test]
@@ -263,14 +259,8 @@ mod tests {
 
     #[test]
     fn test_leading_zeros() {
-        let sanitizer_remove = Sanitizer {
-            keep_zeros: false,
-            ..Default::default()
-        };
-        let sanitizer_keep = Sanitizer {
-            keep_zeros: true,
-            ..Default::default()
-        };
+        let sanitizer_remove = Sanitizer::str(Some("."), false, false, None);
+        let sanitizer_keep = Sanitizer::str(Some("."), false, true, None);
 
         assert_eq!(sanitizer_remove.sanitize("test-0051"), "test.51");
         assert_eq!(sanitizer_keep.sanitize("test-0051"), "test.0051");
@@ -279,48 +269,35 @@ mod tests {
 
     #[test]
     fn test_max_length() {
-        let sanitizer = Sanitizer {
-            max_length: Some(10),
-            ..Default::default()
-        };
+        let sanitizer = Sanitizer::str(Some("."), false, false, Some(10));
 
         assert_eq!(sanitizer.sanitize("very-long-branch-name"), "very.long");
     }
 
     #[test]
     fn test_edge_cases() {
-        let sanitizer = Sanitizer::default();
-
-        assert_eq!(sanitizer.sanitize(""), "");
-        assert_eq!(sanitizer.sanitize("123"), "123");
-        assert_eq!(sanitizer.sanitize("@#$%"), "");
-        assert_eq!(sanitizer.sanitize("a@#$%b"), "a.b");
+        let s = semver();
+        assert_eq!(s.sanitize(""), "");
+        assert_eq!(s.sanitize("123"), "123");
+        assert_eq!(s.sanitize("@#$%"), "");
+        assert_eq!(s.sanitize("a@#$%b"), "a.b");
     }
 
     #[test]
     fn test_no_separator() {
-        let sanitizer = Sanitizer {
-            separator: None,
-            ..Default::default()
-        };
-
-        assert_eq!(
-            sanitizer.sanitize("feature/test-branch"),
-            "feature/test-branch"
-        );
-        assert_eq!(sanitizer.sanitize("Build-ID-0051"), "Build-ID-0051");
+        let s = Sanitizer::str(None, false, false, None);
+        assert_eq!(s.sanitize("feature/test-branch"), "feature/test-branch");
+        assert_eq!(s.sanitize("Build-ID-0051"), "Build-ID-0051");
     }
 
     #[test]
     fn test_key_sanitizer() {
-        let sanitizer = Sanitizer::key();
-
-        // Key sanitizer uses lowercase and dots as separator
-        assert_eq!(sanitizer.sanitize("custom_field"), "custom.field");
-        assert_eq!(sanitizer.sanitize("feature/API-v2"), "feature.api.v2");
-        assert_eq!(sanitizer.sanitize("Build-ID-0051"), "build.id.51");
-        assert_eq!(sanitizer.sanitize("test@#$%branch"), "test.branch");
-        assert_eq!(sanitizer.sanitize(""), "");
+        let s = key();
+        assert_eq!(s.sanitize("custom_field"), "custom.field");
+        assert_eq!(s.sanitize("feature/API-v2"), "feature.api.v2");
+        assert_eq!(s.sanitize("Build-ID-0051"), "build.id.51");
+        assert_eq!(s.sanitize("test@#$%branch"), "test.branch");
+        assert_eq!(s.sanitize(""), "");
     }
 
     use rstest::rstest;
@@ -329,25 +306,12 @@ mod tests {
     #[case(false)]
     #[case(true)]
     fn test_separator_trimming(#[case] keep_zeros: bool) {
-        let sanitizer = Sanitizer {
-            keep_zeros,
-            ..Default::default()
-        };
+        let s = Sanitizer::str(Some("."), false, keep_zeros, None);
+        assert_eq!(s.sanitize("abc-test-branch-def"), "abc.test.branch.def");
+        assert_eq!(s.sanitize("---test---"), "test");
+        assert_eq!(s.sanitize("@#$test@#$"), "test");
 
-        // Test prefix/suffix separator trimming
-        assert_eq!(
-            sanitizer.sanitize("abc-test-branch-def"),
-            "abc.test.branch.def"
-        );
-        assert_eq!(sanitizer.sanitize("---test---"), "test");
-        assert_eq!(sanitizer.sanitize("@#$test@#$"), "test");
-
-        // Test with max length causing trailing separator
-        let sanitizer_short = Sanitizer {
-            max_length: Some(10),
-            keep_zeros,
-            ..Default::default()
-        };
-        assert_eq!(sanitizer_short.sanitize("very-long-branch"), "very.long");
+        let s_short = Sanitizer::str(Some("."), false, keep_zeros, Some(10));
+        assert_eq!(s_short.sanitize("very-long-branch"), "very.long");
     }
 }

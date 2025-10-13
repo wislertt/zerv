@@ -1,9 +1,7 @@
 use std::cmp::Ordering;
 
-use super::core::{
-    LocalSegment,
-    PEP440,
-};
+use super::core::PEP440;
+use super::utils::LocalSegment;
 use crate::version::zerv::PreReleaseLabel;
 
 impl PartialOrd for PEP440 {

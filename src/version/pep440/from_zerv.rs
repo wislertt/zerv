@@ -1,7 +1,5 @@
-use super::{
-    LocalSegment,
-    PEP440,
-};
+use super::PEP440;
+use super::utils::LocalSegment;
 use crate::version::pep440::core::{
     DevLabel,
     PostLabel,

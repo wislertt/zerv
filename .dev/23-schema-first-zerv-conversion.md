@@ -220,7 +220,7 @@ impl From<Zerv> for PEP440 {
                     pep440.release.push(value.parse().unwrap());
                 } else if let Some(local_value) = component.resolve_value(&zerv.vars, &local_sanitizer) {
                     if !local_value.is_empty() {
-                        pep440.local.get_or_insert_with(Vec::new).push(LocalSegment::Str(local_value)); // TODO: review up to here
+                        pep440.local.get_or_insert_with(Vec::new).push(LocalSegment::Str(local_value)); // <!-- TODO: review up to here -->
                     }
                 }
             }

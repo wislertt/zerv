@@ -1,3 +1,6 @@
+use super::utils::LocalSegment;
+use crate::version::zerv::PreReleaseLabel;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PostLabel {
     Post,
@@ -7,14 +10,6 @@ pub enum PostLabel {
 pub enum DevLabel {
     Dev,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LocalSegment {
-    Str(String),
-    UInt(u32),
-}
-
-use crate::version::zerv::PreReleaseLabel;
 
 impl PreReleaseLabel {
     pub fn as_str(&self) -> &'static str {

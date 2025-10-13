@@ -4,10 +4,8 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::error::ZervError;
-use crate::version::pep440::core::{
-    LocalSegment,
-    PEP440,
-};
+use crate::version::pep440::core::PEP440;
+use crate::version::pep440::utils::LocalSegment;
 use crate::version::zerv::PreReleaseLabel;
 
 static PEP440_REGEX: LazyLock<Regex> = LazyLock::new(|| {

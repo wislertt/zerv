@@ -1,9 +1,7 @@
 use std::fmt;
 
-use super::core::{
-    LocalSegment,
-    PEP440,
-};
+use super::core::PEP440;
+use super::utils::LocalSegment;
 
 pub fn format_local_segments(segments: &[LocalSegment]) -> String {
     segments

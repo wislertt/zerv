@@ -389,7 +389,7 @@ mod tests {
     #[case(Var::Epoch, None)]
     fn test_var_core_fields(#[case] var: Var, #[case] expected: Option<&str>) {
         let zerv = base_fixture().build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
         assert_eq!(
             var.resolve_value(&zerv.vars, &sanitizer),
             expected.map(String::from)
@@ -402,7 +402,7 @@ mod tests {
     #[case(Var::Dev, None)]
     fn test_var_metadata_fields_none(#[case] var: Var, #[case] expected: Option<&str>) {
         let zerv = base_fixture().build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
         assert_eq!(
             var.resolve_value(&zerv.vars, &sanitizer),
             expected.map(String::from)
@@ -420,7 +420,7 @@ mod tests {
             Var::Epoch => base_fixture().with_epoch(value).build(),
             _ => panic!("Invalid var"),
         };
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
         assert_eq!(
             var.resolve_value(&zerv.vars, &sanitizer),
             Some(value.to_string())
@@ -439,7 +439,7 @@ mod tests {
         #[case] expected: Option<&str>,
     ) {
         let zerv = base_fixture().with_pre_release(label, number).build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
         assert_eq!(
             Var::PreRelease.resolve_value(&zerv.vars, &sanitizer),
             expected.map(String::from)
@@ -452,7 +452,7 @@ mod tests {
     #[case(Var::BumpedBranch, "develop")]
     fn test_var_branch_fields(#[case] var: Var, #[case] branch: &str) {
         let zerv = base_fixture().with_branch(branch.to_string()).build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::semver_str();
         assert_eq!(
             var.resolve_value(&zerv.vars, &sanitizer),
             Some(branch.to_string())
@@ -465,7 +465,7 @@ mod tests {
     #[case(100)]
     fn test_var_distance(#[case] distance: u64) {
         let zerv = base_fixture().with_distance(distance).build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
         assert_eq!(
             Var::Distance.resolve_value(&zerv.vars, &sanitizer),
             Some(distance.to_string())
@@ -477,7 +477,7 @@ mod tests {
     #[case(Var::BumpedCommitHashShort, "123456789", "1234567")]
     fn test_var_commit_hash_short(#[case] var: Var, #[case] hash: &str, #[case] expected: &str) {
         let zerv = base_fixture().with_commit_hash(hash.to_string()).build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::semver_str();
         assert_eq!(
             var.resolve_value(&zerv.vars, &sanitizer),
             Some(expected.to_string())
@@ -489,7 +489,7 @@ mod tests {
     #[case("123456789abcdef")]
     fn test_var_bumped_commit_hash(#[case] hash: &str) {
         let zerv = base_fixture().with_commit_hash(hash.to_string()).build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::semver_str();
         assert_eq!(
             Var::BumpedCommitHash.resolve_value(&zerv.vars, &sanitizer),
             Some(hash.to_string())
@@ -502,7 +502,7 @@ mod tests {
     fn test_var_dirty(#[case] dirty: bool, #[case] expected: &str) {
         let mut zerv = base_fixture().build();
         zerv.vars.dirty = Some(dirty);
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::semver_str();
         assert_eq!(
             Var::Dirty.resolve_value(&zerv.vars, &sanitizer),
             Some(expected.to_string())
@@ -515,7 +515,7 @@ mod tests {
     fn test_var_last_branch(#[case] var: Var, #[case] branch: &str) {
         let mut zerv = base_fixture().build();
         zerv.vars.last_branch = Some(branch.to_string());
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::semver_str();
         assert_eq!(
             var.resolve_value(&zerv.vars, &sanitizer),
             Some("last.branch".to_string())
@@ -527,7 +527,7 @@ mod tests {
     fn test_var_last_commit_hash(#[case] hash: &str) {
         let mut zerv = base_fixture().build();
         zerv.vars.last_commit_hash = Some(hash.to_string());
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::semver_str();
         assert_eq!(
             Var::LastCommitHash.resolve_value(&zerv.vars, &sanitizer),
             Some("last.commit.hash".to_string())
@@ -540,7 +540,7 @@ mod tests {
         let mut zerv = base_fixture().build();
         zerv.vars.bumped_timestamp = Some(timestamp);
         zerv.vars.last_timestamp = Some(timestamp + 1000);
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
 
         assert_eq!(
             Var::BumpedTimestamp.resolve_value(&zerv.vars, &sanitizer),
@@ -562,7 +562,7 @@ mod tests {
     #[case("metadata.nonexistent", None)]
     fn test_var_custom_fields(#[case] key: &str, #[case] expected: Option<&str>) {
         let zerv = custom_fixture().build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::semver_str();
         let var = Var::Custom(key.to_string());
         assert_eq!(
             var.resolve_value(&zerv.vars, &sanitizer),
@@ -583,7 +583,7 @@ mod tests {
     ) {
         let mut zerv = base_fixture().build();
         zerv.vars.bumped_timestamp = Some(timestamp);
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::semver_str();
         let var = Var::Timestamp(pattern.to_string());
         assert_eq!(
             var.resolve_value(&zerv.vars, &sanitizer),
@@ -593,7 +593,6 @@ mod tests {
 
     // Sanitization tests
     #[rstest]
-    #[case(Sanitizer::default(), "feature/test", "feature.test")]
     #[case(Sanitizer::pep440_local_str(), "Feature/API-v2", "feature.api.v2")]
     #[case(Sanitizer::semver_str(), "Feature/API-v2", "Feature.API.v2")]
     fn test_var_sanitization(
@@ -610,12 +609,15 @@ mod tests {
 
     // Component tests
     #[rstest]
-    #[case(Component::Str("test".to_string()), Some("test"))]
-    #[case(Component::Int(42), Some("42"))]
-    #[case(Component::Int(0), Some("0"))]
-    fn test_component_resolve_value(#[case] component: Component, #[case] expected: Option<&str>) {
+    #[case(Component::Str("test".to_string()), Sanitizer::semver_str(), Some("test"))]
+    #[case(Component::Int(42), Sanitizer::uint(), Some("42"))]
+    #[case(Component::Int(0), Sanitizer::uint(), Some("0"))]
+    fn test_component_resolve_value(
+        #[case] component: Component,
+        #[case] sanitizer: Sanitizer,
+        #[case] expected: Option<&str>,
+    ) {
         let zerv = base_fixture().build();
-        let sanitizer = Sanitizer::default();
         assert_eq!(
             component.resolve_value(&zerv.vars, &sanitizer),
             expected.map(String::from)
@@ -629,7 +631,7 @@ mod tests {
     #[case(Var::Patch, vec!["patch", "3"])]
     fn test_var_expanded_core_fields(#[case] var: Var, #[case] expected: Vec<&str>) {
         let zerv = base_fixture().build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
         let result: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
         assert_eq!(var.resolve_expanded_values(&zerv.vars, &sanitizer), result);
     }
@@ -650,7 +652,7 @@ mod tests {
             Var::Epoch => base_fixture().with_epoch(value).build(),
             _ => panic!("Invalid var"),
         };
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
         let result: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
         assert_eq!(var.resolve_expanded_values(&zerv.vars, &sanitizer), result);
     }
@@ -666,7 +668,7 @@ mod tests {
         #[case] expected: Vec<&str>,
     ) {
         let zerv = base_fixture().with_pre_release(label, number).build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
         let result: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
         assert_eq!(
             Var::PreRelease.resolve_expanded_values(&zerv.vars, &sanitizer),
@@ -676,11 +678,12 @@ mod tests {
 
     // Expanded values tests - VCS fields
     #[rstest]
-    #[case(Var::BumpedBranch, "main", vec!["branch", "main"])]
-    #[case(Var::Distance, "5", vec!["distance", "5"])]
+    #[case(Var::BumpedBranch, "main", Sanitizer::semver_str(), vec!["branch", "main"])]
+    #[case(Var::Distance, "5", Sanitizer::uint(), vec!["distance", "5"])]
     fn test_var_expanded_vcs_fields(
         #[case] var: Var,
         #[case] value: &str,
+        #[case] sanitizer: Sanitizer,
         #[case] expected: Vec<&str>,
     ) {
         let zerv = match var {
@@ -688,19 +691,22 @@ mod tests {
             Var::Distance => base_fixture().with_distance(value.parse().unwrap()).build(),
             _ => panic!("Invalid var"),
         };
-        let sanitizer = Sanitizer::default();
         let result: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
         assert_eq!(var.resolve_expanded_values(&zerv.vars, &sanitizer), result);
     }
 
     // Expanded values tests - Custom fields
     #[rstest]
-    #[case("build_id", vec!["build.id", "123"])]
-    #[case("metadata.author", vec!["metadata", "author", "ci"])]
-    #[case("nonexistent", vec!["nonexistent"])]
-    fn test_var_expanded_custom_fields(#[case] key: &str, #[case] expected: Vec<&str>) {
+    #[case("build_id", Sanitizer::semver_str(), vec!["build.id", "123"])]
+    #[case("build_id", Sanitizer::uint(), vec!["build.id", "123"])]
+    #[case("metadata.author", Sanitizer::semver_str(), vec!["metadata", "author", "ci"])]
+    #[case("nonexistent", Sanitizer::semver_str(), vec!["nonexistent"])]
+    fn test_var_expanded_custom_fields(
+        #[case] key: &str,
+        #[case] sanitizer: Sanitizer,
+        #[case] expected: Vec<&str>,
+    ) {
         let zerv = custom_fixture().build();
-        let sanitizer = Sanitizer::default();
         let var = Var::Custom(key.to_string());
         let result: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
         assert_eq!(var.resolve_expanded_values(&zerv.vars, &sanitizer), result);
@@ -708,11 +714,14 @@ mod tests {
 
     // Component expanded values tests
     #[rstest]
-    #[case(Component::Str("test".to_string()), vec!["test"])]
-    #[case(Component::Int(42), vec!["42"])]
-    fn test_component_expanded_values(#[case] component: Component, #[case] expected: Vec<&str>) {
+    #[case(Component::Str("test".to_string()), Sanitizer::semver_str(), vec!["test"])]
+    #[case(Component::Int(42), Sanitizer::uint(), vec!["42"])]
+    fn test_component_expanded_values(
+        #[case] component: Component,
+        #[case] sanitizer: Sanitizer,
+        #[case] expected: Vec<&str>,
+    ) {
         let zerv = base_fixture().build();
-        let sanitizer = Sanitizer::default();
         let result: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
         assert_eq!(
             component.resolve_expanded_values(&zerv.vars, &sanitizer),
@@ -748,7 +757,7 @@ mod tests {
     #[case(Var::Dev, vec![])]
     fn test_var_expanded_empty_fields(#[case] var: Var, #[case] expected: Vec<&str>) {
         let zerv = base_fixture().build();
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::uint();
         let result: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
         assert_eq!(var.resolve_expanded_values(&zerv.vars, &sanitizer), result);
     }
@@ -757,7 +766,7 @@ mod tests {
     fn test_timestamp_fallback() {
         let mut zerv = base_fixture().build();
         zerv.vars.last_timestamp = Some(1703123456);
-        let sanitizer = Sanitizer::default();
+        let sanitizer = Sanitizer::semver_str();
         let var = Var::Timestamp("YYYY".to_string());
         assert_eq!(
             var.resolve_value(&zerv.vars, &sanitizer),
