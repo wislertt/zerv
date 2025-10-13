@@ -58,7 +58,7 @@ fn process_var_field_pep440(var: &Var, zerv: &Zerv, components: &mut PEP440Compo
         Var::Custom(name) => {
             components
                 .local_overflow
-                .push(LocalSegment::Str(name.clone()));
+                .push(LocalSegment::new_str(name.clone()));
         }
         _ => {
             add_var_field_to_local(var, zerv, &mut components.local_overflow);
@@ -68,9 +68,9 @@ fn process_var_field_pep440(var: &Var, zerv: &Zerv, components: &mut PEP440Compo
 
 fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
     if value <= u32::MAX as u64 {
-        local_overflow.push(LocalSegment::UInt(value as u32));
+        local_overflow.push(LocalSegment::new_uint(value as u32));
     } else {
-        local_overflow.push(LocalSegment::Str(value.to_string()));
+        local_overflow.push(LocalSegment::new_str(value.to_string()));
     }
 }
 
@@ -78,17 +78,17 @@ fn add_var_field_to_local(var: &Var, zerv: &Zerv, local_overflow: &mut Vec<Local
     match var {
         Var::BumpedBranch => {
             if let Some(branch) = &zerv.vars.bumped_branch {
-                local_overflow.push(LocalSegment::Str(branch.clone()));
+                local_overflow.push(LocalSegment::new_str(branch.clone()));
             }
         }
         Var::Distance => {
             if let Some(distance) = zerv.vars.distance {
-                local_overflow.push(LocalSegment::UInt(distance as u32));
+                local_overflow.push(LocalSegment::new_uint(distance as u32));
             }
         }
         Var::BumpedCommitHashShort => {
             if let Some(hash) = zerv.vars.get_bumped_commit_hash_short() {
-                local_overflow.push(LocalSegment::Str(hash));
+                local_overflow.push(LocalSegment::new_str(hash));
             }
         }
         _ => {}
@@ -103,7 +103,7 @@ fn add_component_to_local(
 ) {
     match comp {
         Component::Str(s) => {
-            local_overflow.push(LocalSegment::Str(s.clone()));
+            local_overflow.push(LocalSegment::new_str(s.clone()));
         }
         Component::Int(n) => {
             add_integer_to_local(*n, local_overflow);
@@ -289,7 +289,7 @@ mod tests {
     #[case(zerv_calver::calver_yyyy_mm_patch(), "2024.3.1")]
     #[case(zerv_calver::calver_with_timestamp_build(), "1.0.0+2024.3.16")]
     // Custom field handling
-    #[case(from::v1_0_0_custom_field().build(), "1.0.0+custom_field")]
+    #[case(from::v1_0_0_custom_field().build(), "1.0.0+custom.field")]
     fn test_zerv_to_pep440_conversion(#[case] zerv: Zerv, #[case] expected_pep440_str: &str) {
         let pep440: PEP440 = zerv.into();
         assert_eq!(pep440.to_string(), expected_pep440_str);

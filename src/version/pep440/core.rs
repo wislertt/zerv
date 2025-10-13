@@ -121,7 +121,7 @@ impl PEP440 {
         if let LocalSegment::Str(s) = segment {
             let lowercase = s.to_lowercase();
             if let Ok(num) = lowercase.parse::<u32>() {
-                *segment = LocalSegment::UInt(num);
+                *segment = LocalSegment::new_uint(num);
             } else {
                 *s = lowercase;
             }

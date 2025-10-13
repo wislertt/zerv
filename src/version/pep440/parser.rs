@@ -51,9 +51,9 @@ pub fn parse_local_segments(local: &str) -> Vec<LocalSegment> {
         .split('.')
         .map(|part| {
             if !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()) {
-                LocalSegment::UInt(part.parse().unwrap_or(0))
+                LocalSegment::new_uint(part.parse().unwrap_or(0))
             } else {
-                LocalSegment::Str(part.to_string())
+                LocalSegment::new_str(part.to_string())
             }
         })
         .collect()
