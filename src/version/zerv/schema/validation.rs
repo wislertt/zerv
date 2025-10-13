@@ -174,6 +174,7 @@ mod tests {
         Var,
     };
     use super::ZervSchema;
+    use crate::test_utils::ZervSchemaFixture;
 
     #[rstest]
     #[case("compact_date")]
@@ -239,5 +240,153 @@ mod tests {
     fn test_validate_component_integer(#[case] value: u64) {
         let component = Component::Int(value);
         assert!(ZervSchema::validate_component(&component).is_ok());
+    }
+
+    // Test validate_components function
+    #[test]
+    fn test_validate_components_empty() {
+        assert!(ZervSchema::validate_components(&[]).is_ok());
+    }
+
+    #[rstest]
+    #[case(vec![Component::Var(Var::Major), Component::Str("test".to_string()), Component::Int(42)], true)]
+    #[case(vec![Component::Var(Var::Major), Component::Var(Var::Timestamp("INVALID".to_string()))], false)]
+    fn test_validate_components(#[case] components: Vec<Component>, #[case] should_succeed: bool) {
+        let result = ZervSchema::validate_components(&components);
+        assert_eq!(result.is_ok(), should_succeed);
+        if !should_succeed {
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("unknown timestamp pattern")
+            );
+        }
+    }
+
+    // Test is_valid_timestamp_pattern function
+    #[rstest]
+    #[case("YYYY", true)]
+    #[case("MM", true)]
+    #[case("%Y-%m-%d", true)]
+    #[case("%custom", true)]
+    #[case("INVALID", false)]
+    #[case("not_a_pattern", false)]
+    #[case("", false)]
+    fn test_is_valid_timestamp_pattern(#[case] pattern: &str, #[case] expected: bool) {
+        assert_eq!(ZervSchema::is_valid_timestamp_pattern(pattern), expected);
+    }
+
+    // Test main validate function
+    #[test]
+    fn test_validate_empty_schema() {
+        let result = ZervSchema::new(vec![], vec![], vec![]);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("schema must contain at least one component")
+        );
+    }
+
+    #[test]
+    fn test_validate_valid_schema() {
+        let schema = ZervSchemaFixture::new().build();
+        assert!(schema.validate().is_ok());
+    }
+
+    // Test validation errors using ZervSchema::new which calls validate
+    #[rstest]
+    #[case(vec![Component::Var(Var::Major), Component::Var(Var::Major)], "Duplicate primary component")]
+    #[case(vec![Component::Var(Var::Minor), Component::Var(Var::Major)], "Primary components must be in order")]
+    #[case(vec![Component::Var(Var::Epoch)], "must be in extra_core section")]
+    fn test_validate_core_errors(#[case] core: Vec<Component>, #[case] expected_error: &str) {
+        let result = ZervSchema::new(core, vec![], vec![]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains(expected_error));
+    }
+
+    #[rstest]
+    #[case(vec![Component::Var(Var::Epoch), Component::Var(Var::Epoch)], "Duplicate secondary component")]
+    #[case(vec![Component::Var(Var::Major)], "must be in core section")]
+    fn test_validate_extra_core_errors(
+        #[case] extra_core: Vec<Component>,
+        #[case] expected_error: &str,
+    ) {
+        let result = ZervSchema::new(vec![Component::Var(Var::Minor)], extra_core, vec![]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains(expected_error));
+    }
+
+    #[rstest]
+    #[case(vec![Component::Var(Var::Major)], "must be in core section")]
+    #[case(vec![Component::Var(Var::Epoch)], "must be in extra_core section")]
+    fn test_validate_build_errors(#[case] build: Vec<Component>, #[case] expected_error: &str) {
+        let result = ZervSchema::new(vec![Component::Var(Var::Minor)], vec![], build);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains(expected_error));
+    }
+
+    // Test context components allowed anywhere
+    #[rstest]
+    #[case(Var::Distance)]
+    #[case(Var::Dirty)]
+    #[case(Var::BumpedBranch)]
+    #[case(Var::Custom("test".to_string()))]
+    fn test_context_components_allowed_in_any_section(#[case] var: Var) {
+        let component = Component::Var(var);
+
+        // In core
+        assert!(ZervSchema::new(vec![component.clone()], vec![], vec![]).is_ok());
+
+        // In extra_core
+        assert!(
+            ZervSchema::new(
+                vec![Component::Var(Var::Major)],
+                vec![component.clone()],
+                vec![]
+            )
+            .is_ok()
+        );
+
+        // In build
+        assert!(ZervSchema::new(vec![Component::Var(Var::Major)], vec![], vec![component]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_valid_sections() {
+        // Valid core with primary components in order
+        assert!(
+            ZervSchema::new(
+                vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
+                vec![],
+                vec![]
+            )
+            .is_ok()
+        );
+
+        // Valid extra_core with secondary components
+        assert!(
+            ZervSchema::new(
+                vec![Component::Var(Var::Major)],
+                vec![Component::Var(Var::Epoch), Component::Var(Var::Post)],
+                vec![]
+            )
+            .is_ok()
+        );
+
+        // Valid build with context components
+        assert!(
+            ZervSchema::new(
+                vec![Component::Var(Var::Major)],
+                vec![],
+                vec![
+                    Component::Var(Var::Distance),
+                    Component::Str("test".to_string())
+                ]
+            )
+            .is_ok()
+        );
     }
 }

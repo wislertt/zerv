@@ -113,78 +113,86 @@ impl ZervSchema {
 mod tests {
     use rstest::rstest;
 
+    use super::super::super::PrecedenceOrder;
     use super::super::super::components::{
         Component,
         Var,
     };
     use super::ZervSchema;
 
+    // Test constructors
     #[rstest]
-    #[case(Var::Major)]
-    #[case(Var::Minor)]
-    #[case(Var::Patch)]
-    #[case(Var::Epoch)]
-    #[case(Var::PreRelease)]
-    #[case(Var::Post)]
-    #[case(Var::Dev)]
-    #[case(Var::Distance)]
-    #[case(Var::Dirty)]
-    #[case(Var::BumpedBranch)]
-    #[case(Var::BumpedCommitHashShort)]
-    #[case(Var::LastBranch)]
-    #[case(Var::LastCommitHash)]
-    #[case(Var::LastTimestamp)]
-    #[case(Var::Custom("build_id".to_string()))]
-    #[case(Var::Custom("environment".to_string()))]
-    #[case(Var::Custom("metadata.author".to_string()))]
-    fn test_validate_component_valid_var_field(#[case] var: Var) {
-        let is_secondary = var.is_secondary_component();
-        let component = Component::Var(var);
-        if is_secondary {
-            assert!(ZervSchema::new(vec![], vec![component], vec![]).is_ok());
-        } else {
-            assert!(ZervSchema::new(vec![component], vec![], vec![]).is_ok());
+    #[case(vec![Component::Var(Var::Major)], true)]
+    #[case(vec![], false)]
+    fn test_new(#[case] core: Vec<Component>, #[case] should_succeed: bool) {
+        let result = ZervSchema::new(core, vec![], vec![]);
+        assert_eq!(result.is_ok(), should_succeed);
+    }
+
+    #[rstest]
+    #[case(vec![Component::Var(Var::Major)], PrecedenceOrder::pep440_based(), true)]
+    #[case(vec![], PrecedenceOrder::default(), false)]
+    fn test_new_with_precedence(
+        #[case] core: Vec<Component>,
+        #[case] precedence: PrecedenceOrder,
+        #[case] should_succeed: bool,
+    ) {
+        let result = ZervSchema::new_with_precedence(core, vec![], vec![], precedence.clone());
+        assert_eq!(result.is_ok(), should_succeed);
+        if should_succeed {
+            assert_eq!(result.unwrap().precedence_order(), &precedence);
         }
     }
 
+    // Test getters
     #[test]
-    fn test_validate_component_custom_fields_always_valid() {
-        let test_cases = vec![
-            "build_id",
-            "environment",
-            "custom.field",
-            "any_name",
-            "",
-            "123",
-        ];
+    fn test_getters() {
+        let core = vec![Component::Var(Var::Major)];
+        let extra_core = vec![Component::Var(Var::Epoch)];
+        let build = vec![Component::Str("test".to_string())];
+        let schema = ZervSchema::new(core.clone(), extra_core.clone(), build.clone()).unwrap();
 
-        for field_name in test_cases {
-            let component = Component::Var(Var::Custom(field_name.to_string()));
-            assert!(ZervSchema::new(vec![component], vec![], vec![]).is_ok());
-        }
+        assert_eq!(schema.core(), &core);
+        assert_eq!(schema.extra_core(), &extra_core);
+        assert_eq!(schema.build(), &build);
+        assert_eq!(schema.precedence_order(), &PrecedenceOrder::default());
+    }
+
+    // Test setters
+    #[rstest]
+    #[case("core", vec![Component::Var(Var::Major)], true)]
+    #[case("core", vec![Component::Var(Var::Epoch)], false)]
+    #[case("extra_core", vec![Component::Var(Var::Epoch)], true)]
+    #[case("extra_core", vec![Component::Var(Var::Major)], false)]
+    #[case("build", vec![Component::Var(Var::Distance)], true)]
+    #[case("build", vec![Component::Var(Var::Major)], false)]
+    fn test_setters(
+        #[case] section: &str,
+        #[case] components: Vec<Component>,
+        #[case] should_succeed: bool,
+    ) {
+        let mut schema = ZervSchema::new(vec![Component::Var(Var::Minor)], vec![], vec![]).unwrap();
+        let result = match section {
+            "core" => schema.set_core(components),
+            "extra_core" => schema.set_extra_core(components),
+            "build" => schema.set_build(components),
+            _ => panic!("Invalid section"),
+        };
+        assert_eq!(result.is_ok(), should_succeed);
     }
 
     #[test]
-    fn test_zerv_schema_new_with_validation() {
-        let schema = ZervSchema::new(vec![Component::Var(Var::Major)], vec![], vec![]).unwrap();
-        assert_eq!(schema.core().len(), 1);
+    fn test_set_precedence_order() {
+        let mut schema = ZervSchema::new(vec![Component::Var(Var::Major)], vec![], vec![]).unwrap();
+        let new_order = PrecedenceOrder::pep440_based();
+        schema.set_precedence_order(new_order.clone());
+        assert_eq!(schema.precedence_order(), &new_order);
     }
 
+    // Test factory methods
     #[test]
-    fn test_zerv_schema_new_invalid() {
-        let result = ZervSchema::new(vec![], vec![], vec![]);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_zerv_schema_new_error_empty_schema() {
-        let result = ZervSchema::new(vec![], vec![], vec![]);
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("schema must contain at least one component")
-        );
+    fn test_pep440_based_precedence_order() {
+        let order = ZervSchema::pep440_based_precedence_order();
+        assert_eq!(order, PrecedenceOrder::pep440_based());
     }
 }
