@@ -24,6 +24,117 @@ impl PEP440 {
             }
         }
     }
+
+    fn process_core(
+        &mut self,
+        components: &[Component],
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        int_sanitizer: &Sanitizer,
+        local_sanitizer: &Sanitizer,
+    ) {
+        for component in components {
+            if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
+                && !value.is_empty()
+                && let Ok(num) = value.parse::<u32>()
+            {
+                self.release.push(num);
+                continue;
+            }
+            // If component doesn't resolve to a valid integer, try as local
+            if let Some(local_value) = component.resolve_value(zerv_vars, local_sanitizer)
+                && !local_value.is_empty()
+            {
+                self.add_flattened_to_local(local_value);
+            }
+        }
+    }
+
+    fn process_extra_core(
+        &mut self,
+        components: &[Component],
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        int_sanitizer: &Sanitizer,
+        local_sanitizer: &Sanitizer,
+    ) {
+        for component in components {
+            if let Component::Var(var) = component {
+                if var.is_secondary_component() {
+                    match var {
+                        Var::Epoch => {
+                            if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
+                                && !value.is_empty()
+                                && let Ok(epoch) = value.parse::<u32>()
+                            {
+                                self.epoch = epoch;
+                            }
+                        }
+                        Var::PreRelease => {
+                            let expanded = var.resolve_expanded_values(zerv_vars, local_sanitizer);
+                            if !expanded.is_empty() && !expanded[0].is_empty() {
+                                if let Ok(label) = expanded[0].parse() {
+                                    self.pre_label = Some(label);
+                                }
+                                if expanded.len() >= 2
+                                    && !expanded[1].is_empty()
+                                    && let Ok(num) = expanded[1].parse::<u32>()
+                                {
+                                    self.pre_number = Some(num);
+                                }
+                            }
+                        }
+                        Var::Post => {
+                            if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
+                                && !value.is_empty()
+                                && let Ok(num) = value.parse::<u32>()
+                            {
+                                self.post_label = Some(PostLabel::Post);
+                                self.post_number = Some(num);
+                            }
+                        }
+                        Var::Dev => {
+                            if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
+                                && !value.is_empty()
+                                && let Ok(num) = value.parse::<u32>()
+                            {
+                                self.dev_label = Some(DevLabel::Dev);
+                                self.dev_number = Some(num);
+                            }
+                        }
+                        _ => {}
+                    }
+                } else {
+                    // Non-secondary component goes to local
+                    if let Some(value) = component.resolve_value(zerv_vars, local_sanitizer)
+                        && !value.is_empty()
+                    {
+                        self.add_flattened_to_local(value);
+                    }
+                }
+            } else {
+                // Non-Var component goes to local
+                if let Some(value) = component.resolve_value(zerv_vars, local_sanitizer)
+                    && !value.is_empty()
+                {
+                    self.add_flattened_to_local(value);
+                }
+            }
+        }
+    }
+
+    fn process_build(
+        &mut self,
+        components: &[Component],
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        local_sanitizer: &Sanitizer,
+    ) {
+        for component in components {
+            if let Some(value) = component.resolve_value(zerv_vars, local_sanitizer)
+                && !value.is_empty()
+            {
+                self.add_flattened_to_local(value);
+            }
+        }
+    }
 }
 
 impl From<Zerv> for PEP440 {
@@ -33,21 +144,12 @@ impl From<Zerv> for PEP440 {
         let local_sanitizer = Sanitizer::pep440_local_str();
 
         // Process core - append integers to release, overflow to local
-        for component in zerv.schema.core() {
-            if let Some(value) = component.resolve_value(&zerv.vars, &int_sanitizer)
-                && !value.is_empty()
-                && let Ok(num) = value.parse::<u32>()
-            {
-                pep440.release.push(num);
-                continue;
-            }
-            // If component doesn't resolve to a valid integer, try as local
-            if let Some(local_value) = component.resolve_value(&zerv.vars, &local_sanitizer)
-                && !local_value.is_empty()
-            {
-                pep440.add_flattened_to_local(local_value);
-            }
-        }
+        pep440.process_core(
+            zerv.schema.core(),
+            &zerv.vars,
+            &int_sanitizer,
+            &local_sanitizer,
+        );
 
         // Ensure at least one release component
         if pep440.release.is_empty() {
@@ -55,79 +157,15 @@ impl From<Zerv> for PEP440 {
         }
 
         // Process extra_core - handle secondary components, overflow to local
-        for component in zerv.schema.extra_core() {
-            if let Component::Var(var) = component {
-                if var.is_secondary_component() {
-                    match var {
-                        Var::Epoch => {
-                            if let Some(value) = component.resolve_value(&zerv.vars, &int_sanitizer)
-                                && !value.is_empty()
-                                && let Ok(epoch) = value.parse::<u32>()
-                            {
-                                pep440.epoch = epoch;
-                            }
-                        }
-                        Var::PreRelease => {
-                            let expanded =
-                                var.resolve_expanded_values(&zerv.vars, &local_sanitizer);
-                            if !expanded.is_empty() && !expanded[0].is_empty() {
-                                if let Ok(label) = expanded[0].parse() {
-                                    pep440.pre_label = Some(label);
-                                }
-                                if expanded.len() >= 2
-                                    && !expanded[1].is_empty()
-                                    && let Ok(num) = expanded[1].parse::<u32>()
-                                {
-                                    pep440.pre_number = Some(num);
-                                }
-                            }
-                        }
-                        Var::Post => {
-                            if let Some(value) = component.resolve_value(&zerv.vars, &int_sanitizer)
-                                && !value.is_empty()
-                                && let Ok(num) = value.parse::<u32>()
-                            {
-                                pep440.post_label = Some(PostLabel::Post);
-                                pep440.post_number = Some(num);
-                            }
-                        }
-                        Var::Dev => {
-                            if let Some(value) = component.resolve_value(&zerv.vars, &int_sanitizer)
-                                && !value.is_empty()
-                                && let Ok(num) = value.parse::<u32>()
-                            {
-                                pep440.dev_label = Some(DevLabel::Dev);
-                                pep440.dev_number = Some(num);
-                            }
-                        }
-                        _ => {}
-                    }
-                } else {
-                    // Non-secondary component goes to local
-                    if let Some(value) = component.resolve_value(&zerv.vars, &local_sanitizer)
-                        && !value.is_empty()
-                    {
-                        pep440.add_flattened_to_local(value);
-                    }
-                }
-            } else {
-                // Non-Var component goes to local
-                if let Some(value) = component.resolve_value(&zerv.vars, &local_sanitizer)
-                    && !value.is_empty()
-                {
-                    pep440.add_flattened_to_local(value);
-                }
-            }
-        }
+        pep440.process_extra_core(
+            zerv.schema.extra_core(),
+            &zerv.vars,
+            &int_sanitizer,
+            &local_sanitizer,
+        );
 
         // Process build - all components go to local
-        for component in zerv.schema.build() {
-            if let Some(value) = component.resolve_value(&zerv.vars, &local_sanitizer)
-                && !value.is_empty()
-            {
-                pep440.add_flattened_to_local(value);
-            }
-        }
+        pep440.process_build(zerv.schema.build(), &zerv.vars, &local_sanitizer);
 
         pep440.normalize()
     }
