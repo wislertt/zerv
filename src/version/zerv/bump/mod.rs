@@ -6,31 +6,58 @@ pub mod precedence;
 pub mod reset;
 pub mod schema_parsing;
 pub mod schema_processing;
-pub mod types;
 pub mod vars_primary;
 pub mod vars_secondary;
 pub mod vars_timestamp;
+use crate::version::zerv::bump::precedence::Precedence;
 
 impl Zerv {
-    /// Apply component processing from VersionArgs in precedence order
     pub fn apply_component_processing(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        // Process components in precedence order (epoch, major, minor, patch, pre_release_label, pre_release_num, post, dev)
-        self.process_epoch(args.overrides.epoch, args.bumps.bump_epoch.flatten())?;
-        self.process_major(args.overrides.major, args.bumps.bump_major.flatten())?;
-        self.process_minor(args.overrides.minor, args.bumps.bump_minor.flatten())?;
-        self.process_patch(args.overrides.patch, args.bumps.bump_patch.flatten())?;
-        self.process_pre_release_label(args)?;
-        self.process_pre_release_num(
-            args.overrides.pre_release_num,
-            args.bumps.bump_pre_release_num.flatten(),
-        )?;
-        self.process_post(args.overrides.post, args.bumps.bump_post.flatten())?;
-        self.process_dev(args.overrides.dev, args.bumps.bump_dev.flatten())?;
+        let precedence_order: Vec<Precedence> =
+            self.schema.precedence_order().iter().cloned().collect();
 
-        // Process schema-based components (both overrides and bumps)
-        self.process_schema_core(&args.overrides.core, &args.bumps.bump_core)?;
-        self.process_schema_extra_core(&args.overrides.extra_core, &args.bumps.bump_extra_core)?;
-        self.process_schema_build(&args.overrides.build, &args.bumps.bump_build)?;
+        for precedence in precedence_order {
+            match precedence {
+                Precedence::Epoch => {
+                    self.process_epoch(args.overrides.epoch, args.bumps.bump_epoch.flatten())?
+                }
+                Precedence::Major => {
+                    self.process_major(args.overrides.major, args.bumps.bump_major.flatten())?
+                }
+                Precedence::Minor => {
+                    self.process_minor(args.overrides.minor, args.bumps.bump_minor.flatten())?
+                }
+                Precedence::Patch => {
+                    self.process_patch(args.overrides.patch, args.bumps.bump_patch.flatten())?
+                }
+                Precedence::Core => self.process_schema_section(
+                    "core",
+                    &args.overrides.core,
+                    &args.bumps.bump_core,
+                )?,
+                Precedence::PreReleaseLabel => self.process_pre_release_label(args)?,
+                Precedence::PreReleaseNum => self.process_pre_release_num(
+                    args.overrides.pre_release_num,
+                    args.bumps.bump_pre_release_num.flatten(),
+                )?,
+                Precedence::Post => {
+                    self.process_post(args.overrides.post, args.bumps.bump_post.flatten())?
+                }
+                Precedence::Dev => {
+                    self.process_dev(args.overrides.dev, args.bumps.bump_dev.flatten())?
+                }
+                Precedence::ExtraCore => self.process_schema_section(
+                    "extra_core",
+                    &args.overrides.extra_core,
+                    &args.bumps.bump_extra_core,
+                )?,
+                Precedence::Build => self.process_schema_section(
+                    "build",
+                    &args.overrides.build,
+                    &args.bumps.bump_build,
+                )?,
+            }
+        }
 
         self.process_bumped_timestamp(args)?;
         Ok(())
@@ -41,13 +68,15 @@ impl Zerv {
 mod tests {
     use rstest::*;
 
-    use crate::test_utils::version_args::OverrideType;
+    use crate::test_utils::types::{
+        BumpType,
+        OverrideType,
+    };
     use crate::test_utils::{
         VersionArgsFixture,
         ZervFixture,
     };
     use crate::version::semver::SemVer;
-    use crate::version::zerv::bump::types::BumpType;
 
     // Test multiple bump combinations with reset logic
     #[rstest]
@@ -55,6 +84,11 @@ mod tests {
     #[case("2.5.3", vec![BumpType::Patch(7)], "2.5.10")]
     #[case("0.0.0", vec![BumpType::Major(3), BumpType::Minor(2), BumpType::Patch(1)], "3.2.1")]
     #[case("1.2.3-alpha.1", vec![BumpType::Major(1)], "2.0.0")]
+    // Doc 16 reset logic scenarios
+    #[case("1.5.2-rc.1+build.456", vec![BumpType::Major(1)], "2.0.0")] // Major bump removes all lower precedence
+    #[case("1.5.2-rc.1+build.456", vec![BumpType::Minor(1)], "1.6.0")] // Minor bump removes patch, pre-release, build
+    #[case("1.5.2-rc.1+build.456", vec![BumpType::Patch(1)], "1.5.3")] // Patch bump removes pre-release, build
+    #[case("1.0.0+build.123", vec![BumpType::Major(1)], "2.0.0")] // Build metadata removed on major bump
     fn test_apply_component_processing_multiple_bumps(
         #[case] starting_version: &str,
         #[case] bumps: Vec<BumpType>,

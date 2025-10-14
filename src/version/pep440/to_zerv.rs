@@ -1,12 +1,10 @@
-use super::{
-    LocalSegment,
-    PEP440,
-};
-use crate::constants::ron_fields;
+use super::PEP440;
+use super::utils::LocalSegment;
 use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::{
     Component,
     PreReleaseVar,
+    Var,
     Zerv,
     ZervSchema,
     ZervVars,
@@ -19,12 +17,12 @@ impl From<PEP440> for Zerv {
 
         // Add epoch to extra_core if non-zero
         if pep440.epoch > 0 {
-            extra_core.push(Component::VarField(ron_fields::EPOCH.to_string()));
+            extra_core.push(Component::Var(Var::Epoch));
         }
 
         // Add pre-release to extra_core if present
         let pre_release = if let (Some(label), number) = (pep440.pre_label, pep440.pre_number) {
-            extra_core.push(Component::VarField(ron_fields::PRE_RELEASE.to_string()));
+            extra_core.push(Component::Var(Var::PreRelease));
             Some(PreReleaseVar {
                 label,
                 number: number.map(|n| n as u64),
@@ -35,7 +33,7 @@ impl From<PEP440> for Zerv {
 
         // Add post to extra_core if present
         let post = if pep440.post_label.is_some() {
-            extra_core.push(Component::VarField(ron_fields::POST.to_string()));
+            extra_core.push(Component::Var(Var::Post));
             pep440.post_number.map(|n| n as u64)
         } else {
             None
@@ -43,7 +41,7 @@ impl From<PEP440> for Zerv {
 
         // Add dev to extra_core if present
         let dev = if pep440.dev_label.is_some() {
-            extra_core.push(Component::VarField(ron_fields::DEV.to_string()));
+            extra_core.push(Component::Var(Var::Dev));
             pep440.dev_number.map(|n| n as u64)
         } else {
             None
@@ -53,11 +51,11 @@ impl From<PEP440> for Zerv {
         if let Some(local_segments) = pep440.local {
             for segment in local_segments {
                 match segment {
-                    LocalSegment::String(s) => {
-                        build.push(Component::String(s));
+                    LocalSegment::Str(s) => {
+                        build.push(Component::Str(s));
                     }
-                    LocalSegment::Integer(n) => {
-                        build.push(Component::Integer(n as u64));
+                    LocalSegment::UInt(n) => {
+                        build.push(Component::Int(n as u64));
                     }
                 }
             }
@@ -69,16 +67,17 @@ impl From<PEP440> for Zerv {
         let patch = pep440.release.get(2).copied().map(|n| n as u64);
 
         Zerv {
-            schema: ZervSchema {
-                core: vec![
-                    Component::VarField(ron_fields::MAJOR.to_string()),
-                    Component::VarField(ron_fields::MINOR.to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
+            schema: ZervSchema::new_with_precedence(
+                vec![
+                    Component::Var(Var::Major),
+                    Component::Var(Var::Minor),
+                    Component::Var(Var::Patch),
                 ],
                 extra_core,
                 build,
-                precedence_order: PrecedenceOrder::default(),
-            },
+                PrecedenceOrder::default(),
+            )
+            .unwrap(),
             vars: ZervVars {
                 major,
                 minor,

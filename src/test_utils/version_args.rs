@@ -1,23 +1,8 @@
 use crate::cli::version::args::VersionArgs;
-use crate::version::zerv::bump::types::BumpType;
-
-/// Enum for override types - stores override values for testing
-#[derive(Debug, Clone, PartialEq)]
-pub enum OverrideType {
-    TagVersion(String),
-    Distance(u32),
-    Dirty(bool),
-    CurrentBranch(String),
-    CommitHash(String),
-    Major(u32),
-    Minor(u32),
-    Patch(u32),
-    Post(u32),
-    Dev(u32),
-    PreReleaseLabel(String),
-    PreReleaseNum(u32),
-    Epoch(u32),
-}
+use crate::test_utils::types::{
+    BumpType,
+    OverrideType,
+};
 
 /// Test fixture for creating VersionArgs with sensible defaults and chainable methods
 pub struct VersionArgsFixture {
@@ -341,11 +326,11 @@ impl Default for VersionArgsFixture {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::{
+    use crate::test_utils::types::BumpType;
+    use crate::utils::constants::{
         formats,
         sources,
     };
-    use crate::version::zerv::bump::types::BumpType;
 
     #[test]
     fn test_new_creates_default_fixture() {

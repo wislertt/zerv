@@ -64,6 +64,23 @@ impl ZervVars {
         Self::derive_short_hash(self.last_commit_hash.as_ref())
     }
 
+    /// Get custom value by key with dot-separated nested access
+    /// Examples: "build_id", "metadata.author", "config.database.host"
+    pub fn get_custom_value(&self, key: &str) -> Option<String> {
+        let mut current = &self.custom;
+
+        for part in key.split('.') {
+            current = current.get(part)?;
+        }
+
+        match current {
+            serde_json::Value::String(s) => Some(s.clone()),
+            serde_json::Value::Number(n) => Some(n.to_string()),
+            serde_json::Value::Bool(b) => Some(b.to_string()),
+            _ => None, // Unsupported types (arrays, objects, null)
+        }
+    }
+
     /// Apply all CLI overrides to ZervVars including VCS and version components
     /// Note: Early validation should be called before this method via args.validate()
     pub fn apply_context_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
@@ -526,5 +543,73 @@ mod tests {
             }
             _ => panic!("Expected InvalidVersion error for invalid JSON"),
         }
+    }
+
+    #[test]
+    fn test_get_custom_value() {
+        let vars = ZervVars {
+            custom: serde_json::json!({
+                "build_id": "123",
+                "environment": "prod",
+                "enabled": true,
+                "count": 42,
+                "metadata": {
+                    "author": "ci",
+                    "timestamp": 1703123456,
+                    "config": {
+                        "database": {
+                            "host": "localhost"
+                        }
+                    }
+                },
+                "array": [1, 2, 3],
+                "null_value": null
+            }),
+            ..Default::default()
+        };
+
+        // Test simple string lookup
+        assert_eq!(vars.get_custom_value("build_id"), Some("123".to_string()));
+        assert_eq!(
+            vars.get_custom_value("environment"),
+            Some("prod".to_string())
+        );
+
+        // Test boolean lookup
+        assert_eq!(vars.get_custom_value("enabled"), Some("true".to_string()));
+
+        // Test number lookup
+        assert_eq!(vars.get_custom_value("count"), Some("42".to_string()));
+
+        // Test nested string lookup
+        assert_eq!(
+            vars.get_custom_value("metadata.author"),
+            Some("ci".to_string())
+        );
+
+        // Test nested number lookup
+        assert_eq!(
+            vars.get_custom_value("metadata.timestamp"),
+            Some("1703123456".to_string())
+        );
+
+        // Test deeply nested lookup
+        assert_eq!(
+            vars.get_custom_value("metadata.config.database.host"),
+            Some("localhost".to_string())
+        );
+
+        // Test missing keys
+        assert_eq!(vars.get_custom_value("nonexistent"), None);
+        assert_eq!(vars.get_custom_value("metadata.nonexistent"), None);
+        assert_eq!(vars.get_custom_value("metadata.config.nonexistent"), None);
+
+        // Test unsupported types (arrays, objects, null)
+        assert_eq!(vars.get_custom_value("array"), None);
+        assert_eq!(vars.get_custom_value("metadata"), None);
+        assert_eq!(vars.get_custom_value("null_value"), None);
+
+        // Test empty key
+        assert_eq!(vars.get_custom_value(""), None);
     }
 }

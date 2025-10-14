@@ -1,13 +1,13 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PreReleaseIdentifier {
     String(String),
-    Integer(u64),
+    UInt(u64),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuildMetadata {
     String(String),
-    Integer(u64),
+    UInt(u64),
 }
 
 #[derive(Debug, Clone)]
@@ -88,7 +88,7 @@ mod tests {
         fn test_with_pre_release() {
             let pre_release = vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
-                PreReleaseIdentifier::Integer(1),
+                PreReleaseIdentifier::UInt(1),
             ];
             let version = SemVer::new(1, 0, 0).with_pre_release(pre_release.clone());
             assert_eq!(version.pre_release, Some(pre_release));
@@ -98,7 +98,7 @@ mod tests {
         fn test_with_build_metadata() {
             let build_metadata = vec![
                 BuildMetadata::String("build".to_string()),
-                BuildMetadata::Integer(123),
+                BuildMetadata::UInt(123),
             ];
             let version = SemVer::new(1, 0, 0).with_build_metadata(build_metadata.clone());
             assert_eq!(version.build_metadata, Some(build_metadata));
@@ -228,9 +228,9 @@ mod tests {
         #[case(123)]
         #[case(u64::MAX)]
         fn test_pre_release_integer_identifier(#[case] value: u64) {
-            let identifier = PreReleaseIdentifier::Integer(value);
+            let identifier = PreReleaseIdentifier::UInt(value);
             match identifier {
-                PreReleaseIdentifier::Integer(n) => assert_eq!(n, value),
+                PreReleaseIdentifier::UInt(n) => assert_eq!(n, value),
                 _ => panic!("Expected integer identifier"),
             }
         }
@@ -254,9 +254,9 @@ mod tests {
         #[case(20240101)]
         #[case(u64::MAX)]
         fn test_build_metadata_integer(#[case] value: u64) {
-            let metadata = BuildMetadata::Integer(value);
+            let metadata = BuildMetadata::UInt(value);
             match metadata {
-                BuildMetadata::Integer(n) => assert_eq!(n, value),
+                BuildMetadata::UInt(n) => assert_eq!(n, value),
                 _ => panic!("Expected integer metadata"),
             }
         }
@@ -269,9 +269,9 @@ mod tests {
         fn test_complex_pre_release() {
             let pre_release = vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
-                PreReleaseIdentifier::Integer(1),
+                PreReleaseIdentifier::UInt(1),
                 PreReleaseIdentifier::String("build".to_string()),
-                PreReleaseIdentifier::Integer(456),
+                PreReleaseIdentifier::UInt(456),
             ];
 
             let version = SemVer::new(2, 0, 0).with_pre_release(pre_release.clone());
@@ -283,7 +283,7 @@ mod tests {
             let build_metadata = vec![
                 BuildMetadata::String("commit".to_string()),
                 BuildMetadata::String("abc123".to_string()),
-                BuildMetadata::Integer(20240101),
+                BuildMetadata::UInt(20240101),
             ];
 
             let version = SemVer::new(1, 5, 0).with_build_metadata(build_metadata.clone());
@@ -294,11 +294,11 @@ mod tests {
         fn test_full_version() {
             let pre_release = vec![
                 PreReleaseIdentifier::String("rc".to_string()),
-                PreReleaseIdentifier::Integer(2),
+                PreReleaseIdentifier::UInt(2),
             ];
             let build_metadata = vec![
                 BuildMetadata::String("build".to_string()),
-                BuildMetadata::Integer(789),
+                BuildMetadata::UInt(789),
             ];
 
             let version = SemVer::new(3, 1, 4)

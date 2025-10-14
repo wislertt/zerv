@@ -14,26 +14,27 @@ impl fmt::Display for Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::ron_fields;
     use crate::version::zerv::bump::precedence::PrecedenceOrder;
     use crate::version::zerv::{
         Component,
+        Var,
         ZervSchema,
         ZervVars,
     };
 
     #[test]
     fn test_zerv_display() {
-        let schema = ZervSchema {
-            core: vec![
-                Component::VarField(ron_fields::MAJOR.to_string()),
-                Component::String(".".to_string()),
-                Component::VarField(ron_fields::MINOR.to_string()),
+        let schema = ZervSchema::new_with_precedence(
+            vec![
+                Component::Var(Var::Major),
+                Component::Str(".".to_string()),
+                Component::Var(Var::Minor),
             ],
-            extra_core: vec![],
-            build: vec![],
-            precedence_order: PrecedenceOrder::default(),
-        };
+            vec![],
+            vec![],
+            PrecedenceOrder::default(),
+        )
+        .unwrap();
         let vars = ZervVars {
             major: Some(1),
             minor: Some(2),
@@ -51,12 +52,13 @@ mod tests {
 
     #[test]
     fn test_zerv_display_roundtrip() {
-        let schema = ZervSchema {
-            core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
-            extra_core: vec![],
-            build: vec![],
-            precedence_order: PrecedenceOrder::default(),
-        };
+        let schema = ZervSchema::new_with_precedence(
+            vec![Component::Var(Var::Major)],
+            vec![],
+            vec![],
+            PrecedenceOrder::default(),
+        )
+        .unwrap();
         let vars = ZervVars {
             major: Some(1),
             ..Default::default()

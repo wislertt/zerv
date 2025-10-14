@@ -3,13 +3,13 @@ use std::str::FromStr;
 
 use clap::Parser;
 
-use crate::constants::{
+use crate::error::ZervError;
+use crate::utils::constants::{
     SUPPORTED_FORMAT_NAMES,
     SUPPORTED_FORMATS,
     format_names,
     formats,
 };
-use crate::error::ZervError;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
 

@@ -40,7 +40,7 @@ fn parse_identifiers(input: &str) -> Vec<PreReleaseIdentifier> {
         .split('.')
         .map(|part| {
             if part.chars().all(|c| c.is_ascii_digit()) && (part == "0" || !part.starts_with('0')) {
-                PreReleaseIdentifier::Integer(part.parse().unwrap_or(0))
+                PreReleaseIdentifier::UInt(part.parse().unwrap_or(0))
             } else {
                 PreReleaseIdentifier::String(part.to_string())
             }
@@ -56,7 +56,7 @@ fn parse_build_metadata(input: &str) -> Vec<BuildMetadata> {
         .split('.')
         .map(|part| {
             if part.chars().all(|c| c.is_ascii_digit()) && (part == "0" || !part.starts_with('0')) {
-                BuildMetadata::Integer(part.parse().unwrap_or(0))
+                BuildMetadata::UInt(part.parse().unwrap_or(0))
             } else {
                 BuildMetadata::String(part.to_string())
             }
@@ -165,7 +165,7 @@ mod tests {
             let parsed: SemVer = "1.0.0-1".parse().unwrap();
             assert_eq!(
                 parsed.pre_release,
-                Some(vec![PreReleaseIdentifier::Integer(1)])
+                Some(vec![PreReleaseIdentifier::UInt(1)])
             );
         }
 
@@ -176,7 +176,7 @@ mod tests {
                 parsed.pre_release,
                 Some(vec![
                     PreReleaseIdentifier::String("alpha".to_string()),
-                    PreReleaseIdentifier::Integer(1),
+                    PreReleaseIdentifier::UInt(1),
                 ])
             );
         }
@@ -188,9 +188,9 @@ mod tests {
                 parsed.pre_release,
                 Some(vec![
                     PreReleaseIdentifier::String("alpha".to_string()),
-                    PreReleaseIdentifier::Integer(1),
+                    PreReleaseIdentifier::UInt(1),
                     PreReleaseIdentifier::String("beta".to_string()),
-                    PreReleaseIdentifier::Integer(2),
+                    PreReleaseIdentifier::UInt(2),
                 ])
             );
         }
@@ -233,7 +233,7 @@ mod tests {
             let parsed: SemVer = "1.0.0-0".parse().unwrap();
             assert_eq!(
                 parsed.pre_release,
-                Some(vec![PreReleaseIdentifier::Integer(0)])
+                Some(vec![PreReleaseIdentifier::UInt(0)])
             );
         }
     }
@@ -253,10 +253,7 @@ mod tests {
         #[test]
         fn test_parse_single_integer_build_metadata() {
             let parsed: SemVer = "1.0.0+123".parse().unwrap();
-            assert_eq!(
-                parsed.build_metadata,
-                Some(vec![BuildMetadata::Integer(123)])
-            );
+            assert_eq!(parsed.build_metadata, Some(vec![BuildMetadata::UInt(123)]));
         }
 
         #[test]
@@ -266,7 +263,7 @@ mod tests {
                 parsed.build_metadata,
                 Some(vec![
                     BuildMetadata::String("build".to_string()),
-                    BuildMetadata::Integer(123),
+                    BuildMetadata::UInt(123),
                 ])
             );
         }
@@ -279,7 +276,7 @@ mod tests {
                 Some(vec![
                     BuildMetadata::String("commit".to_string()),
                     BuildMetadata::String("abc123".to_string()),
-                    BuildMetadata::Integer(20240101),
+                    BuildMetadata::UInt(20240101),
                 ])
             );
         }
@@ -298,7 +295,7 @@ mod tests {
         fn test_parse_zero_build_metadata() {
             // "0" is valid as integer
             let parsed: SemVer = "1.0.0+0".parse().unwrap();
-            assert_eq!(parsed.build_metadata, Some(vec![BuildMetadata::Integer(0)]));
+            assert_eq!(parsed.build_metadata, Some(vec![BuildMetadata::UInt(0)]));
         }
     }
 
@@ -316,14 +313,14 @@ mod tests {
                 parsed.pre_release,
                 Some(vec![
                     PreReleaseIdentifier::String("alpha".to_string()),
-                    PreReleaseIdentifier::Integer(1),
+                    PreReleaseIdentifier::UInt(1),
                 ])
             );
             assert_eq!(
                 parsed.build_metadata,
                 Some(vec![
                     BuildMetadata::String("build".to_string()),
-                    BuildMetadata::Integer(456),
+                    BuildMetadata::UInt(456),
                 ])
             );
         }
@@ -341,7 +338,7 @@ mod tests {
                 parsed.pre_release,
                 Some(vec![
                     PreReleaseIdentifier::String("rc".to_string()),
-                    PreReleaseIdentifier::Integer(2),
+                    PreReleaseIdentifier::UInt(2),
                     PreReleaseIdentifier::String("hotfix".to_string()),
                 ])
             );
@@ -350,7 +347,7 @@ mod tests {
                 Some(vec![
                     BuildMetadata::String("commit".to_string()),
                     BuildMetadata::String("abc123def".to_string()),
-                    BuildMetadata::Integer(20240315),
+                    BuildMetadata::UInt(20240315),
                 ])
             );
         }
@@ -438,13 +435,13 @@ mod tests {
         #[test]
         fn test_parse_identifiers_single_integer() {
             let identifiers = parse_identifiers("123");
-            assert_eq!(identifiers, vec![PreReleaseIdentifier::Integer(123)]);
+            assert_eq!(identifiers, vec![PreReleaseIdentifier::UInt(123)]);
         }
 
         #[test]
         fn test_parse_identifiers_zero() {
             let identifiers = parse_identifiers("0");
-            assert_eq!(identifiers, vec![PreReleaseIdentifier::Integer(0)]);
+            assert_eq!(identifiers, vec![PreReleaseIdentifier::UInt(0)]);
         }
 
         #[test]
@@ -463,9 +460,9 @@ mod tests {
                 identifiers,
                 vec![
                     PreReleaseIdentifier::String("alpha".to_string()),
-                    PreReleaseIdentifier::Integer(1),
+                    PreReleaseIdentifier::UInt(1),
                     PreReleaseIdentifier::String("beta".to_string()),
-                    PreReleaseIdentifier::Integer(2),
+                    PreReleaseIdentifier::UInt(2),
                 ]
             );
         }
@@ -485,13 +482,13 @@ mod tests {
         #[test]
         fn test_parse_build_metadata_single_integer() {
             let metadata = parse_build_metadata("123");
-            assert_eq!(metadata, vec![BuildMetadata::Integer(123)]);
+            assert_eq!(metadata, vec![BuildMetadata::UInt(123)]);
         }
 
         #[test]
         fn test_parse_build_metadata_zero() {
             let metadata = parse_build_metadata("0");
-            assert_eq!(metadata, vec![BuildMetadata::Integer(0)]);
+            assert_eq!(metadata, vec![BuildMetadata::UInt(0)]);
         }
 
         #[test]
@@ -508,7 +505,7 @@ mod tests {
                 vec![
                     BuildMetadata::String("commit".to_string()),
                     BuildMetadata::String("abc123".to_string()),
-                    BuildMetadata::Integer(20240101),
+                    BuildMetadata::UInt(20240101),
                 ]
             );
         }

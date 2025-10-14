@@ -1,12 +1,12 @@
 use crate::cli::version::args::VersionArgs;
 use crate::error::ZervError;
 use crate::schema::{
-    SchemaConfig,
     get_preset_schema,
     parse_ron_schema,
 };
 use crate::version::zerv::{
     Zerv,
+    ZervSchema,
     ZervVars,
 };
 
@@ -15,11 +15,11 @@ use crate::version::zerv::{
 #[derive(Debug, Clone)]
 pub struct ZervDraft {
     pub vars: ZervVars,
-    pub schema: Option<SchemaConfig>, // Some for stdin, None for git
+    pub schema: Option<ZervSchema>, // Some for stdin, None for git
 }
 
 impl ZervDraft {
-    pub fn new(vars: ZervVars, schema: Option<SchemaConfig>) -> Self {
+    pub fn new(vars: ZervVars, schema: Option<ZervSchema>) -> Self {
         Self { vars, schema }
     }
 
@@ -66,7 +66,7 @@ impl ZervDraft {
             (None, None) => {
                 // If no new schema requested, use existing schema from stdin source
                 if let Some(existing_schema) = self.schema {
-                    existing_schema.into()
+                    existing_schema
                 } else {
                     return Err(ZervError::MissingSchema(
                         "Either schema_name or schema_ron must be provided".to_string(),
@@ -82,7 +82,6 @@ impl ZervDraft {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::schema::zerv_standard_tier_1;
 
     #[test]
     fn test_zerv_draft_creation() {
@@ -91,12 +90,18 @@ mod tests {
         assert_eq!(draft.vars, vars);
         assert!(draft.schema.is_none());
 
-        let schema = SchemaConfig {
-            core: vec![],
-            extra_core: vec![],
-            build: vec![],
-            precedence_order: vec![],
+        use crate::version::zerv::bump::precedence::PrecedenceOrder;
+        use crate::version::zerv::{
+            Component,
+            Var,
         };
+        let schema = ZervSchema::new_with_precedence(
+            vec![Component::Var(Var::Major)],
+            vec![],
+            vec![],
+            PrecedenceOrder::default(),
+        )
+        .unwrap();
         let draft_with_schema = ZervDraft::new(vars, Some(schema.clone()));
         assert_eq!(draft_with_schema.schema, Some(schema));
     }
@@ -152,33 +157,34 @@ mod tests {
         let zerv = draft
             .create_zerv_version(Some("zerv-standard"), None)
             .unwrap();
-        assert_eq!(zerv.schema, zerv_standard_tier_1());
+        assert_eq!(zerv.schema, ZervSchema::zerv_standard_tier_1());
     }
 
     #[test]
     fn test_custom_ron_schema() {
         let vars = ZervVars::default();
         let ron_schema = r#"
-            SchemaConfig(
+            ZervSchema(
                 core: [
-                    VarField(field: "major"),
-                    VarField(field: "minor"),
+                    var(Major),
+                    var(Minor),
                 ],
                 extra_core: [],
-                build: [String(value: "custom")]
+                build: [str("custom")],
+                precedence_order: []
             )
         "#;
 
         let draft = ZervDraft::new(vars, None);
         let zerv = draft.create_zerv_version(None, Some(ron_schema)).unwrap();
-        assert_eq!(zerv.schema.core.len(), 2);
-        assert_eq!(zerv.schema.build.len(), 1);
+        assert_eq!(zerv.schema.core().len(), 2);
+        assert_eq!(zerv.schema.build().len(), 1);
     }
 
     #[test]
     fn test_conflicting_schemas_error() {
         let vars = ZervVars::default();
-        let ron_schema = "SchemaConfig(core: [], extra_core: [], build: [])";
+        let ron_schema = "ZervSchema(core: [], extra_core: [], build: [], precedence_order: [])";
         let draft = ZervDraft::new(vars, None);
         let result = draft.create_zerv_version(Some("zerv-standard"), Some(ron_schema));
         assert!(matches!(result, Err(ZervError::ConflictingSchemas(_))));
@@ -203,30 +209,35 @@ mod tests {
 
     #[test]
     fn test_use_existing_schema_from_stdin() {
-        use crate::schema::ComponentConfig;
+        use crate::version::zerv::bump::precedence::PrecedenceOrder;
+        use crate::version::zerv::{
+            Component,
+            Var,
+        };
 
         let vars = ZervVars::default();
-        let existing_schema = SchemaConfig {
-            core: vec![ComponentConfig::VarField {
-                field: "major".to_string(),
-            }],
-            extra_core: vec![],
-            build: vec![],
-            precedence_order: vec![],
-        };
+        let existing_schema = ZervSchema::new_with_precedence(
+            vec![Component::Var(Var::Major)],
+            vec![],
+            vec![],
+            PrecedenceOrder::default(),
+        )
+        .unwrap();
 
         // Test using existing schema when no new schema is provided
         let draft = ZervDraft::new(vars, Some(existing_schema));
         let zerv = draft.create_zerv_version(None, None).unwrap();
-        assert_eq!(zerv.schema.core.len(), 1);
-        assert_eq!(zerv.schema.extra_core.len(), 0);
-        assert_eq!(zerv.schema.build.len(), 0);
+        assert_eq!(zerv.schema.core().len(), 1);
+        assert_eq!(zerv.schema.extra_core().len(), 0);
+        assert_eq!(zerv.schema.build().len(), 0);
     }
 
     #[test]
     fn test_zerv_schema_structure() {
-        use crate::constants::ron_fields;
-        use crate::version::zerv::Component;
+        use crate::version::zerv::{
+            Component,
+            Var,
+        };
 
         // Create a simple ZervVars for tier 1 (tagged, clean)
         let vars = ZervVars {
@@ -244,30 +255,23 @@ mod tests {
             .unwrap();
 
         // Test the actual schema structure
-        println!("Core components: {:?}", zerv.schema.core);
-        println!("Extra core components: {:?}", zerv.schema.extra_core);
-        println!("Build components: {:?}", zerv.schema.build);
+        println!("Core components: {:?}", zerv.schema.core());
+        println!("Extra core components: {:?}", zerv.schema.extra_core());
+        println!("Build components: {:?}", zerv.schema.build());
 
         // Verify core structure
-        assert_eq!(zerv.schema.core.len(), 3);
-        assert_eq!(
-            zerv.schema.core[0],
-            Component::VarField(ron_fields::MAJOR.to_string())
-        );
-        assert_eq!(
-            zerv.schema.core[1],
-            Component::VarField(ron_fields::MINOR.to_string())
-        );
-        assert_eq!(
-            zerv.schema.core[2],
-            Component::VarField(ron_fields::PATCH.to_string())
-        );
+        assert_eq!(zerv.schema.core().len(), 3);
+        assert_eq!(zerv.schema.core()[0], Component::Var(Var::Major));
+        assert_eq!(zerv.schema.core()[1], Component::Var(Var::Minor));
+        assert_eq!(zerv.schema.core()[2], Component::Var(Var::Patch));
     }
 
     #[test]
     fn test_zerv_ron_roundtrip_schema() {
-        use crate::constants::ron_fields;
-        use crate::version::zerv::Component;
+        use crate::version::zerv::{
+            Component,
+            Var,
+        };
 
         let vars = ZervVars {
             major: Some(1),
@@ -283,22 +287,13 @@ mod tests {
             .create_zerv_version(Some("zerv-standard"), None)
             .unwrap();
         let ron_string = original.to_string();
-        let parsed: crate::version::zerv::Zerv = ron_string.parse().unwrap();
+        let parsed: Zerv = ron_string.parse().unwrap();
 
         // Verify schema is preserved
-        assert_eq!(parsed.schema.core.len(), 3);
-        assert_eq!(
-            parsed.schema.core[0],
-            Component::VarField(ron_fields::MAJOR.to_string())
-        );
-        assert_eq!(
-            parsed.schema.core[1],
-            Component::VarField(ron_fields::MINOR.to_string())
-        );
-        assert_eq!(
-            parsed.schema.core[2],
-            Component::VarField(ron_fields::PATCH.to_string())
-        );
+        assert_eq!(parsed.schema.core().len(), 3);
+        assert_eq!(parsed.schema.core()[0], Component::Var(Var::Major));
+        assert_eq!(parsed.schema.core()[1], Component::Var(Var::Minor));
+        assert_eq!(parsed.schema.core()[2], Component::Var(Var::Patch));
 
         // Verify vars are preserved
         assert_eq!(parsed.vars.major, Some(1));

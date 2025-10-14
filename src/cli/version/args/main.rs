@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::constants::{
+use crate::utils::constants::{
     SUPPORTED_FORMATS_ARRAY,
     formats,
     sources,

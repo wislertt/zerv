@@ -154,14 +154,17 @@ impl DockerGit {
     }
 
     /// Helper method to get the current container ID
-    fn get_container_id(&self) -> String {
+    fn get_container_id(&self) -> io::Result<String> {
         let container_id_guard = self.container_id.lock().unwrap();
-        container_id_guard.as_ref().unwrap().clone()
+        container_id_guard
+            .as_ref()
+            .ok_or_else(|| io::Error::other("No Docker container is running"))
+            .cloned()
     }
 
     /// Helper method to execute a Docker command with proper error handling
     fn execute_docker_command(&self, script: &str, operation_name: &str) -> io::Result<String> {
-        let container_id = self.get_container_id();
+        let container_id = self.get_container_id()?;
 
         let output = Command::new("docker")
             .args(["exec", &container_id, "sh", "-c", script])

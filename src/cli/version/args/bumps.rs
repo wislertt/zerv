@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::constants::pre_release_labels;
+use crate::utils::constants::pre_release_labels;
 
 /// Bump configuration for field-based and schema-based version bumping
 #[derive(Parser, Default)]

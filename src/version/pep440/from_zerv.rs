@@ -1,8 +1,5 @@
-use super::{
-    LocalSegment,
-    PEP440,
-};
-use crate::constants::ron_fields;
+use super::PEP440;
+use super::utils::LocalSegment;
 use crate::version::pep440::core::{
     DevLabel,
     PostLabel,
@@ -11,12 +8,14 @@ use crate::version::zerv::core::Zerv;
 use crate::version::zerv::utils::extract_core_values;
 use crate::version::zerv::{
     Component,
+    PreReleaseLabel,
+    Var,
     resolve_timestamp,
 };
 
 struct PEP440Components {
     epoch: u32,
-    pre_label: Option<crate::version::zerv::PreReleaseLabel>,
+    pre_label: Option<PreReleaseLabel>,
     pre_number: Option<u32>,
     post_label: Option<PostLabel>,
     post_number: Option<u32>,
@@ -33,60 +32,96 @@ fn extract_release_values(core_values: &[u64]) -> Vec<u32> {
     release
 }
 
-fn process_var_field_pep440(field: &str, zerv: &Zerv, components: &mut PEP440Components) {
-    match field {
-        "pre_release" => {
+fn process_var_field_pep440(var: &Var, zerv: &Zerv, components: &mut PEP440Components) {
+    match var {
+        Var::PreRelease => {
             if let Some(pr) = &zerv.vars.pre_release {
                 components.pre_label = Some(pr.label.clone());
                 components.pre_number = pr.number.map(|n| n as u32);
             }
         }
-        "epoch" => {
+        Var::Epoch => {
             components.epoch = zerv.vars.epoch.unwrap_or(0) as u32;
         }
-        "post" => {
+        Var::Post => {
             if let Some(post_num) = zerv.vars.post {
                 components.post_label = Some(PostLabel::Post);
                 components.post_number = Some(post_num as u32);
             }
         }
-        "dev" => {
+        Var::Dev => {
             if let Some(dev_num) = zerv.vars.dev {
                 components.dev_label = Some(DevLabel::Dev);
                 components.dev_number = Some(dev_num as u32);
             }
         }
+        Var::Custom(name) => {
+            // Custom fields may contain dots after sanitization, so we need to flatten
+            let sanitized = crate::utils::sanitize::Sanitizer::pep440_local_str().sanitize(name);
+            for part in sanitized.split('.') {
+                if !part.is_empty() {
+                    let segment = if let Ok(num) = part.parse::<u32>() {
+                        LocalSegment::new_uint(num)
+                    } else {
+                        LocalSegment::try_new_str(part.to_string()).unwrap()
+                    };
+                    components.local_overflow.push(segment);
+                }
+            }
+        }
         _ => {
-            components
-                .local_overflow
-                .push(LocalSegment::String(field.to_string()));
+            add_var_field_to_local(var, zerv, &mut components.local_overflow);
         }
     }
 }
 
 fn add_integer_to_local(value: u64, local_overflow: &mut Vec<LocalSegment>) {
     if value <= u32::MAX as u64 {
-        local_overflow.push(LocalSegment::Integer(value as u32));
+        local_overflow.push(LocalSegment::new_uint(value as u32));
     } else {
-        local_overflow.push(LocalSegment::String(value.to_string()));
+        local_overflow.push(LocalSegment::try_new_str(value.to_string()).unwrap());
     }
 }
 
-fn add_var_field_to_local(field: &str, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
-    match field {
-        ron_fields::BRANCH => {
+fn add_var_field_to_local(var: &Var, zerv: &Zerv, local_overflow: &mut Vec<LocalSegment>) {
+    match var {
+        Var::BumpedBranch => {
             if let Some(branch) = &zerv.vars.bumped_branch {
-                local_overflow.push(LocalSegment::String(branch.clone()));
+                // Branch names may contain dots after sanitization, so we need to flatten
+                let sanitized =
+                    crate::utils::sanitize::Sanitizer::pep440_local_str().sanitize(branch);
+                for part in sanitized.split('.') {
+                    if !part.is_empty() {
+                        let segment = if let Ok(num) = part.parse::<u32>() {
+                            LocalSegment::new_uint(num)
+                        } else {
+                            LocalSegment::try_new_str(part.to_string()).unwrap()
+                        };
+                        local_overflow.push(segment);
+                    }
+                }
             }
         }
-        ron_fields::DISTANCE => {
+        Var::Distance => {
             if let Some(distance) = zerv.vars.distance {
-                local_overflow.push(LocalSegment::Integer(distance as u32));
+                local_overflow.push(LocalSegment::new_uint(distance as u32));
             }
         }
-        ron_fields::COMMIT_HASH_SHORT => {
-            if let Some(hash) = &zerv.vars.bumped_commit_hash {
-                local_overflow.push(LocalSegment::String(hash.clone()));
+        Var::BumpedCommitHashShort => {
+            if let Some(hash) = zerv.vars.get_bumped_commit_hash_short() {
+                // Hash values may contain dots after sanitization, so we need to flatten
+                let sanitized =
+                    crate::utils::sanitize::Sanitizer::pep440_local_str().sanitize(&hash);
+                for part in sanitized.split('.') {
+                    if !part.is_empty() {
+                        let segment = if let Ok(num) = part.parse::<u32>() {
+                            LocalSegment::new_uint(num)
+                        } else {
+                            LocalSegment::try_new_str(part.to_string()).unwrap()
+                        };
+                        local_overflow.push(segment);
+                    }
+                }
             }
         }
         _ => {}
@@ -100,13 +135,24 @@ fn add_component_to_local(
     zerv: &Zerv,
 ) {
     match comp {
-        Component::String(s) => {
-            local_overflow.push(LocalSegment::String(s.clone()));
+        Component::Str(s) => {
+            // String components may contain dots after sanitization, so we need to flatten
+            let sanitized = crate::utils::sanitize::Sanitizer::pep440_local_str().sanitize(s);
+            for part in sanitized.split('.') {
+                if !part.is_empty() {
+                    let segment = if let Ok(num) = part.parse::<u32>() {
+                        LocalSegment::new_uint(num)
+                    } else {
+                        LocalSegment::try_new_str(part.to_string()).unwrap()
+                    };
+                    local_overflow.push(segment);
+                }
+            }
         }
-        Component::Integer(n) => {
+        Component::Int(n) => {
             add_integer_to_local(*n, local_overflow);
         }
-        Component::VarTimestamp(pattern) => {
+        Component::Var(Var::Timestamp(pattern)) => {
             if let Some(ts) = last_timestamp
                 && let Ok(result) = resolve_timestamp(pattern, ts)
                 && let Ok(val) = result.parse::<u64>()
@@ -114,8 +160,8 @@ fn add_component_to_local(
                 add_integer_to_local(val, local_overflow);
             }
         }
-        Component::VarField(field) => {
-            add_var_field_to_local(field, zerv, local_overflow);
+        Component::Var(var) => {
+            add_var_field_to_local(var, zerv, local_overflow);
         }
     }
 }
@@ -150,9 +196,11 @@ fn process_extra_core_components(zerv: &Zerv) -> PEP440Components {
         components.dev_number = Some(dev_num as u32);
     }
 
-    for comp in &zerv.schema.extra_core {
+    for comp in zerv.schema.extra_core() {
         match comp {
-            Component::VarField(field) => process_var_field_pep440(field, zerv, &mut components),
+            Component::Var(var) => {
+                process_var_field_pep440(var, zerv, &mut components);
+            }
             _ => add_component_to_local(
                 comp,
                 &mut components.local_overflow,
@@ -187,7 +235,7 @@ impl From<Zerv> for PEP440 {
         let mut components = process_extra_core_components(&zerv);
 
         components.local_overflow.extend(process_build_components(
-            &zerv.schema.build,
+            zerv.schema.build(),
             zerv.vars.last_timestamp,
             &zerv,
         ));
@@ -284,6 +332,8 @@ mod tests {
     #[case(zerv_calver::calver_yy_mm_patch(), "24.3.5")]
     #[case(zerv_calver::calver_yyyy_mm_patch(), "2024.3.1")]
     #[case(zerv_calver::calver_with_timestamp_build(), "1.0.0+2024.3.16")]
+    // Custom field handling
+    #[case(from::v1_0_0_custom_field().build(), "1.0.0+custom.field")]
     fn test_zerv_to_pep440_conversion(#[case] zerv: Zerv, #[case] expected_pep440_str: &str) {
         let pep440: PEP440 = zerv.into();
         assert_eq!(pep440.to_string(), expected_pep440_str);

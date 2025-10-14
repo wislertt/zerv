@@ -50,12 +50,10 @@ impl PartialOrd for PreReleaseIdentifier {
 impl Ord for PreReleaseIdentifier {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (PreReleaseIdentifier::Integer(a), PreReleaseIdentifier::Integer(b)) => a.cmp(b),
+            (PreReleaseIdentifier::UInt(a), PreReleaseIdentifier::UInt(b)) => a.cmp(b),
             (PreReleaseIdentifier::String(a), PreReleaseIdentifier::String(b)) => a.cmp(b),
-            (PreReleaseIdentifier::Integer(_), PreReleaseIdentifier::String(_)) => Ordering::Less,
-            (PreReleaseIdentifier::String(_), PreReleaseIdentifier::Integer(_)) => {
-                Ordering::Greater
-            }
+            (PreReleaseIdentifier::UInt(_), PreReleaseIdentifier::String(_)) => Ordering::Less,
+            (PreReleaseIdentifier::String(_), PreReleaseIdentifier::UInt(_)) => Ordering::Greater,
         }
     }
 }
@@ -153,8 +151,8 @@ mod tests {
 
         #[test]
         fn test_pre_release_integer_ordering() {
-            let v1 = SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::Integer(1)]);
-            let v2 = SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::Integer(2)]);
+            let v1 = SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::UInt(1)]);
+            let v2 = SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::UInt(2)]);
 
             assert!(v1 < v2);
             assert!(v2 > v1);
@@ -163,7 +161,7 @@ mod tests {
         #[test]
         fn test_pre_release_mixed_type_ordering() {
             let integer =
-                SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::Integer(1)]);
+                SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::UInt(1)]);
             let string = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
 
@@ -177,7 +175,7 @@ mod tests {
                 .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
             let longer = SemVer::new(1, 0, 0).with_pre_release(vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
-                PreReleaseIdentifier::Integer(1),
+                PreReleaseIdentifier::UInt(1),
             ]);
 
             assert!(shorter < longer); // fewer identifiers < more identifiers
@@ -188,11 +186,11 @@ mod tests {
         fn test_complex_pre_release_ordering() {
             let v1 = SemVer::new(1, 0, 0).with_pre_release(vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
-                PreReleaseIdentifier::Integer(1),
+                PreReleaseIdentifier::UInt(1),
             ]);
             let v2 = SemVer::new(1, 0, 0).with_pre_release(vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
-                PreReleaseIdentifier::Integer(2),
+                PreReleaseIdentifier::UInt(2),
             ]);
 
             assert!(v1 < v2);
@@ -240,8 +238,8 @@ mod tests {
 
         #[test]
         fn test_integer_identifier_ordering() {
-            let id1 = PreReleaseIdentifier::Integer(1);
-            let id2 = PreReleaseIdentifier::Integer(2);
+            let id1 = PreReleaseIdentifier::UInt(1);
+            let id2 = PreReleaseIdentifier::UInt(2);
             assert!(id1 < id2);
             assert!(id2 > id1);
         }
@@ -256,7 +254,7 @@ mod tests {
 
         #[test]
         fn test_mixed_identifier_ordering() {
-            let integer = PreReleaseIdentifier::Integer(999);
+            let integer = PreReleaseIdentifier::UInt(999);
             let string = PreReleaseIdentifier::String("a".to_string());
             assert!(integer < string); // integers always < strings
             assert!(string > integer);
@@ -268,8 +266,8 @@ mod tests {
             let id2 = PreReleaseIdentifier::String("alpha".to_string());
             assert_eq!(id1, id2);
 
-            let id3 = PreReleaseIdentifier::Integer(42);
-            let id4 = PreReleaseIdentifier::Integer(42);
+            let id3 = PreReleaseIdentifier::UInt(42);
+            let id4 = PreReleaseIdentifier::UInt(42);
             assert_eq!(id3, id4);
         }
     }
@@ -383,8 +381,8 @@ mod tests {
 
         #[test]
         fn test_very_long_pre_release() {
-            let long_pre_release = (0..100).map(PreReleaseIdentifier::Integer).collect();
-            let short_pre_release = vec![PreReleaseIdentifier::Integer(0)];
+            let long_pre_release = (0..100).map(PreReleaseIdentifier::UInt).collect();
+            let short_pre_release = vec![PreReleaseIdentifier::UInt(0)];
 
             let v1 = SemVer::new(1, 0, 0).with_pre_release(short_pre_release);
             let v2 = SemVer::new(1, 0, 0).with_pre_release(long_pre_release);
@@ -406,11 +404,11 @@ mod tests {
         #[test]
         fn test_integer_vs_numeric_string() {
             let integer =
-                SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::Integer(10)]);
+                SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::UInt(10)]);
             let string = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![PreReleaseIdentifier::String("2".to_string())]);
 
-            // Integer < String regardless of numeric value
+            // UInt < String regardless of numeric value
             assert!(integer < string);
         }
     }
@@ -433,7 +431,7 @@ mod tests {
             let left = vec![PreReleaseIdentifier::String("alpha".to_string())];
             let right = vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
-                PreReleaseIdentifier::Integer(1),
+                PreReleaseIdentifier::UInt(1),
             ];
             assert_eq!(
                 compare_pre_release_identifiers(&left, &right),
@@ -449,11 +447,11 @@ mod tests {
         fn test_compare_pre_release_identifiers_same_prefix() {
             let left = vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
-                PreReleaseIdentifier::Integer(1),
+                PreReleaseIdentifier::UInt(1),
             ];
             let right = vec![
                 PreReleaseIdentifier::String("alpha".to_string()),
-                PreReleaseIdentifier::Integer(2),
+                PreReleaseIdentifier::UInt(2),
             ];
             assert_eq!(
                 compare_pre_release_identifiers(&left, &right),

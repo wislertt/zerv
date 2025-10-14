@@ -1,6 +1,7 @@
 pub mod dir;
 pub mod git;
 pub mod output;
+pub mod types;
 pub mod vcs_fixtures;
 pub mod version;
 pub mod version_args;
@@ -14,6 +15,10 @@ pub use git::{
     NativeGit,
 };
 pub use output::TestOutput;
+pub use types::{
+    BumpType,
+    OverrideType,
+};
 pub use vcs_fixtures::{
     get_real_pep440_vcs_data,
     get_real_semver_vcs_data,

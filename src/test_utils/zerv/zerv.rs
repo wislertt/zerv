@@ -7,7 +7,10 @@ use super::{
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
 use crate::version::zerv::{
+    Component,
     PreReleaseLabel,
+    PreReleaseVar,
+    Var,
     Zerv,
 };
 
@@ -48,7 +51,7 @@ impl ZervFixture {
 
     /// Set pre-release (chainable)
     pub fn with_pre_release(mut self, label: PreReleaseLabel, number: Option<u64>) -> Self {
-        self.zerv.vars.pre_release = Some(crate::version::zerv::PreReleaseVar { label, number });
+        self.zerv.vars.pre_release = Some(PreReleaseVar { label, number });
         self
     }
 
@@ -71,26 +74,30 @@ impl ZervFixture {
     }
 
     /// Add build component (chainable)
-    pub fn with_build(mut self, component: crate::version::zerv::Component) -> Self {
-        self.zerv.schema.build.push(component);
+    pub fn with_build(mut self, component: Component) -> Self {
+        let mut build = self.zerv.schema.build().clone();
+        build.push(component);
+        self.zerv.schema.set_build(build).unwrap();
         self
     }
 
     /// Add extra core component (chainable)
-    pub fn with_extra_core(mut self, component: crate::version::zerv::Component) -> Self {
-        self.zerv.schema.extra_core.push(component);
+    pub fn with_extra_core(mut self, component: Component) -> Self {
+        let mut extra_core = self.zerv.schema.extra_core().clone();
+        extra_core.push(component);
+        self.zerv.schema.set_extra_core(extra_core).unwrap();
         self
     }
 
     /// Set branch (chainable)
     pub fn with_branch(mut self, branch: String) -> Self {
         self.zerv.vars.bumped_branch = Some(branch);
-        // Add VarField to build schema if not already present
-        let branch_field = crate::version::zerv::Component::VarField(
-            crate::constants::ron_fields::BRANCH.to_string(),
-        );
-        if !self.zerv.schema.build.contains(&branch_field) {
-            self.zerv.schema.build.push(branch_field);
+        // Add Var to build schema if not already present
+        let branch_field = Component::Var(Var::BumpedBranch);
+        if !self.zerv.schema.build().contains(&branch_field) {
+            let mut build = self.zerv.schema.build().clone();
+            build.push(branch_field);
+            self.zerv.schema.set_build(build).unwrap();
         }
         self
     }
@@ -98,12 +105,12 @@ impl ZervFixture {
     /// Set distance (chainable)
     pub fn with_distance(mut self, distance: u64) -> Self {
         self.zerv.vars.distance = Some(distance);
-        // Add VarField to build schema if not already present
-        let distance_field = crate::version::zerv::Component::VarField(
-            crate::constants::ron_fields::DISTANCE.to_string(),
-        );
-        if !self.zerv.schema.build.contains(&distance_field) {
-            self.zerv.schema.build.push(distance_field);
+        // Add Var to build schema if not already present
+        let distance_field = Component::Var(Var::Distance);
+        if !self.zerv.schema.build().contains(&distance_field) {
+            let mut build = self.zerv.schema.build().clone();
+            build.push(distance_field);
+            self.zerv.schema.set_build(build).unwrap();
         }
         self
     }
@@ -111,12 +118,12 @@ impl ZervFixture {
     /// Set commit hash (chainable)
     pub fn with_commit_hash(mut self, hash: String) -> Self {
         self.zerv.vars.bumped_commit_hash = Some(hash);
-        // Add VarField to build schema if not already present
-        let hash_field = crate::version::zerv::Component::VarField(
-            crate::constants::ron_fields::COMMIT_HASH_SHORT.to_string(),
-        );
-        if !self.zerv.schema.build.contains(&hash_field) {
-            self.zerv.schema.build.push(hash_field);
+        // Add Var to build schema if not already present
+        let hash_field = Component::Var(Var::BumpedCommitHashShort);
+        if !self.zerv.schema.build().contains(&hash_field) {
+            let mut build = self.zerv.schema.build().clone();
+            build.push(hash_field);
+            self.zerv.schema.set_build(build).unwrap();
         }
         self
     }
@@ -124,13 +131,11 @@ impl ZervFixture {
     /// Set core values directly (chainable)
     pub fn with_core_values(mut self, values: Vec<u64>) -> Self {
         // Clear existing core and rebuild with integers
-        self.zerv.schema.core.clear();
+        let mut core = Vec::new();
         for value in values {
-            self.zerv
-                .schema
-                .core
-                .push(crate::version::zerv::Component::Integer(value));
+            core.push(Component::Int(value));
         }
+        self.zerv.schema.set_core(core).unwrap();
         self
     }
 
@@ -172,42 +177,35 @@ impl ZervFixture {
 
     /// Create with empty schema - chainable
     pub fn with_empty_schema(mut self) -> Self {
-        self.zerv.schema.core.clear();
-        self.zerv.schema.extra_core.clear();
-        self.zerv.schema.build.clear();
+        self.zerv.schema.set_core(vec![Component::Int(1)]).unwrap(); // Need at least one component
+        self.zerv.schema.set_extra_core(vec![]).unwrap();
+        self.zerv.schema.set_build(vec![]).unwrap();
         self
     }
 
     /// Add core component - chainable
-    pub fn with_core(mut self, component: crate::version::zerv::Component) -> Self {
-        self.zerv.schema.core.push(component);
+    pub fn with_core(mut self, component: Component) -> Self {
+        let mut core = self.zerv.schema.core().clone();
+        core.push(component);
+        self.zerv.schema.set_core(core).unwrap();
         self
     }
 
     /// Set core components directly - chainable
-    pub fn with_core_components(
-        mut self,
-        components: Vec<crate::version::zerv::Component>,
-    ) -> Self {
-        self.zerv.schema.core = components;
+    pub fn with_core_components(mut self, components: Vec<Component>) -> Self {
+        self.zerv.schema.set_core(components).unwrap();
         self
     }
 
     /// Set extra_core components directly - chainable
-    pub fn with_extra_core_components(
-        mut self,
-        components: Vec<crate::version::zerv::Component>,
-    ) -> Self {
-        self.zerv.schema.extra_core = components;
+    pub fn with_extra_core_components(mut self, components: Vec<Component>) -> Self {
+        self.zerv.schema.set_extra_core(components).unwrap();
         self
     }
 
     /// Set build components directly - chainable
-    pub fn with_build_components(
-        mut self,
-        components: Vec<crate::version::zerv::Component>,
-    ) -> Self {
-        self.zerv.schema.build = components;
+    pub fn with_build_components(mut self, components: Vec<Component>) -> Self {
+        self.zerv.schema.set_build(components).unwrap();
         self
     }
 
@@ -283,9 +281,9 @@ mod tests {
         let zerv = fixture.zerv();
 
         // Verify the structure
-        assert_eq!(zerv.schema.core.len(), 3);
-        assert!(!zerv.schema.extra_core.is_empty()); // standard_tier_1 has extra_core
-        assert!(zerv.schema.build.is_empty());
+        assert_eq!(zerv.schema.core().len(), 3);
+        assert!(!zerv.schema.extra_core().is_empty()); // standard_tier_1 has extra_core
+        assert!(zerv.schema.build().is_empty());
 
         // Verify vars
         assert_eq!(zerv.vars.major, Some(1));
@@ -315,9 +313,9 @@ mod tests {
         let tier3 = ZervFixture::new().with_standard_tier_3().build();
 
         // All should have core components
-        assert_eq!(tier1.schema.core.len(), 3);
-        assert_eq!(tier2.schema.core.len(), 3);
-        assert_eq!(tier3.schema.core.len(), 3);
+        assert_eq!(tier1.schema.core().len(), 3);
+        assert_eq!(tier2.schema.core().len(), 3);
+        assert_eq!(tier3.schema.core().len(), 3);
     }
 
     #[test]
@@ -328,7 +326,7 @@ mod tests {
         assert_eq!(zerv.vars.minor, Some(2));
         assert_eq!(zerv.vars.patch, Some(3));
         assert!(zerv.vars.pre_release.is_some());
-        assert!(!zerv.schema.build.is_empty());
+        assert!(!zerv.schema.build().is_empty());
     }
 
     #[test]
@@ -342,7 +340,7 @@ mod tests {
         assert!(zerv.vars.pre_release.is_some());
         assert!(zerv.vars.post.is_some());
         assert!(zerv.vars.dev.is_some());
-        assert!(!zerv.schema.build.is_empty());
+        assert!(!zerv.schema.build().is_empty());
     }
 
     #[test]

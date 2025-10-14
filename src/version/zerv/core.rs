@@ -5,8 +5,8 @@ use serde::{
     Serialize,
 };
 
-use crate::constants::pre_release_labels;
 use crate::error::ZervError;
+use crate::utils::constants::pre_release_labels;
 use crate::version::zerv::schema::ZervSchema;
 use crate::version::zerv::vars::ZervVars;
 
@@ -98,21 +98,24 @@ impl Zerv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::ron_fields;
-    use crate::version::zerv::Component;
     use crate::version::zerv::bump::precedence::PrecedenceOrder;
+    use crate::version::zerv::{
+        Component,
+        Var,
+    };
 
     mod construction {
         use super::*;
 
         #[test]
         fn test_zerv_new() {
-            let schema = ZervSchema {
-                core: vec![Component::VarField(ron_fields::MAJOR.to_string())],
-                extra_core: vec![],
-                build: vec![],
-                precedence_order: PrecedenceOrder::default(),
-            };
+            let schema = ZervSchema::new_with_precedence(
+                vec![Component::Var(Var::Major)],
+                vec![],
+                vec![],
+                PrecedenceOrder::default(),
+            )
+            .unwrap();
             let vars = ZervVars {
                 major: Some(1), // Add required field for validation
                 ..Default::default()
@@ -215,15 +218,12 @@ mod tests {
 
         #[test]
         fn test_empty_schema() {
-            let schema = ZervSchema {
-                core: vec![],
-                extra_core: vec![],
-                build: vec![],
-                precedence_order: PrecedenceOrder::default(),
-            };
-            let vars = ZervVars::default();
-            // Empty schema should fail validation
-            let result = Zerv::new(schema, vars);
+            // Empty schema should fail validation during construction
+            let result = ZervSchema::new(
+                vec![], // Empty core
+                vec![], // Empty extra_core
+                vec![], // Empty build
+            );
             assert!(result.is_err());
         }
 
@@ -380,19 +380,17 @@ mod tests {
 
         #[test]
         fn test_semver_like_structure() {
-            let schema = ZervSchema {
-                core: vec![
-                    Component::VarField(ron_fields::MAJOR.to_string()),
-                    Component::VarField(ron_fields::MINOR.to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
+            let schema = ZervSchema::new_with_precedence(
+                vec![
+                    Component::Var(Var::Major),
+                    Component::Var(Var::Minor),
+                    Component::Var(Var::Patch),
                 ],
-                extra_core: vec![Component::VarField(ron_fields::PRE_RELEASE.to_string())],
-                build: vec![
-                    Component::String("build".to_string()),
-                    Component::Integer(123),
-                ],
-                precedence_order: PrecedenceOrder::default(),
-            };
+                vec![Component::Var(Var::PreRelease)],
+                vec![Component::Str("build".to_string()), Component::Int(123)],
+                PrecedenceOrder::default(),
+            )
+            .unwrap();
 
             let vars = ZervVars {
                 major: Some(1),
@@ -419,17 +417,18 @@ mod tests {
 
         #[test]
         fn test_calver_like_structure() {
-            let schema = ZervSchema {
-                core: vec![
-                    Component::VarTimestamp("YYYY".to_string()),
-                    Component::VarTimestamp("MM".to_string()),
-                    Component::VarTimestamp("DD".to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
+            let schema = ZervSchema::new_with_precedence(
+                vec![
+                    Component::Var(Var::Timestamp("YYYY".to_string())),
+                    Component::Var(Var::Timestamp("MM".to_string())),
+                    Component::Var(Var::Timestamp("DD".to_string())),
+                    Component::Var(Var::Patch),
                 ],
-                extra_core: vec![],
-                build: vec![],
-                precedence_order: PrecedenceOrder::default(),
-            };
+                vec![],
+                vec![],
+                PrecedenceOrder::default(),
+            )
+            .unwrap();
 
             let vars = ZervVars {
                 patch: Some(1),

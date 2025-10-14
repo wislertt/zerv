@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::constants::pre_release_labels;
+use crate::utils::constants::pre_release_labels;
 
 /// Override configuration for VCS and version components
 #[derive(Parser, Default)]

@@ -1,3 +1,6 @@
+use super::utils::LocalSegment;
+use crate::version::zerv::PreReleaseLabel;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PostLabel {
     Post,
@@ -7,14 +10,6 @@ pub enum PostLabel {
 pub enum DevLabel {
     Dev,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LocalSegment {
-    String(String),
-    Integer(u32),
-}
-
-use crate::version::zerv::PreReleaseLabel;
 
 impl PreReleaseLabel {
     pub fn as_str(&self) -> &'static str {
@@ -123,10 +118,10 @@ impl PEP440 {
     }
 
     fn normalize_local_segment(segment: &mut LocalSegment) {
-        if let LocalSegment::String(s) = segment {
+        if let LocalSegment::Str(s) = segment {
             let lowercase = s.to_lowercase();
             if let Ok(num) = lowercase.parse::<u32>() {
-                *segment = LocalSegment::Integer(num);
+                *segment = LocalSegment::new_uint(num);
             } else {
                 *s = lowercase;
             }
@@ -193,9 +188,9 @@ mod tests {
     fn test_pep440_version_with_local() {
         let version = PEP440::new(vec![1, 2, 3]).with_local("ubuntu.20.04");
         let expected = vec![
-            LocalSegment::String("ubuntu".to_string()),
-            LocalSegment::Integer(20),
-            LocalSegment::Integer(4), // "04" becomes integer 4
+            LocalSegment::Str("ubuntu".to_string()),
+            LocalSegment::UInt(20),
+            LocalSegment::UInt(4), // "04" becomes integer 4
         ];
         assert_eq!(version.local, Some(expected));
     }
@@ -258,8 +253,8 @@ mod tests {
         assert_eq!(
             version.local,
             Some(vec![
-                LocalSegment::String("local".to_string()),
-                LocalSegment::String("meta".to_string()),
+                LocalSegment::Str("local".to_string()),
+                LocalSegment::Str("meta".to_string()),
             ])
         );
     }

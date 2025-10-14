@@ -25,9 +25,28 @@ pub enum Precedence {
 }
 
 /// Precedence order management with O(1) bidirectional lookup
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PrecedenceOrder {
     order: IndexMap<Precedence, ()>,
+}
+
+impl Serialize for PrecedenceOrder {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_vec().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for PrecedenceOrder {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let precedences = Vec::<Precedence>::deserialize(deserializer)?;
+        Ok(Self::from_precedences(precedences))
+    }
 }
 
 impl PrecedenceOrder {
@@ -89,30 +108,6 @@ impl PrecedenceOrder {
     /// Get all precedences as a vector
     pub fn to_vec(&self) -> Vec<Precedence> {
         self.order.keys().cloned().collect()
-    }
-
-    /// Get field precedence names in order (for backward compatibility with BumpType::PRECEDENCE_NAMES)
-    pub fn field_precedence_names(&self) -> &[&'static str] {
-        // Return the field-based precedence names in order
-        // This maintains compatibility with existing BumpType logic
-        &[
-            "epoch",
-            "major",
-            "minor",
-            "patch",
-            "pre_release_label",
-            "pre_release_num",
-            "post",
-            "dev",
-            "distance",
-            "dirty",
-            "bumped_branch",
-            "bumped_commit_hash",
-            "bumped_timestamp",
-            "last_branch",
-            "last_commit_hash",
-            "last_timestamp",
-        ]
     }
 }
 

@@ -1,22 +1,9 @@
 mod calver;
 mod standard;
 
-pub use calver::{
-    get_calver_schema,
-    zerv_calver_tier_1,
-    zerv_calver_tier_2,
-    zerv_calver_tier_3,
-};
-pub use standard::{
-    get_standard_schema,
-    zerv_standard_tier_1,
-    zerv_standard_tier_2,
-    zerv_standard_tier_3,
-};
-
-use crate::constants::ron_fields;
 use crate::version::zerv::{
     Component,
+    Var,
     ZervSchema,
     ZervVars,
 };
@@ -33,48 +20,48 @@ fn determine_tier(vars: &ZervVars) -> u8 {
 
 fn tier_1_core() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::MAJOR.to_string()),
-        Component::VarField(ron_fields::MINOR.to_string()),
-        Component::VarField(ron_fields::PATCH.to_string()),
+        Component::Var(Var::Major),
+        Component::Var(Var::Minor),
+        Component::Var(Var::Patch),
     ]
 }
 
 fn tier_1_extra_core() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::EPOCH.to_string()),
-        Component::VarField(ron_fields::PRE_RELEASE.to_string()),
-        Component::VarField(ron_fields::POST.to_string()),
+        Component::Var(Var::Epoch),
+        Component::Var(Var::PreRelease),
+        Component::Var(Var::Post),
     ]
 }
 
 fn tier_2_build() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::BRANCH.to_string()),
-        Component::VarField(ron_fields::COMMIT_HASH_SHORT.to_string()),
+        Component::Var(Var::BumpedBranch),
+        Component::Var(Var::BumpedCommitHashShort),
     ]
 }
 
 fn tier_3_extra_core() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::EPOCH.to_string()),
-        Component::VarField(ron_fields::PRE_RELEASE.to_string()),
-        Component::VarField(ron_fields::POST.to_string()),
-        Component::VarField(ron_fields::DEV.to_string()),
+        Component::Var(Var::Epoch),
+        Component::Var(Var::PreRelease),
+        Component::Var(Var::Post),
+        Component::Var(Var::Dev),
     ]
 }
 
 fn tier_3_build() -> Vec<Component> {
     vec![
-        Component::VarField(ron_fields::BRANCH.to_string()),
-        Component::VarField(ron_fields::DISTANCE.to_string()),
-        Component::VarField(ron_fields::COMMIT_HASH_SHORT.to_string()),
+        Component::Var(Var::BumpedBranch),
+        Component::Var(Var::Distance),
+        Component::Var(Var::BumpedCommitHashShort),
     ]
 }
 
 pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {
     match name {
-        "zerv-standard" => Some(get_standard_schema(vars)),
-        "zerv-calver" => Some(get_calver_schema(vars)),
+        "zerv-standard" => Some(ZervSchema::get_standard_schema(vars)),
+        "zerv-calver" => Some(ZervSchema::get_calver_schema(vars)),
         _ => None,
     }
 }
@@ -96,8 +83,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case("zerv-standard", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(zerv_standard_tier_1()))]
-    #[case("zerv-calver", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(zerv_calver_tier_1()))]
+    #[case("zerv-standard", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(ZervSchema::zerv_standard_tier_1()))]
+    #[case("zerv-calver", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(ZervSchema::zerv_calver_tier_1()))]
     #[case("unknown", ZervVars::default(), None)]
     fn test_get_preset_schema(
         #[case] name: &str,

@@ -2,6 +2,7 @@ use super::ZervFixture;
 use crate::version::zerv::{
     Component,
     PreReleaseLabel,
+    Var,
 };
 
 /// Fixtures for SemVer → Zerv conversion (to_zerv.rs)
@@ -12,9 +13,9 @@ pub mod to {
         ZervFixture::new()
             .with_empty_schema()
             .with_core_components(vec![
-                Component::VarField("major".to_string()),
-                Component::VarField("minor".to_string()),
-                Component::VarField("patch".to_string()),
+                Component::Var(Var::Major),
+                Component::Var(Var::Minor),
+                Component::Var(Var::Patch),
             ])
     }
 
@@ -29,7 +30,7 @@ pub mod to {
     pub fn v1_0_0_a1() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_alpha_1() -> ZervFixture {
@@ -39,54 +40,54 @@ pub mod to {
     pub fn v1_0_0_epoch_1() -> ZervFixture {
         v1_0_0()
             .with_epoch(1)
-            .with_extra_core_components(vec![Component::VarField("epoch".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Epoch)])
     }
 
     pub fn v1_0_0_post_1() -> ZervFixture {
         v1_0_0()
             .with_post(1)
-            .with_extra_core_components(vec![Component::VarField("post".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Post)])
     }
 
     pub fn v1_0_0_dev_1() -> ZervFixture {
         v1_0_0()
             .with_dev(1)
-            .with_extra_core_components(vec![Component::VarField("dev".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Dev)])
     }
 
     pub fn v1_0_0_something_1() -> ZervFixture {
         v1_0_0().with_extra_core_components(vec![
-            Component::String("something".to_string()),
-            Component::Integer(1),
+            Component::Str("something".to_string()),
+            Component::Int(1),
         ])
     }
 
     pub fn v1_0_0_build() -> ZervFixture {
         v1_0_0().with_build_components(vec![
-            Component::String("build".to_string()),
-            Component::Integer(123),
+            Component::Str("build".to_string()),
+            Component::Int(123),
         ])
     }
 
     pub fn v1_0_0_a1_build() -> ZervFixture {
         v1_0_0_a1().with_build_components(vec![
-            Component::String("build".to_string()),
-            Component::Integer(123),
+            Component::Str("build".to_string()),
+            Component::Int(123),
         ])
     }
 
     pub fn v1_0_0_a1_complex() -> ZervFixture {
         v1_0_0_a1()
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::String("lowercase".to_string()),
-                Component::Integer(4),
-                Component::String("UPPERCASE".to_string()),
-                Component::Integer(5),
+                Component::Var(Var::PreRelease),
+                Component::Str("lowercase".to_string()),
+                Component::Int(4),
+                Component::Str("UPPERCASE".to_string()),
+                Component::Int(5),
             ])
             .with_build_components(vec![
-                Component::String("build".to_string()),
-                Component::Integer(123),
+                Component::Str("build".to_string()),
+                Component::Int(123),
             ])
     }
 
@@ -94,112 +95,112 @@ pub mod to {
     pub fn v1_0_0_beta_2() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Beta, Some(2))
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_rc_3() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, Some(3))
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_preview_4() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, Some(4))
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_a_1() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_b_2() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Beta, Some(2))
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_c_3() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, Some(3))
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_alpha() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, None)
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_beta() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Beta, None)
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_rc() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, None)
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_alpha_0() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, Some(0))
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     pub fn v1_0_0_beta_0() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Beta, Some(0))
-            .with_extra_core_components(vec![Component::VarField("pre_release".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
     }
 
     // Epoch variants
     pub fn v1_0_0_epoch_5() -> ZervFixture {
         v1_0_0()
             .with_epoch(5)
-            .with_extra_core_components(vec![Component::VarField("epoch".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Epoch)])
     }
 
     pub fn v1_0_0_epoch_0() -> ZervFixture {
         v1_0_0()
             .with_epoch(0)
-            .with_extra_core_components(vec![Component::VarField("epoch".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Epoch)])
     }
 
     pub fn v1_0_0_epoch_999() -> ZervFixture {
         v1_0_0()
             .with_epoch(999)
-            .with_extra_core_components(vec![Component::VarField("epoch".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Epoch)])
     }
 
     // Post variants
     pub fn v1_0_0_post_5() -> ZervFixture {
         v1_0_0()
             .with_post(5)
-            .with_extra_core_components(vec![Component::VarField("post".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Post)])
     }
 
     pub fn v1_0_0_post_0() -> ZervFixture {
         v1_0_0()
             .with_post(0)
-            .with_extra_core_components(vec![Component::VarField("post".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Post)])
     }
 
     // Dev variants
     pub fn v1_0_0_dev_0() -> ZervFixture {
         v1_0_0()
             .with_dev(0)
-            .with_extra_core_components(vec![Component::VarField("dev".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Dev)])
     }
 
     pub fn v1_0_0_dev_10() -> ZervFixture {
         v1_0_0()
             .with_dev(10)
-            .with_extra_core_components(vec![Component::VarField("dev".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Dev)])
     }
 
     // Complex combinations
@@ -208,8 +209,8 @@ pub mod to {
             .with_epoch(2)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_extra_core_components(vec![
-                Component::VarField("epoch".to_string()),
-                Component::VarField("pre_release".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Var(Var::PreRelease),
             ])
     }
 
@@ -218,8 +219,8 @@ pub mod to {
             .with_epoch(3)
             .with_pre_release(PreReleaseLabel::Beta, Some(2))
             .with_extra_core_components(vec![
-                Component::VarField("epoch".to_string()),
-                Component::VarField("pre_release".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Var(Var::PreRelease),
             ])
     }
 
@@ -228,8 +229,8 @@ pub mod to {
             .with_epoch(1)
             .with_pre_release(PreReleaseLabel::Rc, Some(5))
             .with_extra_core_components(vec![
-                Component::VarField("epoch".to_string()),
-                Component::VarField("pre_release".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Var(Var::PreRelease),
             ])
     }
 
@@ -238,8 +239,8 @@ pub mod to {
             .with_epoch(4)
             .with_pre_release(PreReleaseLabel::Alpha, None)
             .with_extra_core_components(vec![
-                Component::VarField("epoch".to_string()),
-                Component::VarField("pre_release".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Var(Var::PreRelease),
             ])
     }
 
@@ -247,41 +248,38 @@ pub mod to {
         v1_0_0()
             .with_post(1)
             .with_dev(2)
-            .with_extra_core_components(vec![
-                Component::VarField("post".to_string()),
-                Component::VarField("dev".to_string()),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Post), Component::Var(Var::Dev)])
     }
 
     // Build metadata combinations
     pub fn v1_0_0_epoch_1_build() -> ZervFixture {
         v1_0_0_epoch_1().with_build_components(vec![
-            Component::String("build".to_string()),
-            Component::Integer(123),
+            Component::Str("build".to_string()),
+            Component::Int(123),
         ])
     }
 
     pub fn v1_0_0_post_1_build() -> ZervFixture {
         v1_0_0_post_1().with_build_components(vec![
-            Component::String("build".to_string()),
-            Component::Integer(456),
+            Component::Str("build".to_string()),
+            Component::Int(456),
         ])
     }
 
     pub fn v1_0_0_dev_2_build() -> ZervFixture {
         v1_0_0()
             .with_dev(2)
-            .with_extra_core_components(vec![Component::VarField("dev".to_string())])
+            .with_extra_core_components(vec![Component::Var(Var::Dev)])
             .with_build_components(vec![
-                Component::String("build".to_string()),
-                Component::Integer(789),
+                Component::Str("build".to_string()),
+                Component::Int(789),
             ])
     }
 
     pub fn v1_0_0_epoch_2_alpha_1_build() -> ZervFixture {
         v1_0_0_epoch_2_alpha_1().with_build_components(vec![
-            Component::String("build".to_string()),
-            Component::String("abc".to_string()),
+            Component::Str("build".to_string()),
+            Component::Str("abc".to_string()),
         ])
     }
 
@@ -290,10 +288,10 @@ pub mod to {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Beta, Some(2))
             .with_extra_core_components(vec![
-                Component::String("foo".to_string()),
-                Component::String("bar".to_string()),
-                Component::VarField("pre_release".to_string()),
-                Component::String("baz".to_string()),
+                Component::Str("foo".to_string()),
+                Component::Str("bar".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Str("baz".to_string()),
             ])
     }
 
@@ -301,9 +299,9 @@ pub mod to {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::String("beta".to_string()),
-                Component::Integer(2),
+                Component::Var(Var::PreRelease),
+                Component::Str("beta".to_string()),
+                Component::Int(2),
             ])
     }
 
@@ -311,11 +309,11 @@ pub mod to {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, Some(1))
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::String("alpha".to_string()),
-                Component::Integer(2),
-                Component::String("beta".to_string()),
-                Component::Integer(3),
+                Component::Var(Var::PreRelease),
+                Component::Str("alpha".to_string()),
+                Component::Int(2),
+                Component::Str("beta".to_string()),
+                Component::Int(3),
             ])
     }
 
@@ -323,9 +321,9 @@ pub mod to {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, None)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::String("alpha".to_string()),
-                Component::Integer(1),
+                Component::Var(Var::PreRelease),
+                Component::Str("alpha".to_string()),
+                Component::Int(1),
             ])
     }
 
@@ -333,11 +331,11 @@ pub mod to {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, None)
             .with_extra_core_components(vec![
-                Component::String("test".to_string()),
-                Component::VarField("pre_release".to_string()),
-                Component::String("beta".to_string()),
-                Component::String("rc".to_string()),
-                Component::Integer(1),
+                Component::Str("test".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Str("beta".to_string()),
+                Component::Str("rc".to_string()),
+                Component::Int(1),
             ])
     }
 
@@ -345,9 +343,9 @@ pub mod to {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, None)
             .with_extra_core_components(vec![
-                Component::String("foo".to_string()),
-                Component::Integer(1),
-                Component::VarField("pre_release".to_string()),
+                Component::Str("foo".to_string()),
+                Component::Int(1),
+                Component::Var(Var::PreRelease),
             ])
     }
 
@@ -355,9 +353,9 @@ pub mod to {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Beta, None)
             .with_extra_core_components(vec![
-                Component::String("bar".to_string()),
-                Component::Integer(2),
-                Component::VarField("pre_release".to_string()),
+                Component::Str("bar".to_string()),
+                Component::Int(2),
+                Component::Var(Var::PreRelease),
             ])
     }
 
@@ -365,10 +363,7 @@ pub mod to {
         v1_0_0()
             .with_post(4)
             .with_dev(3)
-            .with_extra_core_components(vec![
-                Component::VarField("dev".to_string()),
-                Component::VarField("post".to_string()),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Dev), Component::Var(Var::Post)])
     }
 
     pub fn v1_0_0_alpha_1_post_2() -> ZervFixture {
@@ -376,8 +371,8 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(2)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("post".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Post),
             ])
     }
 
@@ -386,8 +381,8 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Beta, Some(3))
             .with_post(1)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("post".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Post),
             ])
     }
 
@@ -396,8 +391,8 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Rc, Some(2))
             .with_post(5)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("post".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Post),
             ])
     }
 
@@ -406,8 +401,8 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_dev(2)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("dev".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Dev),
             ])
     }
 
@@ -416,8 +411,8 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Beta, Some(2))
             .with_dev(1)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("dev".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Dev),
             ])
     }
 
@@ -426,8 +421,8 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Rc, Some(1))
             .with_dev(3)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("dev".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Dev),
             ])
     }
 
@@ -437,9 +432,9 @@ pub mod to {
             .with_post(2)
             .with_dev(3)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("post".to_string()),
-                Component::VarField("dev".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Post),
+                Component::Var(Var::Dev),
             ])
     }
 
@@ -449,9 +444,9 @@ pub mod to {
             .with_post(3)
             .with_dev(1)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("dev".to_string()),
-                Component::VarField("post".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Dev),
+                Component::Var(Var::Post),
             ])
     }
 
@@ -461,9 +456,9 @@ pub mod to {
             .with_post(1)
             .with_dev(1)
             .with_extra_core_components(vec![
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("post".to_string()),
-                Component::VarField("dev".to_string()),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Post),
+                Component::Var(Var::Dev),
             ])
     }
 
@@ -473,9 +468,9 @@ pub mod to {
             .with_post(1)
             .with_dev(3)
             .with_extra_core_components(vec![
-                Component::VarField("epoch".to_string()),
-                Component::VarField("post".to_string()),
-                Component::VarField("dev".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Var(Var::Post),
+                Component::Var(Var::Dev),
             ])
     }
 
@@ -485,9 +480,9 @@ pub mod to {
             .with_post(1)
             .with_dev(2)
             .with_extra_core_components(vec![
-                Component::VarField("epoch".to_string()),
-                Component::VarField("dev".to_string()),
-                Component::VarField("post".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Var(Var::Dev),
+                Component::Var(Var::Post),
             ])
     }
 
@@ -498,10 +493,10 @@ pub mod to {
             .with_post(2)
             .with_dev(1)
             .with_extra_core_components(vec![
-                Component::VarField("epoch".to_string()),
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("post".to_string()),
-                Component::VarField("dev".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Post),
+                Component::Var(Var::Dev),
             ])
     }
 
@@ -512,10 +507,10 @@ pub mod to {
             .with_post(1)
             .with_dev(3)
             .with_extra_core_components(vec![
-                Component::VarField("epoch".to_string()),
-                Component::VarField("pre_release".to_string()),
-                Component::VarField("dev".to_string()),
-                Component::VarField("post".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Dev),
+                Component::Var(Var::Post),
             ])
     }
 
@@ -524,9 +519,9 @@ pub mod to {
             .with_epoch(1)
             .with_pre_release(PreReleaseLabel::Alpha, Some(2))
             .with_extra_core_components(vec![
-                Component::String("foo".to_string()),
-                Component::VarField("epoch".to_string()),
-                Component::VarField("pre_release".to_string()),
+                Component::Str("foo".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Var(Var::PreRelease),
             ])
     }
 
@@ -535,9 +530,9 @@ pub mod to {
             .with_epoch(1)
             .with_post(2)
             .with_extra_core_components(vec![
-                Component::VarField("epoch".to_string()),
-                Component::String("foo".to_string()),
-                Component::VarField("post".to_string()),
+                Component::Var(Var::Epoch),
+                Component::Str("foo".to_string()),
+                Component::Var(Var::Post),
             ])
     }
 
@@ -546,9 +541,9 @@ pub mod to {
             .with_epoch(2)
             .with_dev(1)
             .with_extra_core_components(vec![
-                Component::String("bar".to_string()),
-                Component::VarField("dev".to_string()),
-                Component::VarField("epoch".to_string()),
+                Component::Str("bar".to_string()),
+                Component::Var(Var::Dev),
+                Component::Var(Var::Epoch),
             ])
     }
 }
@@ -602,35 +597,35 @@ pub mod from {
     // Build metadata variants
     pub fn v1_0_0_build() -> ZervFixture {
         v1_0_0()
-            .with_build(Component::String("build".to_string()))
-            .with_build(Component::Integer(123))
+            .with_build(Component::Str("build".to_string()))
+            .with_build(Component::Int(123))
     }
 
     pub fn v1_0_0_a1_build() -> ZervFixture {
         v1_0_0_a1()
-            .with_build(Component::String("build".to_string()))
-            .with_build(Component::Integer(123))
+            .with_build(Component::Str("build".to_string()))
+            .with_build(Component::Int(123))
     }
 
     // Extra core variants
     pub fn v1_0_0_extra_something() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("something".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("something".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     pub fn v1_0_0_foo_alpha() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("foo".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("alpha".to_string()))
+            .with_extra_core(Component::Str("foo".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("alpha".to_string()))
     }
 
     pub fn v1_0_0_bar_beta() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("bar".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("beta".to_string()))
+            .with_extra_core(Component::Str("bar".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("beta".to_string()))
     }
 
     // Epoch variants
@@ -704,195 +699,195 @@ pub mod from {
     // Post + dev combinations
     pub fn v1_0_0_post1_dev2() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(2))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(2))
     }
 
     pub fn v1_0_0_dev3_post4() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(3))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(4))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(4))
     }
 
     // Pre-release + post combinations
     pub fn v1_0_0_a1_post2() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("alpha".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(2))
+            .with_extra_core(Component::Str("alpha".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(2))
     }
 
     pub fn v1_0_0_b3_post1() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("beta".to_string()))
-            .with_extra_core(Component::Integer(3))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("beta".to_string()))
+            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     pub fn v1_0_0_rc2_post5() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("rc".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(5))
+            .with_extra_core(Component::Str("rc".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(5))
     }
 
     // Pre-release + dev combinations
     pub fn v1_0_0_a1_dev2() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("alpha".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(2))
+            .with_extra_core(Component::Str("alpha".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(2))
     }
 
     pub fn v1_0_0_b2_dev1() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("beta".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("beta".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     pub fn v1_0_0_rc1_dev3() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("rc".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(3))
+            .with_extra_core(Component::Str("rc".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(3))
     }
 
     // Triple combinations
     pub fn v1_0_0_a1_post2_dev3() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("alpha".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(3))
+            .with_extra_core(Component::Str("alpha".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(3))
     }
 
     pub fn v1_0_0_b2_dev1_post3() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("beta".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(3))
+            .with_extra_core(Component::Str("beta".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(3))
     }
 
     pub fn v1_0_0_rc1_post1_dev1() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("rc".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("rc".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     // Epoch + post + dev combinations
     pub fn v1_0_0_e2_post1_dev3() -> ZervFixture {
         v1_0_0()
             .with_epoch(2)
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(3))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(3))
     }
 
     pub fn v1_0_0_e1_dev2_post1() -> ZervFixture {
         v1_0_0()
             .with_epoch(1)
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     // All components together
     pub fn v1_0_0_e3_a1_post2_dev1() -> ZervFixture {
         v1_0_0()
             .with_epoch(3)
-            .with_extra_core(Component::String("alpha".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("alpha".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     pub fn v1_0_0_e1_b2_dev3_post1() -> ZervFixture {
         v1_0_0()
             .with_epoch(1)
-            .with_extra_core(Component::String("beta".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(3))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("beta".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     // Build metadata with other components
     pub fn v1_0_0_e1_build() -> ZervFixture {
         v1_0_0_e1()
-            .with_build(Component::String("build".to_string()))
-            .with_build(Component::Integer(123))
+            .with_build(Component::Str("build".to_string()))
+            .with_build(Component::Int(123))
     }
 
     pub fn v1_0_0_post1_build() -> ZervFixture {
         v1_0_0_post1()
-            .with_build(Component::String("build".to_string()))
-            .with_build(Component::Integer(456))
+            .with_build(Component::Str("build".to_string()))
+            .with_build(Component::Int(456))
     }
 
     pub fn v1_0_0_dev2_build() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_build(Component::String("build".to_string()))
-            .with_build(Component::Integer(789))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_build(Component::Str("build".to_string()))
+            .with_build(Component::Int(789))
     }
 
     pub fn v1_0_0_e2_a1_build() -> ZervFixture {
         v1_0_0()
             .with_epoch(2)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_build(Component::String("build".to_string()))
-            .with_build(Component::String("abc".to_string()))
+            .with_build(Component::Str("build".to_string()))
+            .with_build(Component::Str("abc".to_string()))
     }
 
     // Mixed with extra core
     pub fn v1_0_0_e1_foo_a2() -> ZervFixture {
         v1_0_0()
             .with_epoch(1)
-            .with_extra_core(Component::String("foo".to_string()))
-            .with_extra_core(Component::String("alpha".to_string()))
-            .with_extra_core(Component::Integer(2))
+            .with_extra_core(Component::Str("foo".to_string()))
+            .with_extra_core(Component::Str("alpha".to_string()))
+            .with_extra_core(Component::Int(2))
     }
 
     pub fn v1_0_0_e1_foo_post2() -> ZervFixture {
         v1_0_0()
             .with_epoch(1)
-            .with_extra_core(Component::String("foo".to_string()))
-            .with_extra_core(Component::String("post".to_string()))
-            .with_extra_core(Component::Integer(2))
+            .with_extra_core(Component::Str("foo".to_string()))
+            .with_extra_core(Component::Str("post".to_string()))
+            .with_extra_core(Component::Int(2))
     }
 
     pub fn v1_0_0_e2_bar_dev1() -> ZervFixture {
         v1_0_0()
             .with_epoch(2)
-            .with_extra_core(Component::String("bar".to_string()))
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("bar".to_string()))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     // VarField build metadata
@@ -928,61 +923,66 @@ pub mod from {
     pub fn v1_0_0_a1_extra_complex() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_extra_core(Component::String("lowercase".to_string()))
-            .with_extra_core(Component::Integer(4))
-            .with_extra_core(Component::String("UPPERCASE".to_string()))
-            .with_extra_core(Component::Integer(5))
-            .with_build(Component::String("build".to_string()))
-            .with_build(Component::Integer(123))
+            .with_extra_core(Component::Str("lowercase".to_string()))
+            .with_extra_core(Component::Int(4))
+            .with_extra_core(Component::Str("UPPERCASE".to_string()))
+            .with_extra_core(Component::Int(5))
+            .with_build(Component::Str("build".to_string()))
+            .with_build(Component::Int(123))
     }
 
     pub fn v1_0_0_foo_bar_b2_baz() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("foo".to_string()))
-            .with_extra_core(Component::String("bar".to_string()))
-            .with_extra_core(Component::String("beta".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("baz".to_string()))
+            .with_extra_core(Component::Str("foo".to_string()))
+            .with_extra_core(Component::Str("bar".to_string()))
+            .with_extra_core(Component::Str("beta".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("baz".to_string()))
     }
 
     pub fn v1_0_0_a1_b2() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("alpha".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("beta".to_string()))
-            .with_extra_core(Component::Integer(2))
+            .with_extra_core(Component::Str("alpha".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("beta".to_string()))
+            .with_extra_core(Component::Int(2))
     }
 
     pub fn v1_0_0_rc1_a2_b3() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("rc".to_string()))
-            .with_extra_core(Component::Integer(1))
-            .with_extra_core(Component::String("alpha".to_string()))
-            .with_extra_core(Component::Integer(2))
-            .with_extra_core(Component::String("beta".to_string()))
-            .with_extra_core(Component::Integer(3))
+            .with_extra_core(Component::Str("rc".to_string()))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Str("alpha".to_string()))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Str("beta".to_string()))
+            .with_extra_core(Component::Int(3))
     }
 
     pub fn v1_0_0_rc_none_a1() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("rc".to_string()))
-            .with_extra_core(Component::String("alpha".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("rc".to_string()))
+            .with_extra_core(Component::Str("alpha".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     pub fn v1_0_0_test_alpha_beta_rc1() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("test".to_string()))
-            .with_extra_core(Component::String("alpha".to_string()))
-            .with_extra_core(Component::String("beta".to_string()))
-            .with_extra_core(Component::String("rc".to_string()))
-            .with_extra_core(Component::Integer(1))
+            .with_extra_core(Component::Str("test".to_string()))
+            .with_extra_core(Component::Str("alpha".to_string()))
+            .with_extra_core(Component::Str("beta".to_string()))
+            .with_extra_core(Component::Str("rc".to_string()))
+            .with_extra_core(Component::Int(1))
     }
 
     // Helper for dev2 variant
     pub fn v1_0_0_dev2() -> ZervFixture {
         v1_0_0()
-            .with_extra_core(Component::String("dev".to_string()))
-            .with_extra_core(Component::Integer(2))
+            .with_extra_core(Component::Str("dev".to_string()))
+            .with_extra_core(Component::Int(2))
+    }
+
+    // Custom field variant
+    pub fn v1_0_0_custom_field() -> ZervFixture {
+        v1_0_0().with_extra_core(Component::Var(Var::Custom("custom_field".to_string())))
     }
 }

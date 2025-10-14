@@ -1,11 +1,12 @@
 use std::collections::HashSet;
 
 use crate::error::ZervError;
+use crate::version::zerv::core::Zerv;
 
 /// Type alias for process specifications: (index, override_value, bump_value)
 pub type ProcessSpec = (usize, Option<String>, Option<String>);
 
-impl crate::version::zerv::core::Zerv {
+impl Zerv {
     pub fn parse_bump_spec(spec: &str, schema_len: usize) -> Result<(usize, String), ZervError> {
         if let Some((index_str, value)) = spec.split_once('=') {
             // Explicit value: "1=5" -> (1, "5")
@@ -146,7 +147,7 @@ impl crate::version::zerv::core::Zerv {
 mod tests {
     use rstest::*;
 
-    use crate::version::zerv::core::Zerv;
+    use super::*;
 
     // Test parse_bump_spec with various valid inputs
     #[rstest]

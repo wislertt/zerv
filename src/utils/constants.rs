@@ -1,13 +1,3 @@
-// RON Schema field names (for var() components)
-pub mod ron_fields {
-    // Re-export shared constants
-    pub use super::shared_constants::*;
-
-    // RON-specific VCS fields
-    pub const BRANCH: &str = "branch";
-    pub const COMMIT_HASH_SHORT: &str = "commit_hash_short";
-}
-
 // Template variable names (for output templates)
 pub mod template_vars {
     // Re-export shared constants
@@ -69,11 +59,6 @@ pub mod bump_types {
     pub const PRE_RELEASE_NUM: &str = "pre_release_num";
     pub const POST: &str = shared_constants::POST;
     pub const DEV: &str = shared_constants::DEV;
-}
-
-// Legacy alias for backward compatibility
-pub mod shared_fields {
-    pub use super::shared_constants::*;
 }
 
 // Timestamp patterns

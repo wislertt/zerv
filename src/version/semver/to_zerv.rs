@@ -3,12 +3,12 @@ use super::{
     PreReleaseIdentifier,
     SemVer,
 };
-use crate::constants::ron_fields;
 use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::core::PreReleaseLabel;
 use crate::version::zerv::{
     Component,
     PreReleaseVar,
+    Var,
     Zerv,
     ZervSchema,
     ZervVars,
@@ -46,26 +46,23 @@ impl PreReleaseProcessor {
             return false;
         }
 
-        if let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::Integer(num)) =
+        if let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::UInt(num)) =
             (&pr[i], &pr[i + 1])
         {
             match label.as_str() {
                 "epoch" if self.epoch.is_none() => {
                     self.epoch = Some(*num);
-                    self.extra_core
-                        .push(Component::VarField(ron_fields::EPOCH.to_string()));
+                    self.extra_core.push(Component::Var(Var::Epoch));
                     true
                 }
                 "dev" if self.dev.is_none() => {
                     self.dev = Some(*num);
-                    self.extra_core
-                        .push(Component::VarField(ron_fields::DEV.to_string()));
+                    self.extra_core.push(Component::Var(Var::Dev));
                     true
                 }
                 "post" if self.post.is_none() => {
                     self.post = Some(*num);
-                    self.extra_core
-                        .push(Component::VarField(ron_fields::POST.to_string()));
+                    self.extra_core.push(Component::Var(Var::Post));
                     true
                 }
                 _ => self.try_pre_release_pattern(label, Some(*num)),
@@ -83,8 +80,7 @@ impl PreReleaseProcessor {
                 label: normalized_label,
                 number,
             });
-            self.extra_core
-                .push(Component::VarField(ron_fields::PRE_RELEASE.to_string()));
+            self.extra_core.push(Component::Var(Var::PreRelease));
             return true;
         }
         false
@@ -92,8 +88,8 @@ impl PreReleaseProcessor {
 
     fn add_regular_component(&mut self, item: &PreReleaseIdentifier) {
         self.extra_core.push(match item {
-            PreReleaseIdentifier::String(s) => Component::String(s.clone()),
-            PreReleaseIdentifier::Integer(n) => Component::Integer(*n),
+            PreReleaseIdentifier::String(s) => Component::Str(s.clone()),
+            PreReleaseIdentifier::UInt(n) => Component::Int(*n),
         });
     }
 
@@ -131,8 +127,8 @@ impl From<SemVer> for Zerv {
                 metadata
                     .iter()
                     .map(|m| match m {
-                        BuildMetadata::String(s) => Component::String(s.clone()),
-                        BuildMetadata::Integer(i) => Component::Integer(*i),
+                        BuildMetadata::String(s) => Component::Str(s.clone()),
+                        BuildMetadata::UInt(i) => Component::Int(*i),
                     })
                     .collect()
             })
@@ -145,16 +141,17 @@ impl From<SemVer> for Zerv {
             .unwrap_or_default();
 
         Zerv {
-            schema: ZervSchema {
-                core: vec![
-                    Component::VarField(ron_fields::MAJOR.to_string()),
-                    Component::VarField(ron_fields::MINOR.to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
+            schema: ZervSchema::new_with_precedence(
+                vec![
+                    Component::Var(Var::Major),
+                    Component::Var(Var::Minor),
+                    Component::Var(Var::Patch),
                 ],
                 extra_core,
                 build,
-                precedence_order: PrecedenceOrder::default(),
-            },
+                PrecedenceOrder::default(),
+            )
+            .unwrap(),
             vars: ZervVars {
                 major: Some(semver.major),
                 minor: Some(semver.minor),

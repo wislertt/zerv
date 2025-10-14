@@ -1,9 +1,7 @@
 use std::cmp::Ordering;
 
-use super::core::{
-    LocalSegment,
-    PEP440,
-};
+use super::core::PEP440;
+use super::utils::LocalSegment;
 use crate::version::zerv::PreReleaseLabel;
 
 impl PartialOrd for PEP440 {
@@ -88,12 +86,10 @@ impl PartialOrd for LocalSegment {
 impl Ord for LocalSegment {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (LocalSegment::Integer(a), LocalSegment::Integer(b)) => a.cmp(b),
-            (LocalSegment::String(a), LocalSegment::String(b)) => {
-                a.to_lowercase().cmp(&b.to_lowercase())
-            }
-            (LocalSegment::Integer(_), LocalSegment::String(_)) => Ordering::Less,
-            (LocalSegment::String(_), LocalSegment::Integer(_)) => Ordering::Greater,
+            (LocalSegment::UInt(a), LocalSegment::UInt(b)) => a.cmp(b),
+            (LocalSegment::Str(a), LocalSegment::Str(b)) => a.to_lowercase().cmp(&b.to_lowercase()),
+            (LocalSegment::UInt(_), LocalSegment::Str(_)) => Ordering::Less,
+            (LocalSegment::Str(_), LocalSegment::UInt(_)) => Ordering::Greater,
         }
     }
 }

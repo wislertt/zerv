@@ -1,8 +1,8 @@
-use crate::constants::timestamp_patterns;
 use crate::error::{
     Result,
     ZervError,
 };
+use crate::utils::constants::timestamp_patterns;
 
 fn create_invalid_pattern_error(token: &str) -> ZervError {
     let valid_patterns = timestamp_patterns::get_valid_timestamp_patterns();

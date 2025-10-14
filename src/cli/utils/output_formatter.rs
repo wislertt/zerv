@@ -1,8 +1,8 @@
-use crate::constants::{
+use crate::error::ZervError;
+use crate::utils::constants::{
     SUPPORTED_FORMATS,
     formats,
 };
-use crate::error::ZervError;
 use crate::version::Zerv;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
@@ -75,27 +75,29 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use crate::constants::ron_fields;
     use crate::version::zerv::bump::precedence::PrecedenceOrder;
+    use crate::version::zerv::{
+        Component,
+        Var,
+    };
     use crate::version::{
         ZervSchema,
         ZervVars,
     };
 
     fn create_test_zerv() -> Zerv {
-        use crate::version::Component;
-
         Zerv {
-            schema: ZervSchema {
-                core: vec![
-                    Component::VarField(ron_fields::MAJOR.to_string()),
-                    Component::VarField(ron_fields::MINOR.to_string()),
-                    Component::VarField(ron_fields::PATCH.to_string()),
+            schema: ZervSchema::new_with_precedence(
+                vec![
+                    Component::Var(Var::Major),
+                    Component::Var(Var::Minor),
+                    Component::Var(Var::Patch),
                 ],
-                extra_core: vec![],
-                build: vec![],
-                precedence_order: PrecedenceOrder::default(),
-            },
+                vec![],
+                vec![],
+                PrecedenceOrder::default(),
+            )
+            .unwrap(),
             vars: ZervVars {
                 major: Some(1),
                 minor: Some(2),
