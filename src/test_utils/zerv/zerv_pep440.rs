@@ -260,7 +260,13 @@ pub mod from {
 
     // Custom field variant
     pub fn v1_0_0_custom_field() -> ZervFixture {
-        v1_0_0().with_extra_core(Component::Var(Var::Custom("custom_field".to_string())))
+        let mut fixture = v1_0_0()
+            .with_build(Component::Var(Var::Custom("custom_field".to_string())))
+            .build();
+        fixture.vars.custom = serde_json::json!({
+            "custom_field": "custom.field"
+        });
+        ZervFixture::from(fixture)
     }
 }
 
