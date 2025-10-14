@@ -242,6 +242,8 @@ mod tests {
     #[case(zerv_calver::calver_yy_mm_patch(), "24.3.5")]
     #[case(zerv_calver::calver_yyyy_mm_patch(), "2024.3.1")]
     #[case(zerv_calver::calver_with_timestamp_build(), "1.0.0+2024.3.16")]
+    // Maximum complexity test
+    #[case(from::v2_3_4_max_complexity().build(), "5!2.3.4.99a1.post2+core.value.extra.value.literal.42.feature.complex.test.7.abcdef1.true.build.value.build.123")]
     // Custom field handling - build (goes to local)
     #[case(from::v1_0_0_custom_build_field("custom.field").build(), "1.0.0+custom.field")]
     #[case(from::v1_0_0_custom_build_field("simple").build(), "1.0.0+simple")]

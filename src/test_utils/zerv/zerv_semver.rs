@@ -1017,4 +1017,42 @@ pub mod from {
         });
         ZervFixture::from(fixture)
     }
+
+    // Maximum complexity fixture - contains every possible component
+    pub fn v2_3_4_max_complexity() -> ZervFixture {
+        let mut fixture = ZervFixture::new()
+            .with_version(2, 3, 4)
+            .with_epoch(5)
+            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
+            .with_post(2)
+            .with_dev(3)
+            // Core: custom + overflow (major/minor/patch added by with_version)
+            .with_core(Component::Var(Var::Custom("core_custom".to_string())))
+            .with_core(Component::Int(99)) // overflow to pre-release
+            // Extra core: custom + literals (secondary components added by with_* methods)
+            .with_extra_core(Component::Var(Var::Custom("extra_custom".to_string())))
+            .with_extra_core(Component::Str("literal".to_string()))
+            .with_extra_core(Component::Int(42))
+            // Build: VCS fields + custom + literals
+            .with_build(Component::Var(Var::BumpedBranch))
+            .with_build(Component::Var(Var::Distance))
+            .with_build(Component::Var(Var::BumpedCommitHashShort))
+            .with_build(Component::Var(Var::Dirty))
+            .with_build(Component::Var(Var::Custom("build_custom".to_string())))
+            .with_build(Component::Str("build".to_string()))
+            .with_build(Component::Int(123))
+            .with_branch("feature/complex-test".to_string())
+            .with_distance(7)
+            .with_commit_hash("abcdef1234567890".to_string())
+            .build();
+
+        fixture.vars.dirty = Some(true);
+        fixture.vars.custom = serde_json::json!({
+            "core_custom": "core_value",
+            "extra_custom": "extra_value",
+            "build_custom": "build_value"
+        });
+
+        ZervFixture::from(fixture)
+    }
 }
