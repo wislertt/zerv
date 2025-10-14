@@ -706,10 +706,53 @@ All operations return `Result<T, ZervError>`:
 - No duplicate components allowed
 - Comprehensive error messages for all validation failures
 
+### ✅ Step 2: Update PEP440 from_zerv Implementation - COMPLETED
+
+**File**: `src/version/pep440/from_zerv.rs`
+
+**✅ All requirements implemented:**
+
+1. **✅ Schema-driven approach** - Replaced manual resolution with schema structure processing
+2. **✅ Plan 20 integration** - Uses `resolve_value()` and `resolve_expanded_values()` methods exclusively
+3. **✅ Component categorization** - Uses `is_secondary_component()` for proper placement logic
+4. **✅ Sanitization strategy** - Uses `Sanitizer::uint()` for integers and `Sanitizer::pep440_local_str()` for local strings
+5. **✅ Code organization** - Extracted processing logic into separate methods for better maintainability
+
+**✅ Implementation details:**
+
+- **Core processing**: `process_core()` - Appends integers to release vector, overflows to local
+- **Extra core processing**: `process_extra_core()` - Handles secondary components (Epoch, PreRelease, Post, Dev) with specific logic, non-secondary components go to local
+- **Build processing**: `process_build()` - All components go to local segments
+- **Helper method**: `add_flattened_to_local()` - Splits dot-separated values and adds to local segments
+- **Import optimization**: Added proper imports for PostLabel and DevLabel
+
+**✅ Test verification**: All 47 PEP440 from_zerv tests pass, confirming functionality is preserved
+
+### ✅ Step 3: Update SemVer from_zerv Implementation - COMPLETED
+
+**File**: `src/version/semver/from_zerv.rs`
+
+**✅ All requirements implemented:**
+
+1. **✅ Schema-driven approach** - Replaced manual resolution with schema structure processing
+2. **✅ Plan 20 integration** - Uses `resolve_value()` and `resolve_expanded_values()` methods exclusively
+3. **✅ Component categorization** - Uses `is_secondary_component()` for proper placement logic
+4. **✅ Sanitization strategy** - Uses `Sanitizer::uint()` for integers and `Sanitizer::semver_str()` for strings
+5. **✅ Code organization** - Extracted processing logic into separate methods for better maintainability
+6. **✅ Custom field handling** - Fixed `Var::Custom` sanitization to apply sanitizer even when no custom data exists
+
+**✅ Implementation details:**
+
+- **Core processing**: `process_core()` - First 3 parsable ints go to major/minor/patch, rest to pre-release
+- **Extra core processing**: `process_extra_core()` - Secondary components get labeled with `resolve_expanded_values()`, others go to pre-release
+- **Build processing**: `process_build()` - All components go to build metadata
+- **Helper methods**: `add_flattened_to_prerelease()` and `add_flattened_to_build()` for dot-separated values
+- **Bug fix**: Fixed `Var::Custom` to apply sanitization even when no custom data exists
+
+**✅ Test verification**: All 72 SemVer from_zerv tests pass, confirming functionality is preserved
+
 ### 🔄 In Progress
 
-- **Step 2**: `src/version/pep440/from_zerv.rs` - Plan 20 integration
-- **Step 3**: `src/version/semver/from_zerv.rs` - Plan 20 integration
 - **Step 4**: `src/version/pep440/mod.rs` - Two-tier API
 - **Step 5**: `src/version/semver/mod.rs` - Two-tier API
 

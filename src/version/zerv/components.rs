@@ -305,14 +305,15 @@ impl Var {
 
             // Custom fields - split by dots and sanitize each part
             Var::Custom(name) => {
+                let key_parts: Vec<String> = name
+                    .split(key_sanitizer.separator.as_deref().unwrap_or("."))
+                    .map(|s| key_sanitizer.sanitize(s))
+                    .collect();
                 if vars.get_custom_value(name).is_some() {
                     // If we have custom data, return key parts + value
-                    let key_parts: Vec<String> =
-                        name.split('.').map(|s| key_sanitizer.sanitize(s)).collect();
                     self.resolve_parts_with_value(vars, value_sanitizer, key_parts)
                 } else {
-                    // If no custom data, just return the field name as-is
-                    vec![name.clone()]
+                    vec![]
                 }
             }
 
@@ -711,7 +712,7 @@ mod tests {
     #[case("build_id", Sanitizer::semver_str(), vec!["build.id", "123"])]
     #[case("build_id", Sanitizer::uint(), vec!["build.id", "123"])]
     #[case("metadata.author", Sanitizer::semver_str(), vec!["metadata", "author", "ci"])]
-    #[case("nonexistent", Sanitizer::semver_str(), vec!["nonexistent"])]
+    #[case("nonexistent", Sanitizer::semver_str(), vec![])]
     fn test_var_expanded_custom_fields(
         #[case] key: &str,
         #[case] sanitizer: Sanitizer,

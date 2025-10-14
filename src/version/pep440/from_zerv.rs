@@ -242,8 +242,24 @@ mod tests {
     #[case(zerv_calver::calver_yy_mm_patch(), "24.3.5")]
     #[case(zerv_calver::calver_yyyy_mm_patch(), "2024.3.1")]
     #[case(zerv_calver::calver_with_timestamp_build(), "1.0.0+2024.3.16")]
-    // Custom field handling
-    #[case(from::v1_0_0_custom_field().build(), "1.0.0+custom.field")]
+    // Custom field handling - build (goes to local)
+    #[case(from::v1_0_0_custom_build_field("custom.field").build(), "1.0.0+custom.field")]
+    #[case(from::v1_0_0_custom_build_field("simple").build(), "1.0.0+simple")]
+    #[case(from::v1_0_0_custom_build_field("multi.part.value").build(), "1.0.0+multi.part.value")]
+    #[case(from::v1_0_0_custom_build_field("test_value").build(), "1.0.0+test.value")]
+    #[case(from::v1_0_0_custom_build_field("Feature/API-v2").build(), "1.0.0+feature.api.v2")]
+    // Custom field handling - core (goes to local)
+    #[case(from::v1_0_0_custom_core_field("core.field").build(), "1.0.0+core.field")]
+    #[case(from::v1_0_0_custom_core_field("simple").build(), "1.0.0+simple")]
+    #[case(from::v1_0_0_custom_core_field("multi.part.value").build(), "1.0.0+multi.part.value")]
+    #[case(from::v1_0_0_custom_core_field("test_value").build(), "1.0.0+test.value")]
+    #[case(from::v1_0_0_custom_core_field("Feature/API-v2").build(), "1.0.0+feature.api.v2")]
+    // Custom field handling - extra_core (goes to local)
+    #[case(from::v1_0_0_custom_extra_field("extra.field").build(), "1.0.0+extra.field")]
+    #[case(from::v1_0_0_custom_extra_field("simple").build(), "1.0.0+simple")]
+    #[case(from::v1_0_0_custom_extra_field("multi.part.value").build(), "1.0.0+multi.part.value")]
+    #[case(from::v1_0_0_custom_extra_field("test_value").build(), "1.0.0+test.value")]
+    #[case(from::v1_0_0_custom_extra_field("Feature/API-v2").build(), "1.0.0+feature.api.v2")]
     fn test_zerv_to_pep440_conversion(#[case] zerv: Zerv, #[case] expected_pep440_str: &str) {
         let pep440: PEP440 = zerv.into();
         assert_eq!(pep440.to_string(), expected_pep440_str);

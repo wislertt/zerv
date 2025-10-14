@@ -3,154 +3,153 @@ use super::{
     PreReleaseIdentifier,
     SemVer,
 };
-use crate::version::semver::utils::pre_release_label_to_semver_string;
-use crate::version::zerv::utils::extract_core_values;
-use crate::version::zerv::{
-    Component,
-    Var,
-    Zerv,
-    resolve_timestamp,
-};
+use crate::utils::sanitize::Sanitizer;
+use crate::version::zerv::Component;
+use crate::version::zerv::core::Zerv;
 
-fn extract_version_numbers(core_values: &[u64]) -> (u64, u64, u64) {
-    let major = core_values.first().copied().unwrap_or(0);
-    let minor = core_values.get(1).copied().unwrap_or(0);
-    let patch = core_values.get(2).copied().unwrap_or(0);
-    (major, minor, patch)
-}
-
-fn extract_overflow_identifiers(core_values: &[u64]) -> Vec<PreReleaseIdentifier> {
-    if core_values.len() > 3 {
-        core_values[3..]
-            .iter()
-            .map(|&val| PreReleaseIdentifier::UInt(val))
-            .collect()
-    } else {
-        Vec::new()
+impl SemVer {
+    fn add_flattened_to_prerelease(&mut self, value: String) {
+        for part in value.split('.') {
+            if !part.is_empty() {
+                let identifier = if let Ok(num) = part.parse::<u32>() {
+                    PreReleaseIdentifier::UInt(num as u64)
+                } else {
+                    PreReleaseIdentifier::String(part.to_string())
+                };
+                self.pre_release
+                    .get_or_insert_with(Vec::new)
+                    .push(identifier);
+            }
+        }
     }
-}
 
-fn add_epoch_identifiers(identifiers: &mut Vec<PreReleaseIdentifier>, epoch: Option<u64>) {
-    if let Some(epoch) = epoch {
-        identifiers.push(PreReleaseIdentifier::String("epoch".to_string()));
-        identifiers.push(PreReleaseIdentifier::UInt(epoch));
+    fn add_flattened_to_build(&mut self, value: String) {
+        for part in value.split('.') {
+            if !part.is_empty() {
+                let metadata = if let Ok(num) = part.parse::<u32>() {
+                    BuildMetadata::UInt(num as u64)
+                } else {
+                    BuildMetadata::String(part.to_string())
+                };
+                self.build_metadata
+                    .get_or_insert_with(Vec::new)
+                    .push(metadata);
+            }
+        }
     }
-}
 
-fn process_var_field(identifiers: &mut Vec<PreReleaseIdentifier>, var: &Var, zerv: &Zerv) {
-    match var {
-        Var::PreRelease => {
-            if let Some(pr) = &zerv.vars.pre_release {
-                identifiers.push(PreReleaseIdentifier::String(
-                    pre_release_label_to_semver_string(&pr.label).to_string(),
-                ));
-                if let Some(num) = pr.number {
-                    identifiers.push(PreReleaseIdentifier::UInt(num));
+    fn process_core(
+        &mut self,
+        components: &[Component],
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        int_sanitizer: &Sanitizer,
+        semver_sanitizer: &Sanitizer,
+    ) {
+        let mut core_count = 0;
+
+        for component in components {
+            if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
+                && !value.is_empty()
+                && let Ok(num) = value.parse::<u32>()
+                && core_count < 3
+            {
+                match core_count {
+                    0 => self.major = num as u64,
+                    1 => self.minor = num as u64,
+                    2 => self.patch = num as u64,
+                    _ => unreachable!(),
                 }
+                core_count += 1;
+                continue;
             }
-        }
-        Var::Post => {
-            if let Some(post_num) = zerv.vars.post {
-                identifiers.push(PreReleaseIdentifier::String("post".to_string()));
-                identifiers.push(PreReleaseIdentifier::UInt(post_num));
-            }
-        }
-        Var::Dev => {
-            if let Some(dev_num) = zerv.vars.dev {
-                identifiers.push(PreReleaseIdentifier::String("dev".to_string()));
-                identifiers.push(PreReleaseIdentifier::UInt(dev_num));
-            }
-        }
-        Var::Custom(name) => {
-            identifiers.push(PreReleaseIdentifier::String(name.clone()));
-        }
-        _ => {}
-    }
-}
 
-fn build_pre_release_identifiers(
-    zerv: &Zerv,
-    core_values: &[u64],
-) -> Option<Vec<PreReleaseIdentifier>> {
-    let mut identifiers = extract_overflow_identifiers(core_values);
-    add_epoch_identifiers(&mut identifiers, zerv.vars.epoch);
-
-    for comp in zerv.schema.extra_core() {
-        match comp {
-            Component::Var(var) => {
-                process_var_field(&mut identifiers, var, zerv);
+            // All remaining components go to pre-release
+            if let Some(value) = component.resolve_value(zerv_vars, semver_sanitizer)
+                && !value.is_empty()
+            {
+                self.add_flattened_to_prerelease(value);
             }
-            Component::Str(s) => identifiers.push(PreReleaseIdentifier::String(s.clone())),
-            Component::Int(n) => identifiers.push(PreReleaseIdentifier::UInt(*n)),
         }
     }
 
-    if identifiers.is_empty() {
-        None
-    } else {
-        Some(identifiers)
+    fn process_extra_core(
+        &mut self,
+        components: &[Component],
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        semver_sanitizer: &Sanitizer,
+    ) {
+        for component in components {
+            if let Component::Var(var) = component
+                && var.is_secondary_component()
+            {
+                let expanded = var.resolve_expanded_values(zerv_vars, semver_sanitizer);
+                for value in expanded {
+                    if !value.is_empty() {
+                        let identifier = if let Ok(num) = value.parse::<u32>() {
+                            PreReleaseIdentifier::UInt(num as u64)
+                        } else {
+                            PreReleaseIdentifier::String(value)
+                        };
+                        self.pre_release
+                            .get_or_insert_with(Vec::new)
+                            .push(identifier);
+                    }
+                }
+                continue;
+            }
+
+            // All other components go to pre-release
+            if let Some(value) = component.resolve_value(zerv_vars, semver_sanitizer)
+                && !value.is_empty()
+            {
+                self.add_flattened_to_prerelease(value);
+            }
+        }
     }
-}
 
-fn build_metadata_from_components(
-    components: &[Component],
-    last_timestamp: Option<u64>,
-    zerv: &Zerv,
-) -> Option<Vec<BuildMetadata>> {
-    if components.is_empty() {
-        None
-    } else {
-        let metadata: Vec<BuildMetadata> = components
-            .iter()
-            .filter_map(|comp| match comp {
-                Component::Str(s) => Some(BuildMetadata::String(s.clone())),
-                Component::Int(i) => Some(BuildMetadata::UInt(*i)),
-                Component::Var(var) => match var {
-                    Var::Timestamp(pattern) => last_timestamp
-                        .and_then(|ts| resolve_timestamp(pattern, ts).ok())
-                        .and_then(|result| result.parse::<u64>().ok())
-                        .map(BuildMetadata::UInt),
-                    Var::BumpedBranch => zerv
-                        .vars
-                        .bumped_branch
-                        .as_ref()
-                        .map(|s| BuildMetadata::String(s.clone())),
-                    Var::Distance => zerv.vars.distance.map(BuildMetadata::UInt),
-                    Var::BumpedCommitHashShort => zerv
-                        .vars
-                        .get_bumped_commit_hash_short()
-                        .map(BuildMetadata::String),
-                    _ => None,
-                },
-            })
-            .collect();
-
-        if metadata.is_empty() {
-            None
-        } else {
-            Some(metadata)
+    fn process_build(
+        &mut self,
+        components: &[Component],
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        semver_sanitizer: &Sanitizer,
+    ) {
+        for component in components {
+            if let Some(value) = component.resolve_value(zerv_vars, semver_sanitizer)
+                && !value.is_empty()
+            {
+                self.add_flattened_to_build(value);
+            }
         }
     }
 }
 
 impl From<Zerv> for SemVer {
     fn from(zerv: Zerv) -> Self {
-        if let Err(e) = zerv.schema.validate() {
-            panic!("Invalid schema in SemVer::from(Zerv): {e}");
-        }
-        let core_values = extract_core_values(&zerv);
-        let (major, minor, patch) = extract_version_numbers(&core_values);
-        let pre_release = build_pre_release_identifiers(&zerv, &core_values);
-        let build_metadata =
-            build_metadata_from_components(zerv.schema.build(), zerv.vars.last_timestamp, &zerv);
+        let mut semver = SemVer {
+            major: 0,
+            minor: 0,
+            patch: 0,
+            pre_release: None,
+            build_metadata: None,
+        };
+        let int_sanitizer = Sanitizer::uint();
+        let semver_sanitizer = Sanitizer::semver_str();
 
-        SemVer {
-            major,
-            minor,
-            patch,
-            pre_release,
-            build_metadata,
-        }
+        // Process core - first 3 parsable ints go to major/minor/patch, rest to pre-release
+        semver.process_core(
+            zerv.schema.core(),
+            &zerv.vars,
+            &int_sanitizer,
+            &semver_sanitizer,
+        );
+
+        // Process extra_core - secondary components get labeled, others go to pre-release
+        semver.process_extra_core(zerv.schema.extra_core(), &zerv.vars, &semver_sanitizer);
+
+        // Process build - all components go to build metadata
+        semver.process_build(zerv.schema.build(), &zerv.vars, &semver_sanitizer);
+
+        semver
     }
 }
 
@@ -224,8 +223,24 @@ mod tests {
     #[case(from::v1_0_0_a1_post2_dev3().build(), "1.0.0-alpha.1.post.2.dev.3")]
     #[case(from::v1_0_0_b2_dev1_post3().build(), "1.0.0-beta.2.dev.1.post.3")]
     #[case(from::v1_0_0_rc1_post1_dev1().build(), "1.0.0-rc.1.post.1.dev.1")]
-    // Custom field handling
-    #[case(from::v1_0_0_custom_field().build(), "1.0.0-custom_field")]
+    // Custom field handling - core (goes to pre-release)
+    #[case(from::v1_0_0_custom_core_field("core.field").build(), "1.0.0-core.field")]
+    #[case(from::v1_0_0_custom_core_field("simple").build(), "1.0.0-simple")]
+    #[case(from::v1_0_0_custom_core_field("multi.part.value").build(), "1.0.0-multi.part.value")]
+    #[case(from::v1_0_0_custom_core_field("test_value").build(), "1.0.0-test.value")]
+    #[case(from::v1_0_0_custom_core_field("Feature/API-v2").build(), "1.0.0-Feature.API.v2")]
+    // Custom field handling - extra_core (goes to pre-release)
+    #[case(from::v1_0_0_custom_extra_field("custom.field").build(), "1.0.0-custom.field")]
+    #[case(from::v1_0_0_custom_extra_field("simple").build(), "1.0.0-simple")]
+    #[case(from::v1_0_0_custom_extra_field("multi.part.value").build(), "1.0.0-multi.part.value")]
+    #[case(from::v1_0_0_custom_extra_field("test_value").build(), "1.0.0-test.value")]
+    #[case(from::v1_0_0_custom_extra_field("Feature/API-v2").build(), "1.0.0-Feature.API.v2")]
+    // Custom field handling - build (goes to build metadata)
+    #[case(from::v1_0_0_custom_build_field("build.field").build(), "1.0.0+build.field")]
+    #[case(from::v1_0_0_custom_build_field("simple").build(), "1.0.0+simple")]
+    #[case(from::v1_0_0_custom_build_field("multi.part.value").build(), "1.0.0+multi.part.value")]
+    #[case(from::v1_0_0_custom_build_field("test_value").build(), "1.0.0+test.value")]
+    #[case(from::v1_0_0_custom_build_field("Feature/API-v2").build(), "1.0.0+Feature.API.v2")]
     // Epoch + post + dev combinations
     #[case(from::v1_0_0_e2_post1_dev3().build(), "1.0.0-epoch.2.post.1.dev.3")]
     #[case(from::v1_0_0_e1_dev2_post1().build(), "1.0.0-epoch.1.dev.2.post.1")]

@@ -981,8 +981,40 @@ pub mod from {
             .with_extra_core(Component::Int(2))
     }
 
-    // Custom field variant
-    pub fn v1_0_0_custom_field() -> ZervFixture {
-        v1_0_0().with_extra_core(Component::Var(Var::Custom("custom_field".to_string())))
+    // Custom field variant - core
+    pub fn v1_0_0_custom_core_field(value: &str) -> ZervFixture {
+        let mut fixture = v1_0_0()
+            .with_core(Component::Var(Var::Custom("custom_core_field".to_string())))
+            .build();
+        fixture.vars.custom = serde_json::json!({
+            "custom_core_field": value
+        });
+        ZervFixture::from(fixture)
+    }
+
+    // Custom field variant - extra_core
+    pub fn v1_0_0_custom_extra_field(value: &str) -> ZervFixture {
+        let mut fixture = v1_0_0()
+            .with_extra_core(Component::Var(Var::Custom(
+                "custom_extra_field".to_string(),
+            )))
+            .build();
+        fixture.vars.custom = serde_json::json!({
+            "custom_extra_field": value
+        });
+        ZervFixture::from(fixture)
+    }
+
+    // Custom field variant - build
+    pub fn v1_0_0_custom_build_field(value: &str) -> ZervFixture {
+        let mut fixture = v1_0_0()
+            .with_build(Component::Var(Var::Custom(
+                "custom_build_field".to_string(),
+            )))
+            .build();
+        fixture.vars.custom = serde_json::json!({
+            "custom_build_field": value
+        });
+        ZervFixture::from(fixture)
     }
 }
