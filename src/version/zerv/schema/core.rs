@@ -4,7 +4,10 @@ use serde::{
 };
 
 use super::super::PrecedenceOrder;
-use super::super::components::Component;
+use super::super::components::{
+    Component,
+    Var,
+};
 use crate::error::ZervError;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -104,6 +107,23 @@ impl ZervSchema {
     }
 
     // Factory methods
+    pub fn pep440_default() -> Result<Self, ZervError> {
+        Self::new(
+            vec![
+                Component::Var(Var::Major),
+                Component::Var(Var::Minor),
+                Component::Var(Var::Patch),
+            ],
+            vec![
+                Component::Var(Var::Epoch),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Post),
+                Component::Var(Var::Dev),
+            ],
+            vec![],
+        )
+    }
+
     pub fn pep440_based_precedence_order() -> PrecedenceOrder {
         PrecedenceOrder::pep440_based()
     }
@@ -190,6 +210,29 @@ mod tests {
     }
 
     // Test factory methods
+    #[test]
+    fn test_pep440_default() {
+        let schema = ZervSchema::pep440_default().unwrap();
+        assert_eq!(
+            schema.core(),
+            &vec![
+                Component::Var(Var::Major),
+                Component::Var(Var::Minor),
+                Component::Var(Var::Patch)
+            ]
+        );
+        assert_eq!(
+            schema.extra_core(),
+            &vec![
+                Component::Var(Var::Epoch),
+                Component::Var(Var::PreRelease),
+                Component::Var(Var::Post),
+                Component::Var(Var::Dev)
+            ]
+        );
+        assert_eq!(schema.build(), &vec![]);
+    }
+
     #[test]
     fn test_pep440_based_precedence_order() {
         let order = ZervSchema::pep440_based_precedence_order();

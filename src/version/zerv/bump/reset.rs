@@ -151,7 +151,7 @@ mod tests {
                 start_vars
                     .pre_release
                     .as_ref()
-                    .map(|pr| pr.label.clone())
+                    .map(|pr| pr.label)
                     .unwrap_or(PreReleaseLabel::Alpha),
                 start_vars.pre_release.as_ref().and_then(|pr| pr.number),
             )
