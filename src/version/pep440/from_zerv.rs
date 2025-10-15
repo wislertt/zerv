@@ -49,6 +49,83 @@ impl PEP440 {
         }
     }
 
+    fn process_epoch(
+        &mut self,
+        component: &Component,
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        int_sanitizer: &Sanitizer,
+    ) {
+        if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
+            && !value.is_empty()
+            && let Ok(epoch) = value.parse::<u32>()
+        {
+            self.epoch = epoch;
+        }
+    }
+
+    fn process_prerelease(
+        &mut self,
+        var: &Var,
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        local_sanitizer: &Sanitizer,
+    ) {
+        let expanded = var.resolve_expanded_values(zerv_vars, local_sanitizer);
+        if !expanded.is_empty() && !expanded[0].is_empty() {
+            if let Ok(label) = expanded[0].parse() {
+                self.pre_label = Some(label);
+            }
+            if expanded.len() >= 2
+                && !expanded[1].is_empty()
+                && let Ok(num) = expanded[1].parse::<u32>()
+            {
+                self.pre_number = Some(num);
+            }
+        }
+    }
+
+    fn process_post(
+        &mut self,
+        component: &Component,
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        int_sanitizer: &Sanitizer,
+    ) {
+        if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
+            && !value.is_empty()
+            && let Ok(num) = value.parse::<u32>()
+        {
+            self.post_label = Some(PostLabel::Post);
+            self.post_number = Some(num);
+        }
+    }
+
+    fn process_dev(
+        &mut self,
+        component: &Component,
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        int_sanitizer: &Sanitizer,
+    ) {
+        if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
+            && !value.is_empty()
+            && let Ok(num) = value.parse::<u32>()
+        {
+            self.dev_label = Some(DevLabel::Dev);
+            self.dev_number = Some(num);
+        }
+    }
+
+    fn add_to_local_if_valid(
+        &mut self,
+        component: &Component,
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        local_sanitizer: &Sanitizer,
+    ) {
+        if let Some(value) = component.resolve_value(zerv_vars, local_sanitizer)
+            && !value.is_empty()
+        {
+            self.add_flattened_to_local(value);
+        }
+    }
+
     fn process_extra_core(
         &mut self,
         components: &[Component],
@@ -57,66 +134,15 @@ impl PEP440 {
         local_sanitizer: &Sanitizer,
     ) {
         for component in components {
-            if let Component::Var(var) = component {
-                if var.is_secondary_component() {
-                    match var {
-                        Var::Epoch => {
-                            if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
-                                && !value.is_empty()
-                                && let Ok(epoch) = value.parse::<u32>()
-                            {
-                                self.epoch = epoch;
-                            }
-                        }
-                        Var::PreRelease => {
-                            let expanded = var.resolve_expanded_values(zerv_vars, local_sanitizer);
-                            if !expanded.is_empty() && !expanded[0].is_empty() {
-                                if let Ok(label) = expanded[0].parse() {
-                                    self.pre_label = Some(label);
-                                }
-                                if expanded.len() >= 2
-                                    && !expanded[1].is_empty()
-                                    && let Ok(num) = expanded[1].parse::<u32>()
-                                {
-                                    self.pre_number = Some(num);
-                                }
-                            }
-                        }
-                        Var::Post => {
-                            if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
-                                && !value.is_empty()
-                                && let Ok(num) = value.parse::<u32>()
-                            {
-                                self.post_label = Some(PostLabel::Post);
-                                self.post_number = Some(num);
-                            }
-                        }
-                        Var::Dev => {
-                            if let Some(value) = component.resolve_value(zerv_vars, int_sanitizer)
-                                && !value.is_empty()
-                                && let Ok(num) = value.parse::<u32>()
-                            {
-                                self.dev_label = Some(DevLabel::Dev);
-                                self.dev_number = Some(num);
-                            }
-                        }
-                        _ => {}
-                    }
-                } else {
-                    // Non-secondary component goes to local
-                    if let Some(value) = component.resolve_value(zerv_vars, local_sanitizer)
-                        && !value.is_empty()
-                    {
-                        self.add_flattened_to_local(value);
-                    }
-                }
-            } else {
-                // Non-Var component goes to local
-                if let Some(value) = component.resolve_value(zerv_vars, local_sanitizer)
-                    && !value.is_empty()
-                {
-                    self.add_flattened_to_local(value);
-                }
+            match component {
+                Component::Var(var) if var.is_secondary_component() => match var {
+                    Var::Epoch => self.process_epoch(component, zerv_vars, int_sanitizer),
+                    Var::PreRelease => self.process_prerelease(var, zerv_vars, local_sanitizer),
+                    Var::Post => self.process_post(component, zerv_vars, int_sanitizer),
+                    Var::Dev => self.process_dev(component, zerv_vars, int_sanitizer),
+                    _ => {}
+                },
+                _ => self.add_to_local_if_valid(component, zerv_vars, local_sanitizer),
             }
         }
     }
