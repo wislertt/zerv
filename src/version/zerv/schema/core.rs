@@ -81,12 +81,24 @@ impl ZervSchema {
         self.precedence_order = precedence_order;
     }
 
-    // // Helper methods
-    // pub fn has_pre_release_in_extra_core(&self) -> bool {
-    //     self.extra_core
-    //         .iter()
-    //         .any(|component| matches!(component, Component::Var(Var::PreRelease)))
-    // }
+    // Convenience push methods
+    pub fn push_core(&mut self, component: Component) -> Result<(), ZervError> {
+        let mut current = self.core().clone();
+        current.push(component);
+        self.set_core(current)
+    }
+
+    pub fn push_extra_core(&mut self, component: Component) -> Result<(), ZervError> {
+        let mut current = self.extra_core().clone();
+        current.push(component);
+        self.set_extra_core(current)
+    }
+
+    pub fn push_build(&mut self, component: Component) -> Result<(), ZervError> {
+        let mut current = self.build().clone();
+        current.push(component);
+        self.set_build(current)
+    }
 
     // Constructors
     pub fn new(

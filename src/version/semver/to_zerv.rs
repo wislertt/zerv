@@ -69,11 +69,7 @@ impl SemVer {
                     && let PreReleaseIdentifier::String(_) = identifier
                 {
                     // Add pending PreRelease var to schema when encountering a string
-                    schema.set_extra_core({
-                        let mut current = schema.extra_core().clone();
-                        current.push(Component::Var(pending_var.clone()));
-                        current
-                    })?;
+                    schema.push_extra_core(Component::Var(pending_var.clone()))?;
                     current_pre_release_var = None;
                 }
 
@@ -85,19 +81,11 @@ impl SemVer {
                     {
                         if current_var == var {
                             // This is a duplicate of the pending var, add pending var to schema first
-                            schema.set_extra_core({
-                                let mut current = schema.extra_core().clone();
-                                current.push(Component::Var(var.clone()));
-                                current
-                            })?;
+                            schema.push_extra_core(Component::Var(var.clone()))?;
                             current_pre_release_var = None;
 
                             // Then add the duplicate as a string
-                            schema.set_extra_core({
-                                let mut current = schema.extra_core().clone();
-                                current.push(Component::Str(s.clone()));
-                                current
-                            })?;
+                            schema.push_extra_core(Component::Str(s.clone()))?;
                             continue;
                         } else {
                             // Check if this is a duplicate of a different already-set var
@@ -111,19 +99,11 @@ impl SemVer {
 
                             if already_set {
                                 // Add pending var to schema first
-                                schema.set_extra_core({
-                                    let mut current = schema.extra_core().clone();
-                                    current.push(Component::Var(var.clone()));
-                                    current
-                                })?;
+                                schema.push_extra_core(Component::Var(var.clone()))?;
                                 current_pre_release_var = None;
 
                                 // Then add the duplicate as a string
-                                schema.set_extra_core({
-                                    let mut current = schema.extra_core().clone();
-                                    current.push(Component::Str(s.clone()));
-                                    current
-                                })?;
+                                schema.push_extra_core(Component::Str(s.clone()))?;
                                 continue;
                             }
                         }
@@ -152,11 +132,7 @@ impl SemVer {
                     }
 
                     // Add var to schema for round-trip conversion
-                    schema.set_extra_core({
-                        let mut current = schema.extra_core().clone();
-                        current.push(Component::Var(var.clone()));
-                        current
-                    })?;
+                    schema.push_extra_core(Component::Var(var.clone()))?;
                     current_pre_release_var = None;
                     continue;
                 }
@@ -213,11 +189,7 @@ impl SemVer {
                                         current_pre_release_var = Some(var);
                                     } else {
                                         // Not a recognized pre-release label, treat as string
-                                        schema.set_extra_core({
-                                            let mut current = schema.extra_core().clone();
-                                            current.push(Component::Str(s.clone()));
-                                            current
-                                        })?;
+                                        schema.push_extra_core(Component::Str(s.clone()))?;
                                     }
                                 } else {
                                     // Set current_pre_release_var for other vars (Epoch, Post, Dev)
@@ -225,26 +197,14 @@ impl SemVer {
                                 }
                             } else {
                                 // Second occurrence of same var type: push as string to extra_core
-                                schema.set_extra_core({
-                                    let mut current = schema.extra_core().clone();
-                                    current.push(Component::Str(s.clone()));
-                                    current
-                                })?;
+                                schema.push_extra_core(Component::Str(s.clone()))?;
                             }
                         } else {
-                            schema.set_extra_core({
-                                let mut current = schema.extra_core().clone();
-                                current.push(Component::Str(s.clone()));
-                                current
-                            })?;
+                            schema.push_extra_core(Component::Str(s.clone()))?;
                         }
                     }
                     PreReleaseIdentifier::UInt(n) => {
-                        schema.set_extra_core({
-                            let mut current = schema.extra_core().clone();
-                            current.push(Component::Int(*n));
-                            current
-                        })?;
+                        schema.push_extra_core(Component::Int(*n))?;
                     }
                 }
             }
@@ -257,22 +217,14 @@ impl SemVer {
                     BuildMetadata::String(s) => Component::Str(s.clone()),
                     BuildMetadata::UInt(n) => Component::Int(*n),
                 };
-                schema.set_build({
-                    let mut current = schema.build().clone();
-                    current.push(component);
-                    current
-                })?;
+                schema.push_build(component)?;
             }
         }
 
         // Handle any remaining current_pre_release_var
         if let Some(var) = current_pre_release_var {
             // Add var to schema
-            schema.set_extra_core({
-                let mut current = schema.extra_core().clone();
-                current.push(Component::Var(var));
-                current
-            })?;
+            schema.push_extra_core(Component::Var(var))?;
         }
 
         Ok(Zerv { vars, schema })

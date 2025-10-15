@@ -44,11 +44,7 @@ impl PEP440 {
         // Handle excess release parts beyond major.minor.patch
         let mut schema = schema.clone();
         for &part in self.release.iter().skip(3) {
-            schema.set_core({
-                let mut core = schema.core().clone();
-                core.push(Component::Int(part as u64));
-                core
-            })?;
+            schema.push_core(Component::Int(part as u64))?;
         }
 
         // Handle local segments - add to build
@@ -56,18 +52,10 @@ impl PEP440 {
             for segment in local_segments {
                 match segment {
                     LocalSegment::Str(s) => {
-                        schema.set_build({
-                            let mut build = schema.build().clone();
-                            build.push(Component::Str(s.clone()));
-                            build
-                        })?;
+                        schema.push_build(Component::Str(s.clone()))?;
                     }
                     LocalSegment::UInt(n) => {
-                        schema.set_build({
-                            let mut build = schema.build().clone();
-                            build.push(Component::Int(*n as u64));
-                            build
-                        })?;
+                        schema.push_build(Component::Int(*n as u64))?;
                     }
                 }
             }
