@@ -167,7 +167,7 @@ mod tests {
         #[case] pre_label: PreReleaseLabel,
         #[case] pre_number: Option<u32>,
     ) {
-        let version = PEP440::new(vec![1, 2, 3]).with_pre_release(pre_label.clone(), pre_number);
+        let version = PEP440::new(vec![1, 2, 3]).with_pre_release(pre_label, pre_number);
         assert_eq!(version.pre_label, Some(pre_label));
         assert_eq!(version.pre_number, pre_number);
     }
@@ -323,19 +323,17 @@ mod tests {
 
         // Individual components
         assert_eq!(
-            base().with_pre_release(pre_label.clone(), None),
-            base().with_pre_release(pre_label.clone(), Some(0))
+            base().with_pre_release(pre_label, None),
+            base().with_pre_release(pre_label, Some(0))
         );
         assert_eq!(base().with_post(None), base().with_post(Some(0)));
         assert_eq!(base().with_dev(None), base().with_dev(Some(0)));
 
         // 2-component combinations
         assert_eq!(
+            base().with_pre_release(pre_label, None).with_post(None),
             base()
-                .with_pre_release(pre_label.clone(), None)
-                .with_post(None),
-            base()
-                .with_pre_release(pre_label.clone(), Some(0))
+                .with_pre_release(pre_label, Some(0))
                 .with_post(Some(0))
         );
         assert_eq!(
@@ -343,22 +341,20 @@ mod tests {
             base().with_post(Some(0)).with_dev(Some(0))
         );
         assert_eq!(
+            base().with_pre_release(pre_label, None).with_dev(None),
             base()
-                .with_pre_release(pre_label.clone(), None)
-                .with_dev(None),
-            base()
-                .with_pre_release(pre_label.clone(), Some(0))
+                .with_pre_release(pre_label, Some(0))
                 .with_dev(Some(0))
         );
 
         // All combinations
         assert_eq!(
             base()
-                .with_pre_release(pre_label.clone(), None)
+                .with_pre_release(pre_label, None)
                 .with_post(None)
                 .with_dev(None),
             base()
-                .with_pre_release(pre_label.clone(), Some(0))
+                .with_pre_release(pre_label, Some(0))
                 .with_post(Some(0))
                 .with_dev(Some(0))
         );

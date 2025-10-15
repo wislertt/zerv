@@ -10,7 +10,7 @@ use crate::utils::constants::pre_release_labels;
 use crate::version::zerv::schema::ZervSchema;
 use crate::version::zerv::vars::ZervVars;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PreReleaseLabel {
     Alpha,
     Beta,

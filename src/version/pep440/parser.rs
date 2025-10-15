@@ -167,7 +167,7 @@ mod tests {
         #[case] pre_number: Option<u32>,
     ) {
         let parsed: PEP440 = input.parse().unwrap();
-        let built = PEP440::new(vec![1, 0, 0]).with_pre_release(pre_label.clone(), pre_number);
+        let built = PEP440::new(vec![1, 0, 0]).with_pre_release(pre_label, pre_number);
 
         assert_eq!(parsed, built);
         assert_eq!(parsed.pre_label, Some(pre_label));

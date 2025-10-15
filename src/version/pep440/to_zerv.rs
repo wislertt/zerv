@@ -1,10 +1,9 @@
 use super::PEP440;
 use super::utils::LocalSegment;
-use crate::version::zerv::bump::precedence::PrecedenceOrder;
+use crate::error::ZervError;
 use crate::version::zerv::{
     Component,
     PreReleaseVar,
-    Var,
     Zerv,
     ZervSchema,
     ZervVars,
@@ -12,87 +11,57 @@ use crate::version::zerv::{
 
 impl From<PEP440> for Zerv {
     fn from(pep440: PEP440) -> Self {
-        let mut extra_core = Vec::new();
-        let mut build = Vec::new();
+        let schema = ZervSchema::pep440_default().expect("PEP440 default schema should be valid");
+        pep440
+            .to_zerv_with_schema(&schema)
+            .expect("PEP440 default conversion should work")
+    }
+}
 
-        // Add epoch to extra_core if non-zero
-        if pep440.epoch > 0 {
-            extra_core.push(Component::Var(Var::Epoch));
+impl PEP440 {
+    pub fn to_zerv_with_schema(&self, schema: &ZervSchema) -> Result<Zerv, ZervError> {
+        // Only support default PEP440 schema for now
+        if *schema != ZervSchema::pep440_default()? {
+            return Err(ZervError::NotImplemented(
+                "Custom schemas not yet implemented for PEP440 conversion".to_string(),
+            ));
         }
 
-        // Add pre-release to extra_core if present
-        let pre_release = if let (Some(label), number) = (pep440.pre_label, pep440.pre_number) {
-            extra_core.push(Component::Var(Var::PreRelease));
-            Some(PreReleaseVar {
+        let vars = ZervVars {
+            major: self.release.first().copied().map(|n| n as u64),
+            minor: self.release.get(1).copied().map(|n| n as u64),
+            patch: self.release.get(2).copied().map(|n| n as u64),
+            epoch: (self.epoch > 0).then_some(self.epoch as u64),
+            post: self.post_number.map(|n| n as u64),
+            dev: self.dev_number.map(|n| n as u64),
+            pre_release: self.pre_label.map(|label| PreReleaseVar {
                 label,
-                number: number.map(|n| n as u64),
-            })
-        } else {
-            None
+                number: self.pre_number.map(|n| n as u64),
+            }),
+            ..Default::default()
         };
 
-        // Add post to extra_core if present
-        let post = if pep440.post_label.is_some() {
-            extra_core.push(Component::Var(Var::Post));
-            pep440.post_number.map(|n| n as u64)
-        } else {
-            None
-        };
+        // Handle excess release parts beyond major.minor.patch
+        let mut schema = schema.clone();
+        for &part in self.release.iter().skip(3) {
+            schema.push_core(Component::Int(part as u64))?;
+        }
 
-        // Add dev to extra_core if present
-        let dev = if pep440.dev_label.is_some() {
-            extra_core.push(Component::Var(Var::Dev));
-            pep440.dev_number.map(|n| n as u64)
-        } else {
-            None
-        };
-
-        // Process local segments - they go to build
-        if let Some(local_segments) = pep440.local {
+        // Handle local segments - add to build
+        if let Some(local_segments) = &self.local {
             for segment in local_segments {
                 match segment {
                     LocalSegment::Str(s) => {
-                        build.push(Component::Str(s));
+                        schema.push_build(Component::Str(s.clone()))?;
                     }
                     LocalSegment::UInt(n) => {
-                        build.push(Component::Int(n as u64));
+                        schema.push_build(Component::Int(*n as u64))?;
                     }
                 }
             }
         }
 
-        // Extract major, minor, patch from release
-        let major = pep440.release.first().copied().map(|n| n as u64);
-        let minor = pep440.release.get(1).copied().map(|n| n as u64);
-        let patch = pep440.release.get(2).copied().map(|n| n as u64);
-
-        Zerv {
-            schema: ZervSchema::new_with_precedence(
-                vec![
-                    Component::Var(Var::Major),
-                    Component::Var(Var::Minor),
-                    Component::Var(Var::Patch),
-                ],
-                extra_core,
-                build,
-                PrecedenceOrder::default(),
-            )
-            .unwrap(),
-            vars: ZervVars {
-                major,
-                minor,
-                patch,
-                epoch: if pep440.epoch > 0 {
-                    Some(pep440.epoch as u64)
-                } else {
-                    None
-                },
-                pre_release,
-                post,
-                dev,
-                ..Default::default()
-            },
-        }
+        Ok(Zerv { vars, schema })
     }
 }
 
