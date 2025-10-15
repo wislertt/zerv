@@ -81,6 +81,13 @@ impl ZervSchema {
         self.precedence_order = precedence_order;
     }
 
+    // Helper methods
+    pub fn has_pre_release_in_extra_core(&self) -> bool {
+        self.extra_core
+            .iter()
+            .any(|component| matches!(component, Component::Var(Var::PreRelease)))
+    }
+
     // Constructors
     pub fn new(
         core: Vec<Component>,
@@ -120,6 +127,18 @@ impl ZervSchema {
                 Component::Var(Var::Post),
                 Component::Var(Var::Dev),
             ],
+            vec![],
+        )
+    }
+
+    pub fn semver_default() -> Result<Self, ZervError> {
+        Self::new(
+            vec![
+                Component::Var(Var::Major),
+                Component::Var(Var::Minor),
+                Component::Var(Var::Patch),
+            ],
+            vec![],
             vec![],
         )
     }
@@ -230,6 +249,21 @@ mod tests {
                 Component::Var(Var::Dev)
             ]
         );
+        assert_eq!(schema.build(), &vec![]);
+    }
+
+    #[test]
+    fn test_semver_default() {
+        let schema = ZervSchema::semver_default().unwrap();
+        assert_eq!(
+            schema.core(),
+            &vec![
+                Component::Var(Var::Major),
+                Component::Var(Var::Minor),
+                Component::Var(Var::Patch)
+            ]
+        );
+        assert_eq!(schema.extra_core(), &vec![]);
         assert_eq!(schema.build(), &vec![]);
     }
 

@@ -3,7 +3,7 @@ use super::{
     PreReleaseIdentifier,
     SemVer,
 };
-use crate::version::zerv::bump::precedence::PrecedenceOrder;
+use crate::error::ZervError;
 use crate::version::zerv::core::PreReleaseLabel;
 use crate::version::zerv::{
     Component,
@@ -14,155 +14,150 @@ use crate::version::zerv::{
     ZervVars,
 };
 
-type ProcessResult = (
-    Option<PreReleaseVar>,
-    Vec<Component>,
-    Option<u64>,
-    Option<u64>,
-    Option<u64>,
-);
-
-struct PreReleaseProcessor {
-    pre_release: Option<PreReleaseVar>,
-    extra_core: Vec<Component>,
-    epoch: Option<u64>,
-    post: Option<u64>,
-    dev: Option<u64>,
-}
-
-impl PreReleaseProcessor {
-    fn new() -> Self {
-        Self {
-            pre_release: None,
-            extra_core: Vec::new(),
-            epoch: None,
-            post: None,
-            dev: None,
-        }
-    }
-
-    fn try_special_pattern(&mut self, pr: &[PreReleaseIdentifier], i: usize) -> bool {
-        if i + 1 >= pr.len() {
-            return false;
-        }
-
-        if let (PreReleaseIdentifier::String(label), PreReleaseIdentifier::UInt(num)) =
-            (&pr[i], &pr[i + 1])
-        {
-            match label.as_str() {
-                "epoch" if self.epoch.is_none() => {
-                    self.epoch = Some(*num);
-                    self.extra_core.push(Component::Var(Var::Epoch));
-                    true
-                }
-                "dev" if self.dev.is_none() => {
-                    self.dev = Some(*num);
-                    self.extra_core.push(Component::Var(Var::Dev));
-                    true
-                }
-                "post" if self.post.is_none() => {
-                    self.post = Some(*num);
-                    self.extra_core.push(Component::Var(Var::Post));
-                    true
-                }
-                _ => self.try_pre_release_pattern(label, Some(*num)),
-            }
-        } else {
-            false
-        }
-    }
-
-    fn try_pre_release_pattern(&mut self, label: &str, number: Option<u64>) -> bool {
-        if let Some(normalized_label) = PreReleaseLabel::try_from_str(label)
-            && self.pre_release.is_none()
-        {
-            self.pre_release = Some(PreReleaseVar {
-                label: normalized_label,
-                number,
-            });
-            self.extra_core.push(Component::Var(Var::PreRelease));
-            return true;
-        }
-        false
-    }
-
-    fn add_regular_component(&mut self, item: &PreReleaseIdentifier) {
-        self.extra_core.push(match item {
-            PreReleaseIdentifier::String(s) => Component::Str(s.clone()),
-            PreReleaseIdentifier::UInt(n) => Component::Int(*n),
-        });
-    }
-
-    fn process(mut self, pr: &[PreReleaseIdentifier]) -> ProcessResult {
-        let mut i = 0;
-        while i < pr.len() {
-            if self.try_special_pattern(pr, i) {
-                i += 2;
-            } else if let PreReleaseIdentifier::String(label) = &pr[i] {
-                if !self.try_pre_release_pattern(label, None) {
-                    self.add_regular_component(&pr[i]);
-                }
-                i += 1;
-            } else {
-                self.add_regular_component(&pr[i]);
-                i += 1;
-            }
-        }
-        (
-            self.pre_release,
-            self.extra_core,
-            self.epoch,
-            self.post,
-            self.dev,
-        )
-    }
-}
-
 impl From<SemVer> for Zerv {
     fn from(semver: SemVer) -> Self {
-        let build = semver
-            .build_metadata
-            .as_ref()
-            .map(|metadata| {
-                metadata
-                    .iter()
-                    .map(|m| match m {
-                        BuildMetadata::String(s) => Component::Str(s.clone()),
-                        BuildMetadata::UInt(i) => Component::Int(*i),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
+        let schema = ZervSchema::semver_default().expect("SemVer default schema should be valid");
+        semver
+            .to_zerv_with_schema(&schema)
+            .expect("SemVer default conversion should work")
+    }
+}
 
-        let (pre_release, extra_core, epoch, post, dev): ProcessResult = semver
-            .pre_release
-            .as_ref()
-            .map(|pr| PreReleaseProcessor::new().process(pr))
-            .unwrap_or_default();
-
-        Zerv {
-            schema: ZervSchema::new_with_precedence(
-                vec![
-                    Component::Var(Var::Major),
-                    Component::Var(Var::Minor),
-                    Component::Var(Var::Patch),
-                ],
-                extra_core,
-                build,
-                PrecedenceOrder::default(),
-            )
-            .unwrap(),
-            vars: ZervVars {
-                major: Some(semver.major),
-                minor: Some(semver.minor),
-                patch: Some(semver.patch),
-                epoch,
-                pre_release,
-                post,
-                dev,
-                ..Default::default()
-            },
+impl SemVer {
+    pub fn to_zerv_with_schema(&self, schema: &ZervSchema) -> Result<Zerv, ZervError> {
+        // Only support default SemVer schema for now
+        if *schema != ZervSchema::semver_default()? {
+            return Err(ZervError::NotImplemented(
+                "Custom schemas not yet implemented for SemVer conversion".to_string(),
+            ));
         }
+
+        let mut vars = ZervVars {
+            major: Some(self.major),
+            minor: Some(self.minor),
+            patch: Some(self.patch),
+            ..Default::default()
+        };
+
+        // Handle pre-release - process each identifier for secondary labels
+        let mut schema = schema.clone();
+        let mut current_var: Option<Var> = None;
+
+        if let Some(pre_release) = &self.pre_release {
+            for identifier in pre_release {
+                // Handle pending var first
+                if let Some(var) = current_var {
+                    let value = match identifier {
+                        PreReleaseIdentifier::UInt(n) => Some(*n),
+                        _ => None,
+                    };
+
+                    // Update vars according to current_var
+                    match var {
+                        Var::Epoch => vars.epoch = value,
+                        Var::Post => vars.post = value,
+                        Var::Dev => vars.dev = value,
+                        Var::PreRelease => {
+                            if let Some(ref mut pr) = vars.pre_release {
+                                pr.number = value;
+                            } else {
+                                unreachable!(
+                                    "pre_release should exist when current_var is Var::PreRelease"
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
+
+                    // Add var to schema (PreRelease vars are never added to schema automatically)
+                    if var != Var::PreRelease {
+                        schema.set_extra_core({
+                            let mut current = schema.extra_core().clone();
+                            current.push(Component::Var(var.clone()));
+                            current
+                        })?;
+                    } else if var == Var::PreRelease && schema.has_pre_release_in_extra_core() {
+                        // Convert PreRelease var to string/int when pre-release already exists
+                        let component = match identifier {
+                            PreReleaseIdentifier::UInt(n) => Component::Int(*n),
+                            PreReleaseIdentifier::String(s) => Component::Str(s.clone()),
+                        };
+                        schema.set_extra_core({
+                            let mut current = schema.extra_core().clone();
+                            current.push(component);
+                            current
+                        })?;
+                    }
+                    current_var = None;
+                    continue;
+                }
+
+                match identifier {
+                    PreReleaseIdentifier::String(s) => {
+                        let should_set_prerelease =
+                            if let Some(var) = Var::try_from_secondary_label(s) {
+                                (var == Var::PreRelease) && vars.pre_release.is_none()
+                            } else {
+                                false
+                            };
+
+                        if should_set_prerelease {
+                            // Set pre-release label only if not already set (first wins)
+                            if let Some(label) = PreReleaseLabel::try_from_str(s) {
+                                vars.pre_release = Some(PreReleaseVar {
+                                    label,
+                                    number: None,
+                                });
+                            }
+                            // Set current_var to PreRelease so next number becomes the pre-release number
+                            current_var = Some(Var::PreRelease);
+                        } else {
+                            schema.set_extra_core({
+                                let mut current = schema.extra_core().clone();
+                                current.push(Component::Str(s.clone()));
+                                current
+                            })?;
+                        }
+                    }
+                    PreReleaseIdentifier::UInt(n) => {
+                        schema.set_extra_core({
+                            let mut current = schema.extra_core().clone();
+                            current.push(Component::Int(*n));
+                            current
+                        })?;
+                    }
+                }
+            }
+        }
+
+        // Handle build metadata - add to schema build
+        if let Some(build_metadata) = &self.build_metadata {
+            for metadata in build_metadata {
+                let component = match metadata {
+                    BuildMetadata::String(s) => Component::Str(s.clone()),
+                    BuildMetadata::UInt(n) => Component::Int(*n),
+                };
+                schema.set_build({
+                    let mut current = schema.build().clone();
+                    current.push(component);
+                    current
+                })?;
+            }
+        }
+
+        // Handle any remaining current_var
+        if let Some(var) = current_var {
+            // Don't add PreRelease vars to schema automatically
+            if var != Var::PreRelease {
+                schema.set_extra_core({
+                    let mut current = schema.extra_core().clone();
+                    current.push(Component::Var(var));
+                    current
+                })?;
+            }
+        }
+
+        Ok(Zerv { vars, schema })
     }
 }
 

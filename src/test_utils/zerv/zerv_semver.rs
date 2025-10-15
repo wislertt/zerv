@@ -28,9 +28,7 @@ pub mod to {
     }
 
     pub fn v1_0_0_a1() -> ZervFixture {
-        v1_0_0()
-            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
+        v1_0_0().with_pre_release(PreReleaseLabel::Alpha, Some(1))
     }
 
     pub fn v1_0_0_alpha_1() -> ZervFixture {
@@ -77,9 +75,9 @@ pub mod to {
     }
 
     pub fn v1_0_0_a1_complex() -> ZervFixture {
-        v1_0_0_a1()
+        v1_0_0()
+            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
                 Component::Str("lowercase".to_string()),
                 Component::Int(4),
                 Component::Str("UPPERCASE".to_string()),
@@ -129,21 +127,15 @@ pub mod to {
     }
 
     pub fn v1_0_0_alpha() -> ZervFixture {
-        v1_0_0()
-            .with_pre_release(PreReleaseLabel::Alpha, None)
-            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
+        v1_0_0().with_pre_release(PreReleaseLabel::Alpha, None)
     }
 
     pub fn v1_0_0_beta() -> ZervFixture {
-        v1_0_0()
-            .with_pre_release(PreReleaseLabel::Beta, None)
-            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
+        v1_0_0().with_pre_release(PreReleaseLabel::Beta, None)
     }
 
     pub fn v1_0_0_rc() -> ZervFixture {
-        v1_0_0()
-            .with_pre_release(PreReleaseLabel::Rc, None)
-            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
+        v1_0_0().with_pre_release(PreReleaseLabel::Rc, None)
     }
 
     pub fn v1_0_0_alpha_0() -> ZervFixture {
@@ -208,40 +200,28 @@ pub mod to {
         v1_0_0()
             .with_epoch(2)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_extra_core_components(vec![
-                Component::Var(Var::Epoch),
-                Component::Var(Var::PreRelease),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Epoch)])
     }
 
     pub fn v1_0_0_epoch_3_beta_2() -> ZervFixture {
         v1_0_0()
             .with_epoch(3)
             .with_pre_release(PreReleaseLabel::Beta, Some(2))
-            .with_extra_core_components(vec![
-                Component::Var(Var::Epoch),
-                Component::Var(Var::PreRelease),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Epoch)])
     }
 
     pub fn v1_0_0_epoch_1_rc_5() -> ZervFixture {
         v1_0_0()
             .with_epoch(1)
             .with_pre_release(PreReleaseLabel::Rc, Some(5))
-            .with_extra_core_components(vec![
-                Component::Var(Var::Epoch),
-                Component::Var(Var::PreRelease),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Epoch)])
     }
 
     pub fn v1_0_0_epoch_4_alpha() -> ZervFixture {
         v1_0_0()
             .with_epoch(4)
             .with_pre_release(PreReleaseLabel::Alpha, None)
-            .with_extra_core_components(vec![
-                Component::Var(Var::Epoch),
-                Component::Var(Var::PreRelease),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Epoch)])
     }
 
     pub fn v1_0_0_post_1_dev_2() -> ZervFixture {
@@ -290,7 +270,6 @@ pub mod to {
             .with_extra_core_components(vec![
                 Component::Str("foo".to_string()),
                 Component::Str("bar".to_string()),
-                Component::Var(Var::PreRelease),
                 Component::Str("baz".to_string()),
             ])
     }
@@ -298,18 +277,13 @@ pub mod to {
     pub fn v1_0_0_alpha_1_beta_2() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Str("beta".to_string()),
-                Component::Int(2),
-            ])
+            .with_extra_core_components(vec![Component::Str("beta".to_string()), Component::Int(2)])
     }
 
     pub fn v1_0_0_rc_1_alpha_2_beta_3() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, Some(1))
             .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
                 Component::Str("alpha".to_string()),
                 Component::Int(2),
                 Component::Str("beta".to_string()),
@@ -319,12 +293,8 @@ pub mod to {
 
     pub fn v1_0_0_pre_alpha_1() -> ZervFixture {
         v1_0_0()
-            .with_pre_release(PreReleaseLabel::Rc, None)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Str("alpha".to_string()),
-                Component::Int(1),
-            ])
+            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
+            .with_extra_core_components(vec![Component::Str("pre".to_string())])
     }
 
     pub fn v1_0_0_test_alpha_beta_rc_1() -> ZervFixture {
@@ -332,7 +302,6 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Alpha, None)
             .with_extra_core_components(vec![
                 Component::Str("test".to_string()),
-                Component::Var(Var::PreRelease),
                 Component::Str("beta".to_string()),
                 Component::Str("rc".to_string()),
                 Component::Int(1),
@@ -342,21 +311,13 @@ pub mod to {
     pub fn v1_0_0_foo_1_alpha() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, None)
-            .with_extra_core_components(vec![
-                Component::Str("foo".to_string()),
-                Component::Int(1),
-                Component::Var(Var::PreRelease),
-            ])
+            .with_extra_core_components(vec![Component::Str("foo".to_string()), Component::Int(1)])
     }
 
     pub fn v1_0_0_bar_2_beta() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Beta, None)
-            .with_extra_core_components(vec![
-                Component::Str("bar".to_string()),
-                Component::Int(2),
-                Component::Var(Var::PreRelease),
-            ])
+            .with_extra_core_components(vec![Component::Str("bar".to_string()), Component::Int(2)])
     }
 
     pub fn v1_0_0_dev_3_post_4() -> ZervFixture {
@@ -370,60 +331,42 @@ pub mod to {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(2)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Var(Var::Post),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Post)])
     }
 
     pub fn v1_0_0_beta_3_post_1() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Beta, Some(3))
             .with_post(1)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Var(Var::Post),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Post)])
     }
 
     pub fn v1_0_0_rc_2_post_5() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, Some(2))
             .with_post(5)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Var(Var::Post),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Post)])
     }
 
     pub fn v1_0_0_alpha_1_dev_2() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_dev(2)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Var(Var::Dev),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Dev)])
     }
 
     pub fn v1_0_0_beta_2_dev_1() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Beta, Some(2))
             .with_dev(1)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Var(Var::Dev),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Dev)])
     }
 
     pub fn v1_0_0_rc_1_dev_3() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, Some(1))
             .with_dev(3)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Var(Var::Dev),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Dev)])
     }
 
     pub fn v1_0_0_alpha_1_post_2_dev_3() -> ZervFixture {
@@ -431,11 +374,7 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(2)
             .with_dev(3)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Var(Var::Post),
-                Component::Var(Var::Dev),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Post), Component::Var(Var::Dev)])
     }
 
     pub fn v1_0_0_beta_2_dev_1_post_3() -> ZervFixture {
@@ -443,11 +382,7 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Beta, Some(2))
             .with_post(3)
             .with_dev(1)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Var(Var::Dev),
-                Component::Var(Var::Post),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Dev), Component::Var(Var::Post)])
     }
 
     pub fn v1_0_0_rc_1_post_1_dev_1() -> ZervFixture {
@@ -455,11 +390,7 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Rc, Some(1))
             .with_post(1)
             .with_dev(1)
-            .with_extra_core_components(vec![
-                Component::Var(Var::PreRelease),
-                Component::Var(Var::Post),
-                Component::Var(Var::Dev),
-            ])
+            .with_extra_core_components(vec![Component::Var(Var::Post), Component::Var(Var::Dev)])
     }
 
     pub fn v1_0_0_epoch_2_post_1_dev_3() -> ZervFixture {
@@ -494,7 +425,6 @@ pub mod to {
             .with_dev(1)
             .with_extra_core_components(vec![
                 Component::Var(Var::Epoch),
-                Component::Var(Var::PreRelease),
                 Component::Var(Var::Post),
                 Component::Var(Var::Dev),
             ])
@@ -508,7 +438,6 @@ pub mod to {
             .with_dev(3)
             .with_extra_core_components(vec![
                 Component::Var(Var::Epoch),
-                Component::Var(Var::PreRelease),
                 Component::Var(Var::Dev),
                 Component::Var(Var::Post),
             ])
@@ -521,7 +450,6 @@ pub mod to {
             .with_extra_core_components(vec![
                 Component::Str("foo".to_string()),
                 Component::Var(Var::Epoch),
-                Component::Var(Var::PreRelease),
             ])
     }
 

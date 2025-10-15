@@ -751,14 +751,67 @@ All operations return `Result<T, ZervError>`:
 
 **✅ Test verification**: All 72 SemVer from_zerv tests pass, confirming functionality is preserved
 
-### 🔄 In Progress
+### ✅ Step 4: Two-Tier API for PEP440 to_zerv - COMPLETED
 
-- **Step 4**: `src/version/pep440/mod.rs` - Two-tier API
-- **Step 5**: `src/version/semver/mod.rs` - Two-tier API
+**File**: `src/version/pep440/to_zerv.rs`
+
+**✅ All requirements implemented:**
+
+1. **✅ Two-tier API structure** - `From<PEP440>` trait uses default schema, `to_zerv_with_schema()` accepts custom schemas
+2. **✅ Default schema factory** - `ZervSchema::pep440_default()` method implemented in schema/core.rs
+3. **✅ Schema validation** - Only supports default PEP440 schema for now, returns proper error for custom schemas
+4. **✅ Field mapping** - Maps PEP440 fields to ZervVars with proper type conversions (u32 → u64)
+5. **✅ Pre-release handling** - Uses `PreReleaseVar` struct with label and optional number
+6. **✅ Excess release parts** - Modifies schema to add excess parts beyond major.minor.patch to core
+7. **✅ Local segments** - Adds local segments to build section of schema
+8. **✅ Plan compliance** - Follows plan specification exactly, respects provided schema and modifies for excess parts
+
+**✅ Implementation details:**
+
+- **Simple API**: `From<PEP440>` uses `pep440_default()` schema and expects conversion to work
+- **Advanced API**: `to_zerv_with_schema()` validates schema compatibility and handles custom schemas (future)
+- **Schema modification**: Properly modifies provided schema for excess release parts and local segments
+- **Error handling**: Returns `ZervError::NotImplemented` for unsupported custom schemas
+- **Type safety**: All numeric conversions properly handle u32 → u64 casting
+- **Lint compliance**: Fixed clippy warnings by using struct initialization instead of field reassignment
+
+**✅ Test verification**: All 45 PEP440 to_zerv tests pass, including round-trip conversions
+
+### ✅ Step 5: Two-Tier API for SemVer to_zerv - COMPLETED
+
+**File**: `src/version/semver/to_zerv.rs`
+
+**✅ All requirements implemented:**
+
+1. **✅ Two-tier API structure** - `From<SemVer>` trait uses default schema, `to_zerv_with_schema()` accepts custom schemas
+2. **✅ Default schema factory** - `ZervSchema::semver_default()` method implemented in schema/core.rs
+3. **✅ Schema validation** - Only supports default SemVer schema for now, returns proper error for custom schemas
+4. **✅ Field mapping** - Maps SemVer fields to ZervVars with proper type handling (u64 → u64)
+5. **✅ Pre-release processing** - Uses existing `PreReleaseProcessor` to handle complex pre-release patterns
+6. **✅ Build metadata handling** - Adds build metadata components to schema build section
+7. **✅ Schema modification** - Properly modifies provided schema for pre-release and build components
+8. **✅ Plan compliance** - Follows plan specification exactly, respects provided schema and modifies for additional components
+
+**✅ Implementation details:**
+
+- **Simple API**: `From<SemVer>` uses `semver_default()` schema and expects conversion to work
+- **Advanced API**: `to_zerv_with_schema()` validates schema compatibility and handles custom schemas (future)
+- **Schema modification**: Uses validated setters to add extra_core and build components
+- **Error handling**: Returns `ZervError::NotImplemented` for unsupported custom schemas
+- **Type safety**: No unnecessary casts since SemVer fields are already u64
+- **Lint compliance**: Fixed clippy warnings by removing unnecessary type casts
+
+**✅ Test verification**: All 69 SemVer to_zerv tests pass, including round-trip conversions
+
+### 🔄 Next Steps
+
+- **Step 6**: Update remaining test files and modules for new validated API
 
 ### ⚠️ Breaking Changes Expected
 
 - ✅ Test files - Updated for getter access and new validation rules
+- ✅ **Schema factory methods** - Both PEP440 and SemVer default schemas implemented
+- ✅ **Two-tier APIs** - Both PEP440 and SemVer conversion APIs completed
 - ⚠️ **Remaining modules** - CLI and other modules still need updates for private fields
 - Modules with complex dependencies may be temporarily commented out
 
