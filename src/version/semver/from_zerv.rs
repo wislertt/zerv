@@ -72,6 +72,27 @@ impl SemVer {
         }
     }
 
+    fn process_secondary_var(
+        &mut self,
+        var: &crate::version::zerv::Var,
+        zerv_vars: &crate::version::zerv::vars::ZervVars,
+        semver_sanitizer: &Sanitizer,
+    ) {
+        let expanded = var.resolve_expanded_values(zerv_vars, semver_sanitizer);
+        for value in expanded {
+            if !value.is_empty() {
+                let identifier = if let Ok(num) = value.parse::<u32>() {
+                    PreReleaseIdentifier::UInt(num as u64)
+                } else {
+                    PreReleaseIdentifier::String(value)
+                };
+                self.pre_release
+                    .get_or_insert_with(Vec::new)
+                    .push(identifier);
+            }
+        }
+    }
+
     fn process_extra_core(
         &mut self,
         components: &[Component],
@@ -79,30 +100,17 @@ impl SemVer {
         semver_sanitizer: &Sanitizer,
     ) {
         for component in components {
-            if let Component::Var(var) = component
-                && var.is_secondary_component()
-            {
-                let expanded = var.resolve_expanded_values(zerv_vars, semver_sanitizer);
-                for value in expanded {
-                    if !value.is_empty() {
-                        let identifier = if let Ok(num) = value.parse::<u32>() {
-                            PreReleaseIdentifier::UInt(num as u64)
-                        } else {
-                            PreReleaseIdentifier::String(value)
-                        };
-                        self.pre_release
-                            .get_or_insert_with(Vec::new)
-                            .push(identifier);
+            match component {
+                Component::Var(var) if var.is_secondary_component() => {
+                    self.process_secondary_var(var, zerv_vars, semver_sanitizer);
+                }
+                _ => {
+                    if let Some(value) = component.resolve_value(zerv_vars, semver_sanitizer)
+                        && !value.is_empty()
+                    {
+                        self.add_flattened_to_prerelease(value);
                     }
                 }
-                continue;
-            }
-
-            // All other components go to pre-release
-            if let Some(value) = component.resolve_value(zerv_vars, semver_sanitizer)
-                && !value.is_empty()
-            {
-                self.add_flattened_to_prerelease(value);
             }
         }
     }
