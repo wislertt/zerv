@@ -41,12 +41,26 @@ impl SemVer {
 
         // Handle pre-release - process each identifier for secondary labels
         let mut schema = schema.clone();
-        let mut current_var: Option<Var> = None;
+        let mut current_pre_release_var: Option<Var> = None;
 
         if let Some(pre_release) = &self.pre_release {
             for identifier in pre_release {
+                // Handle pending PreRelease var at the start of each iteration
+                if let Some(pending_var) = &current_pre_release_var
+                    && *pending_var == Var::PreRelease
+                    && let PreReleaseIdentifier::String(_) = identifier
+                {
+                    // Add pending PreRelease var to schema when encountering a string
+                    schema.set_extra_core({
+                        let mut current = schema.extra_core().clone();
+                        current.push(Component::Var(pending_var.clone()));
+                        current
+                    })?;
+                    current_pre_release_var = None;
+                }
+
                 // Handle pending var first
-                if let Some(var) = current_var {
+                if let Some(var) = current_pre_release_var {
                     let value = match identifier {
                         PreReleaseIdentifier::UInt(n) => Some(*n),
                         _ => None,
@@ -62,55 +76,50 @@ impl SemVer {
                                 pr.number = value;
                             } else {
                                 unreachable!(
-                                    "pre_release should exist when current_var is Var::PreRelease"
+                                    "pre_release should exist when current_pre_release_var is Var::PreRelease"
                                 );
                             }
                         }
                         _ => {}
                     }
 
-                    // Add var to schema (PreRelease vars are never added to schema automatically)
+                    // Add var to schema (PreRelease vars with numbers are never added to schema)
                     if var != Var::PreRelease {
                         schema.set_extra_core({
                             let mut current = schema.extra_core().clone();
                             current.push(Component::Var(var.clone()));
                             current
                         })?;
-                    } else if var == Var::PreRelease && schema.has_pre_release_in_extra_core() {
-                        // Convert PreRelease var to string/int when pre-release already exists
-                        let component = match identifier {
-                            PreReleaseIdentifier::UInt(n) => Component::Int(*n),
-                            PreReleaseIdentifier::String(s) => Component::Str(s.clone()),
-                        };
-                        schema.set_extra_core({
-                            let mut current = schema.extra_core().clone();
-                            current.push(component);
-                            current
-                        })?;
                     }
-                    current_var = None;
+                    // PreRelease vars with numbers don't add anything to schema
+                    current_pre_release_var = None;
                     continue;
                 }
 
                 match identifier {
                     PreReleaseIdentifier::String(s) => {
-                        let should_set_prerelease =
-                            if let Some(var) = Var::try_from_secondary_label(s) {
-                                (var == Var::PreRelease) && vars.pre_release.is_none()
+                        if let Some(var) = Var::try_from_secondary_label(s) {
+                            if (var == Var::PreRelease) && vars.pre_release.is_none() {
+                                // Set pre-release label only if not already set (first wins)
+                                if let Some(label) = PreReleaseLabel::try_from_str(s) {
+                                    vars.pre_release = Some(PreReleaseVar {
+                                        label,
+                                        number: None,
+                                    });
+                                }
+                                // Set current_pre_release_var for first pre-release
+                                current_pre_release_var = Some(var);
+                            } else if var == Var::PreRelease {
+                                // Second pre-release: push as string to extra_core
+                                schema.set_extra_core({
+                                    let mut current = schema.extra_core().clone();
+                                    current.push(Component::Str(s.clone()));
+                                    current
+                                })?;
                             } else {
-                                false
-                            };
-
-                        if should_set_prerelease {
-                            // Set pre-release label only if not already set (first wins)
-                            if let Some(label) = PreReleaseLabel::try_from_str(s) {
-                                vars.pre_release = Some(PreReleaseVar {
-                                    label,
-                                    number: None,
-                                });
+                                // Set current_pre_release_var for non-PreRelease vars
+                                current_pre_release_var = Some(var);
                             }
-                            // Set current_var to PreRelease so next number becomes the pre-release number
-                            current_var = Some(Var::PreRelease);
                         } else {
                             schema.set_extra_core({
                                 let mut current = schema.extra_core().clone();
@@ -145,16 +154,14 @@ impl SemVer {
             }
         }
 
-        // Handle any remaining current_var
-        if let Some(var) = current_var {
-            // Don't add PreRelease vars to schema automatically
-            if var != Var::PreRelease {
-                schema.set_extra_core({
-                    let mut current = schema.extra_core().clone();
-                    current.push(Component::Var(var));
-                    current
-                })?;
-            }
+        // Handle any remaining current_pre_release_var
+        if let Some(var) = current_pre_release_var {
+            // Add var to schema
+            schema.set_extra_core({
+                let mut current = schema.extra_core().clone();
+                current.push(Component::Var(var));
+                current
+            })?;
         }
 
         Ok(Zerv { vars, schema })
