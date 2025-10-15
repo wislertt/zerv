@@ -101,6 +101,82 @@ impl From<SemVer> for Zerv {
 }
 
 impl SemVer {
+    fn process_string_identifier(
+        processor: &mut PreReleaseProcessor,
+        s: &str,
+    ) -> Result<(), ZervError> {
+        // Special case: pending PreRelease var with another string
+        if processor.pending_var == Some(Var::PreRelease) {
+            processor.finalize_var(Var::PreRelease, None)?;
+            processor.pending_var = None;
+            processor.add_string(s)?;
+            return Ok(());
+        }
+
+        // Handle duplicates or finalize pending vars
+        if let Some(var) = Var::try_from_secondary_label(s)
+            && processor.handle_duplicate(s, var)?
+        {
+            return Ok(());
+        }
+
+        // Finalize any pending var before processing new one
+        if let Some(pending) = processor.pending_var.take() {
+            processor.finalize_var(pending, None)?;
+        }
+
+        // Process new var or add as string
+        if let Some(var) = Var::try_from_secondary_label(s) {
+            processor.process_new_var(s, var)?;
+        } else {
+            processor.add_string(s)?;
+        }
+        Ok(())
+    }
+
+    fn process_uint_identifier(
+        processor: &mut PreReleaseProcessor,
+        n: u64,
+    ) -> Result<(), ZervError> {
+        if let Some(var) = processor.pending_var.take() {
+            processor.finalize_var(var, Some(n))?;
+        } else {
+            processor.schema.push_extra_core(Component::Int(n))?;
+        }
+        Ok(())
+    }
+
+    fn process_pre_release(
+        processor: &mut PreReleaseProcessor,
+        pre_release: &[PreReleaseIdentifier],
+    ) -> Result<(), ZervError> {
+        for identifier in pre_release {
+            match identifier {
+                PreReleaseIdentifier::String(s) => {
+                    Self::process_string_identifier(processor, s)?;
+                }
+                PreReleaseIdentifier::UInt(n) => {
+                    Self::process_uint_identifier(processor, *n)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn process_build_metadata(
+        schema: &mut ZervSchema,
+        build_metadata: &[BuildMetadata],
+    ) -> Result<(), ZervError> {
+        for metadata in build_metadata {
+            let component = match metadata {
+                BuildMetadata::String(s) => Component::Str(s.clone()),
+                BuildMetadata::UInt(n) => Component::Int(*n),
+            };
+            schema.push_build(component)?;
+        }
+        Ok(())
+    }
+
     /// Convert SemVer to Zerv format while preserving all semantic information for round-trip conversion.
     pub fn to_zerv_with_schema(&self, schema: &ZervSchema) -> Result<Zerv, ZervError> {
         if *schema != ZervSchema::semver_default()? {
@@ -120,60 +196,15 @@ impl SemVer {
         let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
 
         if let Some(pre_release) = &self.pre_release {
-            for identifier in pre_release {
-                match identifier {
-                    PreReleaseIdentifier::String(s) => {
-                        // Special case: pending PreRelease var with another string
-                        if processor.pending_var == Some(Var::PreRelease) {
-                            processor.finalize_var(Var::PreRelease, None)?;
-                            processor.pending_var = None;
-                            processor.add_string(s)?;
-                            continue;
-                        }
-
-                        // Handle duplicates or finalize pending vars
-                        if let Some(var) = Var::try_from_secondary_label(s)
-                            && processor.handle_duplicate(s, var)?
-                        {
-                            continue;
-                        }
-
-                        // Finalize any pending var before processing new one
-                        if let Some(pending) = processor.pending_var.take() {
-                            processor.finalize_var(pending, None)?;
-                        }
-
-                        // Process new var or add as string
-                        if let Some(var) = Var::try_from_secondary_label(s) {
-                            processor.process_new_var(s, var)?;
-                        } else {
-                            processor.add_string(s)?;
-                        }
-                    }
-                    PreReleaseIdentifier::UInt(n) => {
-                        if let Some(var) = processor.pending_var.take() {
-                            processor.finalize_var(var, Some(*n))?;
-                        } else {
-                            processor.schema.push_extra_core(Component::Int(*n))?;
-                        }
-                    }
-                }
-            }
+            Self::process_pre_release(&mut processor, pre_release)?;
         }
 
         if let Some(var) = processor.pending_var.take() {
             processor.schema.push_extra_core(Component::Var(var))?;
         }
 
-        // Handle build metadata
         if let Some(build_metadata) = &self.build_metadata {
-            for metadata in build_metadata {
-                let component = match metadata {
-                    BuildMetadata::String(s) => Component::Str(s.clone()),
-                    BuildMetadata::UInt(n) => Component::Int(*n),
-                };
-                result_schema.push_build(component)?;
-            }
+            Self::process_build_metadata(&mut result_schema, build_metadata)?;
         }
 
         Ok(Zerv {
