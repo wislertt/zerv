@@ -39,7 +39,7 @@ impl<'a> PreReleaseProcessor<'a> {
         }
     }
 
-    fn set_var_value(&mut self, var: Var, value: Option<u64>) -> Result<(), ZervError> {
+    fn finalize_var(&mut self, var: Var, value: Option<u64>) -> Result<(), ZervError> {
         match var {
             Var::Epoch => self.vars.epoch = value,
             Var::Post => self.vars.post = value,
@@ -51,42 +51,43 @@ impl<'a> PreReleaseProcessor<'a> {
             }
             _ => {}
         }
-        self.schema.push_extra_core(Component::Var(var))?;
-        Ok(())
+        self.schema.push_extra_core(Component::Var(var))
     }
 
-    fn process_string(&mut self, s: &str) -> Result<(), ZervError> {
-        if let Some(var) = Var::try_from_secondary_label(s) {
-            if self.is_var_set(&var) {
-                self.schema.push_extra_core(Component::Str(s.to_string()))?;
-            } else if var == Var::PreRelease {
-                if let Some(label) = PreReleaseLabel::try_from_str(s) {
-                    self.vars.pre_release = Some(PreReleaseVar {
-                        label,
-                        number: None,
-                    });
-                    self.pending_var = Some(var);
-                } else {
-                    self.schema.push_extra_core(Component::Str(s.to_string()))?;
-                }
-            } else {
-                self.pending_var = Some(var);
+    fn add_string(&mut self, s: &str) -> Result<(), ZervError> {
+        self.schema.push_extra_core(Component::Str(s.to_string()))
+    }
+
+    fn handle_duplicate(&mut self, s: &str, var: Var) -> Result<bool, ZervError> {
+        if self.pending_var.as_ref() == Some(&var) {
+            let pending = self.pending_var.take().unwrap();
+            self.finalize_var(pending, None)?;
+        } else if self.is_var_set(&var) {
+            if let Some(pending) = self.pending_var.take() {
+                self.finalize_var(pending, None)?;
             }
         } else {
-            self.schema.push_extra_core(Component::Str(s.to_string()))?;
+            return Ok(false);
         }
-        Ok(())
+        self.add_string(s)?;
+        Ok(true)
     }
 
-    fn process_uint(&mut self, n: u64) -> Result<(), ZervError> {
-        self.schema.push_extra_core(Component::Int(n))
-    }
-
-    fn finalize(&mut self) -> Result<(), ZervError> {
-        if let Some(var) = self.pending_var.take() {
-            self.schema.push_extra_core(Component::Var(var))?;
+    fn process_new_var(&mut self, s: &str, var: Var) -> Result<(), ZervError> {
+        if var == Var::PreRelease {
+            if let Some(label) = PreReleaseLabel::try_from_str(s) {
+                self.vars.pre_release = Some(PreReleaseVar {
+                    label,
+                    number: None,
+                });
+                self.pending_var = Some(var);
+                return Ok(());
+            }
+        } else {
+            self.pending_var = Some(var);
+            return Ok(());
         }
-        Ok(())
+        self.add_string(s)
     }
 }
 
@@ -115,70 +116,54 @@ impl SemVer {
             ..Default::default()
         };
 
-        let mut schema = schema.clone();
-        let mut processor = PreReleaseProcessor::new(&mut vars, &mut schema);
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
 
-        // Process pre-release identifiers
         if let Some(pre_release) = &self.pre_release {
             for identifier in pre_release {
                 match identifier {
                     PreReleaseIdentifier::String(s) => {
-                        // Special case: if we have a pending PreRelease var and encounter another string,
-                        // finalize the PreRelease var and treat the new string as literal
+                        // Special case: pending PreRelease var with another string
                         if processor.pending_var == Some(Var::PreRelease) {
-                            processor
-                                .schema
-                                .push_extra_core(Component::Var(Var::PreRelease))?;
+                            processor.finalize_var(Var::PreRelease, None)?;
                             processor.pending_var = None;
-                            processor
-                                .schema
-                                .push_extra_core(Component::Str(s.to_string()))?;
+                            processor.add_string(s)?;
                             continue;
                         }
 
-                        // Check if this var type is already set or pending
+                        // Handle duplicates or finalize pending vars
+                        if let Some(var) = Var::try_from_secondary_label(s)
+                            && processor.handle_duplicate(s, var)?
+                        {
+                            continue;
+                        }
+
+                        // Finalize any pending var before processing new one
+                        if let Some(pending) = processor.pending_var.take() {
+                            processor.finalize_var(pending, None)?;
+                        }
+
+                        // Process new var or add as string
                         if let Some(var) = Var::try_from_secondary_label(s) {
-                            // If same var type is pending, finalize it and treat this as duplicate
-                            if processor.pending_var.as_ref() == Some(&var) {
-                                let pending_var = processor.pending_var.take().unwrap();
-                                processor.set_var_value(pending_var, None)?;
-                                processor
-                                    .schema
-                                    .push_extra_core(Component::Str(s.to_string()))?;
-                                continue;
-                            }
-                            // If var is already set, finalize any pending var and treat as duplicate
-                            if processor.is_var_set(&var) {
-                                if let Some(pending_var) = processor.pending_var.take() {
-                                    processor.set_var_value(pending_var, None)?;
-                                }
-                                processor
-                                    .schema
-                                    .push_extra_core(Component::Str(s.to_string()))?;
-                                continue;
-                            }
+                            processor.process_new_var(s, var)?;
+                        } else {
+                            processor.add_string(s)?;
                         }
-
-                        // Finalize any pending var before processing new var
-                        if let Some(var) = processor.pending_var.take() {
-                            processor.set_var_value(var, None)?;
-                        }
-
-                        // Process as new var
-                        processor.process_string(s)?;
                     }
                     PreReleaseIdentifier::UInt(n) => {
                         if let Some(var) = processor.pending_var.take() {
-                            processor.set_var_value(var, Some(*n))?;
+                            processor.finalize_var(var, Some(*n))?;
                         } else {
-                            processor.process_uint(*n)?;
+                            processor.schema.push_extra_core(Component::Int(*n))?;
                         }
                     }
                 }
             }
         }
 
-        processor.finalize()?;
+        if let Some(var) = processor.pending_var.take() {
+            processor.schema.push_extra_core(Component::Var(var))?;
+        }
 
         // Handle build metadata
         if let Some(build_metadata) = &self.build_metadata {
@@ -187,11 +172,14 @@ impl SemVer {
                     BuildMetadata::String(s) => Component::Str(s.clone()),
                     BuildMetadata::UInt(n) => Component::Int(*n),
                 };
-                schema.push_build(component)?;
+                result_schema.push_build(component)?;
             }
         }
 
-        Ok(Zerv { vars, schema })
+        Ok(Zerv {
+            vars,
+            schema: result_schema,
+        })
     }
 }
 
