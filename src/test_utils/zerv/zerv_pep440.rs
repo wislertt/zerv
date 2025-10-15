@@ -1,3 +1,4 @@
+use super::common_fixtures::CommonFixtures;
 use super::zerv::ZervFixture;
 use crate::version::zerv::{
     Component,
@@ -11,11 +12,11 @@ pub mod from {
 
     // Base versions
     pub fn v1_2_3() -> ZervFixture {
-        ZervFixture::new().with_version(1, 2, 3)
+        CommonFixtures::v1_2_3()
     }
 
     pub fn v1_0_0() -> ZervFixture {
-        ZervFixture::new().with_version(1, 0, 0)
+        CommonFixtures::v1_0_0()
     }
 
     pub fn v1_0_0_tier3() -> ZervFixture {
@@ -24,15 +25,15 @@ pub mod from {
 
     // v1.2.3 variants
     pub fn v1_2_3_e2() -> ZervFixture {
-        v1_2_3().with_epoch(2)
+        CommonFixtures::v1_2_3_e2()
     }
 
     pub fn v1_2_3_a1() -> ZervFixture {
-        v1_2_3().with_pre_release(PreReleaseLabel::Alpha, Some(1))
+        CommonFixtures::v1_2_3_a1()
     }
 
     pub fn v1_2_3_post1() -> ZervFixture {
-        v1_2_3().with_post(1)
+        CommonFixtures::v1_2_3_post1()
     }
 
     pub fn v1_2_3_dev1() -> ZervFixture {
@@ -41,23 +42,23 @@ pub mod from {
 
     // v1.0.0 variants
     pub fn v1_0_0_e1() -> ZervFixture {
-        v1_0_0().with_epoch(1)
+        CommonFixtures::v1_0_0_e1()
     }
 
     pub fn v1_0_0_e2() -> ZervFixture {
-        v1_0_0().with_epoch(2)
+        CommonFixtures::v1_0_0_e2()
     }
 
     pub fn v1_0_0_e3() -> ZervFixture {
-        v1_0_0().with_epoch(3)
+        CommonFixtures::v1_0_0_e3()
     }
 
     pub fn v1_0_0_post1() -> ZervFixture {
-        v1_0_0().with_post(1)
+        CommonFixtures::v1_0_0_post1()
     }
 
     pub fn v1_0_0_post5() -> ZervFixture {
-        v1_0_0().with_post(5)
+        CommonFixtures::v1_0_0_post5()
     }
 
     pub fn v1_0_0_dev0() -> ZervFixture {
@@ -69,21 +70,15 @@ pub mod from {
     }
 
     pub fn v1_0_0_e2_a1() -> ZervFixture {
-        v1_0_0()
-            .with_epoch(2)
-            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
+        CommonFixtures::v1_0_0_e2_a1()
     }
 
     pub fn v1_0_0_e3_b2() -> ZervFixture {
-        v1_0_0()
-            .with_epoch(3)
-            .with_pre_release(PreReleaseLabel::Beta, Some(2))
+        CommonFixtures::v1_0_0_e3_b2()
     }
 
     pub fn v1_0_0_e1_rc5() -> ZervFixture {
-        v1_0_0()
-            .with_epoch(1)
-            .with_pre_release(PreReleaseLabel::Rc, Some(5))
+        CommonFixtures::v1_0_0_e1_rc5()
     }
 
     pub fn v1_0_0_post1_dev2() -> ZervFixture {
@@ -176,15 +171,11 @@ pub mod from {
 
     // Build metadata fixtures
     pub fn v1_0_0_e1_build() -> ZervFixture {
-        v1_0_0_e1()
-            .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(123))
+        CommonFixtures::v1_0_0_e1_build()
     }
 
     pub fn v1_0_0_post1_build() -> ZervFixture {
-        v1_0_0_post1()
-            .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(456))
+        CommonFixtures::v1_0_0_post1_build()
     }
 
     pub fn v1_0_0_dev2_build() -> ZervFixture {
@@ -195,17 +186,11 @@ pub mod from {
     }
 
     pub fn v1_0_0_e2_a1_build() -> ZervFixture {
-        v1_0_0_e2()
-            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Str("abc".to_string()))
+        CommonFixtures::v1_0_0_e2_a1_build()
     }
 
     pub fn v1_0_0_complex_build() -> ZervFixture {
-        v1_0_0()
-            .with_build(Component::Str("foo".to_string()))
-            .with_build(Component::Str("bar".to_string()))
-            .with_build(Component::Int(123))
+        CommonFixtures::v1_0_0_complex_build()
     }
 
     pub fn v1_0_0_e1_a1_post1_dev1_complex() -> ZervFixture {
@@ -221,30 +206,24 @@ pub mod from {
 
     // VarField build metadata
     pub fn v1_0_0_branch_dev() -> ZervFixture {
-        v1_0_0().with_branch("dev".to_string())
+        CommonFixtures::v1_0_0_branch_dev()
     }
 
     pub fn v1_0_0_distance_5() -> ZervFixture {
-        v1_0_0().with_distance(5)
+        CommonFixtures::v1_0_0_distance_5()
     }
 
     pub fn v1_0_0_commit_abc123() -> ZervFixture {
-        v1_0_0().with_commit_hash("abc123".to_string())
+        CommonFixtures::v1_0_0_commit_abc123()
     }
 
     pub fn v1_0_0_branch_distance_commit() -> ZervFixture {
-        v1_0_0()
-            .with_branch("dev".to_string())
-            .with_distance(3)
-            .with_commit_hash("def456".to_string())
+        CommonFixtures::v1_0_0_branch_distance_commit()
     }
 
     // Complex v1.2.3 build
     pub fn v1_2_3_ubuntu_build() -> ZervFixture {
-        v1_2_3()
-            .with_build(Component::Str("ubuntu".to_string()))
-            .with_build(Component::Str("20".to_string()))
-            .with_build(Component::Int(4))
+        CommonFixtures::v1_2_3_ubuntu_build()
     }
 
     pub fn v1_2_3_e2_a1_post1_dev1_local() -> ZervFixture {
@@ -260,39 +239,17 @@ pub mod from {
 
     // Custom field variant - build
     pub fn v1_0_0_custom_build_field(value: &str) -> ZervFixture {
-        let mut fixture = v1_0_0()
-            .with_build(Component::Var(Var::Custom(
-                "custom_build_field".to_string(),
-            )))
-            .build();
-        fixture.vars.custom = serde_json::json!({
-            "custom_build_field": value
-        });
-        ZervFixture::from(fixture)
+        CommonFixtures::v1_0_0_custom_build_field(value)
     }
 
     // Custom field variant - core
     pub fn v1_0_0_custom_core_field(value: &str) -> ZervFixture {
-        let mut fixture = v1_0_0()
-            .with_core(Component::Var(Var::Custom("custom_core_field".to_string())))
-            .build();
-        fixture.vars.custom = serde_json::json!({
-            "custom_core_field": value
-        });
-        ZervFixture::from(fixture)
+        CommonFixtures::v1_0_0_custom_core_field(value)
     }
 
     // Custom field variant - extra_core
     pub fn v1_0_0_custom_extra_field(value: &str) -> ZervFixture {
-        let mut fixture = v1_0_0()
-            .with_extra_core(Component::Var(Var::Custom(
-                "custom_extra_field".to_string(),
-            )))
-            .build();
-        fixture.vars.custom = serde_json::json!({
-            "custom_extra_field": value
-        });
-        ZervFixture::from(fixture)
+        CommonFixtures::v1_0_0_custom_extra_field(value)
     }
 
     // Test case for duplicate epoch handling - second epoch should go to local
@@ -306,42 +263,9 @@ pub mod from {
             .with_extra_core(Component::Str("epoch".to_string()))
     }
 
-    // Maximum complexity fixture - contains every possible component
+    // Maximum complexity fixture - PEP440 version (no dev component)
     pub fn v2_3_4_max_complexity() -> ZervFixture {
-        let mut fixture = ZervFixture::new()
-            .with_version(2, 3, 4)
-            .with_epoch(5)
-            .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_post(2)
-            .with_dev(3)
-            // Core: custom + overflow (major/minor/patch added by with_version)
-            .with_core(Component::Var(Var::Custom("core_custom".to_string())))
-            .with_core(Component::Int(99)) // overflow to local
-            // Extra core: custom + literals (secondary components added by with_* methods)
-            .with_extra_core(Component::Var(Var::Custom("extra_custom".to_string())))
-            .with_extra_core(Component::Str("literal".to_string()))
-            .with_extra_core(Component::Int(42))
-            // Build: VCS fields + custom + literals
-            .with_build(Component::Var(Var::BumpedBranch))
-            .with_build(Component::Var(Var::Distance))
-            .with_build(Component::Var(Var::BumpedCommitHashShort))
-            .with_build(Component::Var(Var::Dirty))
-            .with_build(Component::Var(Var::Custom("build_custom".to_string())))
-            .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(123))
-            .with_branch("feature/complex-test".to_string())
-            .with_distance(7)
-            .with_commit_hash("abcdef1234567890".to_string())
-            .build();
-
-        fixture.vars.dirty = Some(true);
-        fixture.vars.custom = serde_json::json!({
-            "core_custom": "core_value",
-            "extra_custom": "extra_value",
-            "build_custom": "build_value"
-        });
-
-        ZervFixture::from(fixture)
+        CommonFixtures::v2_3_4_max_complexity()
     }
 }
 

@@ -1,3 +1,4 @@
+pub mod common_fixtures;
 pub mod schema;
 pub mod vars;
 #[allow(clippy::module_inception)]
