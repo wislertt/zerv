@@ -216,7 +216,7 @@ impl CommonFixtures {
     }
 
     // Maximum complexity fixture base - shared structure without dev component
-    pub fn v2_3_4_max_complexity() -> ZervFixture {
+    pub fn v2_3_4_max_complexity_base() -> ZervFixture {
         let mut fixture = ZervFixture::new()
             .with_version(2, 3, 4)
             .with_epoch(5)
@@ -247,5 +247,10 @@ impl CommonFixtures {
         });
 
         ZervFixture::from(fixture)
+    }
+
+    // Maximum complexity fixture with dev component for SemVer
+    pub fn v2_3_4_max_complexity_with_dev() -> ZervFixture {
+        Self::v2_3_4_max_complexity_base().with_dev(3)
     }
 }
