@@ -295,6 +295,17 @@ pub mod from {
         ZervFixture::from(fixture)
     }
 
+    // Test case for duplicate epoch handling - second epoch should go to local
+    pub fn v1_0_0_duplicate_epoch() -> ZervFixture {
+        v1_0_0()
+            .with_pre_release(PreReleaseLabel::Rc, Some(1))
+            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::Str("epoch".to_string()))
+            .with_extra_core(Component::Str("epoch".to_string()))
+    }
+
     // Maximum complexity fixture - contains every possible component
     pub fn v2_3_4_max_complexity() -> ZervFixture {
         let mut fixture = ZervFixture::new()

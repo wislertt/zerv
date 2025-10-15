@@ -262,6 +262,8 @@ mod tests {
     #[case(from::v1_0_0_custom_extra_field("multi.part.value").build(), "1.0.0+multi.part.value")]
     #[case(from::v1_0_0_custom_extra_field("test_value").build(), "1.0.0+test.value")]
     #[case(from::v1_0_0_custom_extra_field("Feature/API-v2").build(), "1.0.0+feature.api.v2")]
+    // Test case for duplicate epoch handling - second epoch should go to local
+    #[case(from::v1_0_0_duplicate_epoch().build(), "1.0.0rc1+1.2.3.epoch.epoch")]
     fn test_zerv_to_pep440_conversion(#[case] zerv: Zerv, #[case] expected_pep440_str: &str) {
         let pep440: PEP440 = zerv.into();
         assert_eq!(pep440.to_string(), expected_pep440_str);

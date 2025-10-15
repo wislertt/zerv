@@ -24,6 +24,13 @@ impl From<SemVer> for Zerv {
 }
 
 impl SemVer {
+    /// Convert SemVer to Zerv format while preserving all semantic information for round-trip conversion.
+    ///
+    /// Goals:
+    /// - Map SemVer components (major.minor.patch, pre-release, build) to Zerv vars and schema
+    /// - Detect secondary labels (alpha, beta, rc, epoch, post, dev) and map to appropriate Zerv vars
+    /// - Ensure round-trip fidelity: SemVer → Zerv → SemVer produces semantically equivalent version
+    /// - Populate schema only for complex cases, keep simple pre-release in vars only
     pub fn to_zerv_with_schema(&self, schema: &ZervSchema) -> Result<Zerv, ZervError> {
         // Only support default SemVer schema for now
         if *schema != ZervSchema::semver_default()? {
@@ -44,7 +51,18 @@ impl SemVer {
         let mut current_pre_release_var: Option<Var> = None;
 
         if let Some(pre_release) = &self.pre_release {
+            // Debug for case 33
+            if self.major == 1 && self.minor == 2 && self.patch == 3 {
+                println!("Processing pre_release: {pre_release:?}");
+            }
+
             for identifier in pre_release {
+                // Debug for case 33
+                if self.major == 1 && self.minor == 2 && self.patch == 3 {
+                    println!(
+                        "Processing identifier: {identifier:?}, current_pre_release_var: {current_pre_release_var:?}"
+                    );
+                }
                 // Handle pending PreRelease var at the start of each iteration
                 if let Some(pending_var) = &current_pre_release_var
                     && *pending_var == Var::PreRelease
@@ -61,6 +79,56 @@ impl SemVer {
 
                 // Handle pending var first
                 if let Some(var) = current_pre_release_var {
+                    // Check if current identifier is a duplicate secondary label
+                    if let PreReleaseIdentifier::String(s) = identifier
+                        && let Some(current_var) = Var::try_from_secondary_label(s)
+                    {
+                        if current_var == var {
+                            // This is a duplicate of the pending var, add pending var to schema first
+                            schema.set_extra_core({
+                                let mut current = schema.extra_core().clone();
+                                current.push(Component::Var(var.clone()));
+                                current
+                            })?;
+                            current_pre_release_var = None;
+
+                            // Then add the duplicate as a string
+                            schema.set_extra_core({
+                                let mut current = schema.extra_core().clone();
+                                current.push(Component::Str(s.clone()));
+                                current
+                            })?;
+                            continue;
+                        } else {
+                            // Check if this is a duplicate of a different already-set var
+                            let already_set = match current_var {
+                                Var::PreRelease => vars.pre_release.is_some(),
+                                Var::Epoch => vars.epoch.is_some(),
+                                Var::Post => vars.post.is_some(),
+                                Var::Dev => vars.dev.is_some(),
+                                _ => false,
+                            };
+
+                            if already_set {
+                                // Add pending var to schema first
+                                schema.set_extra_core({
+                                    let mut current = schema.extra_core().clone();
+                                    current.push(Component::Var(var.clone()));
+                                    current
+                                })?;
+                                current_pre_release_var = None;
+
+                                // Then add the duplicate as a string
+                                schema.set_extra_core({
+                                    let mut current = schema.extra_core().clone();
+                                    current.push(Component::Str(s.clone()));
+                                    current
+                                })?;
+                                continue;
+                            }
+                        }
+                    }
+
                     let value = match identifier {
                         PreReleaseIdentifier::UInt(n) => Some(*n),
                         _ => None,
@@ -83,15 +151,12 @@ impl SemVer {
                         _ => {}
                     }
 
-                    // Add var to schema (PreRelease vars with numbers are never added to schema)
-                    if var != Var::PreRelease {
-                        schema.set_extra_core({
-                            let mut current = schema.extra_core().clone();
-                            current.push(Component::Var(var.clone()));
-                            current
-                        })?;
-                    }
-                    // PreRelease vars with numbers don't add anything to schema
+                    // Add var to schema for round-trip conversion
+                    schema.set_extra_core({
+                        let mut current = schema.extra_core().clone();
+                        current.push(Component::Var(var.clone()));
+                        current
+                    })?;
                     current_pre_release_var = None;
                     continue;
                 }
@@ -99,26 +164,72 @@ impl SemVer {
                 match identifier {
                     PreReleaseIdentifier::String(s) => {
                         if let Some(var) = Var::try_from_secondary_label(s) {
-                            if (var == Var::PreRelease) && vars.pre_release.is_none() {
-                                // Set pre-release label only if not already set (first wins)
-                                if let Some(label) = PreReleaseLabel::try_from_str(s) {
-                                    vars.pre_release = Some(PreReleaseVar {
-                                        label,
-                                        number: None,
-                                    });
+                            // Check if this var type is already set (first wins logic)
+                            let already_set = match var {
+                                Var::PreRelease => {
+                                    vars.pre_release.is_some()
+                                        || current_pre_release_var == Some(Var::PreRelease)
                                 }
-                                // Set current_pre_release_var for first pre-release
-                                current_pre_release_var = Some(var);
-                            } else if var == Var::PreRelease {
-                                // Second pre-release: push as string to extra_core
+                                Var::Epoch => {
+                                    vars.epoch.is_some()
+                                        || current_pre_release_var == Some(Var::Epoch)
+                                }
+                                Var::Post => {
+                                    vars.post.is_some()
+                                        || current_pre_release_var == Some(Var::Post)
+                                }
+                                Var::Dev => {
+                                    vars.dev.is_some() || current_pre_release_var == Some(Var::Dev)
+                                }
+                                _ => false,
+                            };
+
+                            // Debug for case 33
+                            if s == "epoch" {
+                                println!(
+                                    "Processing epoch: var={:?}, already_set={}, vars.epoch={:?}, current_pre_release_var={:?}",
+                                    var, already_set, vars.epoch, current_pre_release_var
+                                );
+                            }
+
+                            // Debug for case 33
+                            if s == "epoch" {
+                                println!(
+                                    "Branch decision: already_set={}, taking {} branch",
+                                    already_set,
+                                    if already_set { "duplicate" } else { "first" }
+                                );
+                            }
+
+                            if !already_set {
+                                if var == Var::PreRelease {
+                                    // Set pre-release label only if not already set (first wins)
+                                    if let Some(label) = PreReleaseLabel::try_from_str(s) {
+                                        vars.pre_release = Some(PreReleaseVar {
+                                            label,
+                                            number: None,
+                                        });
+                                        // Set current_pre_release_var for first pre-release
+                                        current_pre_release_var = Some(var);
+                                    } else {
+                                        // Not a recognized pre-release label, treat as string
+                                        schema.set_extra_core({
+                                            let mut current = schema.extra_core().clone();
+                                            current.push(Component::Str(s.clone()));
+                                            current
+                                        })?;
+                                    }
+                                } else {
+                                    // Set current_pre_release_var for other vars (Epoch, Post, Dev)
+                                    current_pre_release_var = Some(var);
+                                }
+                            } else {
+                                // Second occurrence of same var type: push as string to extra_core
                                 schema.set_extra_core({
                                     let mut current = schema.extra_core().clone();
                                     current.push(Component::Str(s.clone()));
                                     current
                                 })?;
-                            } else {
-                                // Set current_pre_release_var for non-PreRelease vars
-                                current_pre_release_var = Some(var);
                             }
                         } else {
                             schema.set_extra_core({
@@ -257,6 +368,10 @@ mod tests {
     #[case("1.0.0-foo.epoch.1.alpha.2", to::v1_0_0_foo_epoch_1_alpha_2().build())]
     #[case("1.0.0-epoch.1.foo.post.2", to::v1_0_0_epoch_1_foo_post_2().build())]
     #[case("1.0.0-bar.dev.1.epoch.2", to::v1_0_0_bar_dev_1_epoch_2().build())]
+    // Complex duplicate
+    #[case("1.0.0-epoch.1.epoch.2.post.3.post.4.dev.5.dev.6.alpha.7.alpha.8", to::v1_0_0_duplicate_vars().build())]
+    #[case("1.0.0-epoch.epoch.rc.rc.post.post.dev.dev", to::v1_0_0_duplicate_vars_without_num().build())]
+    #[case("1.2.3-10.a.rc.epoch.rc.3", to::v1_2_3_complex_duplicate().build())]
     fn test_semver_to_zerv_conversion(#[case] semver_str: &str, #[case] expected: Zerv) {
         let semver: SemVer = semver_str.parse().unwrap();
         let zerv: Zerv = semver.into();
