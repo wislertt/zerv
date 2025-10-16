@@ -1,5 +1,5 @@
-use super::common_fixtures::CommonFixtures;
 use super::zerv::ZervFixture;
+use super::zerv_common::ZervCommon;
 use crate::version::zerv::{
     Component,
     PreReleaseLabel,
@@ -12,79 +12,79 @@ pub mod from {
 
     // Common fixtures - direct delegation
     pub fn v1_2_3() -> ZervFixture {
-        CommonFixtures::v1_2_3()
+        ZervCommon::v1_2_3()
     }
     pub fn v1_0_0() -> ZervFixture {
-        CommonFixtures::v1_0_0()
+        ZervCommon::v1_0_0()
     }
     pub fn v1_2_3_e2() -> ZervFixture {
-        CommonFixtures::v1_2_3_e2()
+        ZervCommon::v1_2_3_e2()
     }
     pub fn v1_2_3_a1() -> ZervFixture {
-        CommonFixtures::v1_2_3_a1()
+        ZervCommon::v1_2_3_a1()
     }
     pub fn v1_2_3_post1() -> ZervFixture {
-        CommonFixtures::v1_2_3_post1()
+        ZervCommon::v1_2_3_post1()
     }
     pub fn v1_0_0_e1() -> ZervFixture {
-        CommonFixtures::v1_0_0_e1()
+        ZervCommon::v1_0_0_e1()
     }
     pub fn v1_0_0_e2() -> ZervFixture {
-        CommonFixtures::v1_0_0_e2()
+        ZervCommon::v1_0_0_e2()
     }
     pub fn v1_0_0_e3() -> ZervFixture {
-        CommonFixtures::v1_0_0_e3()
+        ZervCommon::v1_0_0_e3()
     }
     pub fn v1_0_0_post1() -> ZervFixture {
-        CommonFixtures::v1_0_0_post1()
+        ZervCommon::v1_0_0_post1()
     }
     pub fn v1_0_0_post5() -> ZervFixture {
-        CommonFixtures::v1_0_0_post5()
+        ZervCommon::v1_0_0_post5()
     }
     pub fn v1_0_0_e2_a1() -> ZervFixture {
-        CommonFixtures::v1_0_0_e2_a1()
+        ZervCommon::v1_0_0_e2_a1()
     }
     pub fn v1_0_0_e3_b2() -> ZervFixture {
-        CommonFixtures::v1_0_0_e3_b2()
+        ZervCommon::v1_0_0_e3_b2()
     }
     pub fn v1_0_0_e1_rc5() -> ZervFixture {
-        CommonFixtures::v1_0_0_e1_rc5()
+        ZervCommon::v1_0_0_e1_rc5()
     }
     pub fn v1_0_0_e1_build() -> ZervFixture {
-        CommonFixtures::v1_0_0_e1_build()
+        ZervCommon::v1_0_0_e1_build()
     }
     pub fn v1_0_0_post1_build() -> ZervFixture {
-        CommonFixtures::v1_0_0_post1_build()
+        ZervCommon::v1_0_0_post1_build()
     }
     pub fn v1_0_0_e2_a1_build() -> ZervFixture {
-        CommonFixtures::v1_0_0_e2_a1_build()
+        ZervCommon::v1_0_0_e2_a1_build()
     }
     pub fn v1_0_0_complex_build() -> ZervFixture {
-        CommonFixtures::v1_0_0_complex_build()
+        ZervCommon::v1_0_0_complex_build()
     }
     pub fn v1_0_0_branch_dev() -> ZervFixture {
-        CommonFixtures::v1_0_0_branch_dev()
+        ZervCommon::v1_0_0_branch_dev()
     }
     pub fn v1_0_0_distance_5() -> ZervFixture {
-        CommonFixtures::v1_0_0_distance_5()
+        ZervCommon::v1_0_0_distance_5()
     }
     pub fn v1_0_0_commit_abc123() -> ZervFixture {
-        CommonFixtures::v1_0_0_commit_abc123()
+        ZervCommon::v1_0_0_commit_abc123()
     }
     pub fn v1_0_0_branch_distance_commit() -> ZervFixture {
-        CommonFixtures::v1_0_0_branch_distance_commit()
+        ZervCommon::v1_0_0_branch_distance_commit()
     }
     pub fn v1_2_3_ubuntu_build() -> ZervFixture {
-        CommonFixtures::v1_2_3_ubuntu_build()
+        ZervCommon::v1_2_3_ubuntu_build()
     }
     pub fn v1_0_0_custom_build_field(value: &str) -> ZervFixture {
-        CommonFixtures::v1_0_0_custom_build_field(value)
+        ZervCommon::v1_0_0_custom_build_field(value)
     }
     pub fn v1_0_0_custom_core_field(value: &str) -> ZervFixture {
-        CommonFixtures::v1_0_0_custom_core_field(value)
+        ZervCommon::v1_0_0_custom_core_field(value)
     }
     pub fn v1_0_0_custom_extra_field(value: &str) -> ZervFixture {
-        CommonFixtures::v1_0_0_custom_extra_field(value)
+        ZervCommon::v1_0_0_custom_extra_field(value)
     }
 
     // PEP440-specific fixtures only
@@ -193,7 +193,7 @@ pub mod from {
         v1_0_0_tier3()
             .with_dev(2)
             .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(789))
+            .with_build(Component::UInt(789))
     }
 
     pub fn v1_0_0_e1_a1_post1_dev1_complex() -> ZervFixture {
@@ -204,7 +204,7 @@ pub mod from {
             .with_dev(1)
             .with_build(Component::Str("complex".to_string()))
             .with_build(Component::Str("local".to_string()))
-            .with_build(Component::Int(456))
+            .with_build(Component::UInt(456))
     }
 
     pub fn v1_2_3_e2_a1_post1_dev1_local() -> ZervFixture {
@@ -215,22 +215,22 @@ pub mod from {
             .with_post(1)
             .with_dev(1)
             .with_build(Component::Str("local".to_string()))
-            .with_build(Component::Int(1))
+            .with_build(Component::UInt(1))
     }
 
     pub fn v1_0_0_duplicate_epoch() -> ZervFixture {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Rc, Some(1))
-            .with_extra_core(Component::Int(1))
-            .with_extra_core(Component::Int(2))
-            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::UInt(1))
+            .with_extra_core(Component::UInt(2))
+            .with_extra_core(Component::UInt(3))
             .with_extra_core(Component::Str("epoch".to_string()))
             .with_extra_core(Component::Str("epoch".to_string()))
     }
 
     // Override max complexity to use base version (no dev)
     pub fn v2_3_4_max_complexity() -> ZervFixture {
-        CommonFixtures::v2_3_4_max_complexity_base()
+        ZervCommon::v2_3_4_max_complexity_base()
     }
 }
 
@@ -286,8 +286,8 @@ pub mod to {
     pub fn v1_2_3_ubuntu_build() -> ZervFixture {
         v1_2_3_base().with_build_components(vec![
             Component::Str("ubuntu".to_string()),
-            Component::Int(20),
-            Component::Int(4),
+            Component::UInt(20),
+            Component::UInt(4),
         ])
     }
 
@@ -297,7 +297,10 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(1)
             .with_dev(1)
-            .with_build_components(vec![Component::Str("local".to_string()), Component::Int(1)])
+            .with_build_components(vec![
+                Component::Str("local".to_string()),
+                Component::UInt(1),
+            ])
     }
 
     // v1.0.0 variants
@@ -449,21 +452,21 @@ pub mod to {
     pub fn v1_0_0_e1_build() -> ZervFixture {
         v1_0_0_e1().with_build_components(vec![
             Component::Str("build".to_string()),
-            Component::Int(123),
+            Component::UInt(123),
         ])
     }
 
     pub fn v1_0_0_post1_build() -> ZervFixture {
         v1_0_0_base().with_post(1).with_build_components(vec![
             Component::Str("build".to_string()),
-            Component::Int(456),
+            Component::UInt(456),
         ])
     }
 
     pub fn v1_0_0_dev2_build() -> ZervFixture {
         v1_0_0_base().with_dev(2).with_build_components(vec![
             Component::Str("build".to_string()),
-            Component::Int(789),
+            Component::UInt(789),
         ])
     }
 
@@ -478,7 +481,7 @@ pub mod to {
         v1_0_0_base().with_build_components(vec![
             Component::Str("foo".to_string()),
             Component::Str("bar".to_string()),
-            Component::Int(123),
+            Component::UInt(123),
         ])
     }
 
@@ -491,7 +494,7 @@ pub mod to {
             .with_build_components(vec![
                 Component::Str("complex".to_string()),
                 Component::Str("local".to_string()),
-                Component::Int(456),
+                Component::UInt(456),
             ])
     }
 }

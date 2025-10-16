@@ -51,9 +51,9 @@ impl Ord for PreReleaseIdentifier {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (PreReleaseIdentifier::UInt(a), PreReleaseIdentifier::UInt(b)) => a.cmp(b),
-            (PreReleaseIdentifier::String(a), PreReleaseIdentifier::String(b)) => a.cmp(b),
-            (PreReleaseIdentifier::UInt(_), PreReleaseIdentifier::String(_)) => Ordering::Less,
-            (PreReleaseIdentifier::String(_), PreReleaseIdentifier::UInt(_)) => Ordering::Greater,
+            (PreReleaseIdentifier::Str(a), PreReleaseIdentifier::Str(b)) => a.cmp(b),
+            (PreReleaseIdentifier::UInt(_), PreReleaseIdentifier::Str(_)) => Ordering::Less,
+            (PreReleaseIdentifier::Str(_), PreReleaseIdentifier::UInt(_)) => Ordering::Greater,
         }
     }
 }
@@ -132,7 +132,7 @@ mod tests {
         fn test_stable_vs_pre_release() {
             let stable = SemVer::new(1, 0, 0);
             let pre_release = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())]);
 
             assert!(pre_release < stable);
             assert!(stable > pre_release);
@@ -141,9 +141,9 @@ mod tests {
         #[test]
         fn test_pre_release_string_ordering() {
             let alpha = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())]);
             let beta = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("beta".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("beta".to_string())]);
 
             assert!(alpha < beta);
             assert!(beta > alpha);
@@ -163,7 +163,7 @@ mod tests {
             let integer =
                 SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::UInt(1)]);
             let string = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())]);
 
             assert!(integer < string); // integers < strings
             assert!(string > integer);
@@ -172,9 +172,9 @@ mod tests {
         #[test]
         fn test_pre_release_length_ordering() {
             let shorter = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())]);
             let longer = SemVer::new(1, 0, 0).with_pre_release(vec![
-                PreReleaseIdentifier::String("alpha".to_string()),
+                PreReleaseIdentifier::Str("alpha".to_string()),
                 PreReleaseIdentifier::UInt(1),
             ]);
 
@@ -185,11 +185,11 @@ mod tests {
         #[test]
         fn test_complex_pre_release_ordering() {
             let v1 = SemVer::new(1, 0, 0).with_pre_release(vec![
-                PreReleaseIdentifier::String("alpha".to_string()),
+                PreReleaseIdentifier::Str("alpha".to_string()),
                 PreReleaseIdentifier::UInt(1),
             ]);
             let v2 = SemVer::new(1, 0, 0).with_pre_release(vec![
-                PreReleaseIdentifier::String("alpha".to_string()),
+                PreReleaseIdentifier::Str("alpha".to_string()),
                 PreReleaseIdentifier::UInt(2),
             ]);
 
@@ -204,9 +204,9 @@ mod tests {
         #[test]
         fn test_build_metadata_ignored_in_comparison() {
             let v1 = SemVer::new(1, 0, 0)
-                .with_build_metadata(vec![BuildMetadata::String("build1".to_string())]);
+                .with_build_metadata(vec![BuildMetadata::Str("build1".to_string())]);
             let v2 = SemVer::new(1, 0, 0)
-                .with_build_metadata(vec![BuildMetadata::String("build2".to_string())]);
+                .with_build_metadata(vec![BuildMetadata::Str("build2".to_string())]);
 
             assert_eq!(v1, v2); // build metadata is ignored
         }
@@ -214,11 +214,11 @@ mod tests {
         #[test]
         fn test_build_metadata_with_pre_release() {
             let v1 = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())])
-                .with_build_metadata(vec![BuildMetadata::String("build1".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())])
+                .with_build_metadata(vec![BuildMetadata::Str("build1".to_string())]);
             let v2 = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())])
-                .with_build_metadata(vec![BuildMetadata::String("build2".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())])
+                .with_build_metadata(vec![BuildMetadata::Str("build2".to_string())]);
 
             assert_eq!(v1, v2); // build metadata is ignored
         }
@@ -227,7 +227,7 @@ mod tests {
         fn test_no_build_metadata_vs_with_build_metadata() {
             let v1 = SemVer::new(1, 0, 0);
             let v2 = SemVer::new(1, 0, 0)
-                .with_build_metadata(vec![BuildMetadata::String("build".to_string())]);
+                .with_build_metadata(vec![BuildMetadata::Str("build".to_string())]);
 
             assert_eq!(v1, v2); // build metadata is ignored
         }
@@ -246,8 +246,8 @@ mod tests {
 
         #[test]
         fn test_string_identifier_ordering() {
-            let id1 = PreReleaseIdentifier::String("alpha".to_string());
-            let id2 = PreReleaseIdentifier::String("beta".to_string());
+            let id1 = PreReleaseIdentifier::Str("alpha".to_string());
+            let id2 = PreReleaseIdentifier::Str("beta".to_string());
             assert!(id1 < id2);
             assert!(id2 > id1);
         }
@@ -255,15 +255,15 @@ mod tests {
         #[test]
         fn test_mixed_identifier_ordering() {
             let integer = PreReleaseIdentifier::UInt(999);
-            let string = PreReleaseIdentifier::String("a".to_string());
+            let string = PreReleaseIdentifier::Str("a".to_string());
             assert!(integer < string); // integers always < strings
             assert!(string > integer);
         }
 
         #[test]
         fn test_identifier_equality() {
-            let id1 = PreReleaseIdentifier::String("alpha".to_string());
-            let id2 = PreReleaseIdentifier::String("alpha".to_string());
+            let id1 = PreReleaseIdentifier::Str("alpha".to_string());
+            let id2 = PreReleaseIdentifier::Str("alpha".to_string());
             assert_eq!(id1, id2);
 
             let id3 = PreReleaseIdentifier::UInt(42);
@@ -335,9 +335,9 @@ mod tests {
         #[test]
         fn test_transitivity() {
             let v1 = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())]);
             let v2 = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("beta".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("beta".to_string())]);
             let v3 = SemVer::new(1, 0, 0);
 
             assert!(v1 < v2);
@@ -393,9 +393,9 @@ mod tests {
         #[test]
         fn test_numeric_string_comparison() {
             let v1 = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("10".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("10".to_string())]);
             let v2 = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("2".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("2".to_string())]);
 
             // String comparison: "10" < "2" lexicographically
             assert!(v1 < v2);
@@ -406,7 +406,7 @@ mod tests {
             let integer =
                 SemVer::new(1, 0, 0).with_pre_release(vec![PreReleaseIdentifier::UInt(10)]);
             let string = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("2".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("2".to_string())]);
 
             // UInt < String regardless of numeric value
             assert!(integer < string);
@@ -428,9 +428,9 @@ mod tests {
 
         #[test]
         fn test_compare_pre_release_identifiers_different_lengths() {
-            let left = vec![PreReleaseIdentifier::String("alpha".to_string())];
+            let left = vec![PreReleaseIdentifier::Str("alpha".to_string())];
             let right = vec![
-                PreReleaseIdentifier::String("alpha".to_string()),
+                PreReleaseIdentifier::Str("alpha".to_string()),
                 PreReleaseIdentifier::UInt(1),
             ];
             assert_eq!(
@@ -446,11 +446,11 @@ mod tests {
         #[test]
         fn test_compare_pre_release_identifiers_same_prefix() {
             let left = vec![
-                PreReleaseIdentifier::String("alpha".to_string()),
+                PreReleaseIdentifier::Str("alpha".to_string()),
                 PreReleaseIdentifier::UInt(1),
             ];
             let right = vec![
-                PreReleaseIdentifier::String("alpha".to_string()),
+                PreReleaseIdentifier::Str("alpha".to_string()),
                 PreReleaseIdentifier::UInt(2),
             ];
             assert_eq!(

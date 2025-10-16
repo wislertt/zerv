@@ -6,9 +6,9 @@ use crate::version::zerv::{
 };
 
 /// Common base fixture builders shared between PEP440 and SemVer
-pub struct CommonFixtures;
+pub struct ZervCommon;
 
-impl CommonFixtures {
+impl ZervCommon {
     // Base versions
     pub fn v1_2_3() -> ZervFixture {
         ZervFixture::new().with_version(1, 2, 3)
@@ -118,25 +118,25 @@ impl CommonFixtures {
     pub fn v1_0_0_build() -> ZervFixture {
         Self::v1_0_0()
             .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(123))
+            .with_build(Component::UInt(123))
     }
 
     pub fn v1_0_0_a1_build() -> ZervFixture {
         Self::v1_0_0_a1()
             .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(123))
+            .with_build(Component::UInt(123))
     }
 
     pub fn v1_0_0_e1_build() -> ZervFixture {
         Self::v1_0_0_e1()
             .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(123))
+            .with_build(Component::UInt(123))
     }
 
     pub fn v1_0_0_post1_build() -> ZervFixture {
         Self::v1_0_0_post1()
             .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(456))
+            .with_build(Component::UInt(456))
     }
 
     pub fn v1_0_0_e2_a1_build() -> ZervFixture {
@@ -149,7 +149,7 @@ impl CommonFixtures {
         Self::v1_0_0()
             .with_build(Component::Str("foo".to_string()))
             .with_build(Component::Str("bar".to_string()))
-            .with_build(Component::Int(123))
+            .with_build(Component::UInt(123))
     }
 
     // VarField build metadata
@@ -177,7 +177,7 @@ impl CommonFixtures {
         Self::v1_2_3()
             .with_build(Component::Str("ubuntu".to_string()))
             .with_build(Component::Str("20".to_string()))
-            .with_build(Component::Int(4))
+            .with_build(Component::UInt(4))
     }
 
     // Custom field variants
@@ -223,17 +223,17 @@ impl CommonFixtures {
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(2)
             .with_core(Component::Var(Var::Custom("core_custom".to_string())))
-            .with_core(Component::Int(99))
+            .with_core(Component::UInt(99))
             .with_extra_core(Component::Var(Var::Custom("extra_custom".to_string())))
             .with_extra_core(Component::Str("literal".to_string()))
-            .with_extra_core(Component::Int(42))
+            .with_extra_core(Component::UInt(42))
             .with_build(Component::Var(Var::BumpedBranch))
             .with_build(Component::Var(Var::Distance))
             .with_build(Component::Var(Var::BumpedCommitHashShort))
             .with_build(Component::Var(Var::Dirty))
             .with_build(Component::Var(Var::Custom("build_custom".to_string())))
             .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(123))
+            .with_build(Component::UInt(123))
             .with_branch("feature/complex-test".to_string())
             .with_distance(7)
             .with_commit_hash("abcdef1234567890".to_string())

@@ -247,6 +247,7 @@ mod tests {
         assert_eq!(s.sanitize("no-digits"), "");
         assert_eq!(s.sanitize("abc"), "");
         assert_eq!(s.sanitize(""), "");
+        assert_eq!(s.sanitize("-123"), "");
     }
 
     #[test]

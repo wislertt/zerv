@@ -141,7 +141,7 @@ impl SemVer {
         if let Some(var) = processor.pending_var.take() {
             processor.finalize_var(var, Some(n))?;
         } else {
-            processor.schema.push_extra_core(Component::Int(n))?;
+            processor.schema.push_extra_core(Component::UInt(n))?;
         }
         Ok(())
     }
@@ -152,7 +152,7 @@ impl SemVer {
     ) -> Result<(), ZervError> {
         for identifier in pre_release {
             match identifier {
-                PreReleaseIdentifier::String(s) => {
+                PreReleaseIdentifier::Str(s) => {
                     Self::process_string_identifier(processor, s)?;
                 }
                 PreReleaseIdentifier::UInt(n) => {
@@ -169,8 +169,8 @@ impl SemVer {
     ) -> Result<(), ZervError> {
         for metadata in build_metadata {
             let component = match metadata {
-                BuildMetadata::String(s) => Component::Str(s.clone()),
-                BuildMetadata::UInt(n) => Component::Int(*n),
+                BuildMetadata::Str(s) => Component::Str(s.clone()),
+                BuildMetadata::UInt(n) => Component::UInt(*n),
             };
             schema.push_build(component)?;
         }

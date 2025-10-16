@@ -26,10 +26,13 @@ impl ZervSchema {
 
     // Validate core section
     fn validate_core(&self) -> Result<(), ZervError> {
-        // Existing component validation
         Self::validate_components(self.core())?;
+        let seen_primary = self.validate_core_placement()?;
+        self.validate_primary_order(&seen_primary)?;
+        Ok(())
+    }
 
-        // Component placement validation
+    fn validate_core_placement(&self) -> Result<Vec<Var>, ZervError> {
         let mut seen_primary = Vec::new();
 
         for component in self.core() {
@@ -46,28 +49,28 @@ impl ZervSchema {
                         "Secondary component {var:?} must be in extra_core section"
                     )));
                 }
-                // Context components allowed anywhere
             }
         }
 
-        // Check primary component order: major → minor → patch
-        if seen_primary.len() > 1 {
-            let order_map = Var::primary_component_order();
+        Ok(seen_primary)
+    }
 
-            let mut indices = Vec::new();
-            for var in &seen_primary {
-                if let Some(index) = order_map.get_index_of(var) {
-                    indices.push(index);
-                }
-            }
+    fn validate_primary_order(&self, seen_primary: &[Var]) -> Result<(), ZervError> {
+        if seen_primary.len() <= 1 {
+            return Ok(());
+        }
 
-            // Check indices are increasing
-            for i in 1..indices.len() {
-                if indices[i] <= indices[i - 1] {
-                    return Err(ZervError::StdinError(
-                        "Primary components must be in order: major → minor → patch".to_string(),
-                    ));
-                }
+        let order_map = Var::primary_component_order();
+        let indices: Vec<usize> = seen_primary
+            .iter()
+            .filter_map(|var| order_map.get_index_of(var))
+            .collect();
+
+        for i in 1..indices.len() {
+            if indices[i] <= indices[i - 1] {
+                return Err(ZervError::StdinError(
+                    "Primary components must be in order: major → minor → patch".to_string(),
+                ));
             }
         }
 
@@ -149,7 +152,7 @@ impl ZervSchema {
                 }
             }
             Component::Str(_) => {}
-            Component::Int(_) => {}
+            Component::UInt(_) => {}
         }
         Ok(())
     }
@@ -238,7 +241,7 @@ mod tests {
     #[case(1234567890)]
     #[case(u64::MAX)]
     fn test_validate_component_integer(#[case] value: u64) {
-        let component = Component::Int(value);
+        let component = Component::UInt(value);
         assert!(ZervSchema::validate_component(&component).is_ok());
     }
 
@@ -249,7 +252,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case(vec![Component::Var(Var::Major), Component::Str("test".to_string()), Component::Int(42)], true)]
+    #[case(vec![Component::Var(Var::Major), Component::Str("test".to_string()), Component::UInt(42)], true)]
     #[case(vec![Component::Var(Var::Major), Component::Var(Var::Timestamp("INVALID".to_string()))], false)]
     fn test_validate_components(#[case] components: Vec<Component>, #[case] should_succeed: bool) {
         let result = ZervSchema::validate_components(&components);

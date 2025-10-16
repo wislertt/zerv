@@ -402,7 +402,7 @@ mod tests {
             .with_post(1)
             .with_dev(1)
             .with_build(Component::Str("local".to_string()))
-            .with_build(Component::Int(1))
+            .with_build(Component::UInt(1))
             .build()
             .clone();
         let ron_string = complex_zerv.to_string();

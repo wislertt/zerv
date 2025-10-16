@@ -94,7 +94,7 @@ impl Zerv {
         override_value: Option<String>,
         bump_value: Option<String>,
     ) -> Result<(), ZervError> {
-        if let Component::Int(current_value) = component {
+        if let Component::UInt(current_value) = component {
             // Parse override and bump values for UInt components
             let override_val = Self::parse_optional_u32(override_value.as_deref(), "UInt")?;
             let bump_val = Self::parse_optional_u32(bump_value.as_deref(), "UInt")?;
@@ -216,7 +216,7 @@ impl Zerv {
                     _ => unreachable!(),
                 }
             }
-            Component::Int(_) => {
+            Component::UInt(_) => {
                 // Process UInt component directly (mutates the component)
                 // For integer components, we need to update through setters
                 let mut components_vec = match section {
@@ -347,20 +347,20 @@ mod tests {
 
     // Test process_schema_component with UInt components
     #[rstest]
-    #[case(Some("100"), None, Component::Int(100))] // override only
-    #[case(None, Some("5"), Component::Int(47))] // bump only (42 + 5)
-    #[case(Some("100"), Some("5"), Component::Int(105))] // override + bump (100 + 5)
-    #[case(None, None, Component::Int(42))] // no changes
-    #[case(Some("50"), Some("10"), Component::Int(60))] // override 50 + bump 10
-    #[case(Some("0"), Some("25"), Component::Int(25))] // override 0 + bump 25
-    #[case(Some("200"), Some("1"), Component::Int(201))] // override 200 + bump 1
+    #[case(Some("100"), None, Component::UInt(100))] // override only
+    #[case(None, Some("5"), Component::UInt(47))] // bump only (42 + 5)
+    #[case(Some("100"), Some("5"), Component::UInt(105))] // override + bump (100 + 5)
+    #[case(None, None, Component::UInt(42))] // no changes
+    #[case(Some("50"), Some("10"), Component::UInt(60))] // override 50 + bump 10
+    #[case(Some("0"), Some("25"), Component::UInt(25))] // override 0 + bump 25
+    #[case(Some("200"), Some("1"), Component::UInt(201))] // override 200 + bump 1
     fn test_process_schema_component_integer(
         #[case] override_value: Option<&str>,
         #[case] bump_value: Option<&str>,
         #[case] expected: Component,
     ) {
         let mut zerv = ZervFixture::new()
-            .with_core_components(vec![Component::Int(42)])
+            .with_core_components(vec![Component::UInt(42)])
             .build();
 
         zerv.process_schema_component(

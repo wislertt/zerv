@@ -29,7 +29,7 @@ impl fmt::Display for SemVer {
 impl fmt::Display for PreReleaseIdentifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PreReleaseIdentifier::String(s) => write!(f, "{s}"),
+            PreReleaseIdentifier::Str(s) => write!(f, "{s}"),
             PreReleaseIdentifier::UInt(n) => write!(f, "{n}"),
         }
     }
@@ -38,7 +38,7 @@ impl fmt::Display for PreReleaseIdentifier {
 impl fmt::Display for BuildMetadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BuildMetadata::String(s) => write!(f, "{s}"),
+            BuildMetadata::Str(s) => write!(f, "{s}"),
             BuildMetadata::UInt(n) => write!(f, "{n}"),
         }
     }
@@ -101,7 +101,7 @@ mod tests {
         #[test]
         fn test_single_string_pre_release() {
             let version = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())]);
             assert_eq!(version.to_string(), "1.0.0-alpha");
         }
 
@@ -115,7 +115,7 @@ mod tests {
         #[test]
         fn test_mixed_pre_release() {
             let version = SemVer::new(1, 0, 0).with_pre_release(vec![
-                PreReleaseIdentifier::String("alpha".to_string()),
+                PreReleaseIdentifier::Str("alpha".to_string()),
                 PreReleaseIdentifier::UInt(1),
             ]);
             assert_eq!(version.to_string(), "1.0.0-alpha.1");
@@ -124,9 +124,9 @@ mod tests {
         #[test]
         fn test_complex_pre_release() {
             let version = SemVer::new(2, 1, 0).with_pre_release(vec![
-                PreReleaseIdentifier::String("rc".to_string()),
+                PreReleaseIdentifier::Str("rc".to_string()),
                 PreReleaseIdentifier::UInt(2),
-                PreReleaseIdentifier::String("build".to_string()),
+                PreReleaseIdentifier::Str("build".to_string()),
                 PreReleaseIdentifier::UInt(456),
             ]);
             assert_eq!(version.to_string(), "2.1.0-rc.2.build.456");
@@ -148,7 +148,7 @@ mod tests {
         #[case("123abc")]
         fn test_various_string_pre_release(#[case] pre_release: &str) {
             let version = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String(pre_release.to_string())]);
+                .with_pre_release(vec![PreReleaseIdentifier::Str(pre_release.to_string())]);
             assert_eq!(version.to_string(), format!("1.0.0-{pre_release}"));
         }
 
@@ -170,7 +170,7 @@ mod tests {
         #[test]
         fn test_single_string_build_metadata() {
             let version = SemVer::new(1, 0, 0)
-                .with_build_metadata(vec![BuildMetadata::String("build".to_string())]);
+                .with_build_metadata(vec![BuildMetadata::Str("build".to_string())]);
             assert_eq!(version.to_string(), "1.0.0+build");
         }
 
@@ -183,8 +183,8 @@ mod tests {
         #[test]
         fn test_mixed_build_metadata() {
             let version = SemVer::new(1, 0, 0).with_build_metadata(vec![
-                BuildMetadata::String("commit".to_string()),
-                BuildMetadata::String("abc123".to_string()),
+                BuildMetadata::Str("commit".to_string()),
+                BuildMetadata::Str("abc123".to_string()),
             ]);
             assert_eq!(version.to_string(), "1.0.0+commit.abc123");
         }
@@ -192,10 +192,10 @@ mod tests {
         #[test]
         fn test_complex_build_metadata() {
             let version = SemVer::new(1, 5, 2).with_build_metadata(vec![
-                BuildMetadata::String("build".to_string()),
+                BuildMetadata::Str("build".to_string()),
                 BuildMetadata::UInt(789),
-                BuildMetadata::String("sha".to_string()),
-                BuildMetadata::String("def456".to_string()),
+                BuildMetadata::Str("sha".to_string()),
+                BuildMetadata::Str("def456".to_string()),
             ]);
             assert_eq!(version.to_string(), "1.5.2+build.789.sha.def456");
         }
@@ -215,7 +215,7 @@ mod tests {
         #[case("20240101")]
         fn test_various_string_build_metadata(#[case] metadata: &str) {
             let version = SemVer::new(1, 0, 0)
-                .with_build_metadata(vec![BuildMetadata::String(metadata.to_string())]);
+                .with_build_metadata(vec![BuildMetadata::Str(metadata.to_string())]);
             assert_eq!(version.to_string(), format!("1.0.0+{metadata}"));
         }
 
@@ -238,11 +238,11 @@ mod tests {
         fn test_pre_release_and_build_metadata() {
             let version = SemVer::new(1, 2, 3)
                 .with_pre_release(vec![
-                    PreReleaseIdentifier::String("alpha".to_string()),
+                    PreReleaseIdentifier::Str("alpha".to_string()),
                     PreReleaseIdentifier::UInt(1),
                 ])
                 .with_build_metadata(vec![
-                    BuildMetadata::String("build".to_string()),
+                    BuildMetadata::Str("build".to_string()),
                     BuildMetadata::UInt(456),
                 ]);
             assert_eq!(version.to_string(), "1.2.3-alpha.1+build.456");
@@ -252,13 +252,13 @@ mod tests {
         fn test_complex_full_version() {
             let version = SemVer::new(10, 20, 30)
                 .with_pre_release(vec![
-                    PreReleaseIdentifier::String("rc".to_string()),
+                    PreReleaseIdentifier::Str("rc".to_string()),
                     PreReleaseIdentifier::UInt(2),
-                    PreReleaseIdentifier::String("hotfix".to_string()),
+                    PreReleaseIdentifier::Str("hotfix".to_string()),
                 ])
                 .with_build_metadata(vec![
-                    BuildMetadata::String("commit".to_string()),
-                    BuildMetadata::String("abc123def".to_string()),
+                    BuildMetadata::Str("commit".to_string()),
+                    BuildMetadata::Str("abc123def".to_string()),
                     BuildMetadata::UInt(20240315),
                 ]);
             assert_eq!(
@@ -271,14 +271,14 @@ mod tests {
         fn test_empty_pre_release_with_build_metadata() {
             let version = SemVer::new(1, 0, 0)
                 .with_pre_release(vec![])
-                .with_build_metadata(vec![BuildMetadata::String("build".to_string())]);
+                .with_build_metadata(vec![BuildMetadata::Str("build".to_string())]);
             assert_eq!(version.to_string(), "1.0.0+build");
         }
 
         #[test]
         fn test_pre_release_with_empty_build_metadata() {
             let version = SemVer::new(1, 0, 0)
-                .with_pre_release(vec![PreReleaseIdentifier::String("alpha".to_string())])
+                .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())])
                 .with_build_metadata(vec![]);
             assert_eq!(version.to_string(), "1.0.0-alpha");
         }
@@ -297,7 +297,7 @@ mod tests {
 
         #[test]
         fn test_pre_release_identifier_string() {
-            let identifier = PreReleaseIdentifier::String("alpha".to_string());
+            let identifier = PreReleaseIdentifier::Str("alpha".to_string());
             assert_eq!(identifier.to_string(), "alpha");
         }
 
@@ -309,7 +309,7 @@ mod tests {
 
         #[test]
         fn test_build_metadata_string() {
-            let metadata = BuildMetadata::String("build".to_string());
+            let metadata = BuildMetadata::Str("build".to_string());
             assert_eq!(metadata.to_string(), "build");
         }
 
@@ -331,16 +331,16 @@ mod tests {
 
         #[test]
         fn test_format_identifiers_single() {
-            let identifiers = vec![PreReleaseIdentifier::String("alpha".to_string())];
+            let identifiers = vec![PreReleaseIdentifier::Str("alpha".to_string())];
             assert_eq!(format_identifiers(&identifiers), "alpha");
         }
 
         #[test]
         fn test_format_identifiers_multiple() {
             let identifiers = vec![
-                PreReleaseIdentifier::String("alpha".to_string()),
+                PreReleaseIdentifier::Str("alpha".to_string()),
                 PreReleaseIdentifier::UInt(1),
-                PreReleaseIdentifier::String("build".to_string()),
+                PreReleaseIdentifier::Str("build".to_string()),
             ];
             assert_eq!(format_identifiers(&identifiers), "alpha.1.build");
         }
@@ -353,15 +353,15 @@ mod tests {
 
         #[test]
         fn test_format_build_metadata_single() {
-            let metadata = vec![BuildMetadata::String("build".to_string())];
+            let metadata = vec![BuildMetadata::Str("build".to_string())];
             assert_eq!(format_build_metadata(&metadata), "build");
         }
 
         #[test]
         fn test_format_build_metadata_multiple() {
             let metadata = vec![
-                BuildMetadata::String("commit".to_string()),
-                BuildMetadata::String("abc123".to_string()),
+                BuildMetadata::Str("commit".to_string()),
+                BuildMetadata::Str("abc123".to_string()),
                 BuildMetadata::UInt(789),
             ];
             assert_eq!(format_build_metadata(&metadata), "commit.abc123.789");
