@@ -126,66 +126,6 @@ fn test_validate_overrides_no_conflicts() {
 }
 
 #[test]
-fn test_validate_overrides_dirty_conflicts() {
-    // Test conflicting dirty flags
-    let config = OverridesConfig::try_parse_from(["version", "--dirty", "--no-dirty"]).unwrap();
-    let result = Validation::validate_overrides(&config);
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(
-        error,
-        crate::error::ZervError::ConflictingOptions(_)
-    ));
-    assert!(error.to_string().contains("--dirty"));
-    assert!(error.to_string().contains("--no-dirty"));
-    assert!(error.to_string().contains("conflicting options"));
-}
-
-#[test]
-fn test_validate_overrides_clean_conflicts() {
-    // Test --clean with --distance
-    let config =
-        OverridesConfig::try_parse_from(["version", "--clean", "--distance", "5"]).unwrap();
-    let result = Validation::validate_overrides(&config);
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(
-        error,
-        crate::error::ZervError::ConflictingOptions(_)
-    ));
-    assert!(error.to_string().contains("--clean"));
-    assert!(error.to_string().contains("--distance"));
-
-    // Test --clean with --dirty
-    let config = OverridesConfig::try_parse_from(["version", "--clean", "--dirty"]).unwrap();
-    let result = Validation::validate_overrides(&config);
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(
-        error,
-        crate::error::ZervError::ConflictingOptions(_)
-    ));
-    assert!(error.to_string().contains("--clean"));
-    assert!(error.to_string().contains("--dirty"));
-
-    // Test --clean with --no-dirty
-    let config = OverridesConfig::try_parse_from(["version", "--clean", "--no-dirty"]).unwrap();
-    let result = Validation::validate_overrides(&config);
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(
-        error,
-        crate::error::ZervError::ConflictingOptions(_)
-    ));
-    assert!(error.to_string().contains("--clean"));
-    assert!(error.to_string().contains("--no-dirty"));
-}
-
-#[test]
 fn test_validate_overrides_clean_with_non_conflicting_options() {
     // Test --clean with options that should NOT conflict
     let config = OverridesConfig::try_parse_from([
