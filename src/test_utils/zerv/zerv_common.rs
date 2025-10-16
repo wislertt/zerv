@@ -6,9 +6,9 @@ use crate::version::zerv::{
 };
 
 /// Common base fixture builders shared between PEP440 and SemVer
-pub struct CommonFixtures;
+pub struct ZervCommon;
 
-impl CommonFixtures {
+impl ZervCommon {
     // Base versions
     pub fn v1_2_3() -> ZervFixture {
         ZervFixture::new().with_version(1, 2, 3)

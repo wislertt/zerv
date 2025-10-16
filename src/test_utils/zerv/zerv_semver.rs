@@ -1,5 +1,5 @@
 use super::ZervFixture;
-use super::common_fixtures::CommonFixtures;
+use super::zerv_common::ZervCommon;
 use crate::version::zerv::{
     Component,
     PreReleaseLabel,
@@ -610,94 +610,94 @@ pub mod from {
 
     // Common fixtures - direct delegation
     pub fn v1_2_3() -> ZervFixture {
-        CommonFixtures::v1_2_3()
+        ZervCommon::v1_2_3()
     }
     pub fn v1_0_0() -> ZervFixture {
-        CommonFixtures::v1_0_0()
+        ZervCommon::v1_0_0()
     }
     pub fn v1_0_0_a1() -> ZervFixture {
-        CommonFixtures::v1_0_0_a1()
+        ZervCommon::v1_0_0_a1()
     }
     pub fn v1_0_0_b2() -> ZervFixture {
-        CommonFixtures::v1_0_0_b2()
+        ZervCommon::v1_0_0_b2()
     }
     pub fn v1_0_0_rc3() -> ZervFixture {
-        CommonFixtures::v1_0_0_rc3()
+        ZervCommon::v1_0_0_rc3()
     }
     pub fn v1_0_0_a_none() -> ZervFixture {
-        CommonFixtures::v1_0_0_a_none()
+        ZervCommon::v1_0_0_a_none()
     }
     pub fn v1_0_0_b_none() -> ZervFixture {
-        CommonFixtures::v1_0_0_b_none()
+        ZervCommon::v1_0_0_b_none()
     }
     pub fn v1_0_0_rc_none() -> ZervFixture {
-        CommonFixtures::v1_0_0_rc_none()
+        ZervCommon::v1_0_0_rc_none()
     }
     pub fn v1_0_0_a0() -> ZervFixture {
-        CommonFixtures::v1_0_0_a0()
+        ZervCommon::v1_0_0_a0()
     }
     pub fn v1_0_0_b0() -> ZervFixture {
-        CommonFixtures::v1_0_0_b0()
+        ZervCommon::v1_0_0_b0()
     }
     pub fn v1_0_0_build() -> ZervFixture {
-        CommonFixtures::v1_0_0_build()
+        ZervCommon::v1_0_0_build()
     }
     pub fn v1_0_0_a1_build() -> ZervFixture {
-        CommonFixtures::v1_0_0_a1_build()
+        ZervCommon::v1_0_0_a1_build()
     }
     pub fn v1_0_0_e1() -> ZervFixture {
-        CommonFixtures::v1_0_0_e1()
+        ZervCommon::v1_0_0_e1()
     }
     pub fn v1_0_0_e1_build() -> ZervFixture {
-        CommonFixtures::v1_0_0_e1_build()
+        ZervCommon::v1_0_0_e1_build()
     }
     pub fn v1_0_0_post1_build() -> ZervFixture {
-        CommonFixtures::v1_0_0_post1_build()
+        ZervCommon::v1_0_0_post1_build()
     }
     pub fn v1_0_0_e2_a1_build() -> ZervFixture {
-        CommonFixtures::v1_0_0_e2_a1_build()
+        ZervCommon::v1_0_0_e2_a1_build()
     }
     pub fn v1_0_0_post1() -> ZervFixture {
-        CommonFixtures::v1_0_0_post1()
+        ZervCommon::v1_0_0_post1()
     }
     pub fn v1_0_0_post5() -> ZervFixture {
-        CommonFixtures::v1_0_0_post5()
+        ZervCommon::v1_0_0_post5()
     }
     pub fn v1_0_0_post0() -> ZervFixture {
-        CommonFixtures::v1_0_0_post0()
+        ZervCommon::v1_0_0_post0()
     }
     pub fn v1_0_0_e2_a1() -> ZervFixture {
-        CommonFixtures::v1_0_0_e2_a1()
+        ZervCommon::v1_0_0_e2_a1()
     }
     pub fn v1_0_0_e3_b2() -> ZervFixture {
-        CommonFixtures::v1_0_0_e3_b2()
+        ZervCommon::v1_0_0_e3_b2()
     }
     pub fn v1_0_0_e1_rc5() -> ZervFixture {
-        CommonFixtures::v1_0_0_e1_rc5()
+        ZervCommon::v1_0_0_e1_rc5()
     }
     pub fn v1_0_0_e4_a_none() -> ZervFixture {
-        CommonFixtures::v1_0_0_e4_a_none()
+        ZervCommon::v1_0_0_e4_a_none()
     }
     pub fn v1_0_0_branch_dev() -> ZervFixture {
-        CommonFixtures::v1_0_0_branch_dev()
+        ZervCommon::v1_0_0_branch_dev()
     }
     pub fn v1_0_0_distance_5() -> ZervFixture {
-        CommonFixtures::v1_0_0_distance_5()
+        ZervCommon::v1_0_0_distance_5()
     }
     pub fn v1_0_0_commit_abc123() -> ZervFixture {
-        CommonFixtures::v1_0_0_commit_abc123()
+        ZervCommon::v1_0_0_commit_abc123()
     }
     pub fn v1_0_0_branch_distance_commit() -> ZervFixture {
-        CommonFixtures::v1_0_0_branch_distance_commit()
+        ZervCommon::v1_0_0_branch_distance_commit()
     }
     pub fn v1_0_0_custom_core_field(value: &str) -> ZervFixture {
-        CommonFixtures::v1_0_0_custom_core_field(value)
+        ZervCommon::v1_0_0_custom_core_field(value)
     }
     pub fn v1_0_0_custom_extra_field(value: &str) -> ZervFixture {
-        CommonFixtures::v1_0_0_custom_extra_field(value)
+        ZervCommon::v1_0_0_custom_extra_field(value)
     }
     pub fn v1_0_0_custom_build_field(value: &str) -> ZervFixture {
-        CommonFixtures::v1_0_0_custom_build_field(value)
+        ZervCommon::v1_0_0_custom_build_field(value)
     }
 
     // SemVer-specific fixtures only
@@ -991,6 +991,6 @@ pub mod from {
 
     // Override max complexity to use version with dev
     pub fn v2_3_4_max_complexity() -> ZervFixture {
-        CommonFixtures::v2_3_4_max_complexity_with_dev()
+        ZervCommon::v2_3_4_max_complexity_with_dev()
     }
 }
