@@ -387,7 +387,7 @@ mod tests {
                     Component::Var(Var::Patch),
                 ],
                 vec![Component::Var(Var::PreRelease)],
-                vec![Component::Str("build".to_string()), Component::Int(123)],
+                vec![Component::Str("build".to_string()), Component::UInt(123)],
                 PrecedenceOrder::default(),
             )
             .unwrap();

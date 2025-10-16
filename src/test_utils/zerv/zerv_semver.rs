@@ -59,21 +59,21 @@ pub mod to {
     pub fn v1_0_0_something_1() -> ZervFixture {
         v1_0_0().with_extra_core_components(vec![
             Component::Str("something".to_string()),
-            Component::Int(1),
+            Component::UInt(1),
         ])
     }
 
     pub fn v1_0_0_build() -> ZervFixture {
         v1_0_0().with_build_components(vec![
             Component::Str("build".to_string()),
-            Component::Int(123),
+            Component::UInt(123),
         ])
     }
 
     pub fn v1_0_0_a1_build() -> ZervFixture {
         v1_0_0_a1().with_build_components(vec![
             Component::Str("build".to_string()),
-            Component::Int(123),
+            Component::UInt(123),
         ])
     }
 
@@ -83,13 +83,13 @@ pub mod to {
             .with_extra_core_components(vec![
                 Component::Var(Var::PreRelease),
                 Component::Str("lowercase".to_string()),
-                Component::Int(4),
+                Component::UInt(4),
                 Component::Str("UPPERCASE".to_string()),
-                Component::Int(5),
+                Component::UInt(5),
             ])
             .with_build_components(vec![
                 Component::Str("build".to_string()),
-                Component::Int(123),
+                Component::UInt(123),
             ])
     }
 
@@ -257,14 +257,14 @@ pub mod to {
     pub fn v1_0_0_epoch_1_build() -> ZervFixture {
         v1_0_0_epoch_1().with_build_components(vec![
             Component::Str("build".to_string()),
-            Component::Int(123),
+            Component::UInt(123),
         ])
     }
 
     pub fn v1_0_0_post_1_build() -> ZervFixture {
         v1_0_0_post_1().with_build_components(vec![
             Component::Str("build".to_string()),
-            Component::Int(456),
+            Component::UInt(456),
         ])
     }
 
@@ -274,7 +274,7 @@ pub mod to {
             .with_extra_core_components(vec![Component::Var(Var::Dev)])
             .with_build_components(vec![
                 Component::Str("build".to_string()),
-                Component::Int(789),
+                Component::UInt(789),
             ])
     }
 
@@ -303,7 +303,7 @@ pub mod to {
             .with_extra_core_components(vec![
                 Component::Var(Var::PreRelease),
                 Component::Str("beta".to_string()),
-                Component::Int(2),
+                Component::UInt(2),
             ])
     }
 
@@ -313,9 +313,9 @@ pub mod to {
             .with_extra_core_components(vec![
                 Component::Var(Var::PreRelease),
                 Component::Str("alpha".to_string()),
-                Component::Int(2),
+                Component::UInt(2),
                 Component::Str("beta".to_string()),
-                Component::Int(3),
+                Component::UInt(3),
             ])
     }
 
@@ -325,7 +325,7 @@ pub mod to {
             .with_extra_core_components(vec![
                 Component::Var(Var::PreRelease),
                 Component::Str("alpha".to_string()),
-                Component::Int(1),
+                Component::UInt(1),
             ])
     }
 
@@ -337,7 +337,7 @@ pub mod to {
                 Component::Var(Var::PreRelease),
                 Component::Str("beta".to_string()),
                 Component::Str("rc".to_string()),
-                Component::Int(1),
+                Component::UInt(1),
             ])
     }
 
@@ -346,7 +346,7 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Alpha, None)
             .with_extra_core_components(vec![
                 Component::Str("foo".to_string()),
-                Component::Int(1),
+                Component::UInt(1),
                 Component::Var(Var::PreRelease),
             ])
     }
@@ -356,7 +356,7 @@ pub mod to {
             .with_pre_release(PreReleaseLabel::Beta, None)
             .with_extra_core_components(vec![
                 Component::Str("bar".to_string()),
-                Component::Int(2),
+                Component::UInt(2),
                 Component::Var(Var::PreRelease),
             ])
     }
@@ -558,16 +558,16 @@ pub mod to {
             .with_extra_core_components(vec![
                 Component::Var(Var::Epoch),     // epoch.1 -> Var(Epoch)
                 Component::Str("epoch".to_string()),  // epoch.2 -> Str("epoch"), Int(2)
-                Component::Int(2),
+                Component::UInt(2),
                 Component::Var(Var::Post),      // post.3 -> Var(Post)
                 Component::Str("post".to_string()),   // post.4 -> Str("post"), Int(4)
-                Component::Int(4),
+                Component::UInt(4),
                 Component::Var(Var::Dev),       // dev.5 -> Var(Dev)
                 Component::Str("dev".to_string()),    // dev.6 -> Str("dev"), Int(6)
-                Component::Int(6),
+                Component::UInt(6),
                 Component::Var(Var::PreRelease), // alpha.7 -> Var(PreRelease)
                 Component::Str("alpha".to_string()),  // alpha.8 -> Str("alpha"), Int(8)
-                Component::Int(8),
+                Component::UInt(8),
             ])
     }
 
@@ -594,12 +594,12 @@ pub mod to {
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, None)
             .with_extra_core_components(vec![
-                Component::Int(10),
+                Component::UInt(10),
                 Component::Var(Var::PreRelease),
                 Component::Str("rc".to_string()),
                 Component::Var(Var::Epoch),
                 Component::Str("rc".to_string()),
-                Component::Int(3),
+                Component::UInt(3),
             ])
     }
 }
@@ -704,20 +704,20 @@ pub mod from {
     pub fn v1_0_0_extra_something() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("something".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     pub fn v1_0_0_foo_alpha() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("foo".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("alpha".to_string()))
     }
 
     pub fn v1_0_0_bar_beta() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("bar".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("beta".to_string()))
     }
 
@@ -749,98 +749,98 @@ pub mod from {
     pub fn v1_0_0_post1_dev2() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
     }
 
     pub fn v1_0_0_dev3_post4() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::UInt(3))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(4))
+            .with_extra_core(Component::UInt(4))
     }
 
     // Pre-release + post combinations
     pub fn v1_0_0_a1_post2() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("alpha".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
     }
 
     pub fn v1_0_0_b3_post1() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("beta".to_string()))
-            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::UInt(3))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     pub fn v1_0_0_rc2_post5() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("rc".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(5))
+            .with_extra_core(Component::UInt(5))
     }
 
     // Pre-release + dev combinations
     pub fn v1_0_0_a1_dev2() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("alpha".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
     }
 
     pub fn v1_0_0_b2_dev1() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("beta".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     pub fn v1_0_0_rc1_dev3() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("rc".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::UInt(3))
     }
 
     // Triple combinations
     pub fn v1_0_0_a1_post2_dev3() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("alpha".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::UInt(3))
     }
 
     pub fn v1_0_0_b2_dev1_post3() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("beta".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::UInt(3))
     }
 
     pub fn v1_0_0_rc1_post1_dev1() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("rc".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     // Epoch + post + dev combinations
@@ -848,18 +848,18 @@ pub mod from {
         v1_0_0()
             .with_epoch(2)
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::UInt(3))
     }
 
     pub fn v1_0_0_e1_dev2_post1() -> ZervFixture {
         v1_0_0()
             .with_epoch(1)
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     // All components together
@@ -867,30 +867,30 @@ pub mod from {
         v1_0_0()
             .with_epoch(3)
             .with_extra_core(Component::Str("alpha".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     pub fn v1_0_0_e1_b2_dev3_post1() -> ZervFixture {
         v1_0_0()
             .with_epoch(1)
             .with_extra_core(Component::Str("beta".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::UInt(3))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     pub fn v1_0_0_dev2_build() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(789))
+            .with_build(Component::UInt(789))
     }
 
     // Mixed with extra core
@@ -899,7 +899,7 @@ pub mod from {
             .with_epoch(1)
             .with_extra_core(Component::Str("foo".to_string()))
             .with_extra_core(Component::Str("alpha".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
     }
 
     pub fn v1_0_0_e1_foo_post2() -> ZervFixture {
@@ -907,7 +907,7 @@ pub mod from {
             .with_epoch(1)
             .with_extra_core(Component::Str("foo".to_string()))
             .with_extra_core(Component::Str("post".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
     }
 
     pub fn v1_0_0_e2_bar_dev1() -> ZervFixture {
@@ -915,7 +915,7 @@ pub mod from {
             .with_epoch(2)
             .with_extra_core(Component::Str("bar".to_string()))
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     // Core values variants
@@ -932,11 +932,11 @@ pub mod from {
         v1_0_0()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_extra_core(Component::Str("lowercase".to_string()))
-            .with_extra_core(Component::Int(4))
+            .with_extra_core(Component::UInt(4))
             .with_extra_core(Component::Str("UPPERCASE".to_string()))
-            .with_extra_core(Component::Int(5))
+            .with_extra_core(Component::UInt(5))
             .with_build(Component::Str("build".to_string()))
-            .with_build(Component::Int(123))
+            .with_build(Component::UInt(123))
     }
 
     pub fn v1_0_0_foo_bar_b2_baz() -> ZervFixture {
@@ -944,33 +944,33 @@ pub mod from {
             .with_extra_core(Component::Str("foo".to_string()))
             .with_extra_core(Component::Str("bar".to_string()))
             .with_extra_core(Component::Str("beta".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("baz".to_string()))
     }
 
     pub fn v1_0_0_a1_b2() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("alpha".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("beta".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
     }
 
     pub fn v1_0_0_rc1_a2_b3() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("rc".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
             .with_extra_core(Component::Str("alpha".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
             .with_extra_core(Component::Str("beta".to_string()))
-            .with_extra_core(Component::Int(3))
+            .with_extra_core(Component::UInt(3))
     }
 
     pub fn v1_0_0_rc_none_a1() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("rc".to_string()))
             .with_extra_core(Component::Str("alpha".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     pub fn v1_0_0_test_alpha_beta_rc1() -> ZervFixture {
@@ -979,14 +979,14 @@ pub mod from {
             .with_extra_core(Component::Str("alpha".to_string()))
             .with_extra_core(Component::Str("beta".to_string()))
             .with_extra_core(Component::Str("rc".to_string()))
-            .with_extra_core(Component::Int(1))
+            .with_extra_core(Component::UInt(1))
     }
 
     // Helper for dev2 variant
     pub fn v1_0_0_dev2() -> ZervFixture {
         v1_0_0()
             .with_extra_core(Component::Str("dev".to_string()))
-            .with_extra_core(Component::Int(2))
+            .with_extra_core(Component::UInt(2))
     }
 
     // Override max complexity to use version with dev

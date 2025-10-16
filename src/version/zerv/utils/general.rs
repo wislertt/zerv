@@ -25,7 +25,7 @@ pub fn extract_core_values(zerv: &Zerv) -> Vec<u64> {
                     .unwrap_or(0),
                 _ => 0,
             },
-            Component::Int(n) => *n,
+            Component::UInt(n) => *n,
             Component::Str(_) => 0,
         };
         core_values.push(val);

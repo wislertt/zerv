@@ -44,7 +44,7 @@ impl PEP440 {
         // Handle excess release parts beyond major.minor.patch
         let mut schema = schema.clone();
         for &part in self.release.iter().skip(3) {
-            schema.push_core(Component::Int(part as u64))?;
+            schema.push_core(Component::UInt(part as u64))?;
         }
 
         // Handle local segments - add to build
@@ -55,7 +55,7 @@ impl PEP440 {
                         schema.push_build(Component::Str(s.clone()))?;
                     }
                     LocalSegment::UInt(n) => {
-                        schema.push_build(Component::Int(*n as u64))?;
+                        schema.push_build(Component::UInt(*n as u64))?;
                     }
                 }
             }

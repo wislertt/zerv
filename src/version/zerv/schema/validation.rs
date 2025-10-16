@@ -149,7 +149,7 @@ impl ZervSchema {
                 }
             }
             Component::Str(_) => {}
-            Component::Int(_) => {}
+            Component::UInt(_) => {}
         }
         Ok(())
     }
@@ -238,7 +238,7 @@ mod tests {
     #[case(1234567890)]
     #[case(u64::MAX)]
     fn test_validate_component_integer(#[case] value: u64) {
-        let component = Component::Int(value);
+        let component = Component::UInt(value);
         assert!(ZervSchema::validate_component(&component).is_ok());
     }
 
@@ -249,7 +249,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case(vec![Component::Var(Var::Major), Component::Str("test".to_string()), Component::Int(42)], true)]
+    #[case(vec![Component::Var(Var::Major), Component::Str("test".to_string()), Component::UInt(42)], true)]
     #[case(vec![Component::Var(Var::Major), Component::Var(Var::Timestamp("INVALID".to_string()))], false)]
     fn test_validate_components(#[case] components: Vec<Component>, #[case] should_succeed: bool) {
         let result = ZervSchema::validate_components(&components);

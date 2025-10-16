@@ -14,7 +14,7 @@ impl SemVer {
                 let identifier = if let Ok(num) = part.parse::<u32>() {
                     PreReleaseIdentifier::UInt(num as u64)
                 } else {
-                    PreReleaseIdentifier::String(part.to_string())
+                    PreReleaseIdentifier::Str(part.to_string())
                 };
                 self.pre_release
                     .get_or_insert_with(Vec::new)
@@ -29,7 +29,7 @@ impl SemVer {
                 let metadata = if let Ok(num) = part.parse::<u32>() {
                     BuildMetadata::UInt(num as u64)
                 } else {
-                    BuildMetadata::String(part.to_string())
+                    BuildMetadata::Str(part.to_string())
                 };
                 self.build_metadata
                     .get_or_insert_with(Vec::new)
@@ -84,7 +84,7 @@ impl SemVer {
                 let identifier = if let Ok(num) = value.parse::<u32>() {
                     PreReleaseIdentifier::UInt(num as u64)
                 } else {
-                    PreReleaseIdentifier::String(value)
+                    PreReleaseIdentifier::Str(value)
                 };
                 self.pre_release
                     .get_or_insert_with(Vec::new)

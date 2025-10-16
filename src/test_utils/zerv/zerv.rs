@@ -133,7 +133,7 @@ impl ZervFixture {
         // Clear existing core and rebuild with integers
         let mut core = Vec::new();
         for value in values {
-            core.push(Component::Int(value));
+            core.push(Component::UInt(value));
         }
         self.zerv.schema.set_core(core).unwrap();
         self
@@ -177,7 +177,7 @@ impl ZervFixture {
 
     /// Create with empty schema - chainable
     pub fn with_empty_schema(mut self) -> Self {
-        self.zerv.schema.set_core(vec![Component::Int(1)]).unwrap(); // Need at least one component
+        self.zerv.schema.set_core(vec![Component::UInt(1)]).unwrap(); // Need at least one component
         self.zerv.schema.set_extra_core(vec![]).unwrap();
         self.zerv.schema.set_build(vec![]).unwrap();
         self

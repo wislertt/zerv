@@ -338,8 +338,8 @@ impl Var {
 pub enum Component {
     #[serde(rename = "str")]
     Str(String),
-    #[serde(rename = "int")]
-    Int(u64),
+    #[serde(rename = "uint")]
+    UInt(u64),
     #[serde(rename = "var")]
     Var(Var),
 }
@@ -349,7 +349,7 @@ impl Component {
     pub fn resolve_value(&self, vars: &ZervVars, sanitizer: &Sanitizer) -> Option<String> {
         match self {
             Component::Str(s) => Some(sanitizer.sanitize(s)),
-            Component::Int(n) => Some(sanitizer.sanitize(&n.to_string())),
+            Component::UInt(n) => Some(sanitizer.sanitize(&n.to_string())),
             Component::Var(var) => var.resolve_value(vars, sanitizer),
         }
     }
@@ -359,7 +359,7 @@ impl Component {
         match self {
             Component::Var(var) => var.resolve_expanded_values(vars, sanitizer),
             // For literals, expanded values is just the single value
-            Component::Str(_) | Component::Int(_) => self
+            Component::Str(_) | Component::UInt(_) => self
                 .resolve_value(vars, sanitizer)
                 .map(|v| vec![v])
                 .unwrap_or_default(),
@@ -622,8 +622,8 @@ mod tests {
     // Component tests
     #[rstest]
     #[case(Component::Str("test".to_string()), Sanitizer::semver_str(), Some("test"))]
-    #[case(Component::Int(42), Sanitizer::uint(), Some("42"))]
-    #[case(Component::Int(0), Sanitizer::uint(), Some("0"))]
+    #[case(Component::UInt(42), Sanitizer::uint(), Some("42"))]
+    #[case(Component::UInt(0), Sanitizer::uint(), Some("0"))]
     fn test_component_resolve_value(
         #[case] component: Component,
         #[case] sanitizer: Sanitizer,
@@ -727,7 +727,7 @@ mod tests {
     // Component expanded values tests
     #[rstest]
     #[case(Component::Str("test".to_string()), Sanitizer::semver_str(), vec!["test"])]
-    #[case(Component::Int(42), Sanitizer::uint(), vec!["42"])]
+    #[case(Component::UInt(42), Sanitizer::uint(), vec!["42"])]
     fn test_component_expanded_values(
         #[case] component: Component,
         #[case] sanitizer: Sanitizer,
