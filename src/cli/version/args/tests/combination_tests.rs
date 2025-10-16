@@ -136,30 +136,28 @@ fn test_dirty_override_helper() {
     assert_eq!(args.dirty_override(), None);
 }
 
-#[test]
-fn test_validate_no_conflicts() {
-    // Test with no conflicting options
-    let mut args = VersionArgs::try_parse_from(["version"]).unwrap();
-    assert!(args.validate().is_ok());
-
-    // Test with individual options (no conflicts)
-    let mut args = VersionArgs::try_parse_from(["version", "--dirty"]).unwrap();
-    assert!(args.validate().is_ok());
-
-    let mut args = VersionArgs::try_parse_from(["version", "--no-dirty"]).unwrap();
-    assert!(args.validate().is_ok());
-
-    let mut args = VersionArgs::try_parse_from(["version", "--clean"]).unwrap();
-    assert!(args.validate().is_ok());
-
-    let mut args = VersionArgs::try_parse_from(["version", "--distance", "5"]).unwrap();
+#[rstest]
+#[case(&["version"])]
+#[case(&["version", "--dirty"])]
+#[case(&["version", "--no-dirty"])]
+#[case(&["version", "--clean"])]
+#[case(&["version", "--distance", "5"])]
+fn test_validate_no_conflicts(#[case] args: &[&str]) {
+    let mut args = VersionArgs::try_parse_from(args).unwrap();
     assert!(args.validate().is_ok());
 }
 
-#[test]
-fn test_validate_dirty_conflicts() {
-    // Test conflicting dirty flags
-    let mut args = VersionArgs::try_parse_from(["version", "--dirty", "--no-dirty"]).unwrap();
+use rstest::rstest;
+
+#[rstest]
+#[case(&["version", "--dirty", "--no-dirty"], &["--dirty", "--no-dirty"])]
+#[case(&["version", "--clean", "--distance", "5"], &["--clean", "--distance"])]
+#[case(&["version", "--clean", "--dirty"], &["--clean", "--dirty"])]
+#[case(&["version", "--clean", "--no-dirty"], &["--clean", "--no-dirty"])]
+#[case(&["version", "--bump-context", "--no-bump-context"], &["--bump-context", "--no-bump-context"])]
+#[case(&["zerv", "--no-bump-context", "--dirty"], &["--no-bump-context", "--dirty"])]
+fn test_validate_conflicting_options(#[case] args: &[&str], #[case] expected_flags: &[&str]) {
+    let mut args = VersionArgs::try_parse_from(args).unwrap();
     let result = args.validate();
     assert!(result.is_err());
 
@@ -168,74 +166,16 @@ fn test_validate_dirty_conflicts() {
         error,
         crate::error::ZervError::ConflictingOptions(_)
     ));
-    assert!(error.to_string().contains("--dirty"));
-    assert!(error.to_string().contains("--no-dirty"));
-    assert!(error.to_string().contains("conflicting options"));
-}
 
-#[test]
-fn test_validate_clean_conflicts() {
-    // Test --clean with --distance
-    let mut args = VersionArgs::try_parse_from(["version", "--clean", "--distance", "5"]).unwrap();
-    let result = args.validate();
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(
-        error,
-        crate::error::ZervError::ConflictingOptions(_)
-    ));
-    assert!(error.to_string().contains("--clean"));
-    assert!(error.to_string().contains("--distance"));
-
-    // Test --clean with --dirty
-    let mut args = VersionArgs::try_parse_from(["version", "--clean", "--dirty"]).unwrap();
-    let result = args.validate();
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(
-        error,
-        crate::error::ZervError::ConflictingOptions(_)
-    ));
-    assert!(error.to_string().contains("--clean"));
-    assert!(error.to_string().contains("--dirty"));
-
-    // Test --clean with --no-dirty
-    let mut args = VersionArgs::try_parse_from(["version", "--clean", "--no-dirty"]).unwrap();
-    let result = args.validate();
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(
-        error,
-        crate::error::ZervError::ConflictingOptions(_)
-    ));
-    assert!(error.to_string().contains("--clean"));
-    assert!(error.to_string().contains("--no-dirty"));
-}
-
-#[test]
-fn test_validate_context_control_conflicts() {
-    // Test conflicting context control flags
-    let mut args =
-        VersionArgs::try_parse_from(["version", "--bump-context", "--no-bump-context"]).unwrap();
-    let result = args.validate();
-    assert!(result.is_err());
-
-    let error = result.unwrap_err();
-    assert!(matches!(
-        error,
-        crate::error::ZervError::ConflictingOptions(_)
-    ));
-    assert!(error.to_string().contains("--bump-context"));
-    assert!(error.to_string().contains("--no-bump-context"));
-    assert!(error.to_string().contains("conflicting options"));
+    let error_msg = error.to_string();
+    assert!(error_msg.contains("conflicting options"));
+    for flag in expected_flags {
+        assert!(error_msg.contains(flag));
+    }
 }
 
 #[test]
 fn test_validate_clean_with_non_conflicting_options() {
-    // Test --clean with options that should NOT conflict
     let mut args = VersionArgs::try_parse_from([
         "zerv",
         "--clean",
@@ -248,22 +188,6 @@ fn test_validate_clean_with_non_conflicting_options() {
     ])
     .unwrap();
     assert!(args.validate().is_ok());
-}
-
-#[test]
-fn test_validate_no_bump_context_with_dirty_conflict() {
-    // Test --no-bump-context with --dirty (should conflict)
-    let mut args = VersionArgs::try_parse_from(["zerv", "--no-bump-context", "--dirty"]).unwrap();
-    let result = args.validate();
-    assert!(result.is_err());
-    let error = result.unwrap_err();
-    assert!(matches!(
-        error,
-        crate::error::ZervError::ConflictingOptions(_)
-    ));
-    assert!(error.to_string().contains("--no-bump-context"));
-    assert!(error.to_string().contains("--dirty"));
-    assert!(error.to_string().contains("conflicting options"));
 }
 
 #[test]
