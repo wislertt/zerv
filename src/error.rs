@@ -44,6 +44,8 @@ pub enum ZervError {
     InvalidBumpTarget(String),
     /// Feature not yet implemented
     NotImplemented(String),
+    /// Template processing error
+    TemplateError(String),
 
     // System errors
     /// IO error
@@ -79,6 +81,7 @@ impl std::fmt::Display for ZervError {
             ZervError::InvalidArgument(msg) => write!(f, "Invalid argument: {msg}"),
             ZervError::InvalidBumpTarget(msg) => write!(f, "Invalid bump target: {msg}"),
             ZervError::NotImplemented(msg) => write!(f, "Not implemented: {msg}"),
+            ZervError::TemplateError(msg) => write!(f, "Template error: {msg}"),
 
             // System errors
             ZervError::Io(err) => write!(f, "IO error: {err}"),
@@ -133,6 +136,7 @@ impl PartialEq for ZervError {
             (ZervError::InvalidArgument(a), ZervError::InvalidArgument(b)) => a == b,
             (ZervError::InvalidBumpTarget(a), ZervError::InvalidBumpTarget(b)) => a == b,
             (ZervError::NotImplemented(a), ZervError::NotImplemented(b)) => a == b,
+            (ZervError::TemplateError(a), ZervError::TemplateError(b)) => a == b,
             _ => false,
         }
     }
