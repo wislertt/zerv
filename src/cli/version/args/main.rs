@@ -1,5 +1,6 @@
 use clap::Parser;
 
+use crate::cli::utils::template::Template;
 use crate::utils::constants::{
     SUPPORTED_FORMATS_ARRAY,
     formats,
@@ -7,7 +8,7 @@ use crate::utils::constants::{
 };
 
 /// Main configuration for input, schema, and output
-#[derive(Parser)]
+#[derive(Parser, Debug, Clone)]
 pub struct MainConfig {
     // ============================================================================
     // 1. INPUT CONTROL
@@ -45,12 +46,12 @@ pub struct MainConfig {
           help = format!("Output format: '{}' (default), '{}', or '{}' (RON format for piping)", formats::SEMVER, formats::PEP440, formats::ZERV))]
     pub output_format: String,
 
-    /// Output template for custom formatting (future extension)
+    /// Output template for custom formatting (Handlebars syntax)
     #[arg(
         long,
-        help = "Output template for custom formatting (future extension)"
+        help = "Output template for custom formatting (Handlebars syntax)"
     )]
-    pub output_template: Option<String>,
+    pub output_template: Option<Template<String>>,
 
     /// Prefix to add to output
     #[arg(

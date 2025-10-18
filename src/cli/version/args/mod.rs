@@ -3,6 +3,7 @@ use clap::Parser;
 pub mod bumps;
 pub mod main;
 pub mod overrides;
+pub mod resolved;
 pub mod validation;
 
 #[cfg(test)]
@@ -11,12 +12,18 @@ mod tests {
     pub mod combination_tests;
     pub mod main_tests;
     pub mod overrides_tests;
+    pub mod resolved_tests;
     pub mod validation_tests;
 }
 
 pub use bumps::BumpsConfig;
 pub use main::MainConfig;
 pub use overrides::OverridesConfig;
+pub use resolved::{
+    ResolvedArgs,
+    ResolvedBumps,
+    ResolvedOverrides,
+};
 use validation::Validation;
 
 /// Generate version from VCS data

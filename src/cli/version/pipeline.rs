@@ -25,12 +25,12 @@ pub fn run_version_pipeline(mut args: VersionArgs) -> Result<String, ZervError> 
     // 3. Convert to Zerv (applies overrides internally)
     let zerv_object = zerv_draft.to_zerv(&args)?;
 
-    // 4. Apply output formatting with enhanced options
+    // 4. Apply output formatting with template resolution
     let output = OutputFormatter::format_output(
         &zerv_object,
         &args.main.output_format,
         args.main.output_prefix.as_deref(),
-        args.main.output_template.as_deref(),
+        &args.main.output_template,
     )?;
 
     Ok(output)

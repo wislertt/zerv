@@ -51,6 +51,41 @@ where
     }
 }
 
+impl From<String> for Template<String> {
+    fn from(value: String) -> Self {
+        if value.contains("{{") && value.contains("}}") {
+            Template::Template(value)
+        } else {
+            Template::Value(value)
+        }
+    }
+}
+
+impl From<&str> for Template<String> {
+    fn from(value: &str) -> Self {
+        value.to_string().into()
+    }
+}
+
+impl From<u32> for Template<u32> {
+    fn from(value: u32) -> Self {
+        Template::Value(value)
+    }
+}
+
+impl From<&str> for Template<u32> {
+    fn from(value: &str) -> Self {
+        if value.contains("{{") && value.contains("}}") {
+            Template::Template(value.to_string())
+        } else {
+            match value.parse::<u32>() {
+                Ok(parsed) => Template::Value(parsed),
+                Err(_) => Template::Template(value.to_string()), // Fallback to template
+            }
+        }
+    }
+}
+
 impl<T> FromStr for Template<T>
 where
     T: FromStr,

@@ -3,6 +3,7 @@ use super::{
     MainConfig,
     OverridesConfig,
 };
+use crate::cli::utils::template::Template;
 use crate::error::ZervError;
 
 /// Validation methods for argument combinations
@@ -108,39 +109,39 @@ impl Validation {
     /// Resolve default bump values
     /// If a bump option is provided without a value, set it to 1 (the default)
     pub fn resolve_bump_defaults(bumps: &mut BumpsConfig) -> Result<(), ZervError> {
-        // Resolve bump_major: Some(None) -> Some(Some(1))
+        // Resolve bump_major: Some(None) -> Some(Some(Template::Value(1)))
         if let Some(None) = bumps.bump_major {
-            bumps.bump_major = Some(Some(1));
+            bumps.bump_major = Some(Some(Template::Value(1)));
         }
 
-        // Resolve bump_minor: Some(None) -> Some(Some(1))
+        // Resolve bump_minor: Some(None) -> Some(Some(Template::Value(1)))
         if let Some(None) = bumps.bump_minor {
-            bumps.bump_minor = Some(Some(1));
+            bumps.bump_minor = Some(Some(Template::Value(1)));
         }
 
-        // Resolve bump_patch: Some(None) -> Some(Some(1))
+        // Resolve bump_patch: Some(None) -> Some(Some(Template::Value(1)))
         if let Some(None) = bumps.bump_patch {
-            bumps.bump_patch = Some(Some(1));
+            bumps.bump_patch = Some(Some(Template::Value(1)));
         }
 
-        // Resolve bump_post: Some(None) -> Some(Some(1))
+        // Resolve bump_post: Some(None) -> Some(Some(Template::Value(1)))
         if let Some(None) = bumps.bump_post {
-            bumps.bump_post = Some(Some(1));
+            bumps.bump_post = Some(Some(Template::Value(1)));
         }
 
-        // Resolve bump_dev: Some(None) -> Some(Some(1))
+        // Resolve bump_dev: Some(None) -> Some(Some(Template::Value(1)))
         if let Some(None) = bumps.bump_dev {
-            bumps.bump_dev = Some(Some(1));
+            bumps.bump_dev = Some(Some(Template::Value(1)));
         }
 
-        // Resolve bump_pre_release_num: Some(None) -> Some(Some(1))
+        // Resolve bump_pre_release_num: Some(None) -> Some(Some(Template::Value(1)))
         if let Some(None) = bumps.bump_pre_release_num {
-            bumps.bump_pre_release_num = Some(Some(1));
+            bumps.bump_pre_release_num = Some(Some(Template::Value(1)));
         }
 
-        // Resolve bump_epoch: Some(None) -> Some(Some(1))
+        // Resolve bump_epoch: Some(None) -> Some(Some(Template::Value(1)))
         if let Some(None) = bumps.bump_epoch {
-            bumps.bump_epoch = Some(Some(1));
+            bumps.bump_epoch = Some(Some(Template::Value(1)));
         }
 
         Ok(())
@@ -169,8 +170,13 @@ impl Validation {
     }
 
     /// Validate a single bump section's arguments
-    fn validate_bump_section(specs: &[String], arg_name: &str) -> Result<(), ZervError> {
-        for spec in specs {
+    fn validate_bump_section(specs: &[Template<String>], arg_name: &str) -> Result<(), ZervError> {
+        for template in specs {
+            // For validation, we only check the string format, not template resolution
+            let spec = match template {
+                Template::Value(s) => s,
+                Template::Template(s) => s, // Template strings are validated at resolution time
+            };
             if !Self::is_valid_bump_spec(spec) {
                 return Err(ZervError::InvalidArgument(format!(
                     "{arg_name} argument '{spec}' must be in format 'index[=value]'"

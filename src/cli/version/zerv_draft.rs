@@ -1,4 +1,7 @@
-use crate::cli::version::args::VersionArgs;
+use crate::cli::version::args::{
+    ResolvedArgs,
+    VersionArgs,
+};
 use crate::error::ZervError;
 use crate::schema::{
     get_preset_schema,
@@ -31,8 +34,11 @@ impl ZervDraft {
         let (schema_name, schema_ron) = args.resolve_schema();
         let mut zerv = self.create_zerv_version(schema_name, schema_ron)?;
 
+        // Resolve templates using the current Zerv state
+        let resolved_args = ResolvedArgs::resolve(args, &zerv)?;
+
         // Apply component processing (bumps with reset logic)
-        zerv.apply_component_processing(args)?;
+        zerv.apply_component_processing(&resolved_args)?;
         zerv.normalize();
 
         Ok(zerv)

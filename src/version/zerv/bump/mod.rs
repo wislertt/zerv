@@ -1,5 +1,5 @@
 use super::core::Zerv;
-use crate::cli::version::args::VersionArgs;
+use crate::cli::version::args::ResolvedArgs;
 use crate::error::ZervError;
 
 pub mod precedence;
@@ -12,7 +12,7 @@ pub mod vars_timestamp;
 use crate::version::zerv::bump::precedence::Precedence;
 
 impl Zerv {
-    pub fn apply_component_processing(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+    pub fn apply_component_processing(&mut self, args: &ResolvedArgs) -> Result<(), ZervError> {
         let precedence_order: Vec<Precedence> =
             self.schema.precedence_order().iter().cloned().collect();
 
@@ -99,7 +99,8 @@ mod tests {
             .build();
         let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
 
-        zerv.apply_component_processing(&args).unwrap();
+        let resolved_args = crate::cli::version::args::ResolvedArgs::resolve(&args, &zerv).unwrap();
+        zerv.apply_component_processing(&resolved_args).unwrap();
 
         let result_version: SemVer = zerv.into();
         assert_eq!(result_version.to_string(), expected_version);
@@ -135,7 +136,8 @@ mod tests {
 
         // Apply context overrides first, then component processing
         zerv.vars.apply_context_overrides(&args).unwrap();
-        zerv.apply_component_processing(&args).unwrap();
+        let resolved_args = crate::cli::version::args::ResolvedArgs::resolve(&args, &zerv).unwrap();
+        zerv.apply_component_processing(&resolved_args).unwrap();
 
         let result_version: SemVer = zerv.into();
         assert_eq!(result_version.to_string(), expected_version);
@@ -167,7 +169,8 @@ mod tests {
 
         // Apply context overrides first, then component processing
         zerv.vars.apply_context_overrides(&args).unwrap();
-        zerv.apply_component_processing(&args).unwrap();
+        let resolved_args = crate::cli::version::args::ResolvedArgs::resolve(&args, &zerv).unwrap();
+        zerv.apply_component_processing(&resolved_args).unwrap();
 
         let result_version: SemVer = zerv.into();
         assert_eq!(result_version.to_string(), expected_version);
@@ -224,7 +227,8 @@ mod tests {
 
         let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
 
-        zerv.apply_component_processing(&args).unwrap();
+        let resolved_args = crate::cli::version::args::ResolvedArgs::resolve(&args, &zerv).unwrap();
+        zerv.apply_component_processing(&resolved_args).unwrap();
 
         let result_version: SemVer = zerv.into();
         assert_eq!(result_version.to_string(), expected_version);

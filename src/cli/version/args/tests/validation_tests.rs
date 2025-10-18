@@ -6,21 +6,21 @@ fn assert_invalid_input_rejected(invalid_input: &str, section: &str, expected_ar
     let mut args = match section {
         "core" => VersionArgs {
             bumps: BumpsConfig {
-                bump_core: vec![invalid_input.to_string()],
+                bump_core: vec![invalid_input.to_string().into()],
                 ..Default::default()
             },
             ..Default::default()
         },
         "extra_core" => VersionArgs {
             bumps: BumpsConfig {
-                bump_extra_core: vec![invalid_input.to_string()],
+                bump_extra_core: vec![invalid_input.to_string().into()],
                 ..Default::default()
             },
             ..Default::default()
         },
         "build" => VersionArgs {
             bumps: BumpsConfig {
-                bump_build: vec![invalid_input.to_string()],
+                bump_build: vec![invalid_input.to_string().into()],
                 ..Default::default()
             },
             ..Default::default()
@@ -77,7 +77,7 @@ fn test_validate_schema_bump_args_invalid_format() {
     // Test invalid schema bump argument formats
     let mut args = VersionArgs {
         bumps: BumpsConfig {
-            bump_core: vec!["invalid_format".to_string()],
+            bump_core: vec!["invalid_format".into()],
             ..Default::default()
         },
         ..Default::default()
@@ -98,9 +98,9 @@ fn test_validate_schema_bump_args_valid_formats() {
     // Test valid schema bump argument formats
     let mut args = VersionArgs {
         bumps: BumpsConfig {
-            bump_core: vec!["0".to_string(), "1=5".to_string(), "-1=3".to_string()],
-            bump_extra_core: vec!["0=release".to_string()],
-            bump_build: vec!["-1".to_string()],
+            bump_core: vec!["0".into(), "1=5".into(), "-1=3".into()],
+            bump_extra_core: vec!["0=release".into()],
+            bump_build: vec!["-1".into()],
             ..Default::default()
         },
         ..Default::default()
@@ -133,9 +133,9 @@ fn test_validate_schema_bump_args_valid() {
     // Test valid schema bump arguments
     let mut args = VersionArgs {
         bumps: BumpsConfig {
-            bump_core: vec!["0=1".to_string(), "2=3".to_string()],
-            bump_extra_core: vec!["1=5".to_string()],
-            bump_build: vec!["0=release".to_string()],
+            bump_core: vec!["0=1".into(), "2=3".into()],
+            bump_extra_core: vec!["1=5".into()],
+            bump_build: vec!["0=release".into()],
             ..Default::default()
         },
         ..Default::default()
@@ -149,7 +149,7 @@ fn test_validate_schema_bump_args_invalid_odd_count() {
     // Test that single values (without =) are now valid (default to value 1)
     let mut args = VersionArgs {
         bumps: BumpsConfig {
-            bump_core: vec!["0=1".to_string(), "2".to_string()],
+            bump_core: vec!["0=1".into(), "2".into()],
             ..Default::default()
         },
         ..Default::default()
