@@ -1,5 +1,6 @@
-use crate::integration_tests::util::command::TestCommand;
 use rstest::rstest;
+
+use crate::integration_tests::util::command::TestCommand;
 
 /// Test comprehensive CLI help text and error message consistency
 /// This validates requirements 9.1, 9.2, 9.3, 9.4, 9.5, 9.6 from the CLI consistency requirements
@@ -265,12 +266,12 @@ fn test_help_shows_future_extension_options() {
 
     let output = result.stdout;
     assert!(
-        output.contains("future extension"),
-        "Should mark future extension options"
-    );
-    assert!(
         output.contains("--output-template"),
         "Should show template option"
+    );
+    assert!(
+        output.contains("Handlebars syntax"),
+        "Should mention Handlebars syntax"
     );
 }
 

@@ -1,5 +1,6 @@
-use super::TestCommand;
 use rstest::rstest;
+
+use super::TestCommand;
 
 #[rstest]
 #[case("-V")]

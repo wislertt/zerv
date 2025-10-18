@@ -1,7 +1,13 @@
 use std::ffi::OsStr;
 use std::io;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::path::{
+    Path,
+    PathBuf,
+};
+use std::process::{
+    Command,
+    Output,
+};
 
 use zerv::test_utils::TestOutput;
 
@@ -126,9 +132,11 @@ impl TestCommand {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use rstest::rstest;
     use std::process::Command;
+
+    use rstest::rstest;
+
+    use super::*;
 
     #[test]
     fn test_command_new() {

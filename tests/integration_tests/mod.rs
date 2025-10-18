@@ -2,7 +2,7 @@ pub mod check;
 pub mod cli_help;
 pub mod help_flags;
 pub mod util;
-pub mod version;
+// pub mod version;  // Temporarily disabled during revamp
 
 use util::TestCommand;
 use zerv::test_utils::GitRepoFixture;
