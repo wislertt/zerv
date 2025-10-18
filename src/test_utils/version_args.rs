@@ -266,8 +266,11 @@ impl VersionArgsFixture {
                     index,
                     value,
                 } => {
-                    // Convert to key=value format
-                    let spec = format!("{index}={value}");
+                    // Convert to spec format: "0" or "0=5"
+                    let spec = match value {
+                        Some(v) => format!("{index}={v}"), // "0=5"
+                        None => index.to_string(),         // "0"
+                    };
                     match section.as_str() {
                         "core" => {
                             self.args.bumps.bump_core.push(spec);
