@@ -95,3 +95,7 @@ test_flaky:
 
 open_coverage:
 	open coverage/tarpaulin-report.html
+
+.PHONY: docs
+docs:
+	cargo xtask generate-docs

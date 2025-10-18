@@ -19,6 +19,7 @@ exclude = [
   "/scripts/",
   "/.dev/",
   "/.amazonq/",
+  "/.cursor/",
 ]
 
 [features]
