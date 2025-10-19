@@ -44,38 +44,47 @@ impl ZervDraft {
         Ok(zerv)
     }
 
-    pub fn create_zerv_version(self, args: &VersionArgs) -> Result<Zerv, ZervError> {
-        let schema_name = args.main.schema.as_deref();
-        let schema_ron = args.main.schema_ron.as_deref();
-        let schema = match (schema_name, schema_ron) {
+    fn resolve_schema(
+        schema_name: Option<&str>,
+        schema_ron: Option<&str>,
+        existing_schema: Option<ZervSchema>,
+        vars: &ZervVars,
+    ) -> Result<ZervSchema, ZervError> {
+        match (schema_name, schema_ron) {
             // Custom RON schema
-            (None, Some(ron_str)) => parse_ron_schema(ron_str)?,
+            (None, Some(ron_str)) => parse_ron_schema(ron_str),
 
             // Built-in schema
             (Some(name), None) => {
-                if let Some(schema) = get_preset_schema(name, &self.vars) {
-                    schema
+                if let Some(schema) = get_preset_schema(name, vars) {
+                    Ok(schema)
                 } else {
-                    return Err(ZervError::UnknownSchema(name.to_string()));
+                    Err(ZervError::UnknownSchema(name.to_string()))
                 }
             }
 
             // Error cases
-            (Some(_), Some(_)) => {
-                return Err(ZervError::ConflictingSchemas(
-                    "Cannot specify both schema_name and schema_ron".to_string(),
-                ));
-            }
+            (Some(_), Some(_)) => Err(ZervError::ConflictingSchemas(
+                "Cannot specify both schema_name and schema_ron".to_string(),
+            )),
             (None, None) => {
                 // If no new schema requested, use existing schema from stdin source
-                if let Some(existing_schema) = self.schema {
-                    existing_schema
+                if let Some(existing_schema) = existing_schema {
+                    Ok(existing_schema)
                 } else {
-                    get_preset_schema("zerv-standard", &self.vars).unwrap()
+                    Ok(get_preset_schema("zerv-standard", vars).unwrap())
                 }
             }
-        };
+        }
+    }
 
+    pub fn create_zerv_version(self, args: &VersionArgs) -> Result<Zerv, ZervError> {
+        let schema = Self::resolve_schema(
+            args.main.schema.as_deref(),
+            args.main.schema_ron.as_deref(),
+            self.schema,
+            &self.vars,
+        )?;
         Zerv::new(schema, self.vars)
     }
 }

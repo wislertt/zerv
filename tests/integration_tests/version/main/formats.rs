@@ -145,47 +145,32 @@ fn test_output_format_extended_features(
 
 /// Test that different output formats work correctly with stdin source
 #[rstest]
-#[case::semver_to_pep440("1.2.3-alpha.1", "pep440", "1.2.3a1")]
-#[case::semver_to_semver("1.2.3-alpha.1", "semver", "1.2.3-alpha.1")]
-#[case::semver_with_build_to_pep440("1.2.3-alpha.1+some.build", "pep440", "1.2.3a1+some.build")]
-#[case::semver_with_build_to_semver(
-    "1.2.3-alpha.1+some.build",
+#[case::semver_to_pep440(
+    ZervFixture::from_semver_str("1.2.3-alpha.1+some.build"),
+    "pep440",
+    "1.2.3a1+some.build"
+)]
+#[case::semver_to_semver(
+    ZervFixture::from_semver_str("1.2.3-alpha.1+some.build"),
     "semver",
     "1.2.3-alpha.1+some.build"
 )]
-#[case::pep440_to_semver("1.2.3a1", "semver", "1.2.3-alpha.1")]
-#[case::pep440_to_pep440("1.2.3a1", "pep440", "1.2.3a1")]
+#[case::pep440_to_semver(
+    ZervFixture::from_pep440_str("1.2.3a1+some.build"),
+    "semver",
+    "1.2.3-alpha.1+some.build"
+)]
+#[case::pep440_to_pep440(
+    ZervFixture::from_pep440_str("1.2.3a1+some.build"),
+    "pep440",
+    "1.2.3a1+some.build"
+)]
 fn test_output_format_with_different_inputs(
-    #[case] input_version: &str,
+    #[case] zerv_fixture: ZervFixture,
     #[case] output_format: &str,
     #[case] expected: &str,
 ) {
-    let zerv_ron = if input_version.contains('-') || input_version.contains('+') {
-        // SemVer format
-        ZervFixture::from_semver_str(input_version)
-            .build()
-            .to_string()
-    } else if input_version.contains('a')
-        || input_version.contains('b')
-        || input_version.contains("rc")
-        || input_version.contains('!')
-    {
-        // PEP440 format
-        ZervFixture::from_pep440_str(input_version)
-            .build()
-            .to_string()
-    } else {
-        // Basic version
-        let parts: Vec<&str> = input_version.split('.').collect();
-        ZervFixture::new()
-            .with_version(
-                parts[0].parse().unwrap(),
-                parts[1].parse().unwrap(),
-                parts[2].parse().unwrap(),
-            )
-            .build()
-            .to_string()
-    };
+    let zerv_ron = zerv_fixture.build().to_string();
 
     let output = TestCommand::new()
         .args_from_str(format!(
