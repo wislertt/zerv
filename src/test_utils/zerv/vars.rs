@@ -105,21 +105,21 @@ impl ZervVarsFixture {
     #[allow(clippy::too_many_arguments)]
     pub fn with_vcs_data(
         mut self,
-        distance: u64,
-        dirty: bool,
-        bumped_branch: String,
-        bumped_commit_hash: String,
-        last_commit_hash: String,
-        last_timestamp: u64,
-        last_branch: String,
+        distance: Option<u64>,
+        dirty: Option<bool>,
+        bumped_branch: Option<String>,
+        bumped_commit_hash: Option<String>,
+        last_commit_hash: Option<String>,
+        last_timestamp: Option<u64>,
+        last_branch: Option<String>,
     ) -> Self {
-        self.vars.distance = Some(distance);
-        self.vars.dirty = Some(dirty);
-        self.vars.bumped_branch = Some(bumped_branch);
-        self.vars.bumped_commit_hash = Some(bumped_commit_hash);
-        self.vars.last_commit_hash = Some(last_commit_hash);
-        self.vars.last_timestamp = Some(last_timestamp);
-        self.vars.last_branch = Some(last_branch);
+        self.vars.distance = distance;
+        self.vars.dirty = dirty;
+        self.vars.bumped_branch = bumped_branch;
+        self.vars.bumped_commit_hash = bumped_commit_hash;
+        self.vars.last_commit_hash = last_commit_hash;
+        self.vars.last_timestamp = last_timestamp;
+        self.vars.last_branch = last_branch;
         self
     }
 

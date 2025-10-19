@@ -91,13 +91,13 @@ mod tests {
 
     fn vcs_zerv() -> ZervFixture {
         ZervFixture::new().with_version(1, 2, 3).with_vcs_data(
-            0,
-            true,
-            "main".to_string(),
-            "abcdef123456".to_string(),
-            "xyz789".to_string(),
-            1234567890,
-            "main".to_string(),
+            Some(0),
+            Some(true),
+            Some("main".to_string()),
+            Some("abcdef123456".to_string()),
+            Some("xyz789".to_string()),
+            Some(1234567890),
+            Some("main".to_string()),
         )
     }
 

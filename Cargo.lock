@@ -1327,6 +1327,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "shlex",
  "strum",
  "tempfile",
  "zerv",

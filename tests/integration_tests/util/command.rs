@@ -1,5 +1,8 @@
 use std::ffi::OsStr;
-use std::io;
+use std::io::{
+    self,
+    Write,
+};
 use std::path::{
     Path,
     PathBuf,
@@ -7,6 +10,7 @@ use std::path::{
 use std::process::{
     Command,
     Output,
+    Stdio,
 };
 
 use zerv::test_utils::TestOutput;
@@ -16,6 +20,7 @@ pub struct TestCommand {
     cmd: Command,
     #[allow(dead_code)]
     current_dir: Option<PathBuf>,
+    stdin_input: Option<String>,
 }
 
 impl Default for TestCommand {
@@ -73,6 +78,7 @@ impl TestCommand {
         Self {
             cmd,
             current_dir: None,
+            stdin_input: None,
         }
     }
 
@@ -83,13 +89,42 @@ impl TestCommand {
     }
 
     /// Add multiple arguments to the command
-    #[allow(dead_code)]
     pub fn args<I, S>(&mut self, args: I) -> &mut Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
         self.cmd.args(args);
+        self
+    }
+
+    /// Add arguments from a shell-like string
+    ///
+    /// Uses POSIX shell word splitting (via `shlex` crate), which means it behaves
+    /// exactly like your terminal shell when splitting arguments.
+    ///
+    /// Supports:
+    /// - Single quotes: 'arg with spaces' (preserves everything literally)
+    /// - Double quotes: "arg with spaces" (allows escape sequences)
+    /// - Backslash escapes: \' \" \\ \n \t \r
+    /// - Mixed quoting: --flag="value with 'quotes'"
+    /// - Flag forms: --source stdin and --source=stdin (both work)
+    ///
+    /// Examples:
+    /// ```
+    /// .args_from_str("version --source stdin --output-format semver")
+    /// .args_from_str("version --template 'v{{major}}.{{minor}}'")
+    /// .args_from_str(r#"version --template "version {{major}}.{{minor}}""#)
+    /// .args_from_str(r"version --prefix 'v' --suffix '-dev'")
+    /// ```
+    pub fn args_from_str<S: AsRef<str>>(&mut self, args_str: S) -> &mut Self {
+        if let Some(args) = shlex::split(args_str.as_ref()) {
+            self.cmd.args(args);
+        } else {
+            // If shlex fails to parse (e.g., unclosed quote), pass the string as-is
+            // This will likely fail when the command runs, which is the desired behavior
+            self.cmd.arg(args_str.as_ref());
+        }
         self
     }
 
@@ -101,9 +136,32 @@ impl TestCommand {
         self
     }
 
+    /// Set stdin input for the command
+    #[allow(dead_code)]
+    pub fn stdin<S: Into<String>>(&mut self, input: S) -> &mut Self {
+        self.stdin_input = Some(input.into());
+        self
+    }
+
     /// Execute the command and return output
     pub fn output(&mut self) -> io::Result<Output> {
-        self.cmd.output()
+        if let Some(ref input) = self.stdin_input {
+            // Need to use piped stdin
+            self.cmd
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+
+            let mut child = self.cmd.spawn()?;
+
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+
+            child.wait_with_output()
+        } else {
+            self.cmd.output()
+        }
     }
 
     /// Execute and assert success
@@ -132,8 +190,6 @@ impl TestCommand {
 
 #[cfg(test)]
 mod tests {
-    use std::process::Command;
-
     use rstest::rstest;
 
     use super::*;
@@ -142,22 +198,6 @@ mod tests {
     fn test_command_new() {
         let cmd = TestCommand::new();
         assert!(cmd.current_dir.is_none());
-    }
-
-    #[rstest]
-    #[case("--version")]
-    #[case("--help")]
-    #[case("-V")]
-    #[case("-h")]
-    fn test_command_arg_variations(#[case] arg: &str) {
-        let mut cmd = TestCommand::new();
-        cmd.arg(arg);
-    }
-
-    #[test]
-    fn test_command_args() {
-        let mut cmd = TestCommand::new();
-        cmd.args(["--version", "--help"]);
     }
 
     #[test]
@@ -170,17 +210,61 @@ mod tests {
 
     #[test]
     fn test_command_assert_failure() {
-        let mut cmd = Command::new("false");
-        let output = cmd.output().unwrap();
-        assert!(!output.status.success());
-    }
-
-    #[test]
-    fn test_test_command_assert_failure() {
-        // Create a TestCommand that will fail by using an invalid argument
         let mut cmd = TestCommand::new();
         cmd.arg("--invalid-flag-that-does-not-exist");
         let _test_output = cmd.assert_failure();
-        // If we reach here, assert_failure worked correctly
+    }
+
+    #[rstest]
+    #[case("--version", "zerv")]
+    #[case("--help", "Usage")]
+    #[case("-V", "zerv")]
+    #[case("-h", "Usage")]
+    fn test_args_from_str_basic_flags(#[case] args: &str, #[case] expected_output: &str) {
+        let mut cmd = TestCommand::new();
+        cmd.args_from_str(args);
+        let output = cmd.assert_success();
+        assert!(output.stdout().contains(expected_output));
+    }
+
+    #[rstest]
+    #[case(
+        None,
+        r#"version --source stdin --output-template "v{{major}}.{{minor}}""#,
+        "v1.2"
+    )]
+    #[case(
+        None,
+        r#"version --source stdin --output-template "{{major}}.{{minor}}.{{patch}}""#,
+        "1.2.3"
+    )]
+    #[case(Some(2), r#"version --source stdin --output-template "{{#if epoch}}{{epoch}}!{{/if}}{{major}}.{{minor}}.{{patch}}""#, "2!1.2.3")]
+    #[case(
+        None,
+        r#"version --source stdin --output-template "Version {{major}}.{{minor}}""#,
+        "Version 1.2"
+    )]
+    #[case(
+        None,
+        r#"version --source=stdin --output-template="v{{major}}.{{minor}}""#,
+        "v1.2"
+    )]
+    fn test_args_from_str_with_templates(
+        #[case] epoch: Option<u64>,
+        #[case] args: &str,
+        #[case] expected: &str,
+    ) {
+        use zerv::test_utils::ZervFixture;
+
+        let mut fixture = ZervFixture::new().with_version(1, 2, 3);
+        if let Some(e) = epoch {
+            fixture = fixture.with_epoch(e);
+        }
+        let zerv_ron = fixture.build().to_string();
+
+        let mut cmd = TestCommand::new();
+        cmd.args_from_str(args).stdin(zerv_ron);
+        let output = cmd.assert_success();
+        assert_eq!(output.stdout().trim(), expected);
     }
 }

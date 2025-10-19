@@ -1,6 +1,6 @@
 use rstest::rstest;
 
-use super::TestCommand;
+use crate::util::TestCommand;
 
 #[rstest]
 #[case("-V")]
@@ -13,13 +13,7 @@ fn test_version_flags(#[case] flag: &str) {
 #[case("-h")]
 #[case("--help")]
 fn test_help_flags(#[case] flag: &str) {
-    TestCommand::new().arg(flag).assert_success();
-}
-
-#[test]
-fn test_help_flag_shows_commands() {
-    let test_output = TestCommand::new().arg("--help").assert_success();
-
+    let test_output = TestCommand::new().arg(flag).assert_success();
     let stdout = test_output.stdout();
 
     // Should show available commands

@@ -131,18 +131,25 @@ tests/integration_tests/version/
     - Directory structure created successfully
     - Ready for Phase 2 implementation
 
-#### Phase 2: Implement Main Config Tests (`main/`)
+#### Phase 2: Implement Main Config Tests (`main/`) 🔄 IN PROGRESS
 
-- Create `tests/integration_tests/version/main/mod.rs`
-- Implement individual MainConfig tests:
-    - `sources/`: git vs stdin (≤3 git tests)
-    - `formats.rs`: --input-format, --output-format individually
-    - `schemas.rs`: --schema, --schema-ron individually
-    - `templates.rs`: --output-template individually
-    - `directory.rs`: -C flag individually
-    - `combinations.rs`: MainConfig option combinations
-- Use direct imports: `use zerv::test_utils::{ZervFixture, GitRepoFixture};`
-- Test and validate main config functionality
+- ✅ Created `tests/integration_tests/version/main/mod.rs`
+- ✅ Implemented `sources/` tests:
+    - `sources/stdin.rs`: 6 stdin tests using `ZervFixture` with `TestCommand.stdin()` (✅ PASSED)
+    - `sources/git.rs`: 1 comprehensive git integration test with Docker gating (✅ PASSED)
+- ✅ Enhanced `TestCommand` with `.stdin()` support for cleaner testing
+- ✅ Refactored tests to use `rstest` for cleaner parameterized testing
+- ✅ Enhanced `ZervFixture.with_vcs_data()` to accept `Option` types for better flexibility
+- **Result**: 7 tests passing (100% success rate)
+- **Performance**: Tests run in <0.3 seconds without Docker
+
+**Remaining MainConfig Tests:**
+
+- ❌ `formats.rs`: Test `--input-format` (semver/pep440/zerv) and `--output-format` (semver/pep440/zerv) combinations
+- ❌ `schemas.rs`: Test `--schema` (tier1/tier2/tier3) and `--schema-ron` (custom RON schema) options
+- ❌ `templates.rs`: Test `--output-template` with Handlebars template rendering
+- ❌ `directory.rs`: Test `-C` flag for changing working directory before execution
+- ❌ `combinations.rs`: Test MainConfig option combinations (format + schema, template + format, etc.)
 
 #### Phase 3: Implement Override Tests (`overrides/`)
 
