@@ -75,16 +75,3 @@ impl Default for MainConfig {
         }
     }
 }
-
-impl MainConfig {
-    /// Resolve schema selection with default fallback
-    /// Returns (schema_name, schema_ron) with default applied if neither is provided
-    pub fn resolve_schema(&self) -> (Option<&str>, Option<&str>) {
-        match (self.schema.as_deref(), self.schema_ron.as_deref()) {
-            (Some(name), None) => (Some(name), None),
-            (None, Some(ron)) => (None, Some(ron)),
-            (Some(_), Some(_)) => (self.schema.as_deref(), self.schema_ron.as_deref()), // Both provided - let validation handle conflict
-            (None, None) => (Some("zerv-standard"), None), // Default fallback
-        }
-    }
-}

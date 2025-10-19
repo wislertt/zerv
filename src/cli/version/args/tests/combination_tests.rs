@@ -340,11 +340,3 @@ fn test_validate_pre_release_flags_no_conflict() {
     assert_eq!(args.bumps.bump_pre_release_label, Some("beta".to_string()));
     assert!(args.validate().is_ok());
 }
-
-#[test]
-fn test_resolve_schema() {
-    let args = VersionArgs::default();
-    let (schema_name, schema_ron) = args.resolve_schema();
-    assert_eq!(schema_name, Some("zerv-standard"));
-    assert_eq!(schema_ron, None);
-}

@@ -31,8 +31,8 @@ impl ZervDraft {
         self.vars.apply_context_overrides(args)?;
 
         // Then create the Zerv object
-        let (schema_name, schema_ron) = args.resolve_schema();
-        let mut zerv = self.create_zerv_version(schema_name, schema_ron)?;
+        // let (schema_name, schema_ron) = args.resolve_schema();
+        let mut zerv = self.create_zerv_version(args)?;
 
         // Resolve templates using the current Zerv state
         let resolved_args = ResolvedArgs::resolve(args, &zerv)?;
@@ -44,12 +44,9 @@ impl ZervDraft {
         Ok(zerv)
     }
 
-    pub fn create_zerv_version(
-        self,
-        schema_name: Option<&str>,
-        schema_ron: Option<&str>,
-    ) -> Result<Zerv, ZervError> {
-        // Move the logic from crate::schema::create_zerv_version here
+    pub fn create_zerv_version(self, args: &VersionArgs) -> Result<Zerv, ZervError> {
+        let schema_name = args.main.schema.as_deref();
+        let schema_ron = args.main.schema_ron.as_deref();
         let schema = match (schema_name, schema_ron) {
             // Custom RON schema
             (None, Some(ron_str)) => parse_ron_schema(ron_str)?,
@@ -74,9 +71,7 @@ impl ZervDraft {
                 if let Some(existing_schema) = self.schema {
                     existing_schema
                 } else {
-                    return Err(ZervError::MissingSchema(
-                        "Either schema_name or schema_ron must be provided".to_string(),
-                    ));
+                    get_preset_schema("zerv-standard", &self.vars).unwrap()
                 }
             }
         };
@@ -88,6 +83,16 @@ impl ZervDraft {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::version::args::{
+        MainConfig,
+        OverridesConfig,
+        VersionArgs,
+    };
+    use crate::version::zerv::bump::precedence::PrecedenceOrder;
+    use crate::version::zerv::{
+        Component,
+        Var,
+    };
 
     #[test]
     fn test_zerv_draft_creation() {
@@ -95,12 +100,6 @@ mod tests {
         let draft = ZervDraft::new(vars.clone(), None);
         assert_eq!(draft.vars, vars);
         assert!(draft.schema.is_none());
-
-        use crate::version::zerv::bump::precedence::PrecedenceOrder;
-        use crate::version::zerv::{
-            Component,
-            Var,
-        };
         let schema = ZervSchema::new_with_precedence(
             vec![Component::Var(Var::Major)],
             vec![],
@@ -114,11 +113,6 @@ mod tests {
 
     #[test]
     fn test_to_zerv_with_overrides() {
-        use crate::cli::version::args::{
-            OverridesConfig,
-            VersionArgs,
-        };
-
         let vars = ZervVars {
             major: Some(1),
             minor: Some(2),
@@ -152,17 +146,22 @@ mod tests {
             ..Default::default()
         };
 
-        // Test that create_zerv_version requires explicit schema (no default)
+        // Test with no schema (should use default)
         let draft = ZervDraft::new(vars.clone(), None);
-        let result = draft.create_zerv_version(None, None);
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ZervError::MissingSchema(_)));
+        let args = VersionArgs::default();
+        let zerv = draft.create_zerv_version(&args).unwrap();
+        assert_eq!(zerv.schema, ZervSchema::zerv_standard_tier_1());
 
-        // Test with explicit schema (should work)
+        // Test with explicit schema
         let draft = ZervDraft::new(vars, None);
-        let zerv = draft
-            .create_zerv_version(Some("zerv-standard"), None)
-            .unwrap();
+        let args = VersionArgs {
+            main: MainConfig {
+                schema: Some("zerv-standard".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let zerv = draft.create_zerv_version(&args).unwrap();
         assert_eq!(zerv.schema, ZervSchema::zerv_standard_tier_1());
     }
 
@@ -182,7 +181,14 @@ mod tests {
         "#;
 
         let draft = ZervDraft::new(vars, None);
-        let zerv = draft.create_zerv_version(None, Some(ron_schema)).unwrap();
+        let args = VersionArgs {
+            main: MainConfig {
+                schema_ron: Some(ron_schema.to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let zerv = draft.create_zerv_version(&args).unwrap();
         assert_eq!(zerv.schema.core().len(), 2);
         assert_eq!(zerv.schema.build().len(), 1);
     }
@@ -192,7 +198,15 @@ mod tests {
         let vars = ZervVars::default();
         let ron_schema = "ZervSchema(core: [], extra_core: [], build: [], precedence_order: [])";
         let draft = ZervDraft::new(vars, None);
-        let result = draft.create_zerv_version(Some("zerv-standard"), Some(ron_schema));
+        let args = VersionArgs {
+            main: MainConfig {
+                schema: Some("zerv-standard".to_string()),
+                schema_ron: Some(ron_schema.to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let result = draft.create_zerv_version(&args);
         assert!(matches!(result, Err(ZervError::ConflictingSchemas(_))));
     }
 
@@ -200,7 +214,14 @@ mod tests {
     fn test_unknown_schema_error() {
         let vars = ZervVars::default();
         let draft = ZervDraft::new(vars, None);
-        let result = draft.create_zerv_version(Some("unknown"), None);
+        let args = VersionArgs {
+            main: MainConfig {
+                schema: Some("unknown".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let result = draft.create_zerv_version(&args);
         assert!(matches!(result, Err(ZervError::UnknownSchema(_))));
     }
 
@@ -209,18 +230,19 @@ mod tests {
         let vars = ZervVars::default();
         let invalid_ron = "invalid ron syntax";
         let draft = ZervDraft::new(vars, None);
-        let result = draft.create_zerv_version(None, Some(invalid_ron));
+        let args = VersionArgs {
+            main: MainConfig {
+                schema_ron: Some(invalid_ron.to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let result = draft.create_zerv_version(&args);
         assert!(matches!(result, Err(ZervError::StdinError(_))));
     }
 
     #[test]
     fn test_use_existing_schema_from_stdin() {
-        use crate::version::zerv::bump::precedence::PrecedenceOrder;
-        use crate::version::zerv::{
-            Component,
-            Var,
-        };
-
         let vars = ZervVars::default();
         let existing_schema = ZervSchema::new_with_precedence(
             vec![Component::Var(Var::Major)],
@@ -232,7 +254,8 @@ mod tests {
 
         // Test using existing schema when no new schema is provided
         let draft = ZervDraft::new(vars, Some(existing_schema));
-        let zerv = draft.create_zerv_version(None, None).unwrap();
+        let args = VersionArgs::default();
+        let zerv = draft.create_zerv_version(&args).unwrap();
         assert_eq!(zerv.schema.core().len(), 1);
         assert_eq!(zerv.schema.extra_core().len(), 0);
         assert_eq!(zerv.schema.build().len(), 0);
@@ -240,11 +263,6 @@ mod tests {
 
     #[test]
     fn test_zerv_schema_structure() {
-        use crate::version::zerv::{
-            Component,
-            Var,
-        };
-
         // Create a simple ZervVars for tier 1 (tagged, clean)
         let vars = ZervVars {
             major: Some(1),
@@ -256,9 +274,14 @@ mod tests {
         };
 
         let draft = ZervDraft::new(vars, None);
-        let zerv = draft
-            .create_zerv_version(Some("zerv-standard"), None)
-            .unwrap();
+        let args = VersionArgs {
+            main: MainConfig {
+                schema: Some("zerv-standard".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let zerv = draft.create_zerv_version(&args).unwrap();
 
         // Test the actual schema structure
         println!("Core components: {:?}", zerv.schema.core());
@@ -274,11 +297,6 @@ mod tests {
 
     #[test]
     fn test_zerv_ron_roundtrip_schema() {
-        use crate::version::zerv::{
-            Component,
-            Var,
-        };
-
         let vars = ZervVars {
             major: Some(1),
             minor: Some(2),
@@ -289,9 +307,14 @@ mod tests {
         };
 
         let draft = ZervDraft::new(vars, None);
-        let original = draft
-            .create_zerv_version(Some("zerv-standard"), None)
-            .unwrap();
+        let args = VersionArgs {
+            main: MainConfig {
+                schema: Some("zerv-standard".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let original = draft.create_zerv_version(&args).unwrap();
         let ron_string = original.to_string();
         let parsed: Zerv = ron_string.parse().unwrap();
 

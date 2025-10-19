@@ -108,10 +108,4 @@ impl VersionArgs {
     pub fn dirty_override(&self) -> Option<bool> {
         self.overrides.dirty_override()
     }
-
-    /// Resolve schema selection with default fallback
-    /// Returns (schema_name, schema_ron) with default applied if neither is provided
-    pub fn resolve_schema(&self) -> (Option<&str>, Option<&str>) {
-        self.main.resolve_schema()
-    }
 }

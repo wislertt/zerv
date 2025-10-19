@@ -73,6 +73,12 @@ impl ZervFixture {
         self
     }
 
+    /// Set dirty flag (chainable)
+    pub fn with_dirty(mut self, dirty: bool) -> Self {
+        self.zerv.vars.dirty = Some(dirty);
+        self
+    }
+
     /// Add build component (chainable)
     pub fn with_build(mut self, component: Component) -> Self {
         let mut build = self.zerv.schema.build().clone();
