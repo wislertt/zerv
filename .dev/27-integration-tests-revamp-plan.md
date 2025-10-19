@@ -96,7 +96,7 @@ tests/integration_tests/version/
 
 - **Focus**: Source switching and git-specific functionality
 - **Method**: stdin tests + minimal Docker git fixtures (≤5 total)
-- **Coverage**: stdin source, basic git pipeline integration
+- **Coverage**: stdin source, basic git pipeline integration, source validation, input format validation
 
 ### 4. Implementation Plan
 
@@ -145,7 +145,7 @@ tests/integration_tests/version/
 
 **Remaining MainConfig Tests:**
 
-- ❌ `formats.rs`: Test `--input-format` (semver/pep440/zerv) and `--output-format` (semver/pep440/zerv) combinations
+- ❌ `formats.rs`: Test `--input-format` (semver/pep440/zerv) and `--output-format` (semver/pep440/zerv) combinations, format validation errors, error message consistency
 - ❌ `schemas.rs`: Test `--schema` (tier1/tier2/tier3) and `--schema-ron` (custom RON schema) options
 - ❌ `templates.rs`: Test `--output-template` with Handlebars template rendering
 - ❌ `directory.rs`: Test `-C` flag for changing working directory before execution
@@ -158,7 +158,7 @@ tests/integration_tests/version/
     - `vcs.rs`: --tag-version, --distance, --dirty individually
     - `components.rs`: --major, --minor, --patch individually
     - `schema_components.rs`: --core, --extra-core, --build individually
-    - `combinations.rs`: Override combinations
+    - `combinations.rs`: Override combinations, conflicting options (clean vs distance/dirty), boolean flag behavior
 - Use ZervFixture with stdin source for all tests
 - Test and validate override functionality
 

@@ -11,57 +11,63 @@ pub struct GitRepoFixture {
 }
 
 impl GitRepoFixture {
-    /// Create a repository with a clean tag (Tier 1: major.minor.patch)
-    pub fn tagged(tag: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    /// Create an empty repository without any tags
+    pub fn empty() -> Result<Self, Box<dyn std::error::Error>> {
         let test_dir = TestDir::new()?;
         let git_impl = get_git_impl();
 
-        // Perform atomic Git operations in sequence with error context
+        // Perform atomic Git operations with error context
         git_impl
             .init_repo(&test_dir)
             .map_err(|e| format!("Failed to initialize Git repo: {e}"))?;
 
-        // Verify repository was created properly before tagging
+        // Verify repository was created properly
         if !test_dir.path().join(".git").exists() {
             return Err("Git repository was not properly initialized".into());
         }
 
-        git_impl
-            .create_tag(&test_dir, tag)
+        Ok(Self { test_dir, git_impl })
+    }
+
+    /// Create a repository with a clean tag (Tier 1: major.minor.patch)
+    pub fn tagged(tag: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let fixture = Self::empty()?;
+
+        fixture
+            .git_impl
+            .create_tag(&fixture.test_dir, tag)
             .map_err(|e| format!("Failed to create tag '{tag}': {e}"))?;
 
-        Ok(Self { test_dir, git_impl })
+        Ok(fixture)
     }
 
     /// Create a repository with distance from tag (Tier 2: major.minor.patch.post<distance>+branch.<commit>)
     pub fn with_distance(tag: &str, commits: u32) -> Result<Self, Box<dyn std::error::Error>> {
-        let test_dir = TestDir::new()?;
-        let git_impl = get_git_impl();
-
-        git_impl.init_repo(&test_dir)?;
-        git_impl.create_tag(&test_dir, tag)?;
+        let fixture = Self::tagged(tag)?;
 
         // Create additional commits for distance
         for i in 0..commits {
-            test_dir.create_file(format!("file{}.txt", i + 1), "content")?;
-            git_impl.create_commit(&test_dir, &format!("Commit {}", i + 1))?;
+            fixture
+                .test_dir
+                .create_file(format!("file{}.txt", i + 1), "content")?;
+            fixture
+                .git_impl
+                .create_commit(&fixture.test_dir, &format!("Commit {}", i + 1))?;
         }
 
-        Ok(Self { test_dir, git_impl })
+        Ok(fixture)
     }
 
     /// Create a repository with dirty working directory (Tier 3: major.minor.patch.dev<timestamp>+branch.<commit>)
     pub fn dirty(tag: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let test_dir = TestDir::new()?;
-        let git_impl = get_git_impl();
-
-        git_impl.init_repo(&test_dir)?;
-        git_impl.create_tag(&test_dir, tag)?;
+        let fixture = Self::tagged(tag)?;
 
         // Create uncommitted changes to make it dirty
-        test_dir.create_file("dirty.txt", "uncommitted changes")?;
+        fixture
+            .test_dir
+            .create_file("dirty.txt", "uncommitted changes")?;
 
-        Ok(Self { test_dir, git_impl })
+        Ok(fixture)
     }
 
     /// Get the path to the test directory

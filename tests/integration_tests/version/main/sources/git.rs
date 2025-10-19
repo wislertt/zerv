@@ -1,5 +1,6 @@
 use zerv::test_utils::{
     GitRepoFixture,
+    TestDir,
     ZervFixture,
     should_run_docker_tests,
 };
@@ -75,5 +76,41 @@ fn test_git_source_comprehensive() {
     assert_eq!(
         parsed_zerv, expected,
         "Parsed Zerv should match expected structure"
+    );
+}
+
+#[test]
+fn test_git_source_not_a_git_repo() {
+    let test_dir = TestDir::new().expect("Failed to create test directory");
+
+    let output = TestCommand::new()
+        .current_dir(test_dir.path())
+        .args_from_str("version --source git")
+        .assert_failure();
+
+    let stderr = output.stderr();
+    assert_eq!(
+        stderr.trim(),
+        "Error: VCS not found: Not in a git repository (--source git)"
+    );
+}
+
+#[test]
+fn test_git_source_no_tag_version() {
+    if !should_run_docker_tests() {
+        return;
+    }
+
+    let fixture = GitRepoFixture::empty().expect("Failed to create git repository");
+
+    let output = TestCommand::new()
+        .current_dir(fixture.path())
+        .args_from_str("version --source git")
+        .assert_failure();
+
+    let stderr = output.stderr();
+    assert_eq!(
+        stderr.trim(),
+        "Error: No version tags found in git repository"
     );
 }
