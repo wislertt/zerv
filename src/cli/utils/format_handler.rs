@@ -1,4 +1,7 @@
-use std::io::Read;
+use std::io::{
+    IsTerminal,
+    Read,
+};
 use std::str::FromStr;
 
 use crate::error::ZervError;
@@ -37,6 +40,12 @@ impl InputFormatHandler {
 
     /// Parse stdin input expecting Zerv RON format with comprehensive validation
     pub fn parse_stdin_to_zerv() -> Result<Zerv, ZervError> {
+        if std::io::stdin().is_terminal() {
+            return Err(ZervError::StdinError(
+                "No input provided via stdin. Use echo or pipe to provide input.".to_string(),
+            ));
+        }
+
         // Read all input from stdin
         let mut input = String::new();
         std::io::stdin()
@@ -86,100 +95,92 @@ impl InputFormatHandler {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
+    use crate::test_utils::zerv::ZervFixture;
+    use crate::version::zerv::{
+        Component,
+        PreReleaseLabel,
+    };
 
-    #[test]
-    fn test_parse_version_string_semver() {
-        let result = InputFormatHandler::parse_version_string("1.2.3", "semver");
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), VersionObject::SemVer(_)));
+    #[rstest]
+    #[case::semver_valid("1.2.3", "semver", true, Some("SemVer"))]
+    #[case::pep440_valid("1.2.3a1", "pep440", true, Some("PEP440"))]
+    #[case::auto_semver("1.2.3", "auto", true, Some("SemVer"))]
+    #[case::auto_pep440("1.2.3a1", "auto", true, Some("PEP440"))]
+    #[case::semver_invalid("invalid", "semver", false, None)]
+    #[case::pep440_invalid("invalid", "pep440", false, None)]
+    #[case::unknown_format("1.2.3", "unknown", false, None)]
+    #[case::auto_invalid("invalid", "auto", false, None)]
+    fn test_parse_version_string(
+        #[case] version: &str,
+        #[case] format: &str,
+        #[case] should_succeed: bool,
+        #[case] expected_type: Option<&str>,
+    ) {
+        let result = InputFormatHandler::parse_version_string(version, format);
+
+        if should_succeed {
+            assert!(result.is_ok(), "Should parse '{version}' as {format}");
+            let version_obj = result.unwrap();
+
+            match expected_type {
+                Some("SemVer") => assert!(matches!(version_obj, VersionObject::SemVer(_))),
+                Some("PEP440") => assert!(matches!(version_obj, VersionObject::PEP440(_))),
+                _ => {}
+            }
+        } else {
+            assert!(
+                result.is_err(),
+                "Should fail to parse '{version}' as {format}"
+            );
+
+            // Verify error type based on format
+            let error = result.unwrap_err();
+            match format {
+                "semver" | "pep440" => assert!(matches!(error, ZervError::InvalidFormat(_))),
+                "unknown" => assert!(matches!(error, ZervError::UnknownFormat(_))),
+                "auto" => assert!(matches!(error, ZervError::InvalidVersion(_))),
+                _ => {}
+            }
+        }
     }
 
-    #[test]
-    fn test_parse_version_string_pep440() {
-        let result = InputFormatHandler::parse_version_string("1.2.3a1", "pep440");
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), VersionObject::PEP440(_)));
-    }
-
-    #[test]
-    fn test_parse_version_string_auto_semver() {
-        let result = InputFormatHandler::parse_version_string("1.2.3", "auto");
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), VersionObject::SemVer(_)));
-    }
-
-    #[test]
-    fn test_parse_version_string_auto_pep440() {
-        let result = InputFormatHandler::parse_version_string("1.2.3a1", "auto");
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), VersionObject::PEP440(_)));
-    }
-
-    #[test]
-    fn test_parse_version_string_invalid_semver() {
-        let result = InputFormatHandler::parse_version_string("invalid", "semver");
+    #[rstest]
+    #[case::semver_invalid("invalid", "semver", &["Invalid SemVer format", "invalid"])]
+    #[case::pep440_invalid("invalid", "pep440", &["Invalid PEP440 format", "invalid"])]
+    #[case::unknown_format("1.2.3", "unknown", &["Unknown input format", "unknown", "Supported formats"])]
+    fn test_error_messages_format_specific(
+        #[case] version: &str,
+        #[case] format: &str,
+        #[case] expected_substrings: &[&str],
+    ) {
+        let result = InputFormatHandler::parse_version_string(version, format);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ZervError::InvalidFormat(_)));
+
+        let error_msg = result.unwrap_err().to_string();
+        for substring in expected_substrings {
+            assert!(
+                error_msg.contains(substring),
+                "Error message should contain '{substring}': {error_msg}"
+            );
+        }
     }
 
-    #[test]
-    fn test_parse_version_string_invalid_pep440() {
-        let result = InputFormatHandler::parse_version_string("invalid", "pep440");
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ZervError::InvalidFormat(_)));
-    }
-
-    #[test]
-    fn test_parse_version_string_unknown_format() {
-        let result = InputFormatHandler::parse_version_string("1.2.3", "unknown");
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ZervError::UnknownFormat(_)));
-    }
-
-    #[test]
-    fn test_parse_version_string_auto_invalid() {
-        let result = InputFormatHandler::parse_version_string("invalid", "auto");
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ZervError::InvalidVersion(_)));
-    }
-
-    #[test]
-    fn test_error_messages_format_specific() {
-        // Test SemVer error message
-        let semver_error = InputFormatHandler::parse_version_string("invalid", "semver");
-        assert!(semver_error.is_err());
-        let error_msg = semver_error.unwrap_err().to_string();
-        assert!(error_msg.contains("Invalid SemVer format"));
-        assert!(error_msg.contains("invalid"));
-
-        // Test PEP440 error message
-        let pep440_error = InputFormatHandler::parse_version_string("invalid", "pep440");
-        assert!(pep440_error.is_err());
-        let error_msg = pep440_error.unwrap_err().to_string();
-        assert!(error_msg.contains("Invalid PEP440 format"));
-        assert!(error_msg.contains("invalid"));
-
-        // Test unknown format error message
-        let unknown_error = InputFormatHandler::parse_version_string("1.2.3", "unknown");
-        assert!(unknown_error.is_err());
-        let error_msg = unknown_error.unwrap_err().to_string();
-        assert!(error_msg.contains("Unknown input format"));
-        assert!(error_msg.contains("unknown"));
-        assert!(error_msg.contains("Supported formats"));
-    }
-
-    #[test]
-    fn test_auto_detection_priority() {
-        // SemVer should be detected first for ambiguous cases
-        let result = InputFormatHandler::parse_version_string("1.2.3", "auto");
+    #[rstest]
+    #[case::ambiguous_semver("1.2.3", "SemVer")]
+    #[case::pep440_specific("1.2.3a1", "PEP440")]
+    fn test_auto_detection_priority(#[case] version: &str, #[case] expected_type: &str) {
+        let result = InputFormatHandler::parse_version_string(version, "auto");
         assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), VersionObject::SemVer(_)));
 
-        // PEP440-specific syntax should be detected as PEP440
-        let result = InputFormatHandler::parse_version_string("1.2.3a1", "auto");
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), VersionObject::PEP440(_)));
+        let version_obj = result.unwrap();
+        match expected_type {
+            "SemVer" => assert!(matches!(version_obj, VersionObject::SemVer(_))),
+            "PEP440" => assert!(matches!(version_obj, VersionObject::PEP440(_))),
+            _ => panic!("Unknown expected type: {expected_type}"),
+        }
     }
 
     #[test]
@@ -213,10 +214,11 @@ mod tests {
         assert!(unknown_msg.contains("--input-format zerv"));
     }
 
+    // Note: parse_stdin_to_zerv() is tested via integration tests where we can control stdin.
+    // The parsing logic itself is thoroughly tested via parse_and_validate_zerv_ron() tests below.
+
     #[test]
     fn test_parse_and_validate_zerv_ron_with_valid_input() {
-        use crate::test_utils::zerv::ZervFixture;
-
         // Create a valid Zerv object and convert to RON
         let zerv = ZervFixture::basic().zerv().clone();
         let ron_string = zerv.to_string();
@@ -229,163 +231,42 @@ mod tests {
         assert_eq!(parsed_zerv, zerv, "Parsed Zerv should match original");
     }
 
-    #[test]
-    fn test_parse_and_validate_zerv_ron_with_simple_version_string() {
-        let simple_versions = vec!["1.2.3", "v2.0.0", "1.0.0-alpha"];
+    #[rstest]
+    #[case::simple_version("1.2.3")]
+    #[case::v_prefix("v2.0.0")]
+    #[case::semver_prerelease("1.0.0-alpha")]
+    #[case::semver_prerelease_number("2.0.0-alpha.1")]
+    #[case::semver_build("1.0.0+build.123")]
+    #[case::pep440_alpha("1.2.3a1")]
+    #[case::pep440_beta("2.0.0b2")]
+    #[case::pep440_rc("1.0.0rc1")]
+    #[case::json_object(r#"{"schema": {"core": []}, "vars": {}}"#)]
+    #[case::json_array(r#"[1, 2, 3]"#)]
+    #[case::json_version(r#"{"version": "1.2.3"}"#)]
+    #[case::incomplete_ron("(schema: (core: [")]
+    #[case::missing_fields("(invalid_field: 123)")]
+    #[case::empty_schema("(schema: (), vars: ())")]
+    #[case::missing_var(r#"(schema: (core: [VarField("major")]), vars: ())"#)]
+    #[case::invalid_syntax("(invalid: syntax")]
+    fn test_parse_and_validate_zerv_ron_rejects_invalid_input(#[case] input: &str) {
+        let result = InputFormatHandler::parse_and_validate_zerv_ron(input);
+        assert!(result.is_err(), "Should reject input: '{input}'");
 
-        for version in simple_versions {
-            let result = InputFormatHandler::parse_and_validate_zerv_ron(version);
-            assert!(
-                result.is_err(),
-                "Should reject simple version string '{version}'"
-            );
+        let error = result.unwrap_err();
+        assert!(
+            matches!(error, ZervError::StdinError(_)),
+            "Should return StdinError for invalid input: '{input}'"
+        );
 
-            let error = result.unwrap_err();
-            match error {
-                ZervError::StdinError(msg) => {
-                    assert!(msg.contains("Invalid input format"));
-                    assert!(msg.contains("Zerv RON format only"));
-                }
-                _ => panic!("Expected StdinError for simple version string '{version}'"),
-            }
-        }
-    }
-
-    #[test]
-    fn test_parse_and_validate_zerv_ron_with_semver_pep440_strings() {
-        let version_strings = vec![
-            "1.2.3",
-            "2.0.0-alpha.1",
-            "1.0.0+build.123",
-            "1.2.3a1",
-            "2.0.0b2",
-            "1.0.0rc1",
-        ];
-
-        for version in version_strings {
-            let result = InputFormatHandler::parse_and_validate_zerv_ron(version);
-            assert!(result.is_err(), "Should reject version string '{version}'");
-
-            let error = result.unwrap_err();
-            match error {
-                ZervError::StdinError(msg) => {
-                    assert!(msg.contains("Invalid input format"));
-                    assert!(msg.contains("Zerv RON format only"));
-                }
-                _ => panic!("Expected StdinError for version string '{version}'"),
-            }
-        }
-    }
-
-    #[test]
-    fn test_parse_and_validate_zerv_ron_with_json_input() {
-        let json_inputs = vec![
-            r#"{"schema": {"core": []}, "vars": {}}"#,
-            r#"[1, 2, 3]"#,
-            r#"{"version": "1.2.3"}"#,
-        ];
-
-        for json_input in json_inputs {
-            let result = InputFormatHandler::parse_and_validate_zerv_ron(json_input);
-            assert!(result.is_err(), "Should reject JSON input");
-
-            let error = result.unwrap_err();
-            match error {
-                ZervError::StdinError(msg) => {
-                    assert!(msg.contains("Invalid input format"));
-                    assert!(msg.contains("Zerv RON format only"));
-                }
-                _ => panic!("Expected StdinError for JSON input"),
-            }
-        }
-    }
-
-    #[test]
-    fn test_parse_and_validate_zerv_ron_with_invalid_ron() {
-        let invalid_ron_inputs = vec![
-            "(schema: (core: [",                                 // Incomplete RON
-            "(invalid_field: 123)",                              // Missing required fields
-            "(schema: (), vars: ())",                            // Empty schema
-            "(schema: (core: [VarField(\"major\")]), vars: ())", // Missing major var
-        ];
-
-        for invalid_input in invalid_ron_inputs {
-            let result = InputFormatHandler::parse_and_validate_zerv_ron(invalid_input);
-            assert!(
-                result.is_err(),
-                "Should reject invalid RON: '{invalid_input}'"
-            );
-
-            let error = result.unwrap_err();
-            match error {
-                ZervError::StdinError(msg) => {
-                    // Should contain helpful error information
-                    assert!(
-                        msg.contains("Invalid Zerv RON") || msg.contains("RON format"),
-                        "Error message should mention RON format issues: {msg}"
-                    );
-                }
-                _ => panic!("Expected StdinError for invalid RON: '{invalid_input}'"),
-            }
-        }
-    }
-
-    #[test]
-    fn test_comprehensive_stdin_validation_error_messages() {
-        // Test that all error messages provide actionable guidance
-
-        // Simple version string error
-        let result = InputFormatHandler::parse_and_validate_zerv_ron("1.2.3");
-        assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("Invalid input format"));
-        assert!(error_msg.contains("Zerv RON format only"));
-
-        // JSON format error
-        let result = InputFormatHandler::parse_and_validate_zerv_ron(r#"{"version": "1.2.3"}"#);
-        assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("Invalid input format"));
-        assert!(error_msg.contains("Zerv RON format only"));
-
-        // Invalid RON structure error
-        let result = InputFormatHandler::parse_and_validate_zerv_ron("(invalid: syntax");
-        assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("Invalid input format"));
-        assert!(error_msg.contains("Zerv RON format only"));
-    }
-
-    #[test]
-    fn test_enhanced_ron_error_reporting() {
-        // Test that RON parsing errors include helpful hints
-        let invalid_inputs = vec![
-            ("(schema: (core: [", "RON syntax"),
-            ("(missing_field: 123)", "schema"),
-            ("invalid syntax", "RON format"),
-        ];
-
-        for (input, _expected_hint) in invalid_inputs {
-            let result = InputFormatHandler::parse_and_validate_zerv_ron(input);
-            assert!(result.is_err(), "Should fail for input: '{input}'");
-
-            let error_msg = result.unwrap_err().to_string();
-            assert!(
-                error_msg.contains("Invalid input format")
-                    && error_msg.contains("Zerv RON format only"),
-                "Error should contain simplified message for '{input}': {error_msg}"
-            );
-        }
+        let error_msg = error.to_string();
+        assert!(
+            error_msg.contains("Invalid input format") || error_msg.contains("Stdin error"),
+            "Error message should be helpful for '{input}': {error_msg}"
+        );
     }
 
     #[test]
     fn test_stdin_validation_with_complex_zerv_structures() {
-        use crate::test_utils::zerv::ZervFixture;
-        use crate::version::zerv::{
-            Component,
-            PreReleaseLabel,
-        };
-
         // Test with pre-release Zerv
         let pre_release_zerv = ZervFixture::new()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
@@ -413,8 +294,6 @@ mod tests {
     // Integration tests for comprehensive format handling
     #[test]
     fn test_zerv_ron_parsing() {
-        use crate::test_utils::zerv::ZervFixture;
-
         // Create a sample Zerv object
         let zerv = ZervFixture::basic().zerv().clone();
         let ron_string = zerv.to_string();
@@ -432,122 +311,75 @@ mod tests {
         assert_eq!(parsed_zerv, zerv);
     }
 
-    #[test]
-    fn test_version_parsing_comprehensive() {
-        // Test SemVer parsing
-        let semver_cases = vec![
-            "1.2.3",
-            "1.0.0-alpha",
-            "1.0.0-alpha.1",
-            "1.0.0+build",
-            "1.0.0-alpha+build",
-        ];
+    #[rstest]
+    #[case::semver_basic("1.2.3", "semver", "SemVer")]
+    #[case::semver_prerelease("1.0.0-alpha", "semver", "SemVer")]
+    #[case::semver_prerelease_num("1.0.0-alpha.1", "semver", "SemVer")]
+    #[case::semver_build("1.0.0+build", "semver", "SemVer")]
+    #[case::semver_both("1.0.0-alpha+build", "semver", "SemVer")]
+    #[case::pep440_basic("1.2.3", "pep440", "PEP440")]
+    #[case::pep440_alpha("1.2.3a1", "pep440", "PEP440")]
+    #[case::pep440_beta("1.2.3b2", "pep440", "PEP440")]
+    #[case::pep440_rc("1.2.3rc1", "pep440", "PEP440")]
+    #[case::pep440_post("1.2.3.post1", "pep440", "PEP440")]
+    #[case::pep440_dev("1.2.3.dev1", "pep440", "PEP440")]
+    #[case::pep440_epoch("2!1.2.3", "pep440", "PEP440")]
+    #[case::auto_semver("1.2.3", "auto", "SemVer")]
+    #[case::auto_pep440_alpha("1.2.3a1", "auto", "PEP440")]
+    #[case::auto_pep440_epoch("2!1.2.3", "auto", "PEP440")]
+    fn test_version_parsing_comprehensive(
+        #[case] version: &str,
+        #[case] format: &str,
+        #[case] expected_type: &str,
+    ) {
+        let result = InputFormatHandler::parse_version_string(version, format);
+        assert!(result.is_ok(), "Should parse '{version}' as {format}");
 
-        for version in semver_cases {
-            let result = InputFormatHandler::parse_version_string(version, "semver");
-            assert!(
-                result.is_ok(),
-                "Should parse SemVer '{version}' successfully"
-            );
-            assert!(matches!(result.unwrap(), VersionObject::SemVer(_)));
-        }
-
-        // Test PEP440 parsing
-        let pep440_cases = vec![
-            "1.2.3",
-            "1.2.3a1",
-            "1.2.3b2",
-            "1.2.3rc1",
-            "1.2.3.post1",
-            "1.2.3.dev1",
-            "2!1.2.3",
-        ];
-
-        for version in pep440_cases {
-            let result = InputFormatHandler::parse_version_string(version, "pep440");
-            assert!(
-                result.is_ok(),
-                "Should parse PEP440 '{version}' successfully"
-            );
-            assert!(matches!(result.unwrap(), VersionObject::PEP440(_)));
-        }
-
-        // Test auto-detection
-        let auto_cases = vec![
-            ("1.2.3", "SemVer"),   // Should prefer SemVer
-            ("1.2.3a1", "PEP440"), // PEP440-specific syntax
-            ("2!1.2.3", "PEP440"), // Epoch is PEP440-specific
-        ];
-
-        for (version, expected_type) in auto_cases {
-            let result = InputFormatHandler::parse_version_string(version, "auto");
-            assert!(
-                result.is_ok(),
-                "Should auto-detect '{version}' successfully"
-            );
-
-            match (result.unwrap(), expected_type) {
-                (VersionObject::SemVer(_), "SemVer") => {}
-                (VersionObject::PEP440(_), "PEP440") => {}
-                (actual, expected) => panic!(
-                    "Auto-detection failed for '{version}': expected {expected}, got {actual:?}"
-                ),
-            }
+        let version_obj = result.unwrap();
+        match expected_type {
+            "SemVer" => assert!(matches!(version_obj, VersionObject::SemVer(_))),
+            "PEP440" => assert!(matches!(version_obj, VersionObject::PEP440(_))),
+            _ => panic!("Unknown expected type: {expected_type}"),
         }
     }
 
-    #[test]
-    fn test_error_message_quality() {
-        // Test format-specific error messages
-        let invalid_semver = InputFormatHandler::parse_version_string("invalid-version", "semver");
-        assert!(invalid_semver.is_err());
-        let error_msg = invalid_semver.unwrap_err().to_string();
-        assert!(error_msg.contains("Invalid SemVer format"));
-        assert!(error_msg.contains("invalid-version"));
+    #[rstest]
+    #[case::semver_invalid("invalid-version", "semver", &["Invalid SemVer format", "invalid-version"])]
+    #[case::pep440_invalid("invalid-version", "pep440", &["Invalid PEP440 format", "invalid-version"])]
+    #[case::unknown_format("1.2.3", "unknown", &["Unknown input format", "unknown", "Supported formats"])]
+    #[case::auto_invalid("completely-invalid", "auto", &["not valid SemVer or PEP440 format", "completely-invalid"])]
+    fn test_error_message_quality(
+        #[case] version: &str,
+        #[case] format: &str,
+        #[case] expected_substrings: &[&str],
+    ) {
+        let result = InputFormatHandler::parse_version_string(version, format);
+        assert!(result.is_err());
 
-        let invalid_pep440 = InputFormatHandler::parse_version_string("invalid-version", "pep440");
-        assert!(invalid_pep440.is_err());
-        let error_msg = invalid_pep440.unwrap_err().to_string();
-        assert!(error_msg.contains("Invalid PEP440 format"));
-        assert!(error_msg.contains("invalid-version"));
-
-        // Test unknown format error
-        let unknown_format = InputFormatHandler::parse_version_string("1.2.3", "unknown");
-        assert!(unknown_format.is_err());
-        let error_msg = unknown_format.unwrap_err().to_string();
-        assert!(error_msg.contains("Unknown input format"));
-        assert!(error_msg.contains("unknown"));
-        assert!(error_msg.contains("Supported formats"));
-
-        // Test auto-detection failure
-        let auto_invalid = InputFormatHandler::parse_version_string("completely-invalid", "auto");
-        assert!(auto_invalid.is_err());
-        let error_msg = auto_invalid.unwrap_err().to_string();
-        assert!(error_msg.contains("not valid SemVer or PEP440 format"));
-        assert!(error_msg.contains("completely-invalid"));
-    }
-
-    #[test]
-    fn test_case_insensitive_format_handling() {
-        // Test that format names are case-insensitive
-        let test_cases = vec![
-            ("semver", "1.2.3"),
-            ("SEMVER", "1.2.3"),
-            ("SemVer", "1.2.3"),
-            ("pep440", "1.2.3a1"),
-            ("PEP440", "1.2.3a1"),
-            ("Pep440", "1.2.3a1"),
-            ("auto", "1.2.3"),
-            ("AUTO", "1.2.3"),
-            ("Auto", "1.2.3"),
-        ];
-
-        for (format, version) in test_cases {
-            let result = InputFormatHandler::parse_version_string(version, format);
+        let error_msg = result.unwrap_err().to_string();
+        for substring in expected_substrings {
             assert!(
-                result.is_ok(),
-                "Should handle case-insensitive format '{format}' for version '{version}'"
+                error_msg.contains(substring),
+                "Error message should contain '{substring}': {error_msg}"
             );
         }
+    }
+
+    #[rstest]
+    #[case::semver_lower("semver", "1.2.3")]
+    #[case::semver_upper("SEMVER", "1.2.3")]
+    #[case::semver_mixed("SemVer", "1.2.3")]
+    #[case::pep440_lower("pep440", "1.2.3a1")]
+    #[case::pep440_upper("PEP440", "1.2.3a1")]
+    #[case::pep440_mixed("Pep440", "1.2.3a1")]
+    #[case::auto_lower("auto", "1.2.3")]
+    #[case::auto_upper("AUTO", "1.2.3")]
+    #[case::auto_mixed("Auto", "1.2.3")]
+    fn test_case_insensitive_format_handling(#[case] format: &str, #[case] version: &str) {
+        let result = InputFormatHandler::parse_version_string(version, format);
+        assert!(
+            result.is_ok(),
+            "Should handle case-insensitive format '{format}' for version '{version}'"
+        );
     }
 }

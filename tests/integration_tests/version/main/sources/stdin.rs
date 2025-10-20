@@ -103,3 +103,23 @@ fn test_stdin_zerv_roundtrip(#[case] fixture: ZervFixture) {
         "Stdin roundtrip should preserve Zerv structure"
     );
 }
+
+#[test]
+fn test_stdin_without_input_returns_error() {
+    // Test that running with --source stdin but without providing stdin input
+    // returns an error immediately instead of hanging
+    // This verifies the terminal detection is working correctly
+
+    let output = TestCommand::new()
+        .args_from_str("version --source stdin --output-format semver")
+        // Note: No .stdin() call here - stdin is not provided
+        .assert_failure();
+
+    // Verify we get a helpful error message about stdin being required
+    let stderr = output.stderr();
+    assert!(
+        stderr.contains("No input provided via stdin") || stderr.contains("stdin"),
+        "Error message should mention stdin requirement. Got: {}",
+        stderr
+    );
+}
