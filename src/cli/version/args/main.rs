@@ -1,5 +1,6 @@
 use clap::Parser;
 
+use crate::cli::utils::template::Template;
 use crate::utils::constants::{
     SUPPORTED_FORMATS_ARRAY,
     formats,
@@ -7,7 +8,7 @@ use crate::utils::constants::{
 };
 
 /// Main configuration for input, schema, and output
-#[derive(Parser)]
+#[derive(Parser, Debug, Clone)]
 pub struct MainConfig {
     // ============================================================================
     // 1. INPUT CONTROL
@@ -45,12 +46,12 @@ pub struct MainConfig {
           help = format!("Output format: '{}' (default), '{}', or '{}' (RON format for piping)", formats::SEMVER, formats::PEP440, formats::ZERV))]
     pub output_format: String,
 
-    /// Output template for custom formatting (future extension)
+    /// Output template for custom formatting (Handlebars syntax)
     #[arg(
         long,
-        help = "Output template for custom formatting (future extension)"
+        help = "Output template for custom formatting (Handlebars syntax)"
     )]
-    pub output_template: Option<String>,
+    pub output_template: Option<Template<String>>,
 
     /// Prefix to add to output
     #[arg(
@@ -71,19 +72,6 @@ impl Default for MainConfig {
             output_format: formats::SEMVER.to_string(),
             output_template: None,
             output_prefix: None,
-        }
-    }
-}
-
-impl MainConfig {
-    /// Resolve schema selection with default fallback
-    /// Returns (schema_name, schema_ron) with default applied if neither is provided
-    pub fn resolve_schema(&self) -> (Option<&str>, Option<&str>) {
-        match (self.schema.as_deref(), self.schema_ron.as_deref()) {
-            (Some(name), None) => (Some(name), None),
-            (None, Some(ron)) => (None, Some(ron)),
-            (Some(_), Some(_)) => (self.schema.as_deref(), self.schema_ron.as_deref()), // Both provided - let validation handle conflict
-            (None, None) => (Some("zerv-standard"), None), // Default fallback
         }
     }
 }

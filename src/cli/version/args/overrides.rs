@@ -1,5 +1,6 @@
 use clap::Parser;
 
+use crate::cli::utils::template::Template;
 use crate::utils::constants::pre_release_labels;
 
 /// Override configuration for VCS and version components
@@ -50,27 +51,27 @@ pub struct OverridesConfig {
     // ============================================================================
     /// Override major version number
     #[arg(long, help = "Override major version number")]
-    pub major: Option<u32>,
+    pub major: Option<Template<u32>>,
 
     /// Override minor version number
     #[arg(long, help = "Override minor version number")]
-    pub minor: Option<u32>,
+    pub minor: Option<Template<u32>>,
 
     /// Override patch version number
     #[arg(long, help = "Override patch version number")]
-    pub patch: Option<u32>,
+    pub patch: Option<Template<u32>>,
 
     /// Override epoch number
     #[arg(long, help = "Override epoch number")]
-    pub epoch: Option<u32>,
+    pub epoch: Option<Template<u32>>,
 
     /// Override post number
     #[arg(long, help = "Override post number")]
-    pub post: Option<u32>,
+    pub post: Option<Template<u32>>,
 
     /// Override dev number
     #[arg(long, help = "Override dev number")]
-    pub dev: Option<u32>,
+    pub dev: Option<Template<u32>>,
 
     /// Override pre-release label
     #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(pre_release_labels::VALID_LABELS),
@@ -79,7 +80,7 @@ pub struct OverridesConfig {
 
     /// Override pre-release number
     #[arg(long, help = "Override pre-release number")]
-    pub pre_release_num: Option<u32>,
+    pub pre_release_num: Option<Template<u32>>,
 
     /// Override custom variables in JSON format
     #[arg(long, help = "Override custom variables in JSON format")]
@@ -93,27 +94,27 @@ pub struct OverridesConfig {
         long,
         value_name = "INDEX=VALUE",
         num_args = 1..,
-        help = "Override core schema component by index=value (e.g., --core 0=5 or --core 1=release)"
+        help = "Override core schema component by index=value (e.g., --core 0=5 or --core 1={{major}})"
     )]
-    pub core: Vec<String>,
+    pub core: Vec<Template<String>>,
 
     /// Override extra-core schema component by index=value
     #[arg(
         long,
         value_name = "INDEX=VALUE",
         num_args = 1..,
-        help = "Override extra-core schema component by index=value (e.g., --extra-core 0=5 or --extra-core 1=beta)"
+        help = "Override extra-core schema component by index=value (e.g., --extra-core 0=5 or --extra-core 1={{branch}})"
     )]
-    pub extra_core: Vec<String>,
+    pub extra_core: Vec<Template<String>>,
 
     /// Override build schema component by index=value
     #[arg(
         long,
         value_name = "INDEX=VALUE",
         num_args = 1..,
-        help = "Override build schema component by index=value (e.g., --build 0=5 or --build 1=main)"
+        help = "Override build schema component by index=value (e.g., --build 0=5 or --build 1={{commit_short}})"
     )]
-    pub build: Vec<String>,
+    pub build: Vec<Template<String>>,
 }
 
 impl OverridesConfig {

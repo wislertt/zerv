@@ -1,3 +1,4 @@
+use crate::cli::utils::template::Template;
 use crate::cli::version::args::VersionArgs;
 use crate::test_utils::types::{
     BumpType,
@@ -60,7 +61,7 @@ impl VersionArgsFixture {
 
     /// Set output template
     pub fn with_output_template(mut self, template: &str) -> Self {
-        self.args.main.output_template = Some(template.to_string());
+        self.args.main.output_template = Some(Template::Value(template.to_string()));
         self
     }
 
@@ -118,13 +119,13 @@ impl VersionArgsFixture {
 
     /// Set post value
     pub fn with_post(mut self, post: u32) -> Self {
-        self.args.overrides.post = Some(post);
+        self.args.overrides.post = Some(Template::Value(post));
         self
     }
 
     /// Set dev value
     pub fn with_dev(mut self, dev: u32) -> Self {
-        self.args.overrides.dev = Some(dev);
+        self.args.overrides.dev = Some(Template::Value(dev));
         self
     }
 
@@ -136,31 +137,31 @@ impl VersionArgsFixture {
 
     /// Set pre-release number
     pub fn with_pre_release_num(mut self, num: u32) -> Self {
-        self.args.overrides.pre_release_num = Some(num);
+        self.args.overrides.pre_release_num = Some(num.into());
         self
     }
 
     /// Set epoch
     pub fn with_epoch(mut self, epoch: u32) -> Self {
-        self.args.overrides.epoch = Some(epoch);
+        self.args.overrides.epoch = Some(epoch.into());
         self
     }
 
     /// Set major version
     pub fn with_major(mut self, major: u32) -> Self {
-        self.args.overrides.major = Some(major);
+        self.args.overrides.major = Some(major.into());
         self
     }
 
     /// Set minor version
     pub fn with_minor(mut self, minor: u32) -> Self {
-        self.args.overrides.minor = Some(minor);
+        self.args.overrides.minor = Some(minor.into());
         self
     }
 
     /// Set patch version
     pub fn with_patch(mut self, patch: u32) -> Self {
-        self.args.overrides.patch = Some(patch);
+        self.args.overrides.patch = Some(patch.into());
         self
     }
 
@@ -174,43 +175,43 @@ impl VersionArgsFixture {
 
     /// Set bump major
     pub fn with_bump_major(mut self, increment: u32) -> Self {
-        self.args.bumps.bump_major = Some(Some(increment));
+        self.args.bumps.bump_major = Some(Some(increment.into()));
         self
     }
 
     /// Set bump minor
     pub fn with_bump_minor(mut self, increment: u32) -> Self {
-        self.args.bumps.bump_minor = Some(Some(increment));
+        self.args.bumps.bump_minor = Some(Some(increment.into()));
         self
     }
 
     /// Set bump patch
     pub fn with_bump_patch(mut self, increment: u32) -> Self {
-        self.args.bumps.bump_patch = Some(Some(increment));
+        self.args.bumps.bump_patch = Some(Some(increment.into()));
         self
     }
 
     /// Set bump post
     pub fn with_bump_post(mut self, increment: u32) -> Self {
-        self.args.bumps.bump_post = Some(Some(increment));
+        self.args.bumps.bump_post = Some(Some(increment.into()));
         self
     }
 
     /// Set bump dev
     pub fn with_bump_dev(mut self, increment: u32) -> Self {
-        self.args.bumps.bump_dev = Some(Some(increment));
+        self.args.bumps.bump_dev = Some(Some(increment.into()));
         self
     }
 
     /// Set bump pre-release number
     pub fn with_bump_pre_release_num(mut self, increment: u32) -> Self {
-        self.args.bumps.bump_pre_release_num = Some(Some(increment));
+        self.args.bumps.bump_pre_release_num = Some(Some(increment.into()));
         self
     }
 
     /// Set bump epoch
     pub fn with_bump_epoch(mut self, increment: u32) -> Self {
-        self.args.bumps.bump_epoch = Some(Some(increment));
+        self.args.bumps.bump_epoch = Some(Some(increment.into()));
         self
     }
 
@@ -239,23 +240,25 @@ impl VersionArgsFixture {
         for bump_type in bumps {
             match bump_type {
                 BumpType::Major(increment) => {
-                    self.args.bumps.bump_major = Some(Some(increment as u32))
+                    self.args.bumps.bump_major = Some(Some((increment as u32).into()))
                 }
                 BumpType::Minor(increment) => {
-                    self.args.bumps.bump_minor = Some(Some(increment as u32))
+                    self.args.bumps.bump_minor = Some(Some((increment as u32).into()))
                 }
                 BumpType::Patch(increment) => {
-                    self.args.bumps.bump_patch = Some(Some(increment as u32))
+                    self.args.bumps.bump_patch = Some(Some((increment as u32).into()))
                 }
                 BumpType::Post(increment) => {
-                    self.args.bumps.bump_post = Some(Some(increment as u32))
+                    self.args.bumps.bump_post = Some(Some((increment as u32).into()))
                 }
-                BumpType::Dev(increment) => self.args.bumps.bump_dev = Some(Some(increment as u32)),
+                BumpType::Dev(increment) => {
+                    self.args.bumps.bump_dev = Some(Some((increment as u32).into()))
+                }
                 BumpType::Epoch(increment) => {
-                    self.args.bumps.bump_epoch = Some(Some(increment as u32))
+                    self.args.bumps.bump_epoch = Some(Some((increment as u32).into()))
                 }
                 BumpType::PreReleaseNum(increment) => {
-                    self.args.bumps.bump_pre_release_num = Some(Some(increment as u32))
+                    self.args.bumps.bump_pre_release_num = Some(Some((increment as u32).into()))
                 }
                 BumpType::PreReleaseLabel(_) => {
                     // For now, we don't handle pre-release label bumps in test fixtures
@@ -266,17 +269,20 @@ impl VersionArgsFixture {
                     index,
                     value,
                 } => {
-                    // Convert to key=value format
-                    let spec = format!("{index}={value}");
+                    // Convert to spec format: "0" or "0=5"
+                    let spec = match value {
+                        Some(v) => format!("{index}={v}"), // "0=5"
+                        None => index.to_string(),         // "0"
+                    };
                     match section.as_str() {
                         "core" => {
-                            self.args.bumps.bump_core.push(spec);
+                            self.args.bumps.bump_core.push(spec.into());
                         }
                         "extra_core" => {
-                            self.args.bumps.bump_extra_core.push(spec);
+                            self.args.bumps.bump_extra_core.push(spec.into());
                         }
                         "build" => {
-                            self.args.bumps.bump_build.push(spec);
+                            self.args.bumps.bump_build.push(spec.into());
                         }
                         _ => {
                             // Unknown section - ignore for now
@@ -301,16 +307,18 @@ impl VersionArgsFixture {
                     self.args.overrides.current_branch = Some(branch)
                 }
                 OverrideType::CommitHash(hash) => self.args.overrides.commit_hash = Some(hash),
-                OverrideType::Major(major) => self.args.overrides.major = Some(major),
-                OverrideType::Minor(minor) => self.args.overrides.minor = Some(minor),
-                OverrideType::Patch(patch) => self.args.overrides.patch = Some(patch),
-                OverrideType::Post(post) => self.args.overrides.post = Some(post),
-                OverrideType::Dev(dev) => self.args.overrides.dev = Some(dev),
+                OverrideType::Major(major) => self.args.overrides.major = Some(major.into()),
+                OverrideType::Minor(minor) => self.args.overrides.minor = Some(minor.into()),
+                OverrideType::Patch(patch) => self.args.overrides.patch = Some(patch.into()),
+                OverrideType::Post(post) => self.args.overrides.post = Some(post.into()),
+                OverrideType::Dev(dev) => self.args.overrides.dev = Some(dev.into()),
                 OverrideType::PreReleaseLabel(label) => {
                     self.args.overrides.pre_release_label = Some(label)
                 }
-                OverrideType::PreReleaseNum(num) => self.args.overrides.pre_release_num = Some(num),
-                OverrideType::Epoch(epoch) => self.args.overrides.epoch = Some(epoch),
+                OverrideType::PreReleaseNum(num) => {
+                    self.args.overrides.pre_release_num = Some(num.into())
+                }
+                OverrideType::Epoch(epoch) => self.args.overrides.epoch = Some(epoch.into()),
             }
         }
         self
@@ -395,13 +403,13 @@ mod tests {
             .with_bump_pre_release_num(8)
             .build();
 
-        assert_eq!(args.bumps.bump_major, Some(Some(2)));
-        assert_eq!(args.bumps.bump_minor, Some(Some(3)));
-        assert_eq!(args.bumps.bump_patch, Some(Some(4)));
-        assert_eq!(args.bumps.bump_post, Some(Some(5)));
-        assert_eq!(args.bumps.bump_dev, Some(Some(6)));
-        assert_eq!(args.bumps.bump_epoch, Some(Some(7)));
-        assert_eq!(args.bumps.bump_pre_release_num, Some(Some(8)));
+        assert_eq!(args.bumps.bump_major, Some(Some(2.into())));
+        assert_eq!(args.bumps.bump_minor, Some(Some(3.into())));
+        assert_eq!(args.bumps.bump_patch, Some(Some(4.into())));
+        assert_eq!(args.bumps.bump_post, Some(Some(5.into())));
+        assert_eq!(args.bumps.bump_dev, Some(Some(6.into())));
+        assert_eq!(args.bumps.bump_epoch, Some(Some(7.into())));
+        assert_eq!(args.bumps.bump_pre_release_num, Some(Some(8.into())));
     }
 
     #[test]
@@ -413,9 +421,9 @@ mod tests {
             .with_tag_version("v1.0.0")
             .build();
 
-        assert_eq!(args.bumps.bump_major, Some(Some(2)));
-        assert_eq!(args.bumps.bump_minor, Some(Some(3)));
-        assert_eq!(args.bumps.bump_patch, Some(Some(1)));
+        assert_eq!(args.bumps.bump_major, Some(Some(2.into())));
+        assert_eq!(args.bumps.bump_minor, Some(Some(3.into())));
+        assert_eq!(args.bumps.bump_patch, Some(Some(1.into())));
         assert_eq!(args.overrides.tag_version, Some("v1.0.0".to_string()));
     }
 

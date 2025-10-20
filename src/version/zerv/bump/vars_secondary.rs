@@ -1,5 +1,5 @@
 use super::Zerv;
-use crate::cli::version::args::VersionArgs;
+use crate::cli::version::args::ResolvedArgs;
 use crate::error::ZervError;
 use crate::version::zerv::bump::precedence::Precedence;
 use crate::version::zerv::core::{
@@ -50,7 +50,7 @@ impl Zerv {
         Ok(())
     }
 
-    pub fn process_pre_release_label(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
+    pub fn process_pre_release_label(&mut self, args: &ResolvedArgs) -> Result<(), ZervError> {
         // 1. Override step - set absolute value if specified
         if let Some(ref label) = args.overrides.pre_release_label {
             let existing_number = self.vars.pre_release.as_ref().and_then(|pr| pr.number);
@@ -256,7 +256,10 @@ mod tests {
             args_fixture = args_fixture.with_bump_pre_release_label(label);
         }
         let args = args_fixture.build();
-        zerv.process_pre_release_label(&args).unwrap();
+        let dummy_zerv = crate::test_utils::zerv::ZervFixture::new().build();
+        let resolved_args =
+            crate::cli::version::args::ResolvedArgs::resolve(&args, &dummy_zerv).unwrap();
+        zerv.process_pre_release_label(&resolved_args).unwrap();
         let result_version: SemVer = zerv.into();
         assert_eq!(result_version.to_string(), expected_version);
     }
@@ -296,7 +299,10 @@ mod tests {
         let args = VersionArgsFixture::new()
             .with_bump_pre_release_label("invalid")
             .build();
-        let result = zerv.process_pre_release_label(&args);
+        let dummy_zerv = crate::test_utils::zerv::ZervFixture::new().build();
+        let resolved_args =
+            crate::cli::version::args::ResolvedArgs::resolve(&args, &dummy_zerv).unwrap();
+        let result = zerv.process_pre_release_label(&resolved_args);
         assert!(result.is_err());
         assert!(
             result

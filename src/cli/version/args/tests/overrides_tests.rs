@@ -60,11 +60,11 @@ fn test_overrides_config_with_values() {
     assert!(!config.clean);
     assert_eq!(config.current_branch, Some("feature/test".to_string()));
     assert_eq!(config.commit_hash, Some("abc123".to_string()));
-    assert_eq!(config.major, Some(2));
-    assert_eq!(config.minor, Some(1));
-    assert_eq!(config.patch, Some(0));
+    assert_eq!(config.major, Some(2.into()));
+    assert_eq!(config.minor, Some(1.into()));
+    assert_eq!(config.patch, Some(0.into()));
     assert_eq!(config.pre_release_label, Some("alpha".to_string()));
-    assert_eq!(config.pre_release_num, Some(1));
+    assert_eq!(config.pre_release_num, Some(1.into()));
 }
 
 #[test]

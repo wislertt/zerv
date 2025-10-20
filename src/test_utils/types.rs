@@ -13,8 +13,8 @@ pub enum BumpType {
     Dev(u64),
     SchemaBump {
         section: String,
-        index: usize,
-        value: u64,
+        index: i32,
+        value: Option<u64>,
     },
 }
 

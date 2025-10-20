@@ -1,5 +1,6 @@
-use super::TestCommand;
 use rstest::rstest;
+
+use crate::util::TestCommand;
 
 #[rstest]
 #[case("-V")]
@@ -12,19 +13,57 @@ fn test_version_flags(#[case] flag: &str) {
 #[case("-h")]
 #[case("--help")]
 fn test_help_flags(#[case] flag: &str) {
-    TestCommand::new().arg(flag).assert_success();
-}
-
-#[test]
-fn test_help_flag_shows_commands() {
-    let test_output = TestCommand::new().arg("--help").assert_success();
-
+    let test_output = TestCommand::new().arg(flag).assert_success();
     let stdout = test_output.stdout();
 
     // Should show available commands
     assert!(
         stdout.contains("version") && stdout.contains("check"),
         "Help should show available commands: {stdout}"
+    );
+}
+
+#[test]
+fn test_main_help_contains_examples() {
+    let test_output = TestCommand::new().arg("--help").assert_success();
+    let stdout = test_output.stdout();
+
+    // Should contain comprehensive description
+    assert!(
+        stdout.contains("dynamic versioning tool"),
+        "Should contain main description"
+    );
+    assert!(
+        stdout.contains("version control system"),
+        "Should mention VCS"
+    );
+    assert!(
+        stdout.contains("configurable schemas"),
+        "Should mention schemas"
+    );
+
+    // Should contain examples section
+    assert!(
+        stdout.contains("EXAMPLES:"),
+        "Should contain examples section"
+    );
+    assert!(stdout.contains("zerv version"), "Should show basic usage");
+    assert!(
+        stdout.contains("--output-format pep440"),
+        "Should show format example"
+    );
+    assert!(
+        stdout.contains("--tag-version v2.0.0"),
+        "Should show override example"
+    );
+    assert!(stdout.contains("--clean"), "Should show clean flag example");
+    assert!(
+        stdout.contains("Pipe") || stdout.contains("pipe"),
+        "Should mention piping"
+    );
+    assert!(
+        stdout.contains("-C /path/to/repo"),
+        "Should show directory example"
     );
 }
 
@@ -42,6 +81,48 @@ fn test_version_command_help() {
         stdout.contains("--output-format") || stdout.contains("--source"),
         "Version help should show command options: {stdout}"
     );
+
+    // Should contain detailed description
+    assert!(
+        stdout.contains("Generate version strings"),
+        "Should contain detailed description"
+    );
+    assert!(
+        stdout.contains("configurable schemas"),
+        "Should mention schemas"
+    );
+    assert!(
+        stdout.contains("multiple input sources"),
+        "Should mention input sources"
+    );
+    assert!(stdout.contains("CI/CD workflows"), "Should mention CI/CD");
+
+    // Should document input sources
+    assert!(stdout.contains("git"), "Should document git source");
+    assert!(stdout.contains("stdin"), "Should document stdin source");
+    assert!(
+        stdout.contains("Zerv RON format"),
+        "Should mention RON format"
+    );
+
+    // Should document output formats
+    assert!(stdout.contains("semver"), "Should document semver format");
+    assert!(stdout.contains("pep440"), "Should document pep440 format");
+    assert!(stdout.contains("zerv"), "Should document zerv format");
+
+    // Should show possible values
+    assert!(
+        stdout.contains("[possible values: git, stdin]"),
+        "Should show source values"
+    );
+    assert!(
+        stdout.contains("[possible values: auto, semver, pep440]"),
+        "Should show input format values"
+    );
+    assert!(
+        stdout.contains("[possible values: semver, pep440, zerv]"),
+        "Should show output format values"
+    );
 }
 
 #[test]
@@ -57,5 +138,21 @@ fn test_check_command_help() {
     assert!(
         stdout.contains("--format") || stdout.contains("version"),
         "Check help should show command options: {stdout}"
+    );
+    assert!(
+        stdout.contains("Validate"),
+        "Should contain validation description"
+    );
+}
+
+#[test]
+fn test_invalid_command_shows_help() {
+    let test_output = TestCommand::new().arg("invalid-command").assert_failure();
+    let stderr = test_output.stderr();
+
+    assert!(stderr.contains("error:"), "Should show error");
+    assert!(
+        stderr.contains("For more information, try '--help'"),
+        "Should suggest help"
     );
 }

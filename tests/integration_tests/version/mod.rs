@@ -1,13 +1,6 @@
-pub mod basic;
-mod c_flag;
-mod command_utils;
-pub mod end_to_end;
-pub mod errors;
-pub mod formats;
-pub mod git_states;
-pub mod schemas;
-pub mod sources;
-pub mod zerv_format;
+pub mod main;
 
-use super::{GitRepoFixture, TestCommand};
-pub use command_utils::VersionCommandUtils;
+// Phase 3-5 modules will be added as they're implemented
+// pub mod overrides;
+// pub mod bumps;
+// pub mod combinations;

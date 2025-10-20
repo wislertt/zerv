@@ -1,5 +1,6 @@
-use super::TestCommand;
 use rstest::rstest;
+
+use super::TestCommand;
 
 #[rstest]
 #[case("1.2.3", "Valid PEP440 format")]

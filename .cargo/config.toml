@@ -1,2 +1,2 @@
-[target.'cfg(all())']
-rustflags = ["-D", "clippy::uninlined_format_args"]
+[alias]
+xtask = "run --manifest-path xtask/Cargo.toml --"

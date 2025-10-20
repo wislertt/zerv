@@ -42,9 +42,9 @@ fn test_bumps_config_with_values() {
     ])
     .unwrap();
 
-    assert_eq!(config.bump_major, Some(Some(1)));
-    assert_eq!(config.bump_minor, Some(Some(2)));
-    assert_eq!(config.bump_patch, Some(Some(3)));
+    assert_eq!(config.bump_major, Some(Some(1.into())));
+    assert_eq!(config.bump_minor, Some(Some(2.into())));
+    assert_eq!(config.bump_patch, Some(Some(3.into())));
     assert_eq!(config.bump_pre_release_label, Some("alpha".to_string()));
     assert!(config.bump_context);
     assert!(!config.no_bump_context);
@@ -67,9 +67,9 @@ fn test_bumps_config_schema_based() {
     ])
     .unwrap();
 
-    assert_eq!(config.bump_core, vec!["0=1", "2=3"]);
-    assert_eq!(config.bump_extra_core, vec!["1=5"]);
-    assert_eq!(config.bump_build, vec!["0=10", "1=20"]);
+    assert_eq!(config.bump_core, vec!["0=1".into(), "2=3".into()]);
+    assert_eq!(config.bump_extra_core, vec!["1=5".into()]);
+    assert_eq!(config.bump_build, vec!["0=10".into(), "1=20".into()]);
 }
 
 #[test]
@@ -123,9 +123,9 @@ fn test_validate_bumps_schema_bump_args_valid() {
     .unwrap();
 
     assert!(Validation::validate_bumps(&config).is_ok());
-    assert_eq!(config.bump_core, vec!["0=1", "2=3"]);
-    assert_eq!(config.bump_extra_core, vec!["1=5"]);
-    assert_eq!(config.bump_build, vec!["0=10", "1=20"]);
+    assert_eq!(config.bump_core, vec!["0=1".into(), "2=3".into()]);
+    assert_eq!(config.bump_extra_core, vec!["1=5".into()]);
+    assert_eq!(config.bump_build, vec!["0=10".into(), "1=20".into()]);
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn test_validate_bumps_schema_bump_args_invalid_odd_count() {
     // Test invalid schema bump arguments (odd number of arguments)
     // We need to manually create the config with odd count since clap validates pairs
     let config = BumpsConfig {
-        bump_core: vec!["0=1".to_string(), "2".to_string()], // Odd count: 2 elements (one without value)
+        bump_core: vec!["0=1".into(), "2".into()], // Odd count: 2 elements (one without value)
         ..Default::default()
     };
     let result = Validation::validate_bumps(&config);
@@ -209,12 +209,12 @@ fn test_resolve_bump_defaults() {
 
     assert!(Validation::resolve_bump_defaults(&mut config).is_ok());
 
-    // All Some(None) should become Some(Some(1))
-    assert_eq!(config.bump_major, Some(Some(1)));
-    assert_eq!(config.bump_minor, Some(Some(1)));
-    assert_eq!(config.bump_patch, Some(Some(1)));
-    assert_eq!(config.bump_post, Some(Some(1)));
-    assert_eq!(config.bump_dev, Some(Some(1)));
-    assert_eq!(config.bump_pre_release_num, Some(Some(1)));
-    assert_eq!(config.bump_epoch, Some(Some(1)));
+    // All Some(None) should become Some(Some(1.into()))
+    assert_eq!(config.bump_major, Some(Some(1.into())));
+    assert_eq!(config.bump_minor, Some(Some(1.into())));
+    assert_eq!(config.bump_patch, Some(Some(1.into())));
+    assert_eq!(config.bump_post, Some(Some(1.into())));
+    assert_eq!(config.bump_dev, Some(Some(1.into())));
+    assert_eq!(config.bump_pre_release_num, Some(Some(1.into())));
+    assert_eq!(config.bump_epoch, Some(Some(1.into())));
 }

@@ -3,6 +3,7 @@ use clap::Parser;
 pub mod bumps;
 pub mod main;
 pub mod overrides;
+pub mod resolved;
 pub mod validation;
 
 #[cfg(test)]
@@ -11,12 +12,18 @@ mod tests {
     pub mod combination_tests;
     pub mod main_tests;
     pub mod overrides_tests;
+    pub mod resolved_tests;
     pub mod validation_tests;
 }
 
 pub use bumps::BumpsConfig;
 pub use main::MainConfig;
 pub use overrides::OverridesConfig;
+pub use resolved::{
+    ResolvedArgs,
+    ResolvedBumps,
+    ResolvedOverrides,
+};
 use validation::Validation;
 
 /// Generate version from VCS data
@@ -100,11 +107,5 @@ impl VersionArgs {
     /// Get the dirty override state (None = use VCS, Some(bool) = override)
     pub fn dirty_override(&self) -> Option<bool> {
         self.overrides.dirty_override()
-    }
-
-    /// Resolve schema selection with default fallback
-    /// Returns (schema_name, schema_ron) with default applied if neither is provided
-    pub fn resolve_schema(&self) -> (Option<&str>, Option<&str>) {
-        self.main.resolve_schema()
     }
 }

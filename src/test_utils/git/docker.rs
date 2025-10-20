@@ -162,23 +162,69 @@ impl DockerGit {
             .cloned()
     }
 
-    /// Helper method to execute a Docker command with proper error handling
+    /// Helper method to execute a Docker command with proper error handling and retry logic
     fn execute_docker_command(&self, script: &str, operation_name: &str) -> io::Result<String> {
-        let container_id = self.get_container_id()?;
+        self.execute_docker_command_with_retry(script, operation_name, 5)
+    }
 
+    /// Execute a single Docker command without retry logic
+    fn execute_single_docker_command(
+        &self,
+        container_id: &str,
+        script: &str,
+    ) -> io::Result<(bool, String, String)> {
         let output = Command::new("docker")
-            .args(["exec", &container_id, "sh", "-c", script])
+            .args(["exec", container_id, "sh", "-c", script])
             .output()?;
 
-        if !output.status.success() {
-            return Err(io::Error::other(format!(
-                "Docker {} failed: {}",
-                operation_name,
-                String::from_utf8_lossy(&output.stderr)
-            )));
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+        Ok((output.status.success(), stdout, stderr))
+    }
+
+    /// Execute Docker command with retry logic for flaky operations
+    fn execute_docker_command_with_retry(
+        &self,
+        script: &str,
+        operation_name: &str,
+        max_attempts: usize,
+    ) -> io::Result<String> {
+        let container_id = self.get_container_id()?;
+        let mut last_error = None;
+
+        for attempt in 1..=max_attempts {
+            let (success, stdout, stderr) =
+                self.execute_single_docker_command(&container_id, script)?;
+
+            if success {
+                return Ok(stdout);
+            }
+
+            last_error = Some(format!(
+                "Docker {operation_name} failed (attempt {attempt}/{max_attempts}): {stderr}"
+            ));
+
+            // Only retry for specific git reference errors that are likely transient
+            if stderr.contains("cannot update ref") || stderr.contains("nonexistent object") {
+                if attempt < max_attempts {
+                    println!(
+                        "🔄 RETRY: {} (attempt {}/{}) - {}",
+                        operation_name,
+                        attempt,
+                        max_attempts,
+                        stderr.trim()
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(100 * attempt as u64));
+                    continue;
+                }
+            } else {
+                // For other errors, fail immediately
+                break;
+            }
         }
 
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+        Err(io::Error::other(last_error.unwrap()))
     }
 
     fn run_docker_command(&self, test_dir: &TestDir, script: &str) -> io::Result<String> {
@@ -301,7 +347,7 @@ impl GitOperations for DockerGit {
         "#
         );
 
-        self.execute_docker_command(&tag_script, "tag creation")?;
+        self.execute_docker_command_with_retry(&tag_script, "tag creation", 3)?;
 
         Ok(())
     }
