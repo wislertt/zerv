@@ -1,10 +1,105 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
 
 ## Project Overview
 
 Zerv is a dynamic versioning CLI tool written in Rust that generates versions for any commit from git and other version control systems. It supports multiple version formats (SemVer, PEP440, CalVer) and is designed for CI/CD builds.
+
+---
+
+## 🚨 CRITICAL: Code Comment Policy
+
+**IMPORTANT**: This is an open-source Rust project. Keep code clean and readable. Only add comments when they provide value that code cannot.
+
+### The Golden Rule
+
+**If a comment just repeats what the code or function name already says, DELETE IT.**
+
+### When to Comment (Rarely)
+
+1. **Complex algorithms** - Explain the approach or why it works
+2. **Non-obvious behavior** - Domain-specific rules (e.g., "PEP440 ordering: dev < alpha < beta < rc")
+3. **Surprising edge cases** - Behavior that might confuse future readers
+4. **Public API with non-obvious usage** - Only if the signature doesn't explain itself
+
+### When NOT to Comment (Almost Always)
+
+1. **Never restate function names** - `vcs_data_to_zerv_vars` needs no comment explaining it converts VCS data
+2. **Never restate what code does** - `is_dirty()` doesn't need "Returns dirty status"
+3. **Never add obvious comments** - No "Initialize repo", "Create variable", "Return value"
+4. **Never document arguments that are self-explanatory** - `user_id: &str` doesn't need explanation
+
+### Self-Documenting Code First
+
+1. **Use clear function names** - `format_pep440_prerelease` vs `format_pre`
+2. **Use clear variable names** - `commit_distance` vs `dist`
+3. **Extract complex logic** - Create well-named helper functions
+4. **Let types document contracts** - `Result<Version, ParseError>` is self-documenting
+
+### Examples
+
+````rust
+// ✅ PERFECT - No comment needed, function name is clear
+pub fn vcs_data_to_zerv_vars(vcs_data: &VcsData, version_obj: &VersionObject) -> HashMap<String, String> {
+    let prerelease = match &version_obj.pre {
+        Some(pre) => format_pep440_prerelease(pre),
+        None => String::new(),
+    };
+}
+
+// ✅ GOOD - Comment adds value (explains non-obvious domain rule)
+/// PEP440 pre-release ordering: dev < alpha < beta < rc < final
+pub fn format_pep440_prerelease(pre: &PreRelease) -> String {
+    match pre.label.as_str() {
+        "dev" => format!("dev{}", pre.number),
+        "a" => format!("a{}", pre.number),
+        "b" => format!("b{}", pre.number),
+        "rc" => format!("rc{}", pre.number),
+        _ => String::new(),
+    }
+}
+
+// ✅ GOOD - Example clarifies non-obvious behavior
+/// Strips common version prefixes like "v", "release-", "ver"
+///
+/// # Example
+/// ```
+/// parse_version_tag("v1.2.3") // Returns "1.2.3"
+/// parse_version_tag("release-2.0.0") // Returns "2.0.0"
+/// ```
+pub fn parse_version_tag(tag: &str) -> String {
+    // Implementation
+}
+
+// ❌ BAD - Just repeats function name
+/// Converts VCS metadata to Zerv template variables.
+pub fn vcs_data_to_zerv_vars(vcs_data: &VcsData, version_obj: &VersionObject) -> HashMap<String, String> {}
+
+// ❌ BAD - Obvious from function name
+/// Checks if the repository is dirty.
+pub fn is_dirty(&self) -> bool {
+    self.dirty
+}
+
+// ❌ BAD - Restates what code does
+pub fn calculate_distance(&self) -> usize {
+    // Get the commit count
+    let count = self.commits.len();
+    // Return the count
+    count
+}
+
+// ❌ BAD - Useless inline comments
+let prerelease = match &version_obj.pre {
+    Some(pre) => format_prerelease(pre), // Format the prerelease
+    None => String::new(), // Return empty string
+};
+````
+
+**Bottom Line**: If you're about to write a comment, first try to make the code clearer. If the code can't be clearer, then add the comment.
+
+---
 
 ## Essential Commands
 
@@ -50,6 +145,24 @@ make open_coverage     # Open HTML coverage report
 make docs       # Generate documentation via cargo xtask
 ```
 
+---
+
+## 📚 MANDATORY: Always Check .dev First
+
+**BEFORE performing ANY coding task, read `.dev/00-README.md` for complete project context and workflow.**
+
+### .dev Document Numbering
+
+All `.dev/` documents use sequential numbering to indicate creation order:
+
+- `00-***.md`: Current state (baseline)
+- `01-***.md`: Next development phase
+- `02-***.md`: Following phase
+
+**Higher numbers = more recent/updated plans**. Always verify against actual codebase - higher numbered docs are more likely to be current.
+
+---
+
 ## High-Level Architecture
 
 ### Pipeline Architecture
@@ -80,7 +193,7 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
     - Presets for common versioning schemes (standard, calver)
     - RON-based schema parsing for custom formats
 
-- **`src/cli/`**: Command-line interface (in development)
+- **`src/cli/`**: Command-line interface
     - Main commands: `version`, `check`
     - Output formatting and display logic
 
@@ -101,27 +214,158 @@ The project has extensive test utilities in `src/test_utils/`:
 - **`GitRepoFixture`**: Creates isolated test repositories with specific states
 - **`TestDir`**: Temporary directory management with automatic cleanup
 
-## Testing Standards
+---
+
+## 🔒 Error Handling Standards
+
+**MANDATORY: Follow these error handling rules strictly.**
+
+### Rules
+
+1. **ALWAYS use `zerv::error::ZervError` for custom errors**
+    - Never create ad-hoc error types
+    - Use proper error propagation with `?` operator
+
+2. **Use `io::Error::other()` instead of `io::Error::new(io::ErrorKind::Other, ...)`**
+    - Shorter and more idiomatic
+
+3. **Include context in error messages**
+    - Say what failed, where, and why
+    - Include relevant file paths, values, or states
+
+4. **NEVER use `unwrap()` or `expect()` in production code**
+    - Only acceptable in test code
+    - In tests, use `expect()` with detailed context
+
+### Examples
+
+```rust
+// ✅ GOOD
+let file = fs::read_to_string(&path)
+    .map_err(|e| ZervError::Io(io::Error::other(
+        format!("Failed to read config file at {}: {}", path.display(), e)
+    )))?;
+
+// ✅ GOOD - Test code with context
+let fixture = GitRepoFixture::tagged("v1.0.0")
+    .expect("Failed to create tagged repo - check Docker availability");
+
+// ❌ BAD - Generic error message
+let file = fs::read_to_string(&path)?;
+
+// ❌ BAD - Old error pattern
+return Err(ZervError::Io(io::Error::new(
+    io::ErrorKind::Other,
+    "Something failed"
+)));
+
+// ❌ BAD - Production unwrap
+let config = load_config().unwrap();
+```
+
+---
+
+## 🎯 Constants Usage - MANDATORY
+
+**NEVER use bare string literals for field names, formats, sources, or schema names.**
+
+**Why**: Type safety, refactoring safety, consistency, IDE support, maintainability.
+
+### Available Constants
+
+```rust
+use crate::utils::constants::{fields, formats, sources, schema_names};
+
+// Field names
+fields::MAJOR
+fields::MINOR
+fields::PATCH
+fields::EPOCH
+fields::PRE_RELEASE
+fields::POST
+fields::DEV
+fields::DISTANCE
+fields::DIRTY
+fields::BUMPED_BRANCH
+fields::BUMPED_COMMIT_HASH
+fields::LAST_COMMIT_HASH
+fields::LAST_TIMESTAMP
+fields::LAST_BRANCH
+
+// Format names
+formats::SEMVER
+formats::PEP440
+formats::ZERV
+formats::AUTO
+
+// Source names
+sources::GIT
+sources::STDIN
+
+// Schema names
+schema_names::ZERV_STANDARD
+schema_names::ZERV_CALVER
+```
+
+### Examples
+
+```rust
+// ✅ GOOD - Using constants
+use crate::utils::constants::{fields, formats};
+
+match field_name.as_str() {
+    fields::MAJOR => handle_major(),
+    fields::MINOR => handle_minor(),
+    fields::PATCH => handle_patch(),
+    _ => return Err(ZervError::UnknownField(field_name.to_string())),
+}
+
+match format.as_str() {
+    formats::SEMVER => convert_to_semver()?,
+    formats::PEP440 => convert_to_pep440()?,
+    _ => return Err(ZervError::UnknownFormat(format.to_string())),
+}
+
+// ❌ BAD - Bare strings (will be flagged during code review)
+match field_name.as_str() {
+    "major" => handle_major(),
+    "minor" => handle_minor(),
+    "patch" => handle_patch(),
+    _ => return Err(ZervError::UnknownField(field_name.to_string())),
+}
+```
+
+---
+
+## 🧪 Testing Standards
 
 ### Environment Variables
 
 - `ZERV_TEST_NATIVE_GIT=true`: Use native Git (set in CI for platform testing)
 - `ZERV_TEST_DOCKER=true`: Enable Docker-dependent tests (requires Docker)
 
-### Git Testing Pattern
+### Environment-Aware Git Testing Pattern
 
-ALWAYS use the environment-aware pattern:
+**MANDATORY: Always use `get_git_impl()` for environment-aware Git operations.**
 
 ```rust
 use crate::test_utils::{GitOperations, get_git_impl};
 
-let git_impl = get_git_impl(); // Returns DockerGit or NativeGit based on environment
-git_impl.init_repo(&test_dir)?;
+#[test]
+fn test_git_operations() {
+    // ✅ GOOD - Environment-aware
+    let git_impl = get_git_impl();
+    git_impl.init_repo(&test_dir)?;
+
+    // ❌ BAD - Direct implementation usage
+    let git = DockerGit::new();
+    git.init_repo(&test_dir)?;
+}
 ```
 
 ### Docker Test Gating
 
-For Docker-dependent tests:
+**MANDATORY: Use `should_run_docker_tests()` for all Docker-dependent tests.**
 
 ```rust
 use crate::test_utils::should_run_docker_tests;
@@ -129,64 +373,149 @@ use crate::test_utils::should_run_docker_tests;
 #[test]
 fn test_docker_functionality() {
     if !should_run_docker_tests() {
-        return; // Skip when Docker tests are disabled
+        return;
     }
-    // Test code here
+    // Docker-dependent test code
 }
 ```
 
-### Flaky Test Prevention
+### Test Structure Template
 
-- Use `GitOperations` trait methods for atomic operations
-- Create fresh Git implementations for each test directory
-- Include detailed error messages with context
-- Verify intermediate states (e.g., `.git` directory exists)
-- Never reuse Git implementations across different directories
-
-## Coding Standards
-
-### Error Handling
-
-- **ALWAYS** use `zerv::error::ZervError` for custom errors
-- Use `io::Error::other()` instead of `io::Error::new(io::ErrorKind::Other, ...)`
-- Include context in error messages for debugging
-- Proper error propagation with `?` operator
-
-### Constants Usage
-
-**MANDATORY**: Always use constants instead of bare strings:
+**IMPORTANT: Follow this structure for all tests to prevent flaky behavior.**
 
 ```rust
-// GOOD
-use crate::utils::constants::{fields, formats, sources, schema_names};
-match field_name.as_str() {
-    fields::MAJOR => // ...
-    fields::MINOR => // ...
-}
+#[test]
+fn test_example() {
+    // 1. Docker test gating (if needed)
+    if !should_run_docker_tests() {
+        return;
+    }
 
-// BAD - Never use bare strings
-match field_name.as_str() {
-    "major" => // ...
+    // 2. Setup - Create isolated resources
+    let fixture = GitRepoFixture::tagged("v1.0.0")
+        .expect("Failed to create tagged repo - check Docker availability and Git operations");
+
+    // 3. Verify Setup - Check preconditions
+    assert!(fixture.path().join(".git").exists(),
+        "Git repository should exist at: {}", fixture.path().display());
+
+    // 4. Execute - Run the test operation
+    let result = some_operation(&fixture);
+
+    // 5. Verify Results - Check postconditions with detailed assertions
+    let output = result.unwrap_or_else(|e| {
+        panic!("Operation should succeed for tagged repo at {}: {}",
+               fixture.path().display(), e);
+    });
+
+    assert!(output.contains("expected"),
+        "Output should contain expected content. Got: {output}");
+
+    // 6. Cleanup - Automatic via Drop trait
 }
 ```
 
-### Code Reuse
+### Flaky Test Prevention - CRITICAL RULES
 
-Before implementing new test utilities:
+**These patterns MUST be followed to prevent race conditions and flaky tests.**
 
-- Check `src/test_utils/` for existing infrastructure
-- Reuse `TestDir`, `GitOperations` trait, and other helpers
-- Use `get_git_impl()` for environment-aware Git operations
-- Avoid duplicating code across files
+#### ✅ DO: Atomic Operations
 
-### Performance Standards
+```rust
+// ✅ GOOD - Fresh Git implementation per directory
+let test_dir = TestDir::new()?;
+let git_impl = get_git_impl();
+git_impl.init_repo(&test_dir)?;
+
+// ✅ GOOD - State verification
+assert!(test_dir.path().join(".git").exists(),
+    "Git repository should exist at: {}", test_dir.path().display());
+
+// ✅ GOOD - Detailed error context
+let fixture = GitRepoFixture::tagged("v1.0.0")
+    .expect("Failed to create tagged repo - check Docker availability");
+
+// ✅ GOOD - Isolated resources per test
+#[test]
+fn test_something() {
+    let fixture = GitRepoFixture::tagged("v1.0.0")?;
+}
+
+// ✅ GOOD - Detailed assertions
+assert!(output.contains("schema"),
+    "Output should contain 'schema' field. Got: {output}");
+```
+
+#### ❌ DON'T: Anti-Patterns
+
+```rust
+// ❌ BAD - Reusing Git implementations across directories (race conditions!)
+let fixture = GitRepoFixture::tagged("v1.0.0")?;
+fixture.git_impl.init_repo(&different_dir)?;
+
+// ❌ BAD - Multi-step operations without verification
+let fixture = GitRepoFixture::with_distance("v1.0.0", 1)?;
+fixture.git_impl.execute_git(&fixture.test_dir, &["tag", "-d", "v1.0.0"])?;
+
+// ❌ BAD - Generic error messages
+let fixture = GitRepoFixture::tagged("v1.0.0").expect("Failed");
+
+// ❌ BAD - Shared state between tests
+static SHARED_FIXTURE: OnceCell<GitRepoFixture> = OnceCell::new();
+
+// ❌ BAD - Assertions without context
+assert!(output.contains("schema"));
+```
+
+### Make Commands
+
+- `make test_easy`: Docker Git + Docker tests skipped (fast, coverage gaps)
+- `make test`: Docker Git + Docker tests enabled (full coverage)
+- CI: Native Git + Docker tests on Linux only
+
+---
+
+## 🔄 Code Reuse Standards
+
+**MANDATORY: Always check existing utilities before creating new ones.**
+
+### Rules
+
+1. **Check `src/test_utils/` first** before creating test utilities
+2. **Reuse existing infrastructure**: `TestDir`, `GitOperations`, `GitRepoFixture`
+3. **Use `get_git_impl()`** for environment-aware Git operations
+4. **Prefer `GitOperations` trait methods** over direct Docker/Native calls
+5. **Avoid duplicating code** across different files
+6. **Look for existing helpers** before implementing new ones
+
+### Examples
+
+```rust
+// ✅ GOOD - Reusing test infrastructure
+use crate::test_utils::{TestDir, GitOperations, get_git_impl, GitRepoFixture};
+
+let fixture = GitRepoFixture::tagged("v1.0.0")?;
+let test_dir = TestDir::new()?;
+let git_impl = get_git_impl();
+
+// ❌ BAD - Reimplementing test utilities
+fn create_test_dir() -> PathBuf {
+    // Custom temp directory logic that already exists in TestDir
+}
+```
+
+---
+
+## ⚡ Performance Standards
 
 - Parse 1000+ versions in <100ms
 - Minimal VCS command calls (batch when possible)
 - Use compiled regex patterns for speed
 - Zero-copy string operations where possible
 
-## CI/CD
+---
+
+## 🚀 CI/CD
 
 ### Multi-Platform Testing
 
@@ -202,6 +531,8 @@ The project uses pre-commit hooks for:
 - Linting (clippy)
 - Running tests
 
+**IMPORTANT**: Ensure `make lint` and `make test` always pass before committing.
+
 ### GitHub Actions
 
 Main workflows:
@@ -211,22 +542,9 @@ Main workflows:
 - `cd.yml`: Release automation
 - `security.yml`: Security scanning with SonarCloud
 
-## Important Files
+---
 
-### Development Documentation
-
-Read `.dev/00-README.md` FIRST before any coding task. All `.dev/` documents use sequential numbering (00, 01, 02...) where higher numbers indicate more recent plans.
-
-### Cursor Rules (Apply to Claude Code)
-
-Key rules in `.cursor/rules/`:
-
-- `dev-workflow.mdc`: Development workflow and git practices
-- `testing-standards.mdc`: Comprehensive testing requirements
-- `cli-implementation.mdc`: CLI standards and patterns
-- `docker-git-testing.mdc`: Docker testing architecture
-
-## Running Tests for Specific Features
+## 📋 Running Tests
 
 ```bash
 # Run all tests
@@ -243,12 +561,122 @@ cargo test --features test-utils
 
 # Run a single test
 cargo test test_name -- --exact
+
+# Run without Docker (fast, coverage gaps)
+ZERV_TEST_DOCKER=false cargo test
+
+# Run with full coverage
+ZERV_TEST_DOCKER=true cargo test
 ```
 
-## Configuration
+---
+
+## ⚙️ Configuration
 
 Centralized config in `src/config.rs`:
 
 - Loads environment variables (`ZERV_TEST_NATIVE_GIT`, `ZERV_TEST_DOCKER`)
 - Validates boolean parsing
 - Single source of truth for environment configuration
+
+---
+
+## 📖 CLI Implementation Standards
+
+### Core Commands
+
+- `zerv version [OPTIONS]` - Main version processing pipeline
+- `zerv check <version> [OPTIONS]` - Validation-only command
+
+### Pipeline Architecture
+
+```
+Input → Version Object → Zerv Object → Transform → Output Version Object → Display
+```
+
+### Essential CLI Options
+
+**Input Sources:**
+
+- `--source git` (default) - Auto-detect Git
+- `--source stdin` - Read version from stdin
+
+**Schema Control:**
+
+- `--schema zerv-default` (default) - Tier-aware schema
+- `--schema-ron <ron>` - Custom RON schema
+
+**Output Control:**
+
+- `--output-format <format>` - Target format: pep440, semver
+- `--output-template <template>` - Custom template string
+- `--output-prefix [prefix]` - Add prefix (defaults to "v")
+
+---
+
+## ✅ Validation Checks
+
+When user mentions specific checks, run comprehensive audits:
+
+### Error Standards Check
+
+Triggers: "check error standards", "find error violations", "audit error handling"
+
+Search for:
+
+- `io::Error::new(io::ErrorKind::Other` patterns
+- Missing `ZervError` usage
+- Direct `unwrap()` or `expect()` in production code
+- Error messages without context
+
+### Constants Check
+
+Triggers: "check constants usage", "find bare strings", "audit string literals"
+
+Search for:
+
+- Bare string literals in match statements
+- Hardcoded field names
+- Magic strings in validation logic
+
+### Code Reuse Check
+
+Triggers: "check code reuse", "find duplicated code", "audit code duplication"
+
+Search for:
+
+- Duplicated test setup patterns
+- Direct `DockerGit`/`NativeGit` usage instead of `get_git_impl()`
+- Reimplemented Git operations
+- Similar helper functions across files
+
+### Flaky Test Check
+
+Triggers: "check for flaky tests", "test stability", "race condition"
+
+Action: Run `make test_flaky` (5 iterations) to detect instability
+
+---
+
+## 🎯 Summary of Critical Rules
+
+**MANDATORY - These rules must ALWAYS be followed:**
+
+1. ✅ **Use constants** instead of bare strings (fields, formats, sources, schemas)
+2. ✅ **Use `ZervError`** for custom errors and `io::Error::other()` for IO errors
+3. ✅ **Use `get_git_impl()`** for environment-aware Git operations
+4. ✅ **Use `should_run_docker_tests()`** for Docker-dependent tests
+5. ✅ **Never reuse Git implementations** across different directories
+6. ✅ **Include detailed error context** in all error messages
+7. ✅ **NO useless comments** - only comment when code cannot explain itself
+8. ✅ **Check existing utilities** in `src/test_utils/` before creating new ones
+
+**NEVER do these:**
+
+1. ❌ Use bare string literals for field/format/source names
+2. ❌ Use `unwrap()` or `expect()` in production code
+3. ❌ Add comments that just repeat function names or restate code
+4. ❌ Create Git fixtures without proper isolation
+5. ❌ Skip Docker test gating for Docker-dependent tests
+6. ❌ Write generic error messages without context
+7. ❌ Duplicate code instead of using existing utilities
