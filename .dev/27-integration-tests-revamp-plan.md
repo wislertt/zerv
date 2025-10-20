@@ -141,13 +141,14 @@ tests/integration_tests/version/
 - ✅ Refactored tests to use `rstest` for cleaner parameterized testing
 - ✅ Enhanced `ZervFixture.with_vcs_data()` to accept `Option` types for better flexibility
 - ✅ Implemented `formats.rs`: Comprehensive format conversion tests (30 tests)
-- **Result**: 37 tests passing (100% success rate) - 7 source tests + 30 format tests
-- **Performance**: Tests run in <0.7 seconds without Docker
+- ✅ Implemented `schemas.rs`: Comprehensive schema tests (31 tests)
+- **Result**: 82 tests passing (100% success rate) - 7 source tests + 30 format tests + 31 schema tests + 14 other tests
+- **Performance**: Tests run in <1.3 seconds without Docker
 
 **Remaining MainConfig Tests:**
 
 - ✅ `formats.rs`: Test `--input-format` (semver/pep440/auto) and `--output-format` (semver/pep440/zerv) combinations, format validation errors, error message consistency (✅ PASSED - 30 tests)
-- ❌ `schemas.rs`: Test `--schema` (tier1/tier2/tier3) and `--schema-ron` (custom RON schema) options
+- ✅ `schemas.rs`: Test `--schema` (zerv-standard/zerv-calver) and `--schema-ron` (custom RON schema) options (✅ PASSED - 31 tests)
 - ❌ `templates.rs`: Test `--output-template` with Handlebars template rendering
 - ❌ `directory.rs`: Test `-C` flag for changing working directory before execution
 - ❌ `combinations.rs`: Test MainConfig option combinations (format + schema, template + format, etc.)

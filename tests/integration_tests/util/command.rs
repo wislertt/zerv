@@ -186,6 +186,17 @@ impl TestCommand {
         );
         TestOutput::new(output)
     }
+
+    /// Convenience method: create command, provide stdin, and return stdout
+    pub fn run_with_stdin(args: &str, input: String) -> String {
+        Self::new()
+            .args_from_str(args)
+            .stdin(input)
+            .assert_success()
+            .stdout()
+            .trim()
+            .to_string()
+    }
 }
 
 #[cfg(test)]
@@ -266,5 +277,22 @@ mod tests {
         cmd.args_from_str(args).stdin(zerv_ron);
         let output = cmd.assert_success();
         assert_eq!(output.stdout().trim(), expected);
+    }
+
+    #[rstest]
+    #[case("version --source stdin", "1.2.3")]
+    #[case("version --source stdin --output-format semver", "1.2.3")]
+    #[case("version --source stdin --output-format pep440", "1.2.3")]
+    #[case(
+        r#"version --source stdin --output-template "v{{major}}.{{minor}}""#,
+        "v1.2"
+    )]
+    fn test_run_with_stdin(#[case] args: &str, #[case] expected: &str) {
+        use zerv::test_utils::ZervFixture;
+
+        let zerv_ron = ZervFixture::new().with_version(1, 2, 3).build().to_string();
+        let output = TestCommand::run_with_stdin(args, zerv_ron);
+
+        assert_eq!(output, expected);
     }
 }

@@ -1,3 +1,8 @@
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 use serde::{
     Deserialize,
     Serialize,
@@ -160,6 +165,13 @@ impl ZervSchema {
     }
 }
 
+impl Display for ZervSchema {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let ron_string = ron::to_string(self).map_err(|_| std::fmt::Error)?;
+        write!(f, "{}", ron_string)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
@@ -283,5 +295,22 @@ mod tests {
     fn test_pep440_based_precedence_order() {
         let order = ZervSchema::pep440_based_precedence_order();
         assert_eq!(order, PrecedenceOrder::pep440_based());
+    }
+
+    #[rstest]
+    #[case::custom_schema(
+        ZervSchema::new(
+            vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
+            vec![Component::Var(Var::Epoch)],
+            vec![],
+        ).expect("Failed to create schema")
+    )]
+    #[case::standard_tier_1(ZervSchema::zerv_standard_tier_1())]
+    fn test_to_string_roundtrip(#[case] original: ZervSchema) {
+        let ron_string = original.to_string();
+        let reconstructed: ZervSchema =
+            ron::from_str(&ron_string).expect("Failed to reconstruct schema");
+
+        assert_eq!(original, reconstructed);
     }
 }

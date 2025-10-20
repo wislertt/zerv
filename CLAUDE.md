@@ -99,6 +99,281 @@ let prerelease = match &version_obj.pre {
 
 **Bottom Line**: If you're about to write a comment, first try to make the code clearer. If the code can't be clearer, then add the comment.
 
+### 🚨 ZERO TOLERANCE: Comment Violations
+
+**ABSOLUTELY FORBIDDEN** - These patterns will be immediately rejected:
+
+1. **Function name restatements**:
+
+    ```rust
+    // ❌ FORBIDDEN
+    /// Converts VCS data to Zerv variables
+    pub fn vcs_data_to_zerv_vars() { }
+
+    // ✅ INSTEAD: Make function name clear or remove comment entirely
+    pub fn vcs_data_to_zerv_vars() { }  // Name is self-explanatory
+    ```
+
+2. **Obvious parameter documentation**:
+
+    ```rust
+    // ❌ FORBIDDEN
+    /// Processes the version
+    /// @param version: The version to process
+    fn process_version(version: Version) { }
+    ```
+
+3. **Section divider comments** - Use `mod` blocks instead:
+
+    ```rust
+    // ❌ FORBIDDEN
+    // ============================================================================
+    // Builder Pattern Methods
+    // ============================================================================
+
+    // ✅ INSTEAD: Use module organization or no comments at all
+    ```
+
+4. **Process step comments**:
+    ```rust
+    // ❌ FORBIDDEN
+    let result = calculate(); // Calculate the result
+    return result; // Return the result
+    ```
+
+**If you see these patterns during code review, REMOVE THEM IMMEDIATELY.**
+
+---
+
+## 🔒 Import Statement Policy
+
+**MANDATORY: Always place `use` statements at the top of the file or module, never inside functions.**
+
+### The Rule
+
+All `use` statements must be declared at:
+
+1. **Top of file** (preferred for most cases)
+2. **Top of test module** (for test-specific imports in `#[cfg(test)] mod tests { ... }`)
+
+**NEVER** place `use` statements inside individual functions, even in tests.
+
+### Why This Matters
+
+1. **Readability** - All dependencies visible at a glance
+2. **Maintainability** - Easy to see what the file/module depends on
+3. **Rust Conventions** - Standard Rust style guidelines
+4. **IDE Support** - Better auto-imports and refactoring
+5. **Code Review** - Easier to spot unused or unnecessary imports
+
+### Examples
+
+```rust
+// ✅ GOOD - Imports at top of file
+use rstest::rstest;
+use zerv::test_utils::{ZervFixture, ZervSchemaFixture};
+use zerv::version::zerv::{Component, Var, ZervSchema};
+
+#[test]
+fn test_something() {
+    let schema = ZervSchema::new_with_precedence(
+        vec![Component::Var(Var::Major)],
+        vec![],
+        vec![],
+        PrecedenceOrder::default(),
+    ).unwrap();
+}
+
+// ✅ GOOD - Test-specific imports at top of test module
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::TestHelper;
+
+    #[test]
+    fn test_helper_usage() {
+        TestHelper::new();
+    }
+}
+
+// ❌ BAD - Imports inside function
+#[test]
+fn test_something() {
+    use zerv::version::zerv::{Component, Var, ZervSchema};  // ❌ WRONG!
+    use zerv::version::zerv::bump::precedence::PrecedenceOrder;  // ❌ WRONG!
+
+    let schema = ZervSchema::new_with_precedence(
+        vec![Component::Var(Var::Major)],
+        vec![],
+        vec![],
+        PrecedenceOrder::default(),
+    ).unwrap();
+}
+
+// ❌ BAD - Imports scattered throughout file
+fn function_a() {
+    use some_crate::TypeA;  // ❌ WRONG!
+    // ...
+}
+
+fn function_b() {
+    use some_crate::TypeB;  // ❌ WRONG!
+    // ...
+}
+```
+
+### Exception (Very Rare)
+
+The only acceptable use of inline imports is when deliberately limiting scope to prevent naming conflicts:
+
+```rust
+// ✅ ACCEPTABLE - Intentional scope limitation
+fn convert_format() {
+    use external_crate::Format as ExternalFormat;  // Avoids naming conflict with local Format
+    // Use ExternalFormat here only
+}
+```
+
+**If you see inline `use` statements during code review or refactoring, move them to the top of the file immediately.**
+
+---
+
+## 📦 Test Organization Policy
+
+**MANDATORY: Use Rust modules for test organization, not comment-based grouping.**
+
+### The Rule
+
+When organizing tests into logical groups:
+
+1. **Use `mod` blocks** for structural grouping
+2. **NEVER use comment dividers** like `// ============ Section Name ============`
+3. Each module should use `use super::*;` to import parent scope
+
+**Benefits over comment-based grouping:**
+
+- Rust enforces module boundaries
+- IDEs can collapse/expand modules
+- Test names include module path for clarity
+- Can add module-level helpers
+- Consistent with codebase patterns
+
+### Test Organization Pattern
+
+```rust
+// ✅ GOOD - Module-based organization
+use rstest::rstest;
+use crate::util::TestCommand;
+
+mod feature_basic {
+    use super::*;
+
+    #[test]
+    fn test_something() { /* ... */ }
+
+    #[rstest]
+    #[case::scenario_a("input", "expected")]
+    fn test_parameterized(#[case] input: &str, #[case] expected: &str) { /* ... */ }
+}
+
+mod feature_advanced {
+    use super::*;
+
+    #[test]
+    fn test_complex_behavior() { /* ... */ }
+
+    // Module-level helper function
+    fn setup_complex_fixture() -> Fixture {
+        // ...
+    }
+}
+
+mod feature_error_handling {
+    use super::*;
+
+    #[test]
+    fn test_error_case() { /* ... */ }
+}
+
+// ❌ BAD - Comment-based grouping
+// ============================================================================
+// Feature Basic Tests
+// ============================================================================
+
+#[test]
+fn test_something() { /* ... */ }
+
+// ============================================================================
+// Feature Advanced Tests
+// ============================================================================
+
+#[test]
+fn test_complex_behavior() { /* ... */ }
+```
+
+### Real Example from Codebase
+
+**Before (comment-based):**
+
+```rust
+// ============================================================================
+// Schema Preset Tests - zerv-standard
+// ============================================================================
+
+#[test]
+fn test_schema_standard_tier_1() { /* ... */ }
+
+// ============================================================================
+// Schema Validation and Error Handling
+// ============================================================================
+
+#[test]
+fn test_schema_unknown_preset_error() { /* ... */ }
+```
+
+**After (module-based):**
+
+```rust
+mod schema_preset_standard {
+    use super::*;
+
+    #[test]
+    fn test_schema_standard_tier_1() { /* ... */ }
+}
+
+mod schema_validation {
+    use super::*;
+
+    #[test]
+    fn test_schema_unknown_preset_error() { /* ... */ }
+}
+```
+
+**Test output includes module path:**
+
+```
+test integration_tests::version::main::schemas::schema_preset_standard::test_schema_standard_tier_1 ... ok
+test integration_tests::version::main::schemas::schema_validation::test_schema_unknown_preset_error ... ok
+```
+
+### When to Use Modules
+
+Use module-based organization when:
+
+- File has 3+ logical test groups
+- Tests naturally cluster by feature/behavior
+- Need to share setup code within a group
+- File exceeds ~200 lines
+
+### Module Naming Conventions
+
+- Use snake_case: `mod schema_preset_standard`
+- Be descriptive: `mod schema_validation` not `mod validation`
+- Match test function prefixes when possible
+- Keep names short but clear
+
+**If you see comment-based test grouping during refactoring, convert it to module-based organization.**
+
 ---
 
 ## Essential Commands
@@ -670,13 +945,18 @@ Action: Run `make test_flaky` (5 iterations) to detect instability
 6. ✅ **Include detailed error context** in all error messages
 7. ✅ **NO useless comments** - only comment when code cannot explain itself
 8. ✅ **Check existing utilities** in `src/test_utils/` before creating new ones
+9. ✅ **Place `use` statements at top of file/module** - never inside functions
+10. ✅ **Use `mod` blocks for test organization** - not comment dividers
 
 **NEVER do these:**
 
 1. ❌ Use bare string literals for field/format/source names
 2. ❌ Use `unwrap()` or `expect()` in production code
 3. ❌ Add comments that just repeat function names or restate code
-4. ❌ Create Git fixtures without proper isolation
-5. ❌ Skip Docker test gating for Docker-dependent tests
-6. ❌ Write generic error messages without context
-7. ❌ Duplicate code instead of using existing utilities
+4. ❌ Write useless comments that restate what's already obvious from function/variable names
+5. ❌ Create Git fixtures without proper isolation
+6. ❌ Skip Docker test gating for Docker-dependent tests
+7. ❌ Write generic error messages without context
+8. ❌ Duplicate code instead of using existing utilities
+9. ❌ Place `use` statements inside functions (except rare naming conflict cases)
+10. ❌ Use comment dividers for test grouping (use `mod` blocks instead)
