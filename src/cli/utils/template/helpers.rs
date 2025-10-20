@@ -31,6 +31,55 @@ pub fn register_helpers(handlebars: &mut Handlebars) -> Result<(), ZervError> {
     Ok(())
 }
 
+// ============================================================================
+// Parameter Extraction Helpers
+// ============================================================================
+
+/// Extract string parameter from a helper
+fn extract_string_param<'a>(
+    h: &'a Helper,
+    helper_name: &str,
+) -> Result<&'a str, handlebars::RenderError> {
+    h.param(0).and_then(|v| v.value().as_str()).ok_or_else(|| {
+        handlebars::RenderError::from(RenderErrorReason::Other(format!(
+            "{helper_name} helper requires a string parameter"
+        )))
+    })
+}
+
+/// Extract u64 parameter from a helper
+fn extract_u64_param(h: &Helper, helper_name: &str) -> Result<u64, handlebars::RenderError> {
+    h.param(0).and_then(|v| v.value().as_u64()).ok_or_else(|| {
+        handlebars::RenderError::from(RenderErrorReason::Other(format!(
+            "{helper_name} helper requires a numeric parameter"
+        )))
+    })
+}
+
+/// Extract two numeric parameters from a helper
+fn extract_two_numbers(
+    h: &Helper,
+    helper_name: &str,
+) -> Result<(i64, i64), handlebars::RenderError> {
+    let a = h.param(0).and_then(|v| v.value().as_i64()).ok_or_else(|| {
+        handlebars::RenderError::from(RenderErrorReason::Other(format!(
+            "{helper_name} helper requires two numeric parameters"
+        )))
+    })?;
+
+    let b = h.param(1).and_then(|v| v.value().as_i64()).ok_or_else(|| {
+        handlebars::RenderError::from(RenderErrorReason::Other(format!(
+            "{helper_name} helper requires two numeric parameters"
+        )))
+    })?;
+
+    Ok((a, b))
+}
+
+// ============================================================================
+// Helper Implementations
+// ============================================================================
+
 fn sanitize_helper(
     h: &Helper,
     _: &Handlebars,
@@ -38,11 +87,7 @@ fn sanitize_helper(
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> HelperResult {
-    let value = h.param(0).and_then(|v| v.value().as_str()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "sanitize helper requires a string parameter".to_string(),
-        ))
-    })?;
+    let value = extract_string_param(h, "sanitize")?;
 
     // Check for preset format
     let format = h.hash_get("preset").and_then(|v| v.value().as_str());
@@ -103,11 +148,7 @@ fn hash_helper(
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> HelperResult {
-    let input = h.param(0).and_then(|v| v.value().as_str()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "hash helper requires a string parameter".to_string(),
-        ))
-    })?;
+    let input = extract_string_param(h, "hash")?;
 
     let length = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(7) as usize;
 
@@ -172,11 +213,7 @@ fn hash_int_helper(
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> HelperResult {
-    let input = h.param(0).and_then(|v| v.value().as_str()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "hash_int helper requires a string parameter".to_string(),
-        ))
-    })?;
+    let input = extract_string_param(h, "hash_int")?;
 
     let length = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(7) as usize;
     let allow_leading_zero = h
@@ -213,11 +250,7 @@ fn prefix_helper(
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> HelperResult {
-    let string = h.param(0).and_then(|v| v.value().as_str()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "prefix helper requires a string parameter".to_string(),
-        ))
-    })?;
+    let string = extract_string_param(h, "prefix")?;
 
     let length = h
         .param(1)
@@ -242,11 +275,7 @@ fn format_timestamp_helper(
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> HelperResult {
-    let timestamp = h.param(0).and_then(|v| v.value().as_u64()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "format_timestamp helper requires a timestamp parameter".to_string(),
-        ))
-    })?;
+    let timestamp = extract_u64_param(h, "format_timestamp")?;
 
     let format = h
         .hash_get("format")
@@ -278,18 +307,7 @@ fn add_helper(
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> HelperResult {
-    let a = h.param(0).and_then(|v| v.value().as_i64()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "add helper requires two numeric parameters".to_string(),
-        ))
-    })?;
-
-    let b = h.param(1).and_then(|v| v.value().as_i64()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "add helper requires two numeric parameters".to_string(),
-        ))
-    })?;
-
+    let (a, b) = extract_two_numbers(h, "add")?;
     out.write(&(a + b).to_string())?;
     Ok(())
 }
@@ -302,18 +320,7 @@ fn subtract_helper(
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> HelperResult {
-    let a = h.param(0).and_then(|v| v.value().as_i64()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "subtract helper requires two numeric parameters".to_string(),
-        ))
-    })?;
-
-    let b = h.param(1).and_then(|v| v.value().as_i64()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "subtract helper requires two numeric parameters".to_string(),
-        ))
-    })?;
-
+    let (a, b) = extract_two_numbers(h, "subtract")?;
     out.write(&(a - b).to_string())?;
     Ok(())
 }
@@ -326,18 +333,7 @@ fn multiply_helper(
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> HelperResult {
-    let a = h.param(0).and_then(|v| v.value().as_i64()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "multiply helper requires two numeric parameters".to_string(),
-        ))
-    })?;
-
-    let b = h.param(1).and_then(|v| v.value().as_i64()).ok_or_else(|| {
-        handlebars::RenderError::from(RenderErrorReason::Other(
-            "multiply helper requires two numeric parameters".to_string(),
-        ))
-    })?;
-
+    let (a, b) = extract_two_numbers(h, "multiply")?;
     out.write(&(a * b).to_string())?;
     Ok(())
 }
@@ -527,5 +523,483 @@ mod tests {
     #[case("{{multiply -4 3}}", "-12")]
     fn test_math_helpers(#[case] template: &str, #[case] expected: &str) {
         assert_eq!(render_template(template), expected);
+    }
+
+    #[test]
+    fn test_sanitize_missing_parameter() {
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        let result = hb.render_template("{{sanitize}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires a string parameter")
+        );
+    }
+
+    #[test]
+    fn test_hash_missing_parameter() {
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        let result = hb.render_template("{{hash}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires a string parameter")
+        );
+    }
+
+    #[test]
+    fn test_hash_int_missing_parameter() {
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        let result = hb.render_template("{{hash_int}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires a string parameter")
+        );
+    }
+
+    #[test]
+    fn test_prefix_missing_parameter() {
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        let result = hb.render_template("{{prefix}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires a string parameter")
+        );
+    }
+
+    #[test]
+    fn test_format_timestamp_missing_parameter() {
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        let result = hb.render_template("{{format_timestamp}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires a numeric parameter")
+        );
+    }
+
+    #[test]
+    fn test_format_timestamp_invalid_timestamp() {
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        // Test with an extremely large timestamp that would be invalid
+        let result = hb.render_template("{{format_timestamp 99999999999999999}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid timestamp")
+        );
+    }
+
+    #[test]
+    fn test_add_missing_parameters() {
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        // Missing first parameter
+        let result = hb.render_template("{{add}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires two numeric parameters")
+        );
+
+        // Missing second parameter
+        let result = hb.render_template("{{add 5}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires two numeric parameters")
+        );
+    }
+
+    #[test]
+    fn test_subtract_missing_parameters() {
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        let result = hb.render_template("{{subtract}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires two numeric parameters")
+        );
+
+        let result = hb.render_template("{{subtract 10}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires two numeric parameters")
+        );
+    }
+
+    #[test]
+    fn test_multiply_missing_parameters() {
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        let result = hb.render_template("{{multiply}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires two numeric parameters")
+        );
+
+        let result = hb.render_template("{{multiply 7}}", &());
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires two numeric parameters")
+        );
+    }
+
+    #[test]
+    fn test_format_with_leading_zeros_edge_cases() {
+        // Test when hash_str is longer than length (20 digit number, take first 5)
+        let result = format_with_leading_zeros(12345678901234567890, 5);
+        assert_eq!(result.len(), 5);
+        assert_eq!(result, "12345"); // First 5 chars of the string
+
+        // Test length at boundary (exactly 20)
+        let result = format_with_leading_zeros(123, 20);
+        assert_eq!(result, "00000000000000000123");
+
+        // Test length > 20
+        let result = format_with_leading_zeros(123, 25);
+        assert_eq!(result, "0000000000000000000000123");
+
+        // Test length < 20 with modulo - it uses modulo to get last N digits
+        let result = format_with_leading_zeros(456789, 10);
+        assert_eq!(result.len(), 10);
+        assert_eq!(result, "0000456789"); // 456789 padded to 10 digits
+
+        // Test modulo case: number has more digits than length
+        let result = format_with_leading_zeros(123456789, 5);
+        assert_eq!(result.len(), 5);
+        assert_eq!(result, "12345"); // First 5 digits (hash_str is 9 chars, > 5)
+
+        // Test length = 1 where hash_str.len() > length (takes first char)
+        let result = format_with_leading_zeros(12345, 1);
+        assert_eq!(result, "1"); // First char of "12345"
+
+        // Test length = 1 with actual modulo (need 1-digit number or use modulo path)
+        let result = format_with_leading_zeros(7, 1);
+        assert_eq!(result, "7"); // 7 padded to 1 digit
+
+        // Test modulo with length < hash_str length
+        let result = format_with_leading_zeros(789, 5);
+        assert_eq!(result, "00789"); // 789 padded to 5 digits
+
+        // Test another case where hash_str length > requested length
+        let result = format_with_leading_zeros(9876543210987654321, 3);
+        assert_eq!(result.len(), 3);
+        assert_eq!(result, "987"); // First 3 chars
+    }
+
+    #[test]
+    fn test_format_without_leading_zeros_edge_cases() {
+        // Test length = 0
+        let result = format_without_leading_zeros(12345, 0);
+        assert_eq!(result, "0");
+
+        // Test length = 20 with short hash
+        let result = format_without_leading_zeros(123, 20);
+        assert!(result.len() == 20);
+        assert!(!result.starts_with('0'));
+
+        // Test length = 20 with long hash
+        let result = format_without_leading_zeros(12345678901234567890, 20);
+        assert_eq!(result.len(), 20);
+
+        // Test length = 1
+        let result = format_without_leading_zeros(0, 1);
+        assert!(result.len() == 1);
+
+        // Test various lengths ensure no leading zeros
+        for length in 2..10 {
+            let result = format_without_leading_zeros(123456789, length);
+            assert_eq!(result.len(), length);
+            assert!(!result.starts_with('0'));
+        }
+    }
+
+    #[test]
+    fn test_hash_int_zero_length() {
+        let result = render_template("{{hash_int 'test' 0 allow_leading_zero=false}}");
+        assert_eq!(result, "0");
+    }
+
+    #[test]
+    fn test_hash_int_various_lengths_with_leading_zero() {
+        // Test all lengths from 1 to 20
+        for length in 1..=20 {
+            let result = render_template(&format!(
+                "{{{{hash_int 'test_input' {length} allow_leading_zero=true}}}}"
+            ));
+            assert!(
+                result.len() <= length,
+                "Length {length} resulted in '{result}' with len {}",
+                result.len()
+            );
+        }
+    }
+
+    #[test]
+    fn test_prefix_default_length() {
+        // When no length is provided, should return full string
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        let result = hb.render_template("{{prefix 'testing'}}", &()).unwrap();
+        assert_eq!(result, "testing");
+    }
+
+    #[test]
+    fn test_format_timestamp_default_format() {
+        // Test default format when no format parameter is provided
+        let result = render_template("{{format_timestamp 1703123456}}");
+        assert_eq!(result, "2023-12-21");
+    }
+
+    #[test]
+    fn test_hash_length_shorter_than_output() {
+        // Test when hash is naturally shorter than requested length
+        let mut hb = Handlebars::new();
+        register_helpers(&mut hb).unwrap();
+
+        // Create a hash and verify it handles short hashes correctly
+        let result = hb.render_template("{{hash 'x' 100}}", &()).unwrap();
+        // The result should be the full hash (not padded)
+        assert!(result.len() <= 100);
+    }
+
+    // Tests for parameter extraction functions
+    mod extract_param_tests {
+        use handlebars::{
+            Context,
+            Handlebars,
+            Helper,
+            HelperResult,
+            Output,
+            RenderContext,
+        };
+
+        use super::super::*;
+
+        /// Helper to create a Handlebars instance with a test helper that extracts a string param
+        fn create_string_param_helper() -> Handlebars<'static> {
+            let mut hb = Handlebars::new();
+            hb.register_helper(
+                "test",
+                Box::new(
+                    |h: &Helper,
+                     _: &Handlebars,
+                     _: &Context,
+                     _: &mut RenderContext,
+                     out: &mut dyn Output|
+                     -> HelperResult {
+                        let value = extract_string_param(h, "test")?;
+                        out.write(value)?;
+                        Ok(())
+                    },
+                ),
+            );
+            hb
+        }
+
+        /// Helper to create a Handlebars instance with a test helper that extracts a u64 param
+        fn create_u64_param_helper() -> Handlebars<'static> {
+            let mut hb = Handlebars::new();
+            hb.register_helper(
+                "test",
+                Box::new(
+                    |h: &Helper,
+                     _: &Handlebars,
+                     _: &Context,
+                     _: &mut RenderContext,
+                     out: &mut dyn Output|
+                     -> HelperResult {
+                        let value = extract_u64_param(h, "test")?;
+                        out.write(&value.to_string())?;
+                        Ok(())
+                    },
+                ),
+            );
+            hb
+        }
+
+        /// Helper to create a Handlebars instance with a test helper that extracts two numbers
+        fn create_two_numbers_helper() -> Handlebars<'static> {
+            let mut hb = Handlebars::new();
+            hb.register_helper(
+                "test",
+                Box::new(
+                    |h: &Helper,
+                     _: &Handlebars,
+                     _: &Context,
+                     _: &mut RenderContext,
+                     out: &mut dyn Output|
+                     -> HelperResult {
+                        let (a, b) = extract_two_numbers(h, "test")?;
+                        out.write(&format!("{a},{b}"))?;
+                        Ok(())
+                    },
+                ),
+            );
+            hb
+        }
+
+        /// Helper to assert error message contains expected text
+        fn assert_error_contains(result: Result<String, handlebars::RenderError>, expected: &str) {
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains(expected));
+        }
+
+        #[test]
+        fn test_extract_string_param_success() {
+            let hb = create_string_param_helper();
+            let result = hb.render_template("{{test 'hello'}}", &()).unwrap();
+            assert_eq!(result, "hello");
+        }
+
+        #[test]
+        fn test_extract_string_param_missing() {
+            let hb = create_string_param_helper();
+            assert_error_contains(
+                hb.render_template("{{test}}", &()),
+                "requires a string parameter",
+            );
+        }
+
+        #[test]
+        fn test_extract_string_param_wrong_type() {
+            let hb = create_string_param_helper();
+            assert_error_contains(
+                hb.render_template("{{test 123}}", &()),
+                "requires a string parameter",
+            );
+        }
+
+        #[test]
+        fn test_extract_u64_param_success() {
+            let hb = create_u64_param_helper();
+            let result = hb.render_template("{{test 42}}", &()).unwrap();
+            assert_eq!(result, "42");
+        }
+
+        #[test]
+        fn test_extract_u64_param_missing() {
+            let hb = create_u64_param_helper();
+            assert_error_contains(
+                hb.render_template("{{test}}", &()),
+                "requires a numeric parameter",
+            );
+        }
+
+        #[test]
+        fn test_extract_u64_param_wrong_type() {
+            let hb = create_u64_param_helper();
+            assert_error_contains(
+                hb.render_template("{{test 'not a number'}}", &()),
+                "requires a numeric parameter",
+            );
+        }
+
+        #[test]
+        fn test_extract_u64_param_negative() {
+            let hb = create_u64_param_helper();
+            // as_u64() returns None for negative numbers
+            assert_error_contains(
+                hb.render_template("{{test -5}}", &()),
+                "requires a numeric parameter",
+            );
+        }
+
+        #[test]
+        fn test_extract_two_numbers_success() {
+            let hb = create_two_numbers_helper();
+            let result = hb.render_template("{{test 10 20}}", &()).unwrap();
+            assert_eq!(result, "10,20");
+        }
+
+        #[test]
+        fn test_extract_two_numbers_negative() {
+            let hb = create_two_numbers_helper();
+            let result = hb.render_template("{{test -5 3}}", &()).unwrap();
+            assert_eq!(result, "-5,3");
+        }
+
+        #[test]
+        fn test_extract_two_numbers_missing_first() {
+            let hb = create_two_numbers_helper();
+            assert_error_contains(
+                hb.render_template("{{test}}", &()),
+                "requires two numeric parameters",
+            );
+        }
+
+        #[test]
+        fn test_extract_two_numbers_missing_second() {
+            let hb = create_two_numbers_helper();
+            assert_error_contains(
+                hb.render_template("{{test 10}}", &()),
+                "requires two numeric parameters",
+            );
+        }
+
+        #[test]
+        fn test_extract_two_numbers_wrong_type_first() {
+            let hb = create_two_numbers_helper();
+            assert_error_contains(
+                hb.render_template("{{test 'abc' 10}}", &()),
+                "requires two numeric parameters",
+            );
+        }
+
+        #[test]
+        fn test_extract_two_numbers_wrong_type_second() {
+            let hb = create_two_numbers_helper();
+            assert_error_contains(
+                hb.render_template("{{test 10 'xyz'}}", &()),
+                "requires two numeric parameters",
+            );
+        }
     }
 }
