@@ -121,15 +121,18 @@ impl ZervVars {
         }
 
         // Apply branch override
-        if let Some(ref current_branch) = args.overrides.current_branch {
-            self.bumped_branch = Some(current_branch.clone());
+        if let Some(ref bumped_branch) = args.overrides.bumped_branch {
+            self.bumped_branch = Some(bumped_branch.clone());
         }
 
         // Apply commit hash override
-        if let Some(ref commit_hash) = args.overrides.commit_hash {
-            self.bumped_commit_hash = Some(commit_hash.clone());
-            // Also update short hash (take first 7 characters)
-            self.bumped_commit_hash = Some(commit_hash.chars().take(7).collect());
+        if let Some(ref bumped_commit_hash) = args.overrides.bumped_commit_hash {
+            self.bumped_commit_hash = Some(bumped_commit_hash.clone());
+        }
+
+        // Apply timestamp override
+        if let Some(bumped_timestamp) = args.overrides.bumped_timestamp {
+            self.bumped_timestamp = Some(bumped_timestamp as u64);
         }
 
         // Map distance to post field for tier 2 schema (distance > 0, clean)
@@ -162,28 +165,6 @@ impl ZervVars {
             self.post = parsed_vars.post;
             self.dev = parsed_vars.dev;
         }
-
-        // // Apply version-specific field overrides
-        // if let Some(post) = args.post {
-        //     self.post = Some(post as u64);
-        // }
-
-        // if let Some(dev) = args.dev {
-        //     self.dev = Some(dev as u64);
-        // }
-
-        // if let Some(ref label) = args.pre_release_label {
-        //     self.pre_release = Some(PreReleaseVar {
-        //         label: normalize_pre_release_label(label).ok_or_else(|| {
-        //             ZervError::InvalidVersion(format!("Invalid pre-release label: {label}"))
-        //         })?,
-        //         number: args.pre_release_num.map(|n| n as u64),
-        //     });
-        // }
-
-        // if let Some(epoch) = args.epoch {
-        //     self.epoch = Some(epoch as u64);
-        // }
 
         if let Some(ref custom_json) = args.overrides.custom {
             self.custom = serde_json::from_str(custom_json)
@@ -339,7 +320,7 @@ mod tests {
         assert_eq!(vars.distance, Some(5));
         assert_eq!(vars.dirty, Some(true));
         assert_eq!(vars.bumped_branch, Some("feature/test".to_string()));
-        assert_eq!(vars.bumped_commit_hash, Some("abc123d".to_string())); // First 7 chars
+        assert_eq!(vars.bumped_commit_hash, Some("abc123def".to_string())); // Full hash
     }
 
     #[test]
@@ -511,9 +492,9 @@ mod tests {
             "--distance",
             "5",
             "--dirty",
-            "--current-branch",
+            "--bumped-branch",
             "main",
-            "--commit-hash",
+            "--bumped-commit-hash",
             "abc123",
         ])
         .unwrap();

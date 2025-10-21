@@ -73,8 +73,11 @@ fn test_resolved_overrides_vcs_fields() {
     assert_eq!(resolved.overrides.tag_version, Some("v1.0.0".to_string()));
     assert_eq!(resolved.overrides.distance, Some(5));
     assert!(resolved.overrides.dirty);
-    assert_eq!(resolved.overrides.current_branch, Some("main".to_string()));
-    assert_eq!(resolved.overrides.commit_hash, Some("abc123".to_string()));
+    assert_eq!(resolved.overrides.bumped_branch, Some("main".to_string()));
+    assert_eq!(
+        resolved.overrides.bumped_commit_hash,
+        Some("abc123".to_string())
+    );
 }
 
 #[rstest]

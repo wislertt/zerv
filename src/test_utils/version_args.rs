@@ -105,13 +105,13 @@ impl VersionArgsFixture {
 
     /// Set current branch
     pub fn with_current_branch(mut self, branch: &str) -> Self {
-        self.args.overrides.current_branch = Some(branch.to_string());
+        self.args.overrides.bumped_branch = Some(branch.to_string());
         self
     }
 
     /// Set commit hash
     pub fn with_commit_hash(mut self, hash: &str) -> Self {
-        self.args.overrides.commit_hash = Some(hash.to_string());
+        self.args.overrides.bumped_commit_hash = Some(hash.to_string());
         self
     }
 
@@ -303,10 +303,15 @@ impl VersionArgsFixture {
                 }
                 OverrideType::Distance(distance) => self.args.overrides.distance = Some(distance),
                 OverrideType::Dirty(dirty) => self.args.overrides.dirty = dirty,
-                OverrideType::CurrentBranch(branch) => {
-                    self.args.overrides.current_branch = Some(branch)
+                OverrideType::BumpedBranch(branch) => {
+                    self.args.overrides.bumped_branch = Some(branch)
                 }
-                OverrideType::CommitHash(hash) => self.args.overrides.commit_hash = Some(hash),
+                OverrideType::BumpedCommitHash(hash) => {
+                    self.args.overrides.bumped_commit_hash = Some(hash)
+                }
+                OverrideType::BumpedTimestamp(timestamp) => {
+                    self.args.overrides.bumped_timestamp = Some(timestamp)
+                }
                 OverrideType::Major(major) => self.args.overrides.major = Some(major.into()),
                 OverrideType::Minor(minor) => self.args.overrides.minor = Some(minor.into()),
                 OverrideType::Patch(patch) => self.args.overrides.patch = Some(patch.into()),
@@ -385,10 +390,13 @@ mod tests {
         assert_eq!(args.overrides.distance, Some(10));
         assert!(args.overrides.dirty);
         assert_eq!(
-            args.overrides.current_branch,
+            args.overrides.bumped_branch,
             Some("feature/test".to_string())
         );
-        assert_eq!(args.overrides.commit_hash, Some("deadbeef".to_string()));
+        assert_eq!(
+            args.overrides.bumped_commit_hash,
+            Some("deadbeef".to_string())
+        );
     }
 
     #[test]
@@ -433,7 +441,7 @@ mod tests {
             OverrideType::TagVersion("v2.0.0".to_string()),
             OverrideType::Distance(15),
             OverrideType::Dirty(true),
-            OverrideType::CurrentBranch("main".to_string()),
+            OverrideType::BumpedBranch("main".to_string()),
         ];
 
         let args = VersionArgsFixture::new()
@@ -444,7 +452,7 @@ mod tests {
         assert_eq!(args.overrides.tag_version, Some("v2.0.0".to_string()));
         assert_eq!(args.overrides.distance, Some(15));
         assert!(args.overrides.dirty);
-        assert_eq!(args.overrides.current_branch, Some("main".to_string()));
+        assert_eq!(args.overrides.bumped_branch, Some("main".to_string()));
         assert_eq!(args.main.output_format, formats::PEP440);
     }
 

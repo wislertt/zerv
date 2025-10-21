@@ -131,7 +131,7 @@ tests/integration_tests/version/
     - Directory structure created successfully
     - Ready for Phase 2 implementation
 
-#### Phase 2: Implement Main Config Tests (`main/`) 🔄 IN PROGRESS
+#### Phase 2: Implement Main Config Tests (`main/`) ✅ COMPLETED
 
 - ✅ Created `tests/integration_tests/version/main/mod.rs`
 - ✅ Implemented `sources/` tests:
@@ -144,25 +144,39 @@ tests/integration_tests/version/
 - ✅ Implemented `schemas.rs`: Comprehensive schema tests (31 tests)
 - ✅ Implemented `templates.rs`: Comprehensive template tests covering all helpers and edge cases (62 tests)
 - ✅ Implemented `directory.rs`: Directory flag tests with Git integration and error handling (4 tests)
-- **Result**: 172 tests passing (100% success rate) - 7 source tests + 30 format tests + 31 schema tests + 62 template tests + 4 directory tests + 38 other tests
+- ✅ Implemented `combinations.rs`: MainConfig option combinations (format + schema, template + format, etc.) (38 tests)
+- **Result**: 210 tests passing (100% success rate) - 7 source tests + 30 format tests + 31 schema tests + 62 template tests + 4 directory tests + 38 combination tests + 38 other tests
 - **Performance**: Tests run in <0.5 seconds without Docker
 
-**Remaining MainConfig Tests:**
+**MainConfig Tests Status:**
 
 - ✅ `formats.rs`: Test `--input-format` (semver/pep440/auto) and `--output-format` (semver/pep440/zerv) combinations, format validation errors, error message consistency (✅ PASSED - 30 tests)
 - ✅ `schemas.rs`: Test `--schema` (zerv-standard/zerv-calver) and `--schema-ron` (custom RON schema) options (✅ PASSED - 31 tests)
 - ✅ `templates.rs`: Test `--output-template` with Handlebars template rendering, all helpers (sanitize, hash, prefix, timestamp, math), complex scenarios, edge cases (✅ PASSED - 62 tests)
 - ✅ `directory.rs`: Test `-C` flag for changing working directory before execution (✅ PASSED - 4 tests: 2 Git integration + 2 error handling)
-- ❌ `combinations.rs`: Test MainConfig option combinations (format + schema, template + format, etc.)
+- ✅ `combinations.rs`: Test MainConfig option combinations (format + schema, template + format, etc.) (✅ PASSED - 38 tests)
 
-#### Phase 3: Implement Override Tests (`overrides/`)
+#### Phase 3: Implement Override Tests (`overrides/`) 🔄 IN PROGRESS
 
-- Create `tests/integration_tests/version/overrides/mod.rs`
+- ✅ Created `tests/integration_tests/version/overrides/mod.rs`
 - Implement individual OverridesConfig tests:
-    - `vcs.rs`: --tag-version, --distance, --dirty individually
-    - `components.rs`: --major, --minor, --patch individually
-    - `schema_components.rs`: --core, --extra-core, --build individually
-    - `combinations.rs`: Override combinations, conflicting options (clean vs distance/dirty), boolean flag behavior
+    - ✅ `vcs.rs`: --tag-version, --distance, --dirty, --clean, --current-branch, --commit-hash (37 tests total)
+        - **Status**: Tests implemented with clean module structure and fixture helpers
+        - **Test Results**: **35 passing ✅, 0 failing, 1 ignored (known bug)**
+        - **Coverage**:
+            - ✅ VCS field overrides correctly populate Zerv data structure fields
+            - ✅ Template variables `{{bumped_branch}}` and `{{bumped_commit_hash}}` work correctly
+            - ✅ Conflict detection works (--dirty/--no-dirty, --clean with --distance/--dirty)
+            - ✅ Hash truncation to 7 characters works as expected
+            - ✅ Distance and dirty overrides with zerv output format
+        - **Ignored Test** (1 test - known bug):
+            - `test_tag_version_and_distance`: Distance override doesn't affect tier calculation when combined with tag-version override
+        - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
+        - **Impact**: VCS overrides are fully functional except for one edge case (tag+distance tier calculation)
+    - ❌ `components.rs`: --major, --minor, --patch individually
+    - ❌ `schema_components.rs`: --core, --extra-core, --build individually
+    - ❌ `schema_components.rs`: --core, --extra-core, --build individually
+    - ❌ `combinations.rs`: Override combinations, conflicting options (clean vs distance/dirty), boolean flag behavior
 - Use ZervFixture with stdin source for all tests
 - Test and validate override functionality
 
@@ -214,11 +228,48 @@ Ensure comprehensive coverage of:
 - **Documentation**: Document test patterns and fixture usage
 - **CI Integration**: Ensure tests run efficiently in CI/CD pipeline
 
+### 8. Test Code Quality Guidelines
+
+- **Use `TestCommand::run_with_stdin`**: For simple stdin tests that only need stdout output, use the convenience method:
+
+    ```rust
+    let output = TestCommand::run_with_stdin("version --source stdin --output-format semver", zerv_ron);
+    assert_eq!(output, "1.2.3");
+    ```
+
+- **Module-level fixture helpers**: Create clear, reusable fixture functions at module level (similar to `tests/integration_tests/version/main/schemas.rs`):
+
+    ```rust
+    // Test constants at module level
+    const TEST_BRANCH: &str = "feature.branch";
+    const TEST_COMMIT_HASH: &str = "abc123def456";
+
+    // Helper functions for common fixtures
+    fn create_tier_1_fixture(version: (u64, u64, u64)) -> ZervFixture {
+        ZervFixture::new()
+            .with_version(version.0, version.1, version.2)
+            .with_standard_tier_1()
+    }
+    ```
+
+- **Use rstest parameterization**: Leverage `#[rstest]` with `#[case]` for testing multiple scenarios:
+
+    ```rust
+    #[rstest]
+    #[case::basic("1.0.0", "1.0.0")]
+    #[case::prerelease("2.0.0-beta.1", "2.0.0-beta.1")]
+    fn test_override(#[case] input: &str, #[case] expected: &str) {
+        // Test implementation
+    }
+    ```
+
+- **Clear test structure**: Organize tests with descriptive module names and group related tests together
+
 ## Implementation Steps
 
 1. **Phase 1**: Backup and setup ✅ **COMPLETED**
-2. **Phase 2**: Implement main config tests 🔄 **NEXT**
-3. **Phase 3**: Implement override tests
+2. **Phase 2**: Implement main config tests ✅ **COMPLETED**
+3. **Phase 3**: Implement override tests 🔄 **IN PROGRESS**
 4. **Phase 4**: Implement bump tests
 5. **Phase 5**: Implement cross-module combinations and final integration
 

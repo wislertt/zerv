@@ -40,11 +40,15 @@ pub struct OverridesConfig {
 
     /// Override the detected current branch name
     #[arg(long, help = "Override current branch name")]
-    pub current_branch: Option<String>,
+    pub bumped_branch: Option<String>,
 
     /// Override the detected commit hash
     #[arg(long, help = "Override commit hash (full or short form)")]
-    pub commit_hash: Option<String>,
+    pub bumped_commit_hash: Option<String>,
+
+    /// Override the detected commit timestamp
+    #[arg(long, help = "Override commit timestamp (Unix timestamp)")]
+    pub bumped_timestamp: Option<i64>,
 
     // ============================================================================
     // VERSION COMPONENT OVERRIDE OPTIONS

@@ -21,6 +21,7 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
     vars.bumped_branch = vcs_data.current_branch;
     vars.dirty = Some(vcs_data.is_dirty);
     vars.bumped_commit_hash = Some(vcs_data.commit_hash);
+    vars.bumped_timestamp = Some(vcs_data.commit_timestamp as u64);
     vars.last_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
 
     Ok(vars)
