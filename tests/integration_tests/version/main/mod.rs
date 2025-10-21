@@ -1,3 +1,4 @@
+pub mod combinations;
 pub mod directory;
 pub mod formats;
 pub mod schemas;
