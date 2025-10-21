@@ -328,27 +328,6 @@ mod template_complex_scenarios {
     }
 }
 
-mod template_with_output_prefix {
-    use super::*;
-
-    #[rstest]
-    #[case::v_prefix("v", "v1.2.3")]
-    #[case::custom_prefix("Release-", "Release-1.2.3")]
-    fn test_prefix_flag(#[case] prefix: &str, #[case] expected: &str) {
-        let fixture = ZervFixture::new().with_version(1, 2, 3);
-        let zerv_ron = fixture.build().to_string();
-
-        let output = TestCommand::new()
-            .args_from_str(format!(
-                "version --source stdin --output-template '{{{{major}}}}.{{{{minor}}}}.{{{{patch}}}}' --output-prefix {prefix}"
-            ))
-            .stdin(zerv_ron)
-            .assert_success();
-
-        assert_eq!(output.stdout().trim(), expected);
-    }
-}
-
 mod template_edge_cases {
     use super::*;
 
@@ -399,23 +378,50 @@ mod template_with_schema {
             "Template should override schema output"
         );
     }
+}
+
+mod template_validation_errors {
+    use super::*;
 
     #[test]
-    fn test_template_with_format() {
-        let fixture = ZervFixture::new()
-            .with_version(1, 2, 3)
-            .with_pre_release(PreReleaseLabel::Alpha, Some(1));
+    fn test_template_conflicts_with_output_format() {
+        let fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv_ron = fixture.build().to_string();
 
         let output = TestCommand::new()
-            .args_from_str("version --source stdin --output-format pep440 --output-template 'Custom: {{pep440}}'")
+            .args_from_str("version --source stdin --output-format pep440 --output-template '{{major}}.{{minor}}.{{patch}}'")
             .stdin(zerv_ron)
-            .assert_success();
+            .assert_failure();
 
-        assert_eq!(
-            output.stdout().trim(),
-            "Custom: 1.2.3a1",
-            "Template should use formatted version variable"
+        let stderr = output.stderr();
+        assert!(
+            stderr.contains("Cannot use --output-template with --output-format"),
+            "Should error when using --output-template with --output-format. Got stderr: {stderr}"
+        );
+        assert!(
+            stderr.contains("Use --output-format alone for pure format output"),
+            "Error message should explain the distinction between format and template. Got stderr: {stderr}"
+        );
+    }
+
+    #[test]
+    fn test_template_conflicts_with_output_prefix() {
+        let fixture = ZervFixture::new().with_version(1, 2, 3);
+        let zerv_ron = fixture.build().to_string();
+
+        let output = TestCommand::new()
+            .args_from_str("version --source stdin --output-template '{{major}}.{{minor}}.{{patch}}' --output-prefix v")
+            .stdin(zerv_ron)
+            .assert_failure();
+
+        let stderr = output.stderr();
+        assert!(
+            stderr.contains("Cannot use --output-template with --output-prefix"),
+            "Should error when using --output-template with --output-prefix. Got stderr: {stderr}"
+        );
+        assert!(
+            stderr.contains("Add the prefix directly in your template"),
+            "Error message should suggest adding prefix in template. Got stderr: {stderr}"
         );
     }
 }
