@@ -534,6 +534,66 @@ When using `--output-template`, the following variables are available:
 
 - `{{custom.*}}` - Any custom variables (e.g., `{{custom.build_id}}`)
 
+## Debugging and Logging
+
+### Enable Verbose Output
+
+```bash
+# Default: Clean output (errors only)
+zerv version
+
+# Show debug logs (everything you need)
+zerv version -v
+zerv version --verbose
+
+# Works with all commands
+zerv check "1.2.3" -v
+```
+
+### Verbosity Levels Explained
+
+| Flag               | Level | What You See                              | When to Use                     |
+| ------------------ | ----- | ----------------------------------------- | ------------------------------- |
+| (none)             | error | Errors only                               | Normal usage, production        |
+| `-v` / `--verbose` | debug | All debugging info (Git, RON, transforms) | Troubleshooting, debugging      |
+| `RUST_LOG=trace`   | trace | Implementation details (rarely needed)    | Deep debugging (if ever needed) |
+
+**Note**: Debug level is sufficient for all normal debugging. Simpler than multi-level flags.
+
+### Fine-Grained Control (RUST_LOG)
+
+For power users who need surgical control:
+
+```bash
+# Override to specific level
+RUST_LOG=debug zerv version
+RUST_LOG=trace zerv version
+
+# Module-specific logging
+RUST_LOG=zerv::vcs=debug zerv version
+RUST_LOG=zerv::vcs=debug,zerv::pipeline=trace zerv version
+
+# Specific component only
+RUST_LOG=zerv::vcs::git=trace zerv version
+
+# RUST_LOG takes precedence over -v flags
+RUST_LOG=trace zerv version -v    # Uses trace, not warn
+```
+
+### Logging with Piping
+
+Logs go to stderr, so piping still works:
+
+```bash
+# Logs visible in terminal, data flows through pipe
+zerv version -v --output-format zerv | zerv version -v --source stdin
+
+# Separate logs and output to files
+zerv version -v > version.txt 2> debug.log
+# version.txt: version string
+# debug.log: debug logs
+```
+
 ## Error Handling
 
 ### Common Errors

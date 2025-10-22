@@ -61,7 +61,9 @@ As Zerv grows in complexity (VCS detection, pipeline transformations, schema par
 - ✅ Automated testing: Tests pass with logging enabled (RUST_LOG=debug cargo test)
 - ✅ Automated testing: Full Docker test suite passes (make test)
 - ✅ Documentation: Help text explains verbosity and RUST_LOG usage
-- ✅ Integration tests: Created 3 logging integration tests, all pass
+- ✅ Documentation: CLAUDE.md updated with logging standards section
+- ✅ Documentation: .dev/26-zerv-cli-comprehensive-documentation.md updated with debugging section
+- ✅ Integration tests: Created 5 logging integration tests, all pass
 
 ### Why Logging Now?
 
@@ -570,9 +572,9 @@ fn test_verbose_flag_doesnt_crash() {
 
 ## Documentation Updates
 
-### Update CLAUDE.md
+### ✅ Update CLAUDE.md - COMPLETED
 
-Add new section after "Error Handling Standards":
+Added new section after "Error Handling Standards":
 
 ````markdown
 ## 🔍 Logging Standards
@@ -632,9 +634,9 @@ tracing::error!("Parse failed"); // What failed? Where? Why?
 
 ````
 
-### Update .dev/26-zerv-cli-comprehensive-documentation.md
+### ✅ Update .dev/26-zerv-cli-comprehensive-documentation.md - COMPLETED
 
-Add section before "Error Handling":
+Added section before "Error Handling":
 
 ```markdown
 ## Debugging and Logging
