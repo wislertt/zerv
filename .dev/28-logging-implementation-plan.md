@@ -1,6 +1,6 @@
 # Logging Implementation Plan
 
-**Status**: Planned
+**Status**: Phase 2 Complete
 **Priority**: Medium
 **Estimated Effort**: 2-3 hours
 
@@ -18,6 +18,27 @@
 ## Context
 
 As Zerv grows in complexity (VCS detection, pipeline transformations, schema parsing, Docker Git operations), debugging issues becomes harder without structured logging. Currently, the codebase has ad-hoc `println!`/`eprintln!` statements scattered across 7 files with no consistent approach.
+
+### Implementation Progress
+
+✅ **Phase 1 Complete** (Foundation):
+
+- ✅ Added tracing dependencies to Cargo.toml
+- ✅ Created src/logging.rs with simple verbose/error-only logging
+- ✅ Added --verbose flag to CLI parser
+- ✅ Initialize logging in main()
+- ✅ All basic tests pass
+
+✅ **Phase 2 Complete** (Strategic Log Points):
+
+- ✅ Git operations: log commands, outputs, tag detection
+- ✅ Pipeline transformations: VCS data conversion (simplified logging)
+- ✅ Schema loading: preset schema selection and RON parsing
+- ✅ Docker test utils: retry logging and command execution
+- ✅ All tests pass, piping works correctly
+
+📋 **Phase 3**: Cleanup existing debug statements (next phase)
+📋 **Phase 4**: Final validation and documentation (final phase)
 
 ### Why Logging Now?
 

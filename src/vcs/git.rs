@@ -40,17 +40,27 @@ impl GitVcs {
 
     /// Run git command and return output
     fn run_git_command(&self, args: &[&str]) -> Result<String> {
+        let cmd_str = args.join(" ");
+        tracing::debug!("Running git command: git {}", cmd_str);
+
         let output = Command::new("git")
             .args(args)
             .current_dir(&self.repo_path)
             .output()
-            .map_err(|e| self.translate_command_error(e))?;
+            .map_err(|e| {
+                tracing::error!("Failed to execute git command: {}", e);
+                self.translate_command_error(e)
+            })?;
 
         if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            tracing::error!("Git command failed: git {} - {}", cmd_str, stderr);
             return Err(self.translate_git_error(&output.stderr));
         }
 
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        tracing::debug!("Git command output: {}", result);
+        Ok(result)
     }
 
     /// Translate std::io::Error from git command execution to user-friendly messages
@@ -201,8 +211,11 @@ impl GitVcs {
 
 impl Vcs for GitVcs {
     fn get_vcs_data(&self) -> Result<VcsData> {
+        tracing::debug!("Detecting Git version in current directory");
+
         // Check for shallow clone and warn
         if self.check_shallow_clone() {
+            tracing::warn!("Shallow clone detected - distance calculations may be inaccurate");
             eprintln!("Warning: Shallow clone detected - distance calculations may be inaccurate");
         }
 
@@ -215,10 +228,16 @@ impl Vcs for GitVcs {
         };
 
         // Get tag information
-        if let Some(tag) = self.get_latest_tag()? {
-            data.distance = self.calculate_distance(&tag).unwrap_or(0);
-            data.tag_timestamp = self.get_tag_timestamp(&tag).unwrap_or(None);
-            data.tag_version = Some(tag);
+        match self.get_latest_tag()? {
+            Some(tag) => {
+                tracing::debug!("Found Git tag: {}", tag);
+                data.distance = self.calculate_distance(&tag).unwrap_or(0);
+                data.tag_timestamp = self.get_tag_timestamp(&tag).unwrap_or(None);
+                data.tag_version = Some(tag);
+            }
+            None => {
+                tracing::debug!("No Git tag found, using default values");
+            }
         }
 
         Ok(data)

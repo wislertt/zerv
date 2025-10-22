@@ -5,12 +5,17 @@ use crate::version::ZervVars;
 
 /// Convert VCS data to ZervVars
 pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
+    tracing::debug!("Converting VCS data to Zerv variables");
+    tracing::debug!("VCS data: {:?}", vcs_data);
+
     // Parse version from tag_version
     let version = if let Some(ref tag_version) = vcs_data.tag_version {
         parse_version_from_tag(tag_version, None).ok_or_else(|| {
+            tracing::error!("Failed to parse version from tag: {}", tag_version);
             ZervError::InvalidFormat(format!("Failed to parse version from tag: {tag_version}"))
         })?
     } else {
+        tracing::warn!("No tag version found in VCS data");
         return Err(ZervError::NoTagsFound);
     };
 
@@ -24,6 +29,7 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
     vars.bumped_timestamp = Some(vcs_data.commit_timestamp as u64);
     vars.last_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
 
+    tracing::debug!("VCS data conversion complete");
     Ok(vars)
 }
 

@@ -213,6 +213,12 @@ impl DockerGit {
                 || stderr.contains("is not a valid object")
             {
                 if attempt < max_attempts {
+                    tracing::warn!(
+                        "Transient Git error detected, retrying ({}/{}): {}",
+                        attempt,
+                        max_attempts,
+                        stderr.trim()
+                    );
                     println!(
                         "🔄 RETRY: {} (attempt {}/{}) - {}",
                         operation_name,
@@ -246,6 +252,9 @@ impl DockerGit {
     }
 
     pub fn run_git_command(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
+        let cmd_str = args.join(" ");
+        tracing::debug!("Docker Git command: git {}", cmd_str);
+
         let git_command = args
             .iter()
             .map(|arg| {
