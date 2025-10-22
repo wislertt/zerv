@@ -206,7 +206,10 @@ impl DockerGit {
             ));
 
             // Only retry for specific git reference errors that are likely transient
-            if stderr.contains("cannot update ref") || stderr.contains("nonexistent object") {
+            if stderr.contains("cannot update ref")
+                || stderr.contains("nonexistent object")
+                || stderr.contains("is not a valid object")
+            {
                 if attempt < max_attempts {
                     println!(
                         "🔄 RETRY: {} (attempt {}/{}) - {}",
