@@ -105,10 +105,9 @@ mod directory_error_handling {
             .assert_failure();
 
         let stderr = output.stderr();
-        assert_eq!(
-            stderr.trim(),
-            "Error: VCS not found: Not in a git repository (--source git)",
-            "Should show proper error when directory exists but is not a git repo"
+        assert!(
+            stderr.contains("Error: VCS not found: Not in a git repository (--source git)"),
+            "Should show proper error when directory exists but is not a git repo. Got: {stderr}"
         );
     }
 }

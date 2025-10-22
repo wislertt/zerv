@@ -14,6 +14,8 @@ use super::{
     GitTestConstants,
     TestDir,
 };
+#[cfg(test)]
+use crate::config::EnvVars;
 
 #[cfg(test)]
 fn validate_docker_args(args: &[&str]) -> Result<(), String> {
@@ -515,12 +517,16 @@ mod tests {
         if should_run_docker_tests() {
             assert!(
                 is_docker_available(),
-                "ZERV_TEST_DOCKER is enabled but Docker is not available - install Docker or disable ZERV_TEST_DOCKER"
+                "{} is enabled but Docker is not available - install Docker or disable {}",
+                EnvVars::ZERV_TEST_DOCKER,
+                EnvVars::ZERV_TEST_DOCKER
             );
         } else {
             assert!(
                 !is_docker_available(),
-                "Docker is available but ZERV_TEST_DOCKER is disabled - enable ZERV_TEST_DOCKER to test Docker functionality"
+                "Docker is available but {} is disabled - enable {} to test Docker functionality",
+                EnvVars::ZERV_TEST_DOCKER,
+                EnvVars::ZERV_TEST_DOCKER
             );
         }
     }

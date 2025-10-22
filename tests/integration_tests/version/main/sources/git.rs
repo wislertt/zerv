@@ -89,9 +89,9 @@ fn test_git_source_not_a_git_repo() {
         .assert_failure();
 
     let stderr = output.stderr();
-    assert_eq!(
-        stderr.trim(),
-        "Error: VCS not found: Not in a git repository (--source git)"
+    assert!(
+        stderr.contains("Error: VCS not found: Not in a git repository (--source git)"),
+        "stderr should contain expected error message. Got: {stderr}"
     );
 }
 
@@ -109,8 +109,8 @@ fn test_git_source_no_tag_version() {
         .assert_failure();
 
     let stderr = output.stderr();
-    assert_eq!(
-        stderr.trim(),
-        "Error: No version tags found in git repository"
+    assert!(
+        stderr.contains("Error: No version tags found in git repository"),
+        "stderr should contain expected error message. Got: {stderr}"
     );
 }

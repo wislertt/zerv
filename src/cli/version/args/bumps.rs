@@ -4,7 +4,7 @@ use crate::cli::utils::template::Template;
 use crate::utils::constants::pre_release_labels;
 
 /// Bump configuration for field-based and schema-based version bumping
-#[derive(Parser, Default)]
+#[derive(Parser, Default, Debug)]
 pub struct BumpsConfig {
     // ============================================================================
     // FIELD-BASED BUMP OPTIONS

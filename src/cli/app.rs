@@ -15,6 +15,10 @@ pub fn run_with_args<W: Write>(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::try_parse_from(args)?;
 
+    crate::logging::init_logging(cli.verbose);
+
+    tracing::debug!("Zerv started with args: {:?}", cli);
+
     match cli.command {
         Commands::Version(version_args) => {
             let output = run_version_pipeline(*version_args)?;
@@ -40,6 +44,7 @@ pub fn run() {
                 _ => {}
             }
         }
+        tracing::error!("Command failed: {}", e);
         eprintln!("Error: {e}");
         std::process::exit(1);
     }

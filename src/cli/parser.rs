@@ -6,7 +6,7 @@ use clap::{
 use crate::cli::check::CheckArgs;
 use crate::cli::version::VersionArgs;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(name = "zerv")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Dynamic versioning CLI - Generate versions from VCS data with flexible schemas")]
@@ -35,11 +35,16 @@ EXAMPLES:
   zerv version -C /path/to/repo"
 )]
 pub struct Cli {
+    /// Use verbose output (enables debug-level logs to stderr).
+    /// Use RUST_LOG for fine-grained control (e.g., RUST_LOG=zerv::vcs=debug)
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Generate version from VCS data with configurable schemas and overrides
     #[command(

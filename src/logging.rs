@@ -1,0 +1,49 @@
+use tracing_subscriber::{
+    EnvFilter,
+    fmt,
+};
+
+use crate::config::EnvVars;
+
+/// Initialize logging based on --verbose flag and RUST_LOG environment variable
+///
+/// Verbosity levels (simple and practical):
+/// - false (default): error only
+/// - true (-v / --verbose): debug (sufficient for all debugging)
+///
+/// Priority order:
+/// 1. RUST_LOG environment variable (if set) - full control
+/// 2. --verbose flag - enables debug level
+/// 3. Default - error level only (Rust standard)
+pub fn init_logging(verbose: bool) {
+    let filter = if let Ok(rust_log) = std::env::var(EnvVars::RUST_LOG) {
+        EnvFilter::new(rust_log)
+    } else if verbose {
+        EnvFilter::new("zerv=debug")
+    } else {
+        EnvFilter::new("error")
+    };
+
+    fmt()
+        .with_writer(std::io::stderr)
+        .with_env_filter(filter)
+        .with_target(false)
+        .compact()
+        .init();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_init_logging_does_not_panic() {
+        let result = std::panic::catch_unwind(|| {
+            init_logging(false);
+        });
+        assert!(
+            result.is_ok(),
+            "init_logging should not panic with verbose=false"
+        );
+    }
+}

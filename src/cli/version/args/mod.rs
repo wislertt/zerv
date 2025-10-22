@@ -74,6 +74,7 @@ EXAMPLES:
   # Parse specific input format
   zerv version --tag-version 2.0.0-alpha.1 --input-format semver"
 )]
+#[derive(Debug)]
 pub struct VersionArgs {
     #[command(flatten)]
     pub main: MainConfig,

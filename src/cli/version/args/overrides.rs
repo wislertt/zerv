@@ -4,7 +4,7 @@ use crate::cli::utils::template::Template;
 use crate::utils::constants::pre_release_labels;
 
 /// Override configuration for VCS and version components
-#[derive(Parser, Default)]
+#[derive(Parser, Default, Debug)]
 pub struct OverridesConfig {
     // ============================================================================
     // VCS OVERRIDE OPTIONS
