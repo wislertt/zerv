@@ -293,9 +293,9 @@ mod tests {
         let zerv = draft.create_zerv_version(&args).unwrap();
 
         // Test the actual schema structure
-        println!("Core components: {:?}", zerv.schema.core());
-        println!("Extra core components: {:?}", zerv.schema.extra_core());
-        println!("Build components: {:?}", zerv.schema.build());
+        tracing::debug!("Core components: {:?}", zerv.schema.core());
+        tracing::debug!("Extra core components: {:?}", zerv.schema.extra_core());
+        tracing::debug!("Build components: {:?}", zerv.schema.build());
 
         // Verify core structure
         assert_eq!(zerv.schema.core().len(), 3);

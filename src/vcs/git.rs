@@ -116,7 +116,9 @@ impl GitVcs {
 
         // Handle shallow clone warnings
         if stderr_str.contains("shallow") {
-            eprintln!("Warning: Shallow clone detected - distance calculations may be inaccurate");
+            tracing::warn!(
+                "Warning: Shallow clone detected - distance calculations may be inaccurate"
+            );
         }
 
         // Handle corrupted repository errors
@@ -216,7 +218,6 @@ impl Vcs for GitVcs {
         // Check for shallow clone and warn
         if self.check_shallow_clone() {
             tracing::warn!("Shallow clone detected - distance calculations may be inaccurate");
-            eprintln!("Warning: Shallow clone detected - distance calculations may be inaccurate");
         }
 
         let mut data = VcsData {

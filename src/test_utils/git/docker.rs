@@ -219,7 +219,7 @@ impl DockerGit {
                         max_attempts,
                         stderr.trim()
                     );
-                    println!(
+                    tracing::debug!(
                         "🔄 RETRY: {} (attempt {}/{}) - {}",
                         operation_name,
                         attempt,
@@ -246,7 +246,7 @@ impl DockerGit {
         let result = self.execute_docker_command(script, "exec command")?;
 
         let duration = start.elapsed();
-        eprintln!("🐳 Docker Git command '{script}' took {duration:?}");
+        tracing::debug!("🐳 Docker Git command '{script}' took {duration:?}");
 
         Ok(result)
     }

@@ -44,7 +44,6 @@ pub fn run() {
                 _ => {}
             }
         }
-        tracing::error!("Command failed: {}", e);
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
