@@ -81,6 +81,37 @@ make update     # Update Rust toolchain and dependencies
 
 **Higher numbers = more recent/updated plans**. Always verify against actual codebase.
 
+### Creating New Plans
+
+**CRITICAL: When user asks you to "write a plan" or "create a plan", you MUST:**
+
+1. ✅ **Check existing `.dev/` files** to find the highest number
+2. ✅ **Create new plan** as `.dev/XX-descriptive-name.md` (increment XX)
+3. ✅ **Do NOT start coding** until the plan is reviewed and approved
+4. ✅ **Use ExitPlanMode tool** to present the plan for approval
+
+**Example workflow:**
+
+```bash
+# Find latest plan number
+ls -1 .dev/ | grep -E '^[0-9]+-.*\.md$' | sort -V | tail -1
+# Returns: 27-integration-tests-revamp-plan.md
+
+# Create next plan
+# New file: .dev/28-logging-implementation-plan.md
+```
+
+**Plan Document Structure:**
+
+- **Status**: Planned/In Progress/Completed
+- **Priority**: High/Medium/Low
+- **Context**: Why this work is needed
+- **Goals**: What we want to achieve
+- **Implementation Plan**: Detailed steps
+- **Testing Strategy**: How to validate
+- **Success Criteria**: Definition of done
+- **Documentation Updates**: What docs need updating
+
 ---
 
 ## High-Level Architecture
