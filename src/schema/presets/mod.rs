@@ -37,6 +37,7 @@ fn tier_1_extra_core() -> Vec<Component> {
 fn tier_2_build() -> Vec<Component> {
     vec![
         Component::Var(Var::BumpedBranch),
+        Component::Var(Var::Distance),
         Component::Var(Var::BumpedCommitHashShort),
     ]
 }
@@ -51,11 +52,7 @@ fn tier_3_extra_core() -> Vec<Component> {
 }
 
 fn tier_3_build() -> Vec<Component> {
-    vec![
-        Component::Var(Var::BumpedBranch),
-        Component::Var(Var::Distance),
-        Component::Var(Var::BumpedCommitHashShort),
-    ]
+    tier_2_build()
 }
 
 pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {

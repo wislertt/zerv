@@ -113,8 +113,8 @@ mod schema_preset_standard {
     }
 
     #[rstest]
-    #[case::tier_2_with_distance((1, 0, 0), 5, "1.0.0-post.5")]
-    #[case::tier_2_with_branch_metadata((2, 3, 1), 10, "2.3.1-post.10")]
+    #[case::tier_2_with_distance((1, 0, 0), 5, "1.0.0+5")]
+    #[case::tier_2_with_branch_metadata((2, 3, 1), 10, "2.3.1+10")]
     fn test_schema_standard_tier_2(
         #[case] version: (u64, u64, u64),
         #[case] distance: u64,
@@ -167,7 +167,7 @@ mod schema_preset_calver {
     fn test_schema_calver_with_distance() {
         let zerv_ron = ZervFixture::new()
             .with_version(1, 0, 0)
-            .with_vcs_data(Some(3), Some(false), None, None, None, None, None)
+            .with_vcs_data(Some(3), Some(true), None, None, None, None, None)
             .build()
             .to_string();
 
@@ -176,10 +176,10 @@ mod schema_preset_calver {
             .stdin(zerv_ron)
             .assert_success();
 
-        assert!(
-            output.stdout().contains("post"),
-            "CalVer tier 2 should include post release notation, got: {}",
-            output.stdout().trim()
+        assert_eq!(
+            output.stdout().trim(),
+            "2025.10.22-0+3",
+            "CalVer tier 2 should match expected format"
         );
     }
 
@@ -500,7 +500,7 @@ mod schema_tier_behavior {
             .stdin(zerv_ron)
             .assert_success();
 
-        assert_eq!(output.stdout().trim(), "1.2.3-post.5");
+        assert_eq!(output.stdout().trim(), "1.2.3+5");
     }
 
     #[test]

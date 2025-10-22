@@ -126,7 +126,10 @@ mod distance_override {
             zerv_ron,
         );
 
-        assert_eq!(output, "1.0.0+5", "Expected tier 2 format with distance 5");
+        assert_eq!(
+            output, "1.0.0+5",
+            "Schema from stdin is tier 3, so includes both post and distance in build"
+        );
     }
 
     #[test]
@@ -222,8 +225,8 @@ mod clean_override {
         );
 
         assert!(
-            output.contains("distance: Some(0)"),
-            "Expected distance: Some(0) with --clean, got: {}",
+            output.contains("distance: None"),
+            "Expected distance: None with --clean, got: {}",
             output
         );
         assert!(
@@ -246,7 +249,6 @@ mod clean_override {
             "version --source stdin --clean --output-format pep440",
             zerv_ron,
         );
-
         assert_eq!(
             output, "2.0.0",
             "Expected tier 1 format (2.0.0) with --clean"

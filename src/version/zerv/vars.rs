@@ -99,10 +99,10 @@ impl ZervVars {
         Ok(())
     }
 
-    /// Apply --clean flag (sets distance=0 and dirty=false)
+    /// Apply --clean flag (sets distance=None and dirty=false)
     fn apply_clean_flag(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         if args.overrides.clean {
-            self.distance = Some(0);
+            self.distance = None;
             self.dirty = Some(false);
         }
         Ok(())
@@ -284,7 +284,7 @@ mod tests {
         let result = vars.apply_context_overrides(&args);
 
         assert!(result.is_ok());
-        assert_eq!(vars.distance, Some(0));
+        assert_eq!(vars.distance, None);
         assert_eq!(vars.dirty, Some(false));
     }
 
@@ -493,7 +493,7 @@ mod tests {
 
         assert!(result.is_ok());
         // Clean flag should override other VCS settings
-        assert_eq!(vars.distance, Some(0));
+        assert_eq!(vars.distance, None);
         assert_eq!(vars.dirty, Some(false));
         // But other overrides should still apply
         assert_eq!(vars.bumped_branch, Some("main".to_string()));

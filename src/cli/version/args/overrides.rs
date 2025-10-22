@@ -31,7 +31,7 @@ pub struct OverridesConfig {
     #[arg(long, action = clap::ArgAction::SetTrue, help = "Override dirty state to false (sets dirty=false)")]
     pub no_dirty: bool,
 
-    /// Set distance=0 and dirty=false (clean release state)
+    /// Set distance=None and dirty=false (clean release state)
     #[arg(
         long,
         help = "Force clean release state (sets distance=0, dirty=false). Conflicts with --distance and --dirty"
