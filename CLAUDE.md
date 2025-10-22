@@ -156,6 +156,12 @@ mod feature_basic {
 fn test_something() { }
 ```
 
+### Line Length Policy
+
+**Keep lines reasonably short when adding/updating code.**
+
+Rustfmt enforces `max_width = 100` for code but can't break string literals. For long strings, use `format!()` or string continuation. Check with `/audit-all` periodically.
+
 ---
 
 ## 🔒 Error Handling Standards
