@@ -8,6 +8,7 @@ use crate::integration_tests::util::command::TestCommand;
 fn test_verbose_flag_doesnt_crash() {
     let output = TestCommand::new()
         .args(["version", "--verbose"])
+        .env("RUST_LOG", "debug")
         .output()
         .expect("Failed to run zerv");
 
@@ -74,6 +75,7 @@ fn test_verbose_with_stdin_piping() {
     // Generate zerv format output with verbose logging
     let zerv_output = TestCommand::new()
         .args(["version", "--verbose", "--output-format", "zerv"])
+        .env("RUST_LOG", "debug")
         .assert_success()
         .stdout();
 
@@ -88,6 +90,7 @@ fn test_verbose_with_stdin_piping() {
             "semver",
         ])
         .stdin(zerv_output)
+        .env("RUST_LOG", "debug")
         .assert_success();
 
     // Should produce semver output

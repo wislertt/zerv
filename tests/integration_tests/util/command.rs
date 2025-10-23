@@ -143,6 +143,16 @@ impl TestCommand {
         self
     }
 
+    /// Set an environment variable for the command
+    pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        self.cmd.env(key, val);
+        self
+    }
+
     /// Execute the command and return output
     pub fn output(&mut self) -> io::Result<Output> {
         if let Some(ref input) = self.stdin_input {
