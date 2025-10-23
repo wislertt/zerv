@@ -78,23 +78,48 @@ impl GitRepoFixture {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+
+    use serial_test::serial;
+
     use super::*;
     use crate::test_utils::should_run_docker_tests;
 
+    static SHARED_V1_FIXTURE: Mutex<Option<(std::path::PathBuf, tempfile::TempDir)>> =
+        Mutex::new(None);
+
+    fn get_or_create_v1_fixture() -> std::path::PathBuf {
+        let mut guard = SHARED_V1_FIXTURE.lock().unwrap();
+
+        if let Some((path, _)) = guard.as_ref() {
+            return path.clone();
+        }
+
+        let fixture =
+            GitRepoFixture::tagged("v1.0.0").expect("Failed to create shared v1.0.0 fixture");
+
+        let path = fixture.path().to_path_buf();
+        let temp_dir = fixture.test_dir.into_inner();
+
+        *guard = Some((path.clone(), temp_dir));
+        path
+    }
+
     #[test]
+    #[serial(fixture_v1_shared)]
     fn test_tagged_fixture_creates_git_repo() {
         if !should_run_docker_tests() {
             return;
         }
 
-        let fixture = GitRepoFixture::tagged("v1.0.0").expect("Failed to create tagged fixture");
+        let fixture_path = get_or_create_v1_fixture();
 
         // Should have Git repository
-        assert!(fixture.path().exists());
-        assert!(fixture.path().join(".git").exists());
+        assert!(fixture_path.exists());
+        assert!(fixture_path.join(".git").exists());
 
         // Should have initial README.md from init_repo
-        assert!(fixture.path().join("README.md").exists());
+        assert!(fixture_path.join("README.md").exists());
     }
 
     #[test]
@@ -227,25 +252,27 @@ mod tests {
     }
 
     #[test]
+    #[serial(fixture_v1_shared)]
     fn test_zero_distance_commits() {
         if !should_run_docker_tests() {
             return;
         }
 
-        let fixture = GitRepoFixture::with_distance("v1.0.0", 0)
-            .expect("Failed to create fixture with zero distance");
+        let fixture_path = get_or_create_v1_fixture();
 
         // Should still have Git repository and tag
-        assert!(fixture.path().exists());
-        assert!(fixture.path().join(".git").exists());
+        assert!(fixture_path.exists());
+        assert!(fixture_path.join(".git").exists());
 
-        let output = fixture
-            .git_impl
-            .execute_git(&fixture.test_dir, &["tag", "-l"])
-            .expect("Failed to list tags");
-        assert!(output.contains("v1.0.0"));
+        let output = std::process::Command::new("git")
+            .args(["tag", "-l"])
+            .current_dir(&fixture_path)
+            .output()
+            .expect("Failed to run git command");
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        assert!(output_str.contains("v1.0.0"));
 
-        // Should not have additional files
-        assert!(!fixture.path().join("file1.txt").exists());
+        // Should not have additional files (zero distance means no extra commits)
+        assert!(!fixture_path.join("file1.txt").exists());
     }
 }

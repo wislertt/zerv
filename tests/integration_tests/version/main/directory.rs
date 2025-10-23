@@ -1,3 +1,6 @@
+use std::sync::Mutex;
+
+use serial_test::serial;
 use zerv::test_utils::{
     GitRepoFixture,
     TestDir,
@@ -6,20 +9,39 @@ use zerv::test_utils::{
 
 use crate::util::TestCommand;
 
+static SHARED_FIXTURE_LOCK: Mutex<Option<(std::path::PathBuf, tempfile::TempDir)>> =
+    Mutex::new(None);
+
+fn get_or_create_shared_fixture() -> std::path::PathBuf {
+    let mut guard = SHARED_FIXTURE_LOCK.lock().unwrap();
+
+    if let Some((path, _)) = guard.as_ref() {
+        return path.clone();
+    }
+
+    let fixture = GitRepoFixture::tagged("v1.0.0")
+        .expect("Failed to create shared git fixture for directory tests");
+
+    let path = fixture.path().to_path_buf();
+    let temp_dir = fixture.test_dir.into_inner();
+
+    *guard = Some((path.clone(), temp_dir));
+    path
+}
+
 mod directory_git_integration {
     use super::*;
 
     #[test]
+    #[serial(directory_shared_fixture)]
     fn test_directory_flag_with_subdirectory() {
         if !should_run_docker_tests() {
             return;
         }
 
-        let git_repo =
-            GitRepoFixture::tagged("v1.0.0").expect("Failed to create tagged Git repository");
+        let git_repo_path = get_or_create_shared_fixture();
 
-        let parent_dir = git_repo
-            .path()
+        let parent_dir = git_repo_path
             .parent()
             .expect("Git repo should have parent directory");
 
@@ -27,7 +49,7 @@ mod directory_git_integration {
             .current_dir(parent_dir)
             .args_from_str(format!(
                 "version -C {} --source git --output-format semver",
-                git_repo.path().file_name().unwrap().to_string_lossy()
+                git_repo_path.file_name().unwrap().to_string_lossy()
             ))
             .assert_success();
 
@@ -39,26 +61,26 @@ mod directory_git_integration {
     }
 
     #[test]
+    #[serial(directory_shared_fixture)]
     fn test_directory_flag_relative_vs_absolute() {
         if !should_run_docker_tests() {
             return;
         }
 
-        let git_repo =
-            GitRepoFixture::tagged("v1.0.0").expect("Failed to create tagged Git repository");
+        let git_repo_path = get_or_create_shared_fixture();
 
         let relative_output = TestCommand::new()
-            .current_dir(git_repo.path().parent().unwrap())
+            .current_dir(git_repo_path.parent().unwrap())
             .args_from_str(format!(
                 "version -C {} --source git --output-format semver",
-                git_repo.path().file_name().unwrap().to_string_lossy()
+                git_repo_path.file_name().unwrap().to_string_lossy()
             ))
             .assert_success();
 
         let absolute_output = TestCommand::new()
             .args_from_str(format!(
                 "version -C {} --source git --output-format semver",
-                git_repo.path().display()
+                git_repo_path.display()
             ))
             .assert_success();
 
