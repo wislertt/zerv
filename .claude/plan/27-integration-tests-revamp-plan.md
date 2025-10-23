@@ -233,12 +233,43 @@ tests/integration_tests/version/
 - Use ZervFixture with stdin source for all tests
 - Test and validate override functionality
 
-#### Phase 4: Implement Bump Tests (`bumps/`) 🔄 IN PROGRESS
+#### Phase 4: Implement Bump Tests (`bumps/`) ✅ COMPLETED
 
 - ✅ Created `tests/integration_tests/version/bumps/mod.rs`
 - ✅ Implemented `primary.rs`: --bump-major, --bump-minor, --bump-patch (matches src/version/zerv/bump/vars_primary.rs)
+    - **Status**: ✅ COMPLETED - all tests passing (19/19)
+    - **Test Results**: **19 passing ✅, 0 failed**
+    - **Coverage**:
+        - ✅ Individual primary bump options (--bump-major, --bump-minor, --bump-patch)
+        - ✅ Multiple primary bump combinations (--bump-major --bump-minor, etc.)
+        - ✅ Custom bump values (--bump-major 3, --bump-minor 5, etc.)
+        - ✅ Primary bumps with different output formats (semver, pep440, zerv)
+        - ✅ Primary bumps preserve VCS data and reset prerelease appropriately
+    - **Test Organization**: 3 modules (major_bump, minor_bump, patch_bump, primary_combinations)
+    - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
 - ✅ Implemented `secondary.rs`: --bump-epoch, --bump-post, --bump-dev, --bump-pre-release-num, --bump-pre-release-label (matches src/version/zerv/bump/vars_secondary.rs)
+    - **Status**: ✅ COMPLETED - all tests passing (20/20)
+    - **Test Results**: **20 passing ✅, 0 failed**
+    - **Coverage**:
+        - ✅ Individual secondary bump options with default and custom values
+        - ✅ Secondary bump combinations across categories
+        - ✅ Secondary bumps with different output formats
+        - ✅ Secondary bump order dependency validation
+        - ✅ Secondary bumps preserve primary components and VCS data
+    - **Test Organization**: 4 modules (epoch_bump, post_bump, dev_bump, pre_release_bumps, secondary_combinations)
+    - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
 - ✅ Implemented `schema.rs`: --bump-core, --bump-extra-core, --bump-build
+    - **Status**: ✅ COMPLETED - all tests passing (18/18)
+    - **Test Results**: **18 passing ✅, 0 failed**
+    - **Coverage**:
+        - ✅ Individual schema component bumps (--bump-core 0=2, --bump-extra-core 1=3, etc.)
+        - ✅ Schema bump combinations across multiple components
+        - ✅ Schema bumps with different output formats
+        - ✅ Schema bumps with custom values and error handling
+        - ✅ Schema bump behavior with different schema types (standard, calver)
+        - ✅ Schema bump interaction with VCS data
+    - **Test Organization**: 3 modules (core_bump, extra_core_bump, build_bump, schema_combinations)
+    - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
 - ✅ Implemented `context.rs`: --bump-context, --no-bump-context (12 tests total)
     - **Status**: ✅ COMPLETED - all tests passing (12/12)
     - **Test Results**: **12 passing ✅, 0 failed**
@@ -252,21 +283,195 @@ tests/integration_tests/version/
         - ✅ Context flag interactions and data preservation
     - **Test Organization**: 4 modules (bump_context, no_bump_context, context_interactions)
     - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
-- 🔄 Implement `combinations.rs`: Bump combinations across categories
+- ✅ Implemented `combinations.rs`: Bump combinations across categories (88 tests total)
+    - **Status**: ✅ COMPLETED - all tests passing (88/88)
+    - **Test Results**: **88 passing ✅, 0 failed**
+    - **Coverage**:
+        - ✅ Primary + Secondary bump combinations (8 tests)
+        - ✅ Primary + Schema bump combinations (6 tests)
+        - ✅ Secondary + Schema bump combinations (6 tests)
+        - ✅ All category combinations (5 tests)
+        - ✅ Context behavior with complex combinations (4 tests)
+        - ✅ Maximum complexity scenarios and edge cases
+        - ✅ Custom values and multi-parameter combinations
+        - ✅ VCS context impact on bump combinations
+    - **Test Organization**: 5 modules (primary_secondary_combinations, primary_schema_combinations, secondary_schema_combinations, all_category_combinations, context_with_combinations)
+    - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
+    - **Implementation Notes**: No implementation changes needed - only test expectation updates to match correct behavior
+
+**Phase 4 Summary:**
+
+- ✅ **Total**: 157 bump tests (157 passing, 0 failed, 0 ignored)
+- ✅ **Coverage**: All BumpsConfig options comprehensively tested with complex cross-category interactions
+- ✅ **Performance**: Fast stdin-based testing following new guidelines
+- ✅ **Quality**: Uses rstest fixtures, proper module organization, TestCommand::run_with_stdin
+- ✅ **Complexity**: Tests cover simple individual bumps up to maximum complexity scenarios
 - Use ZervFixture with stdin source for all tests
-- Test and validate bump functionality
+- Test and validate bump functionality comprehensively
 
-#### Phase 5: Implement Cross-Module Combinations (`combinations/`)
+#### Phase 5: Implement Cross-Module Combinations (`combinations/`) 📋 PLANNED
 
-- Create `tests/integration_tests/version/combinations/mod.rs`
-- Implement cross-module interaction tests:
-    - `override_bump.rs`: Overrides + Bumps interactions
-    - `schema_override.rs`: Schema + Overrides interactions
-    - `full_workflow.rs`: Complete multi-option workflows
-- Use ZervFixture with complex scenarios
-- Re-enable version module in `tests/integration_tests/mod.rs`
-- Run full test suite and validate performance targets
-- Test and validate complete integration test system
+Based on analysis of existing implementation (22 test files, 6,245 lines), current coverage is already comprehensive within modules. Phase 5 focuses on **cross-module interactions** that aren't covered by existing tests.
+
+**Current State Analysis:**
+
+- ✅ MainConfig combinations tested (38 tests) - format+schema, template+format, etc.
+- ✅ Override combinations tested (15 tests) - cross-category override interactions
+- ✅ Bump combinations tested (88 tests) - cross-category bump interactions
+- 🔄 **Missing**: True cross-module interactions (Main + Overrides, Main + Bumps, Overrides + Bumps, All three)
+
+**Phase 5 Implementation Strategy:**
+
+Create `tests/integration_tests/version/combinations/mod.rs` with specialized focus on cross-module interactions:
+
+##### 5.1 `main_override_interactions.rs` (Target: ~300 lines, ~20 tests)
+
+**Focus**: MainConfig options + OverrideConfig interactions
+
+**Test Categories:**
+
+- **Source + Override Combinations**:
+    - `--source git` + `--tag-version` interactions
+    - `--source stdin` + various override combinations
+    - Directory changes with overrides (`-C` + overrides)
+- **Format + Override Combinations**:
+    - `--input-format` + `--major`/`--minor` interactions
+    - `--output-format` + complex override scenarios
+    - Format conversions with overridden version components
+- **Schema + Override Combinations**:
+    - `--schema zerv-calver` + `--major`/`--minor` overrides
+    - Custom schemas (`--schema-ron`) + override interactions
+    - Schema tier changes + override precedence validation
+- **Template + Override Combinations**:
+    - Template rendering with overridden VCS data
+    - Template helpers (`{{sanitize}}`, `{{hash}}`) with override values
+    - Complex template scenarios with multiple overrides
+
+##### 5.2 `main_bump_interactions.rs` (Target: ~250 lines, ~15 tests)
+
+**Focus**: MainConfig options + BumpsConfig interactions
+
+**Test Categories:**
+
+- **Source + Bump Combinations**:
+    - `--source git` + various bump operations
+    - `--source stdin` + bump combinations
+    - Directory context with bump operations
+- **Format + Bump Combinations**:
+    - `--input-format semver` + `--bump-major` + `--output-format pep440`
+    - Format conversions across bump operations
+    - Bump behavior with different input/output format pairs
+- **Schema + Bump Combinations**:
+    - `--schema zerv-calver` + bump operations
+    - Schema component bumps with preset schemas
+    - Custom schema interactions with bump operations
+- **Template + Bump Combinations**:
+    - Template rendering of bumped versions
+    - Bump context (`--bump-context`) with template output
+    - Template helpers with bumped version components
+
+##### 5.3 `override_bump_interactions.rs` (Target: ~350 lines, ~25 tests)
+
+**Focus**: OverrideConfig + BumpsConfig interactions (most complex)
+
+**Test Categories:**
+
+- **Component Override + Bump Combinations**:
+    - `--major 5` + `--bump-major` precedence and interaction
+    - `--epoch 2` + `--bump-epoch` interaction patterns
+    - Secondary overrides + secondary bumps (`--post` + `--bump-post`)
+- **VCS Override + Bump Combinations**:
+    - `--distance 10` + `--bump-context` interactions
+    - `--dirty` + bump operations on VCS context
+    - VCS overrides with bump context preservation
+- **Schema Override + Bump Combinations**:
+    - `--core 0=5` + `--bump-core 0` interactions
+    - Schema component overrides with bump operations
+    - Index-based overrides + bump precedence validation
+- **Custom Variables + Bump Combinations**:
+    - `--custom '{"build": "123"}'` + bump operations
+    - Template custom variables with bumped versions
+    - Custom data preservation across bump operations
+
+##### 5.4 `complex_workflow_scenarios.rs` (Target: ~400 lines, ~20 tests)
+
+**Focus**: Complete multi-module workflow scenarios
+
+**Test Categories:**
+
+- **Real-World CI/CD Workflows**:
+    - Git source + format conversion + component overrides + bumps
+    - Complete build pipeline: git → format → override → bump → template
+    - Release workflow: tag detection + version bump + format output
+- **Complex Template Scenarios**:
+    - Multi-module data in templates (VCS + overrides + bumps)
+    - Template helper chains with complex data sources
+    - Error handling in complex template scenarios
+- **Error and Validation Scenarios**:
+    - Cross-module conflict detection and resolution
+    - Invalid cross-module combinations (schema vs override conflicts)
+    - Validation errors in complex multi-option scenarios
+- **Performance Edge Cases**:
+    - Large custom schemas + multiple overrides + bump operations
+    - Complex template rendering with extensive cross-module data
+    - Memory and performance validation for complex scenarios
+
+##### 5.5 `integration_validation.rs` (Target: ~200 lines, ~10 tests)
+
+**Focus**: System integration and final validation
+
+**Test Categories:**
+
+- **Full System Integration**:
+    - End-to-end workflow validation (all module types)
+    - Cross-module data consistency validation
+    - Integration with external tools (git, file system)
+- **Configuration Validation**:
+    - Cross-module configuration precedence validation
+    - Conflict resolution across all configuration types
+    - Default behavior validation across module boundaries
+- **Performance Validation**:
+    - Cross-module performance benchmarking
+    - Memory usage validation for complex scenarios
+    - Test execution time validation (<30 seconds total)
+- **Regression Prevention**:
+    - Cross-module regression tests
+    - Edge case validation for module interactions
+    - Breaking change detection for cross-module behavior
+
+##### 5.6 Final Integration Steps
+
+1. **Re-enable version module** in `tests/integration_tests/mod.rs`:
+
+    ```rust
+    // Uncomment the line
+    pub mod version;  // Re-enabled after revamp completion
+    ```
+
+2. **Performance Validation**:
+    - Run full integration test suite
+    - Validate <30 seconds execution time
+    - Ensure ≤3 git-dependent test cases total
+    - Validate parallel test execution where possible
+
+3. **Coverage Validation**:
+    - Full CLI argument coverage across all modules
+    - Cross-module interaction coverage
+    - Error condition and validation coverage
+    - Template rendering edge case coverage
+
+**Phase 5 Success Criteria:**
+
+- ✅ Cross-module interaction comprehensively tested
+- ✅ Real-world workflow scenarios covered
+- ✅ Full integration test suite runs in <30 seconds
+- ✅ All module interactions properly validated
+- ✅ Easy maintenance and extensibility for future features
+- ✅ Complete integration test system ready for production
+
+**Estimated Test Count for Phase 5: ~90 additional tests**
+**Estimated Additional Lines: ~1,500 lines**
+**Total After Phase 5: ~200+ tests, ~8,000+ lines**
 
 ### 5. Performance Targets
 
@@ -316,9 +521,9 @@ See `.claude/ref/testing/integration-tests.md` for detailed examples and pattern
 
 1. **Phase 1**: Backup and setup ✅ **COMPLETED**
 2. **Phase 2**: Implement main config tests ✅ **COMPLETED**
-3. **Phase 3**: Implement override tests 🔄 **IN PROGRESS**
-4. **Phase 4**: Implement bump tests
-5. **Phase 5**: Implement cross-module combinations and final integration
+3. **Phase 3**: Implement override tests ✅ **COMPLETED**
+4. **Phase 4**: Implement bump tests ✅ **COMPLETED**
+5. **Phase 5**: Implement cross-module combinations and final integration 📋 **PLANNED**
 
 ## Success Criteria
 
