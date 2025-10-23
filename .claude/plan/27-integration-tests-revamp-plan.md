@@ -233,15 +233,26 @@ tests/integration_tests/version/
 - Use ZervFixture with stdin source for all tests
 - Test and validate override functionality
 
-#### Phase 4: Implement Bump Tests (`bumps/`)
+#### Phase 4: Implement Bump Tests (`bumps/`) 🔄 IN PROGRESS
 
-- Create `tests/integration_tests/version/bumps/mod.rs`
-- Implement individual BumpsConfig tests (matching src/cli/version/args/bumps.rs structure):
-    - `primary.rs`: --bump-major, --bump-minor, --bump-patch (matches src/version/zerv/bump/vars_primary.rs)
-    - `secondary.rs`: --bump-epoch, --bump-post, --bump-dev, --bump-pre-release-num, --bump-pre-release-label (matches src/version/zerv/bump/vars_secondary.rs)
-    - `schema.rs`: --bump-core, --bump-extra-core, --bump-build
-    - `context.rs`: --bump-context, --no-bump-context
-    - `combinations.rs`: Bump combinations across categories
+- ✅ Created `tests/integration_tests/version/bumps/mod.rs`
+- ✅ Implemented `primary.rs`: --bump-major, --bump-minor, --bump-patch (matches src/version/zerv/bump/vars_primary.rs)
+- ✅ Implemented `secondary.rs`: --bump-epoch, --bump-post, --bump-dev, --bump-pre-release-num, --bump-pre-release-label (matches src/version/zerv/bump/vars_secondary.rs)
+- ✅ Implemented `schema.rs`: --bump-core, --bump-extra-core, --bump-build
+- ✅ Implemented `context.rs`: --bump-context, --no-bump-context (12 tests total)
+    - **Status**: ✅ COMPLETED - all tests passing (12/12)
+    - **Test Results**: **12 passing ✅, 0 failed**
+    - **Coverage**:
+        - ✅ Default behavior preserves VCS context (distance, dirty, timestamp)
+        - ✅ Explicit --bump-context flag works correctly
+        - ✅ --no-bump-context clears VCS context (distance=0, dirty=false)
+        - ✅ Context behavior with different output formats (semver, pep440)
+        - ✅ Template output respects context settings
+        - ✅ Context behavior when no VCS data is available
+        - ✅ Context flag interactions and data preservation
+    - **Test Organization**: 4 modules (bump_context, no_bump_context, context_interactions)
+    - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
+- 🔄 Implement `combinations.rs`: Bump combinations across categories
 - Use ZervFixture with stdin source for all tests
 - Test and validate bump functionality
 
