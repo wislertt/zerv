@@ -185,21 +185,26 @@ tests/integration_tests/version/
             - ✅ Component overrides preserve VCS data (distance, dirty, branch)
         - **Test Organization**: 5 modules (major_override, minor_override, patch_override, component_combinations, component_with_prerelease, component_with_vcs_data)
         - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
-    - 🔄 `secondary.rs`: --epoch, --post, --dev, --pre-release-label, --pre-release-num (matches src/version/zerv/bump/vars_secondary.rs)
-        - **Status**: NEW - mirrors vars_secondary.rs structure
-        - **Coverage Needed**:
-            - Individual overrides for each secondary component
-            - Different output format support (semver, pep440, zerv)
-            - Combinations of secondary components
-            - Preserve other version data (primary components, VCS data)
-            - Pre-release label + number interactions
-    - ❌ `custom.rs`: --custom (JSON variable overrides)
-        - **Status**: TODO - custom variables for template usage
-        - **Coverage Needed**:
-            - Valid JSON parsing
-            - Template variable substitution
-            - Error handling for invalid JSON
-            - Nested JSON structures
+    - ✅ `secondary.rs`: --epoch, --post, --dev, --pre-release-label, --pre-release-num (matches src/version/zerv/bump/vars_secondary.rs)
+        - **Status**: ✅ COMPLETED - mirrors vars_secondary.rs structure
+        - **Test Results**: All passing ✅
+        - **Coverage**:
+            - ✅ Individual overrides for each secondary component
+            - ✅ Different output format support (semver, pep440, zerv)
+            - ✅ Combinations of secondary components
+            - ✅ Preserve other version data (primary components, VCS data)
+            - ✅ Pre-release label + number interactions
+    - ✅ `custom.rs`: --custom (JSON variable overrides)
+        - **Status**: ✅ COMPLETED - custom variables for template usage
+        - **Test Results**: **22 passing ✅, 0 failing**
+        - **Coverage**:
+            - ✅ Valid JSON parsing (strings, numbers, booleans)
+            - ✅ Template variable substitution with {{custom.key}}
+            - ✅ Error handling for invalid JSON
+            - ✅ Nested JSON structures (dot notation access)
+            - ✅ Integration with template helpers (sanitize, hash, prefix)
+            - ✅ Real-world scenarios (CI metadata, deployment tags, Docker tags)
+        - **Test Organization**: 6 modules (basic_json_parsing, nested_json, combined_with_version, combined_with_vcs, error_handling, template_helpers, real_world_scenarios)
     - ❌ `schema.rs`: --core, --extra-core, --build
         - **Status**: TODO - schema component overrides with index=value syntax
         - **Coverage Needed**:

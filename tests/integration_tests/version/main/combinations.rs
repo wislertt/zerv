@@ -123,12 +123,14 @@ mod schema_template {
             .build()
             .to_string();
 
-        let result = TestCommand::run_with_stdin(
-            &format!(
-                r#"version --source stdin --schema-ron '{schema_ron}' --output-template "{{{{epoch}}}}:{{{{semver}}}}-{{{{sanitize bumped_branch}}}}""#
+        let cmd = format!(
+            concat!(
+                "version --source stdin --schema-ron '{}' --output-template ",
+                r#""{{{{epoch}}}}:{{{{semver}}}}-{{{{sanitize bumped_branch}}}}""#
             ),
-            zerv_ron,
+            schema_ron
         );
+        let result = TestCommand::run_with_stdin(&cmd, zerv_ron);
 
         assert_eq!(result.trim(), "2:1.2.3-epoch.2-feature.test");
     }
@@ -187,7 +189,10 @@ mod template_helpers {
             .to_string();
 
         let result = TestCommand::run_with_stdin(
-            r#"version --source stdin --output-template "SemVer={{semver}},PEP440={{pep440}},Raw={{major}}.{{minor}}.{{patch}}""#,
+            concat!(
+                "version --source stdin --output-template ",
+                r#""SemVer={{semver}},PEP440={{pep440}},Raw={{major}}.{{minor}}.{{patch}}""#
+            ),
             zerv_ron,
         );
 
@@ -231,12 +236,14 @@ mod multi_option {
 
         let zerv_ron = ZervFixture::new().with_version(2, 5, 1).build().to_string();
 
-        let result = TestCommand::run_with_stdin(
-            &format!(
-                r#"version --source stdin --schema-ron '{schema_ron}' --output-template "release-{{{{major}}}}.{{{{minor}}}}.{{{{patch}}}}""#
+        let cmd = format!(
+            concat!(
+                "version --source stdin --schema-ron '{}' --output-template ",
+                r#""release-{{{{major}}}}.{{{{minor}}}}.{{{{patch}}}}""#
             ),
-            zerv_ron,
+            schema_ron
         );
+        let result = TestCommand::run_with_stdin(&cmd, zerv_ron);
 
         assert_eq!(result.trim(), "release-2.5.1");
     }

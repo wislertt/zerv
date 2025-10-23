@@ -216,11 +216,11 @@ mod template_helpers_timestamp {
     #[rstest]
     #[case::default("{{format_timestamp last_timestamp}}", "2023-12-21")]
     #[case::compact_date(
-        "{{format_timestamp last_timestamp format=\"compact_date\"}}",
+        r#"{{format_timestamp last_timestamp format="compact_date"}}"#,
         "20231221"
     )]
     #[case::compact_datetime(
-        "{{format_timestamp last_timestamp format=\"compact_datetime\"}}",
+        r#"{{format_timestamp last_timestamp format="compact_datetime"}}"#,
         "20231221015056"
     )]
     fn test_timestamp(#[case] template: &str, #[case] expected: &str) {
@@ -255,7 +255,10 @@ mod template_complex_scenarios {
 
     #[test]
     fn test_tier_2_pattern() {
-        let template = "{{major}}.{{minor}}.{{patch}}.post{{distance}}+{{bumped_branch}}.{{bumped_commit_hash_short}}";
+        let template = concat!(
+            "{{major}}.{{minor}}.{{patch}}.post{{distance}}+",
+            "{{bumped_branch}}.{{bumped_commit_hash_short}}"
+        );
         let fixture = ZervFixture::new().with_version(1, 2, 3).with_vcs_data(
             Some(5),
             Some(false),
@@ -270,7 +273,10 @@ mod template_complex_scenarios {
 
     #[test]
     fn test_tier_3_pattern() {
-        let template = "{{major}}.{{minor}}.{{patch}}.dev{{dev}}+{{sanitize bumped_branch}}.{{bumped_commit_hash_short}}";
+        let template = concat!(
+            "{{major}}.{{minor}}.{{patch}}.dev{{dev}}+",
+            "{{sanitize bumped_branch}}.{{bumped_commit_hash_short}}"
+        );
         let fixture = ZervFixture::new()
             .with_version(1, 0, 0)
             .with_dev(1234567890)
@@ -291,7 +297,10 @@ mod template_complex_scenarios {
 
     #[test]
     fn test_multiple_helpers() {
-        let template = "{{major}}.{{minor}}.{{patch}}-{{sanitize bumped_branch preset=\"dotted\"}}.{{format_timestamp last_timestamp format=\"compact_date\"}}";
+        let template = concat!(
+            r#"{{major}}.{{minor}}.{{patch}}-{{sanitize bumped_branch preset="dotted"}}."#,
+            r#"{{format_timestamp last_timestamp format="compact_date"}}"#
+        );
         let fixture = ZervFixture::new().with_version(2, 1, 0).with_vcs_data(
             None,
             None,
@@ -309,7 +318,10 @@ mod template_complex_scenarios {
 
     #[test]
     fn test_calver_pattern() {
-        let template = "{{format_timestamp last_timestamp format=\"%Y\"}}.{{format_timestamp last_timestamp format=\"%m\"}}.{{major}}";
+        let template = concat!(
+            r#"{{format_timestamp last_timestamp format="%Y"}}."#,
+            r#"{{format_timestamp last_timestamp format="%m"}}.{{major}}"#
+        );
         let fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
             None,
             None,

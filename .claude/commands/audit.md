@@ -123,9 +123,31 @@ make lint test            # Ensure fixes don't break functionality
 // ❌ BAD
 "version --source stdin --tag-version 5.0.0 --input-format semver --output-format semver"
 
-// ✅ GOOD
+// ✅ GOOD (regular strings with backslash continuation)
 "version --source stdin --tag-version 5.0.0 \
  --input-format semver --output-format semver"
+
+// ✅ GOOD (raw strings with concat! macro)
+concat!(
+    "version --source stdin ",
+    r#"--custom '{"build":"123"}' "#,
+    r#"--output-template "{{custom.build}}""#
+)
+```
+
+**IMPORTANT: Raw strings (r#"..."#) cannot use backslash continuation!**
+
+```rust
+// ❌ WRONG - Backslash is literal in raw strings
+r#"long command \
+   continuation"#
+
+// ✅ CORRECT - Use concat!() for raw strings
+concat!(
+    "part1 ",
+    r#"raw "part2" "#,
+    "part3"
+)
 ```
 
 ## Manual Audit Checklist
@@ -184,22 +206,30 @@ make lint test            # Ensure fixes don't break functionality
 // ❌ BAD (101+ chars)
 "version --source stdin --tag-version 5.0.0 --input-format semver --output-format semver"
 
-// ✅ GOOD (use format! or break across lines)
-let cmd = format!(
-    "version --source stdin --tag-version 5.0.0 \
-     --input-format semver --output-format semver"
-);
-// OR
+// ✅ GOOD (regular strings - use backslash continuation)
 "version --source stdin --tag-version 5.0.0 \
  --input-format semver --output-format semver"
+
+// ✅ GOOD (raw strings - use concat! macro)
+concat!(
+    "version --source stdin ",
+    r#"--custom '{"build":"123"}' "#,
+    r#"--output-template "{{custom.build}}""#
+)
 ```
 
-**Complex template strings:**
+**CRITICAL: Raw strings cannot use backslash continuation!**
 
 ```rust
-// ❌ BAD (155 chars)
-r#"--output-template "{{format_timestamp bumped_timestamp format=\"compact_date\"}}""#
+// ❌ WRONG - Backslash is literal in raw strings, creates invalid command
+r#"long command \
+   continuation"#
 
-// ✅ GOOD (extract to variable)
-let template = r#"--output-template "{{format_timestamp bumped_timestamp format=\"compact_date\"}}""#;
+// ✅ CORRECT - Use concat!() to join raw string parts
+concat!(
+    "version --source stdin ",
+    r#"--custom '{"key":"value"}' "#,
+    "--output-template ",
+    r#""{{custom.key}}""#
+)
 ```

@@ -299,7 +299,8 @@ mod schema_validation {
         let stderr = output.stderr();
         assert!(
             stderr.contains("Conflicting") || stderr.contains("both"),
-            "Should show conflict error when both schema and schema-ron are specified, got: {stderr}"
+            "Should show conflict error when both schema \
+             and schema-ron are specified, got: {stderr}"
         );
     }
 

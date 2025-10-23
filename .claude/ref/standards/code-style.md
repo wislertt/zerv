@@ -44,4 +44,32 @@ fn test_something() { }
 
 **Keep lines reasonably short when adding/updating code.**
 
-Rustfmt enforces `max_width = 100` for code but can't break string literals. For long strings, use `format!()` or string continuation. Check with `/audit` periodically.
+Rustfmt enforces `max_width = 100` for code but can't break string literals.
+
+### Breaking Long Strings
+
+**Regular strings**: Use backslash continuation
+
+```rust
+"version --source stdin --tag-version 5.0.0 \
+ --input-format semver --output-format semver"
+```
+
+**Raw strings (r#"..."#)**: Use `concat!()` macro
+
+```rust
+// ❌ WRONG - Backslash is literal in raw strings!
+r#"long command \
+   continuation"#
+
+// ✅ CORRECT - Use concat!() for raw strings
+concat!(
+    "version --source stdin ",
+    r#"--custom '{"build":"123"}' "#,
+    r#"--output-template "{{custom.build}}""#
+)
+```
+
+**Why this matters**: Raw strings treat backslashes literally, so `\` continuation doesn't work. Always use `concat!()` to join raw string parts.
+
+Check with `/audit` periodically to catch violations.
