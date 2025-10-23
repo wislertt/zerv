@@ -1,38 +1,61 @@
-use rstest::rstest;
+use rstest::{
+    fixture,
+    rstest,
+};
 use zerv::test_utils::ZervFixture;
 
 use crate::util::TestCommand;
 
-fn create_clean_fixture(version: (u64, u64, u64)) -> ZervFixture {
-    ZervFixture::new()
-        .with_version(version.0, version.1, version.2)
-        .with_vcs_data(Some(0), Some(false), None, None, None, None, None)
+#[fixture]
+fn clean_fixture() -> ZervFixture {
+    ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+        Some(0),
+        Some(false),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
 }
 
-fn create_fixture_with_distance(version: (u64, u64, u64), distance: u64) -> ZervFixture {
-    ZervFixture::new()
-        .with_version(version.0, version.1, version.2)
-        .with_vcs_data(Some(distance), Some(false), None, None, None, None, None)
+#[fixture]
+fn fixture_with_distance() -> ZervFixture {
+    ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+        Some(10),
+        Some(false),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
 }
 
-fn create_dirty_fixture(version: (u64, u64, u64)) -> ZervFixture {
-    ZervFixture::new()
-        .with_version(version.0, version.1, version.2)
-        .with_vcs_data(Some(0), Some(true), None, None, None, None, None)
+#[fixture]
+fn dirty_fixture() -> ZervFixture {
+    ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+        Some(0),
+        Some(true),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
 }
 
-fn create_fixture_with_branch(version: (u64, u64, u64), branch: &str) -> ZervFixture {
-    ZervFixture::new()
-        .with_version(version.0, version.1, version.2)
-        .with_vcs_data(
-            Some(0),
-            Some(false),
-            None,
-            None,
-            None,
-            None,
-            Some(branch.to_string()),
-        )
+#[fixture]
+fn fixture_with_branch() -> ZervFixture {
+    ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+        Some(0),
+        Some(false),
+        None,
+        None,
+        None,
+        None,
+        Some("old-branch".to_string()),
+    )
 }
 
 mod tag_version_override {
@@ -44,11 +67,12 @@ mod tag_version_override {
     #[case::pep440_basic("3.1.4", "pep440", "3.1.4")]
     #[case::pep440_prerelease("1.0.0a1", "pep440", "1.0.0-alpha.1")]
     fn test_tag_version_override(
+        clean_fixture: ZervFixture,
         #[case] tag_version: &str,
         #[case] input_format: &str,
         #[case] expected: &str,
     ) {
-        let zerv_ron = create_clean_fixture((0, 0, 1)).build().to_string();
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             &format!(
@@ -65,9 +89,9 @@ mod tag_version_override {
         );
     }
 
-    #[test]
-    fn test_tag_version_replaces_stdin_version() {
-        let zerv_ron = create_clean_fixture((1, 2, 3)).build().to_string();
+    #[rstest]
+    fn test_tag_version_replaces_stdin_version(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --tag-version 5.0.0 --input-format semver --output-format semver",
@@ -77,9 +101,9 @@ mod tag_version_override {
         assert_eq!(output, "5.0.0");
     }
 
-    #[test]
-    fn test_tag_version_with_v_prefix() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_tag_version_with_v_prefix(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --tag-version v2.0.0 --input-format semver --output-format semver",
@@ -97,8 +121,8 @@ mod distance_override {
     #[case::zero(0)]
     #[case::small(5)]
     #[case::large(100)]
-    fn test_distance_override_basic(#[case] distance: u32) {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    fn test_distance_override_basic(clean_fixture: ZervFixture, #[case] distance: u32) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             &format!("version --source stdin --distance {distance} --output-format zerv"),
@@ -112,14 +136,9 @@ mod distance_override {
         );
     }
 
-    #[test]
-    fn test_distance_override_affects_tier() {
-        let zerv_ron = ZervFixture::new()
-            .with_version(1, 0, 0)
-            .with_standard_tier_3()
-            .with_vcs_data(Some(0), Some(false), None, None, None, None, None)
-            .build()
-            .to_string();
+    #[rstest]
+    fn test_distance_override_affects_tier(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.with_standard_tier_3().build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --distance 5 --output-format pep440",
@@ -132,11 +151,9 @@ mod distance_override {
         );
     }
 
-    #[test]
-    fn test_distance_replaces_stdin_distance() {
-        let zerv_ron = create_fixture_with_distance((1, 0, 0), 10)
-            .build()
-            .to_string();
+    #[rstest]
+    fn test_distance_replaces_stdin_distance(fixture_with_distance: ZervFixture) {
+        let zerv_ron = fixture_with_distance.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --distance 3 --output-format zerv",
@@ -159,9 +176,9 @@ mod distance_override {
 mod dirty_override {
     use super::*;
 
-    #[test]
-    fn test_dirty_flag_sets_dirty_true() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_dirty_flag_sets_dirty_true(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --dirty --output-format zerv",
@@ -175,9 +192,9 @@ mod dirty_override {
         );
     }
 
-    #[test]
-    fn test_no_dirty_flag_sets_dirty_false() {
-        let zerv_ron = create_dirty_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_no_dirty_flag_sets_dirty_false(dirty_fixture: ZervFixture) {
+        let zerv_ron = dirty_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --no-dirty --output-format zerv",
@@ -191,9 +208,9 @@ mod dirty_override {
         );
     }
 
-    #[test]
-    fn test_dirty_replaces_stdin_dirty() {
-        let zerv_ron = create_dirty_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_dirty_replaces_stdin_dirty(dirty_fixture: ZervFixture) {
+        let zerv_ron = dirty_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --no-dirty --output-format zerv",
@@ -211,10 +228,9 @@ mod dirty_override {
 mod clean_override {
     use super::*;
 
-    #[test]
-    fn test_clean_sets_distance_zero_dirty_false() {
-        let zerv_ron = ZervFixture::new()
-            .with_version(1, 0, 0)
+    #[rstest]
+    fn test_clean_sets_distance_zero_dirty_false(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture
             .with_vcs_data(Some(5), Some(true), None, None, None, None, None)
             .build()
             .to_string();
@@ -236,9 +252,9 @@ mod clean_override {
         );
     }
 
-    #[test]
-    fn test_clean_forces_tier_1() {
-        let zerv_ron = ZervFixture::new()
+    #[rstest]
+    fn test_clean_forces_tier_1(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture
             .with_version(2, 0, 0)
             .with_standard_tier_2()
             .with_vcs_data(Some(10), Some(false), None, None, None, None, None)
@@ -255,9 +271,9 @@ mod clean_override {
         );
     }
 
-    #[test]
-    fn test_clean_overrides_dirty_stdin() {
-        let zerv_ron = ZervFixture::new()
+    #[rstest]
+    fn test_clean_overrides_dirty_stdin(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture
             .with_version(1, 5, 2)
             .with_vcs_data(Some(3), Some(true), None, None, None, None, None)
             .build()
@@ -278,11 +294,9 @@ mod clean_override {
 mod bumped_branch_override {
     use super::*;
 
-    #[test]
-    fn test_bumped_branch_override_basic() {
-        let zerv_ron = create_fixture_with_branch((1, 0, 0), "old-branch")
-            .build()
-            .to_string();
+    #[rstest]
+    fn test_bumped_branch_override_basic(fixture_with_branch: ZervFixture) {
+        let zerv_ron = fixture_with_branch.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --bumped-branch feature/new --output-format zerv",
@@ -296,11 +310,9 @@ mod bumped_branch_override {
         );
     }
 
-    #[test]
-    fn test_bumped_branch_in_template() {
-        let zerv_ron = create_fixture_with_branch((1, 0, 0), "main")
-            .build()
-            .to_string();
+    #[rstest]
+    fn test_bumped_branch_in_template(fixture_with_branch: ZervFixture) {
+        let zerv_ron = fixture_with_branch.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --bumped-branch dev --output-template {{bumped_branch}}",
@@ -310,9 +322,9 @@ mod bumped_branch_override {
         assert_eq!(output, "dev");
     }
 
-    #[test]
-    fn test_bumped_branch_with_special_chars() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_bumped_branch_with_special_chars(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             r#"version --source stdin --bumped-branch "feature/USER-123" --output-template {{bumped_branch}}"#,
@@ -326,9 +338,9 @@ mod bumped_branch_override {
 mod bumped_commit_hash_override {
     use super::*;
 
-    #[test]
-    fn test_bumped_commit_hash_override_full() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_bumped_commit_hash_override_full(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
         let full_hash = "abcdef1234567890abcdef1234567890abcdef12";
 
         let output = TestCommand::run_with_stdin(
@@ -346,9 +358,9 @@ mod bumped_commit_hash_override {
         );
     }
 
-    #[test]
-    fn test_bumped_commit_hash_override_short() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_bumped_commit_hash_override_short(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
         let short_hash = "abc123";
 
         let output = TestCommand::run_with_stdin(
@@ -365,9 +377,9 @@ mod bumped_commit_hash_override {
         );
     }
 
-    #[test]
-    fn test_bumped_commit_hash_in_template() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_bumped_commit_hash_in_template(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --bumped-commit-hash deadbeef --output-template {{bumped_commit_hash}}",
@@ -381,13 +393,10 @@ mod bumped_commit_hash_override {
 mod vcs_overrides_combined {
     use super::*;
 
-    #[test]
+    #[rstest]
     #[ignore]
-    fn test_tag_version_and_distance() {
-        let zerv_ron = create_clean_fixture((1, 0, 0))
-            .with_standard_tier_3()
-            .build()
-            .to_string();
+    fn test_tag_version_and_distance(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.with_standard_tier_3().build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --tag-version 2.0.0 --input-format semver --distance 5 --output-format pep440",
@@ -401,9 +410,9 @@ mod vcs_overrides_combined {
         );
     }
 
-    #[test]
-    fn test_distance_and_dirty() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_distance_and_dirty(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --distance 3 --dirty --output-format zerv",
@@ -422,9 +431,9 @@ mod vcs_overrides_combined {
         );
     }
 
-    #[test]
-    fn test_branch_and_commit() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_branch_and_commit(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --bumped-branch dev --bumped-commit-hash abc123 --output-template {{bumped_branch}}-{{bumped_commit_hash}}",
@@ -434,9 +443,9 @@ mod vcs_overrides_combined {
         assert_eq!(output, "dev-abc123");
     }
 
-    #[test]
-    fn test_all_vcs_overrides() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_all_vcs_overrides(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --tag-version 3.0.0 --input-format semver --distance 10 --dirty --bumped-branch feature --bumped-commit-hash xyz789 --output-format zerv",
@@ -453,66 +462,27 @@ mod vcs_overrides_combined {
 mod vcs_override_conflicts {
     use super::*;
 
-    #[test]
-    fn test_dirty_and_no_dirty_conflict() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    #[case::dirty_and_no_dirty("--dirty --no-dirty", "--dirty", "--no-dirty")]
+    #[case::clean_and_distance("--clean --distance 5", "--clean", "--distance")]
+    #[case::clean_and_dirty("--clean --dirty", "--clean", "--dirty")]
+    #[case::clean_and_no_dirty("--clean --no-dirty", "--clean", "--no-dirty")]
+    fn test_conflicting_flags(
+        clean_fixture: ZervFixture,
+        #[case] args: &str,
+        #[case] flag1: &str,
+        #[case] flag2: &str,
+    ) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::new()
-            .args_from_str("version --source stdin --dirty --no-dirty")
+            .args_from_str(format!("version --source stdin {args}"))
             .stdin(zerv_ron)
             .assert_failure();
 
         let stderr = output.stderr();
         assert!(
-            stderr.contains("--dirty") && stderr.contains("--no-dirty"),
-            "Expected conflict error mentioning both flags, got: {stderr}"
-        );
-    }
-
-    #[test]
-    fn test_clean_and_distance_conflict() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
-
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --clean --distance 5")
-            .stdin(zerv_ron)
-            .assert_failure();
-
-        let stderr = output.stderr();
-        assert!(
-            stderr.contains("--clean") && stderr.contains("--distance"),
-            "Expected conflict error mentioning both flags, got: {stderr}"
-        );
-    }
-
-    #[test]
-    fn test_clean_and_dirty_conflict() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
-
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --clean --dirty")
-            .stdin(zerv_ron)
-            .assert_failure();
-
-        let stderr = output.stderr();
-        assert!(
-            stderr.contains("--clean") && stderr.contains("--dirty"),
-            "Expected conflict error mentioning both flags, got: {stderr}"
-        );
-    }
-
-    #[test]
-    fn test_clean_and_no_dirty_conflict() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
-
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --clean --no-dirty")
-            .stdin(zerv_ron)
-            .assert_failure();
-
-        let stderr = output.stderr();
-        assert!(
-            stderr.contains("--clean") && stderr.contains("--no-dirty"),
+            stderr.contains(flag1) && stderr.contains(flag2),
             "Expected conflict error mentioning both flags, got: {stderr}"
         );
     }
@@ -521,11 +491,9 @@ mod vcs_override_conflicts {
 mod vcs_override_edge_cases {
     use super::*;
 
-    #[test]
-    fn test_distance_zero_explicit() {
-        let zerv_ron = create_fixture_with_distance((1, 0, 0), 5)
-            .build()
-            .to_string();
+    #[rstest]
+    fn test_distance_zero_explicit(fixture_with_distance: ZervFixture) {
+        let zerv_ron = fixture_with_distance.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --distance 0 --output-format zerv",
@@ -539,11 +507,9 @@ mod vcs_override_edge_cases {
         );
     }
 
-    #[test]
-    fn test_branch_empty_string() {
-        let zerv_ron = create_fixture_with_branch((1, 0, 0), "main")
-            .build()
-            .to_string();
+    #[rstest]
+    fn test_branch_empty_string(fixture_with_branch: ZervFixture) {
+        let zerv_ron = fixture_with_branch.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             r#"version --source stdin --bumped-branch "" --output-format zerv"#,
@@ -557,9 +523,9 @@ mod vcs_override_edge_cases {
         );
     }
 
-    #[test]
-    fn test_tag_version_without_input_format_semver() {
-        let zerv_ron = create_clean_fixture((1, 0, 0)).build().to_string();
+    #[rstest]
+    fn test_tag_version_without_input_format_semver(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --tag-version 2.0.0 --output-format semver",
@@ -572,9 +538,9 @@ mod vcs_override_edge_cases {
         );
     }
 
-    #[test]
-    fn test_multiple_overrides_preserve_original_tier() {
-        let zerv_ron = ZervFixture::new()
+    #[rstest]
+    fn test_multiple_overrides_preserve_original_tier(clean_fixture: ZervFixture) {
+        let zerv_ron = clean_fixture
             .with_version(2024, 12, 1)
             .with_calver_tier_2()
             .with_vcs_data(

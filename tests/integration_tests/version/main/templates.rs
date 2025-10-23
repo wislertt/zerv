@@ -6,15 +6,10 @@ use crate::util::TestCommand;
 
 fn run_template(template: &str, fixture: ZervFixture) -> String {
     let zerv_ron = fixture.build().to_string();
-    TestCommand::new()
-        .args_from_str(format!(
-            "version --source stdin --output-template '{template}'"
-        ))
-        .stdin(zerv_ron)
-        .assert_success()
-        .stdout()
-        .trim()
-        .to_string()
+    TestCommand::run_with_stdin(
+        &format!("version --source stdin --output-template '{template}'"),
+        zerv_ron,
+    )
 }
 
 mod template_basic_variables {

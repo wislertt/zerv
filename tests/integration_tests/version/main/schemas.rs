@@ -1,4 +1,7 @@
-use rstest::rstest;
+use rstest::{
+    fixture,
+    rstest,
+};
 use zerv::test_utils::{
     ZervFixture,
     ZervSchemaFixture,
@@ -7,37 +10,34 @@ use zerv::version::PreReleaseLabel;
 
 use crate::util::TestCommand;
 
-// Test constants
 const DEV_TIMESTAMP: u64 = 1234567890;
 const TEST_BRANCH: &str = "feature.branch";
 const TEST_COMMIT_HASH: &str = "abc123def456";
 const DIRTY_BRANCH: &str = "main.branch";
 const DIRTY_COMMIT_HASH: &str = "def456abc789";
 
-// Helper functions
-
-/// Creates a ZervFixture with standard tier 1 setup
-fn create_standard_tier_1_fixture(version: (u64, u64, u64)) -> ZervFixture {
+#[fixture]
+fn tier_1_fixture() -> ZervFixture {
     ZervFixture::new()
-        .with_version(version.0, version.1, version.2)
+        .with_version(1, 0, 0)
         .with_standard_tier_1()
 }
 
-/// Creates a ZervFixture with standard tier 2 setup and distance
-fn create_standard_tier_2_fixture(version: (u64, u64, u64), distance: u64) -> ZervFixture {
+#[fixture]
+fn tier_2_fixture() -> ZervFixture {
     ZervFixture::new()
-        .with_version(version.0, version.1, version.2)
+        .with_version(1, 0, 0)
         .with_standard_tier_2()
-        .with_vcs_data(Some(distance), Some(false), None, None, None, None, None)
+        .with_vcs_data(Some(5), Some(false), None, None, None, None, None)
 }
 
-/// Creates a ZervFixture with standard tier 3 setup and deterministic git data
-fn create_standard_tier_3_fixture(version: (u64, u64, u64), distance: u64) -> ZervFixture {
+#[fixture]
+fn tier_3_fixture() -> ZervFixture {
     ZervFixture::new()
-        .with_version(version.0, version.1, version.2)
+        .with_version(1, 0, 0)
         .with_standard_tier_3()
         .with_vcs_data(
-            Some(distance),
+            Some(5),
             Some(true),
             Some(TEST_BRANCH.to_string()),
             Some(TEST_COMMIT_HASH.to_string()),
@@ -48,10 +48,10 @@ fn create_standard_tier_3_fixture(version: (u64, u64, u64), distance: u64) -> Ze
         .with_dev(DEV_TIMESTAMP)
 }
 
-/// Creates a dirty ZervFixture for tier selection tests
-fn create_dirty_tier_3_fixture(version: (u64, u64, u64)) -> ZervFixture {
+#[fixture]
+fn dirty_fixture() -> ZervFixture {
     ZervFixture::new()
-        .with_version(version.0, version.1, version.2)
+        .with_version(1, 2, 3)
         .with_standard_tier_3()
         .with_vcs_data(
             Some(0),
@@ -65,37 +65,22 @@ fn create_dirty_tier_3_fixture(version: (u64, u64, u64)) -> ZervFixture {
         .with_dev(DEV_TIMESTAMP)
 }
 
-/// Helper functions for different schema setups
-fn setup_schema_major_minor() -> ZervSchemaFixture {
-    ZervSchemaFixture::empty().with_major_minor()
-}
-
-fn setup_schema_with_epoch() -> ZervSchemaFixture {
-    ZervSchemaFixture::empty()
-        .with_major_minor_patch()
-        .with_epoch_in_extra_core()
-}
-
-fn setup_schema_with_prerelease() -> ZervSchemaFixture {
-    ZervSchemaFixture::empty()
-        .with_major_minor_patch()
-        .with_prerelease_in_extra_core()
-}
-
 mod schema_preset_standard {
+    //! Tests for the built-in zerv-standard schema preset
     use super::*;
 
     #[rstest]
     #[case::tier_1_clean((1, 2, 3), None, None, "1.2.3")]
     #[case::tier_1_with_epoch((1, 0, 0), Some(2), None, "1.0.0-epoch.2")]
     #[case::tier_1_with_post((2, 5, 1), None, Some(3), "2.5.1-post.3")]
-    fn test_schema_standard_tier_1(
+    fn test_tier_1(
+        tier_1_fixture: ZervFixture,
         #[case] version: (u64, u64, u64),
         #[case] epoch: Option<u64>,
         #[case] post: Option<u64>,
         #[case] expected: &str,
     ) {
-        let mut fixture = create_standard_tier_1_fixture(version);
+        let mut fixture = tier_1_fixture.with_version(version.0, version.1, version.2);
 
         if let Some(e) = epoch {
             fixture = fixture.with_epoch(e);
@@ -113,14 +98,17 @@ mod schema_preset_standard {
     }
 
     #[rstest]
-    #[case::tier_2_with_distance((1, 0, 0), 5, "1.0.0+5")]
-    #[case::tier_2_with_branch_metadata((2, 3, 1), 10, "2.3.1+10")]
-    fn test_schema_standard_tier_2(
+    #[case::with_distance((1, 0, 0), 5, "1.0.0+5")]
+    #[case::with_branch_metadata((2, 3, 1), 10, "2.3.1+10")]
+    fn test_tier_2(
+        tier_2_fixture: ZervFixture,
         #[case] version: (u64, u64, u64),
         #[case] distance: u64,
         #[case] expected: &str,
     ) {
-        let zerv_ron = create_standard_tier_2_fixture(version, distance)
+        let zerv_ron = tier_2_fixture
+            .with_version(version.0, version.1, version.2)
+            .with_vcs_data(Some(distance), Some(false), None, None, None, None, None)
             .build()
             .to_string();
 
@@ -131,10 +119,15 @@ mod schema_preset_standard {
     }
 
     #[rstest]
-    #[case::tier_3_dirty((1, 0, 0), "1.0.0-dev.1234567890+feature.branch.5.abc123d")]
-    #[case::tier_3_with_distance((2, 1, 0), "2.1.0-dev.1234567890+feature.branch.5.abc123d")]
-    fn test_schema_standard_tier_3(#[case] version: (u64, u64, u64), #[case] expected: &str) {
-        let zerv_ron = create_standard_tier_3_fixture(version, 5)
+    #[case::dirty((1, 0, 0), "1.0.0-dev.1234567890+feature.branch.5.abc123d")]
+    #[case::with_distance((2, 1, 0), "2.1.0-dev.1234567890+feature.branch.5.abc123d")]
+    fn test_tier_3(
+        tier_3_fixture: ZervFixture,
+        #[case] version: (u64, u64, u64),
+        #[case] expected: &str,
+    ) {
+        let zerv_ron = tier_3_fixture
+            .with_version(version.0, version.1, version.2)
             .build()
             .to_string();
 
@@ -146,100 +139,81 @@ mod schema_preset_standard {
 }
 
 mod schema_preset_calver {
+    //! Tests for the built-in zerv-calver schema preset
     use super::*;
 
-    #[test]
-    fn test_schema_calver_accepted() {
-        let zerv_ron = ZervFixture::new().with_version(1, 2, 3).build().to_string();
+    #[rstest]
+    fn test_basic(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture.with_version(1, 2, 3).build().to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-calver")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output =
+            TestCommand::run_with_stdin("version --source stdin --schema zerv-calver", zerv_ron);
 
-        assert!(
-            !output.stdout().trim().is_empty(),
-            "CalVer schema should produce output"
-        );
+        assert!(!output.is_empty(), "CalVer schema should produce output");
     }
 
-    #[test]
-    fn test_schema_calver_with_distance() {
-        let zerv_ron = ZervFixture::new()
+    #[rstest]
+    fn test_with_distance(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture
             .with_version(1, 0, 0)
             .with_vcs_data(Some(3), Some(true), None, None, None, None, None)
             .build()
             .to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-calver")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output =
+            TestCommand::run_with_stdin("version --source stdin --schema zerv-calver", zerv_ron);
 
-        assert_eq!(
-            output.stdout().trim(),
-            "2025.10.22-0+3",
-            "CalVer tier 2 should match expected format"
-        );
+        assert_eq!(output, "2025.10.23-0+3", "CalVer tier 2 format");
     }
 
-    #[test]
-    fn test_schema_calver_with_dirty() {
-        let zerv_ron = ZervFixture::new()
+    #[rstest]
+    fn test_with_dirty(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture
             .with_version(1, 0, 0)
             .with_vcs_data(Some(0), Some(true), None, None, None, None, None)
-            .with_dev(1234567890)
+            .with_dev(DEV_TIMESTAMP)
             .build()
             .to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-calver")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output =
+            TestCommand::run_with_stdin("version --source stdin --schema zerv-calver", zerv_ron);
 
         assert!(
-            output.stdout().contains("dev"),
-            "CalVer tier 3 should include dev notation when dirty, got: {}",
-            output.stdout().trim()
+            output.contains("dev"),
+            "CalVer tier 3 should include dev notation when dirty, got: {output}"
         );
     }
 }
 
 mod schema_defaults {
+    //! Tests for default schema behavior
     use super::*;
 
-    #[test]
-    fn test_schema_default_is_standard() {
-        let zerv_ron = ZervFixture::new()
-            .with_version(1, 2, 3)
-            .with_standard_tier_1()
-            .build()
-            .to_string();
+    #[rstest]
+    fn test_default_is_standard(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture.with_version(1, 2, 3).build().to_string();
 
-        let output_explicit = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-standard")
-            .stdin(zerv_ron.clone())
-            .assert_success();
+        let output_explicit = TestCommand::run_with_stdin(
+            "version --source stdin --schema zerv-standard",
+            zerv_ron.clone(),
+        );
 
-        let output_default = TestCommand::new()
-            .args_from_str("version --source stdin")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output_default = TestCommand::run_with_stdin("version --source stdin", zerv_ron);
 
         assert_eq!(
-            output_explicit.stdout().trim(),
-            output_default.stdout().trim(),
+            output_explicit, output_default,
             "Default schema should be zerv-standard"
         );
     }
 }
 
 mod schema_ron_custom {
+    //! Tests for custom RON schema functionality
     use super::*;
 
-    #[test]
-    fn test_schema_ron_basic() {
-        let zerv_ron = ZervFixture::new().with_version(3, 2, 1).build().to_string();
+    #[rstest]
+    fn test_basic(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture.with_version(3, 2, 1).build().to_string();
         let schema_ron = ZervSchemaFixture::standard_tier_1().build().to_string();
 
         let args = format!("version --source stdin --schema-ron '{schema_ron}'");
@@ -251,23 +225,26 @@ mod schema_ron_custom {
     #[rstest]
     #[case::major_minor(
         (1, 2, 3),
-        setup_schema_major_minor(),
+        ZervSchemaFixture::empty().with_major_minor(),
         ZervFixture::new(),
         "version --source stdin --schema-ron",
-        "1.2.0")]
+        "1.2.0"
+    )]
     #[case::epoch_in_extra_core(
         (1, 2, 3),
-        setup_schema_with_epoch(),
+        ZervSchemaFixture::empty().with_major_minor_patch().with_epoch_in_extra_core(),
         ZervFixture::new().with_epoch(5),
         "version --source stdin --output-format pep440 --schema-ron",
-        "5!1.2.3")]
+        "5!1.2.3"
+    )]
     #[case::prerelease_in_extra_core(
         (2, 0, 0),
-        setup_schema_with_prerelease(),
+        ZervSchemaFixture::empty().with_major_minor_patch().with_prerelease_in_extra_core(),
         ZervFixture::new().with_pre_release(PreReleaseLabel::Beta, Some(3)),
         "version --source stdin --output-format semver --schema-ron",
-        "2.0.0-beta.3")]
-    fn test_schema_ron_custom_components(
+        "2.0.0-beta.3"
+    )]
+    fn test_custom_components(
         #[case] version: (u64, u64, u64),
         #[case] schema_fixture: ZervSchemaFixture,
         #[case] zerv_fixture: ZervFixture,
@@ -288,11 +265,12 @@ mod schema_ron_custom {
 }
 
 mod schema_validation {
+    //! Tests for schema validation and error handling
     use super::*;
 
-    #[test]
-    fn test_schema_unknown_preset_error() {
-        let zerv_ron = ZervFixture::new().with_version(1, 0, 0).build().to_string();
+    #[rstest]
+    fn test_unknown_preset_error(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture.build().to_string();
 
         let output = TestCommand::new()
             .args_from_str("version --source stdin --schema invalid-schema")
@@ -306,10 +284,9 @@ mod schema_validation {
         );
     }
 
-    #[test]
-    fn test_schema_and_schema_ron_conflict() {
-        let zerv_ron = ZervFixture::new().with_version(1, 0, 0).build().to_string();
-
+    #[rstest]
+    fn test_schema_and_schema_ron_conflict(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture.build().to_string();
         let schema_ron = ZervSchemaFixture::standard_tier_1().build().to_string();
 
         let output = TestCommand::new()
@@ -326,10 +303,9 @@ mod schema_validation {
         );
     }
 
-    #[test]
-    fn test_schema_ron_invalid_syntax() {
-        let zerv_ron = ZervFixture::new().with_version(1, 0, 0).build().to_string();
-
+    #[rstest]
+    fn test_ron_invalid_syntax(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture.build().to_string();
         let invalid_schema = r#"(core:[var(Invalid),extra_core:[]"#;
 
         let output = TestCommand::new()
@@ -348,69 +324,68 @@ mod schema_validation {
 }
 
 mod schema_output_formats {
+    //! Tests for schema interaction with output formats
     use super::*;
 
     #[rstest]
     #[case::standard_semver("zerv-standard", "semver", "1.2.3")]
     #[case::standard_pep440("zerv-standard", "pep440", "1.2.3")]
-    fn test_schema_with_output_format(
+    fn test_with_output_format(
+        tier_1_fixture: ZervFixture,
         #[case] schema: &str,
         #[case] output_format: &str,
         #[case] expected: &str,
     ) {
-        let zerv_ron = ZervFixture::new().with_version(1, 2, 3).build().to_string();
+        let zerv_ron = tier_1_fixture.with_version(1, 2, 3).build().to_string();
 
-        let output = TestCommand::new()
-            .args_from_str(format!(
-                "version --source stdin --schema {schema} --output-format {output_format}"
-            ))
-            .stdin(zerv_ron)
-            .assert_success();
+        let output = TestCommand::run_with_stdin(
+            &format!("version --source stdin --schema {schema} --output-format {output_format}"),
+            zerv_ron,
+        );
 
-        assert_eq!(output.stdout().trim(), expected);
+        assert_eq!(output, expected);
     }
 
-    #[test]
-    fn test_schema_calver_with_output_formats() {
-        let zerv_ron = ZervFixture::new().with_version(1, 2, 3).build().to_string();
+    #[rstest]
+    fn test_calver_with_output_formats(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture.with_version(1, 2, 3).build().to_string();
 
-        let output_semver = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-calver --output-format semver")
-            .stdin(zerv_ron.clone())
-            .assert_success();
+        let output_semver = TestCommand::run_with_stdin(
+            "version --source stdin --schema zerv-calver --output-format semver",
+            zerv_ron.clone(),
+        );
 
-        let output_pep440 = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-calver --output-format pep440")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output_pep440 = TestCommand::run_with_stdin(
+            "version --source stdin --schema zerv-calver --output-format pep440",
+            zerv_ron,
+        );
 
         assert!(
-            !output_semver.stdout().trim().is_empty(),
+            !output_semver.is_empty(),
             "CalVer with semver format should produce output"
         );
         assert!(
-            !output_pep440.stdout().trim().is_empty(),
+            !output_pep440.is_empty(),
             "CalVer with pep440 format should produce output"
         );
     }
 
-    #[test]
-    fn test_schema_with_zerv_output_format_preserves_structure() {
-        let original_zerv = ZervFixture::new()
+    #[rstest]
+    fn test_preserves_structure(tier_1_fixture: ZervFixture) {
+        let original_zerv = tier_1_fixture
             .with_version(1, 2, 3)
-            .with_standard_tier_1()
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .build();
 
         let zerv_ron = original_zerv.to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-standard --output-format zerv")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output = TestCommand::run_with_stdin(
+            "version --source stdin --schema zerv-standard --output-format zerv",
+            zerv_ron,
+        );
 
         let parsed_zerv: zerv::version::Zerv =
-            ron::from_str(output.stdout().trim()).expect("Failed to parse output as Zerv RON");
+            ron::from_str(&output).expect("Failed to parse output as Zerv RON");
 
         assert_eq!(
             parsed_zerv.schema, original_zerv.schema,
@@ -420,92 +395,80 @@ mod schema_output_formats {
 }
 
 mod schema_prerelease {
+    //! Tests for schema behavior with prerelease versions
     use super::*;
 
     #[rstest]
     #[case::alpha(PreReleaseLabel::Alpha, Some(1), "1.0.0-alpha.1")]
     #[case::beta(PreReleaseLabel::Beta, Some(2), "1.0.0-beta.2")]
     #[case::rc(PreReleaseLabel::Rc, Some(3), "1.0.0-rc.3")]
-    fn test_schema_standard_with_prerelease(
+    fn test_standard_with_prerelease(
+        tier_1_fixture: ZervFixture,
         #[case] label: PreReleaseLabel,
         #[case] number: Option<u64>,
         #[case] expected: &str,
     ) {
-        let zerv_ron = ZervFixture::new()
+        let zerv_ron = tier_1_fixture
             .with_version(1, 0, 0)
             .with_pre_release(label, number)
             .build()
             .to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-standard")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output =
+            TestCommand::run_with_stdin("version --source stdin --schema zerv-standard", zerv_ron);
 
-        assert_eq!(output.stdout().trim(), expected);
+        assert_eq!(output, expected);
     }
 
-    #[test]
-    fn test_schema_calver_with_prerelease() {
-        let zerv_ron = ZervFixture::new()
+    #[rstest]
+    fn test_calver_with_prerelease(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture
             .with_version(1, 0, 0)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .build()
             .to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-calver")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output =
+            TestCommand::run_with_stdin("version --source stdin --schema zerv-calver", zerv_ron);
 
         assert!(
-            output.stdout().contains("alpha"),
-            "CalVer with alpha prerelease should include 'alpha' in output, got: {}",
-            output.stdout().trim()
+            output.contains("alpha"),
+            "CalVer with alpha prerelease should include 'alpha' in output, got: {output}"
         );
     }
 }
 
 mod schema_tier_behavior {
+    //! Tests for schema tier selection behavior
     use super::*;
 
-    #[test]
-    fn test_schema_standard_tier_selection_tagged_clean() {
-        let zerv_ron = ZervFixture::new()
+    #[rstest]
+    fn test_tier_selection_tagged_clean(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture
             .with_version(1, 2, 3)
-            .with_standard_tier_1()
             .with_vcs_data(Some(0), Some(false), None, None, None, None, None)
             .build()
             .to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-standard")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output =
+            TestCommand::run_with_stdin("version --source stdin --schema zerv-standard", zerv_ron);
 
-        assert_eq!(output.stdout().trim(), "1.2.3");
+        assert_eq!(output, "1.2.3");
     }
 
-    #[test]
-    fn test_schema_standard_tier_selection_distance_clean() {
-        let zerv_ron = ZervFixture::new()
-            .with_version(1, 2, 3)
-            .with_standard_tier_2()
-            .with_vcs_data(Some(5), Some(false), None, None, None, None, None)
-            .build()
-            .to_string();
+    #[rstest]
+    fn test_tier_selection_distance_clean(tier_2_fixture: ZervFixture) {
+        let zerv_ron = tier_2_fixture.with_version(1, 2, 3).build().to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-standard")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output =
+            TestCommand::run_with_stdin("version --source stdin --schema zerv-standard", zerv_ron);
 
-        assert_eq!(output.stdout().trim(), "1.2.3+5");
+        assert_eq!(output, "1.2.3+5");
     }
 
-    #[test]
-    fn test_schema_standard_tier_selection_dirty() {
-        let zerv_ron = create_dirty_tier_3_fixture((1, 2, 3)).build().to_string();
+    #[rstest]
+    fn test_tier_selection_dirty(dirty_fixture: ZervFixture) {
+        let zerv_ron = dirty_fixture.build().to_string();
 
         let output =
             TestCommand::run_with_stdin("version --source stdin --schema zerv-standard", zerv_ron);
@@ -518,53 +481,45 @@ mod schema_tier_behavior {
 }
 
 mod schema_consistency {
+    //! Tests for schema consistency across invocations
     use super::*;
 
-    #[test]
-    fn test_schema_applied_consistently_across_commands() {
-        let zerv_ron = ZervFixture::new()
-            .with_version(1, 2, 3)
-            .with_standard_tier_1()
-            .build()
-            .to_string();
+    #[rstest]
+    fn test_applied_consistently(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture.with_version(1, 2, 3).build().to_string();
 
-        let output1 = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-standard")
-            .stdin(zerv_ron.clone())
-            .assert_success();
+        let output1 = TestCommand::run_with_stdin(
+            "version --source stdin --schema zerv-standard",
+            zerv_ron.clone(),
+        );
 
-        let output2 = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-standard")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output2 =
+            TestCommand::run_with_stdin("version --source stdin --schema zerv-standard", zerv_ron);
 
         assert_eq!(
-            output1.stdout().trim(),
-            output2.stdout().trim(),
+            output1, output2,
             "Same schema should produce identical output for same input"
         );
     }
 
-    #[test]
-    fn test_different_schemas_can_be_applied() {
-        let zerv_ron = ZervFixture::new().with_version(1, 2, 3).build().to_string();
+    #[rstest]
+    fn test_different_schemas(tier_1_fixture: ZervFixture) {
+        let zerv_ron = tier_1_fixture.with_version(1, 2, 3).build().to_string();
 
-        let output_standard = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-standard")
-            .stdin(zerv_ron.clone())
-            .assert_success();
+        let output_standard = TestCommand::run_with_stdin(
+            "version --source stdin --schema zerv-standard",
+            zerv_ron.clone(),
+        );
 
-        let output_calver = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-calver")
-            .stdin(zerv_ron)
-            .assert_success();
+        let output_calver =
+            TestCommand::run_with_stdin("version --source stdin --schema zerv-calver", zerv_ron);
 
         assert!(
-            !output_standard.stdout().trim().is_empty(),
+            !output_standard.is_empty(),
             "Standard schema should produce output"
         );
         assert!(
-            !output_calver.stdout().trim().is_empty(),
+            !output_calver.is_empty(),
             "CalVer schema should produce output"
         );
     }

@@ -230,40 +230,149 @@ Ensure comprehensive coverage of:
 
 ### 8. Test Code Quality Guidelines
 
-- **Use `TestCommand::run_with_stdin`**: For simple stdin tests that only need stdout output, use the convenience method:
+**For comprehensive pattern guide, see `.dev/29-integration-test-consistency-improvements.md`**
 
-    ```rust
-    let output = TestCommand::run_with_stdin("version --source stdin --output-format semver", zerv_ron);
-    assert_eq!(output, "1.2.3");
-    ```
+#### Default Pattern: `TestCommand::run_with_stdin()` (90% of tests)
 
-- **Module-level fixture helpers**: Create clear, reusable fixture functions at module level (similar to `tests/integration_tests/version/main/schemas.rs`):
+For simple stdin → stdout success tests, use the convenience helper:
 
-    ```rust
-    // Test constants at module level
-    const TEST_BRANCH: &str = "feature.branch";
-    const TEST_COMMIT_HASH: &str = "abc123def456";
+```rust
+let output = TestCommand::run_with_stdin(
+    "version --source stdin --output-format semver",
+    zerv_ron
+);
+assert_eq!(output, "1.2.3");
+```
 
-    // Helper functions for common fixtures
-    fn create_tier_1_fixture(version: (u64, u64, u64)) -> ZervFixture {
-        ZervFixture::new()
-            .with_version(version.0, version.1, version.2)
-            .with_standard_tier_1()
-    }
-    ```
+**When to use**: stdout-only tests that should succeed
 
-- **Use rstest parameterization**: Leverage `#[rstest]` with `#[case]` for testing multiple scenarios:
+#### Builder Pattern (10% of tests)
 
-    ```rust
+Use the builder pattern ONLY when you need:
+
+- Stderr inspection
+- Failure testing
+- Multiple output assertions
+
+```rust
+// Failure testing
+let output = TestCommand::new()
+    .args_from_str("version --invalid-flag")
+    .assert_failure();
+assert!(output.stderr().contains("error"));
+
+// Stderr inspection
+let output = TestCommand::new()
+    .args_from_str("version --source stdin -v")
+    .stdin(zerv_ron)
+    .assert_success();
+assert!(output.stderr().contains("debug"));
+assert_eq!(output.stdout().trim(), "1.2.3");
+```
+
+#### Use rstest Fixtures (Not Helper Functions)
+
+```rust
+use rstest::{fixture, rstest};
+
+// ✅ GOOD: rstest fixtures
+#[fixture]
+fn tier_1_fixture() -> ZervFixture {
+    ZervFixture::new()
+        .with_version(1, 0, 0)
+        .with_standard_tier_1()
+}
+
+#[rstest]
+fn test_tier_1(tier_1_fixture: ZervFixture) {
+    let zerv_ron = tier_1_fixture.build().to_string();
+    let output = TestCommand::run_with_stdin("version --source stdin", zerv_ron);
+    assert_eq!(output, "1.0.0");
+}
+
+// ❌ BAD: helper functions (manual injection)
+fn create_tier_1_fixture(version: (u64, u64, u64)) -> ZervFixture {
+    ZervFixture::new()
+        .with_version(version.0, version.1, version.2)
+        .with_standard_tier_1()
+}
+
+#[test]
+fn test_tier_1() {
+    let fixture = create_tier_1_fixture((1, 0, 0)); // Manual call
+    // ...
+}
+```
+
+**Why fixtures are better**:
+
+- Automatic injection by rstest
+- Better test isolation
+- Less boilerplate
+- Can be combined with `#[case]` parameters
+
+#### Use rstest Parameterization
+
+```rust
+#[rstest]
+#[case::semver("semver", "1.0.0")]
+#[case::pep440("pep440", "1.0.0")]
+fn test_formats(#[case] format: &str, #[case] expected: &str) {
+    // Test implementation
+}
+```
+
+#### Organize Tests with Modules (Not Comments)
+
+```rust
+// ❌ BAD: Comment dividers
+// ============================================================================
+// Output Format Tests
+// ============================================================================
+
+#[test]
+fn test_output_format_semver() { }
+
+// ✅ GOOD: Module organization
+mod output_format {
+    //! Tests for output format conversions
+    use super::*;
+
     #[rstest]
-    #[case::basic("1.0.0", "1.0.0")]
-    #[case::prerelease("2.0.0-beta.1", "2.0.0-beta.1")]
-    fn test_override(#[case] input: &str, #[case] expected: &str) {
+    #[case::semver("semver", "1.2.3")]
+    fn test_conversion(#[case] format: &str, #[case] expected: &str) {
         // Test implementation
     }
-    ```
+}
+```
 
-- **Clear test structure**: Organize tests with descriptive module names and group related tests together
+#### Module Documentation
+
+Add documentation to test modules explaining what they test:
+
+```rust
+mod schema_preset_standard {
+    //! Tests for the built-in zerv-standard schema preset.
+    //!
+    //! Covers all three tiers:
+    //! - Tier 1: Tagged, clean (major.minor.patch)
+    //! - Tier 2: Distance, clean (major.minor.patch+distance)
+    //! - Tier 3: Dirty (major.minor.patch-dev.timestamp+metadata)
+
+    use super::*;
+    // tests...
+}
+```
+
+#### Test Constants
+
+Define constants at module level for readability:
+
+```rust
+const DEV_TIMESTAMP: u64 = 1234567890;
+const TEST_BRANCH: &str = "feature.branch";
+const TEST_COMMIT_HASH: &str = "abc123def456";
+```
 
 ## Implementation Steps
 
