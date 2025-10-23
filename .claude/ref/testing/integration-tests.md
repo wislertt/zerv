@@ -44,74 +44,16 @@ assert!(output.stderr().contains("debug"));
 assert_eq!(output.stdout().trim(), "1.2.3");
 ```
 
-## Use rstest Fixtures (Not Helper Functions)
+## rstest Usage
 
-```rust
-use rstest::{fixture, rstest};
+**STANDARD: rstest fixtures and parameterization are covered in detail in** [testing/overview.md](./overview.md#rstest-testing-framework).
 
-#[fixture]
-fn tier_1_fixture() -> ZervFixture {
-    ZervFixture::new()
-        .with_version(1, 0, 0)
-        .with_standard_tier_1()
-}
+**Key reminders for integration tests:**
 
-#[rstest]
-fn test_something(tier_1_fixture: ZervFixture) {
-    let zerv_ron = tier_1_fixture.build().to_string();
-    let output = TestCommand::run_with_stdin("version --source stdin", zerv_ron);
-    assert_eq!(output, "1.0.0");
-}
-```
-
-**Why fixtures are better**:
-
-- Automatic injection by rstest
-- Better test isolation
-- Less boilerplate
-- Can be combined with `#[case]` parameters
-
-## Use rstest Parameterization
-
-Use `#[case]` attributes for testing multiple variations of the same logic:
-
-```rust
-#[rstest]
-#[case::semver("semver", "1.0.0")]
-#[case::pep440("pep440", "1.0.0")]
-#[case::zerv("zerv", "1.0.0")]
-fn test_output_formats(#[case] format: &str, #[case] expected: &str) {
-    let zerv_ron = ZervFixture::new()
-        .with_version(1, 0, 0)
-        .build()
-        .to_string();
-
-    let output = TestCommand::run_with_stdin(
-        &format!("version --source stdin --output-format {}", format),
-        zerv_ron,
-    );
-
-    assert_eq!(output, expected);
-}
-```
-
-The `::name` syntax after `#[case]` provides descriptive test names in output.
-
-## Organize with Modules (Not Comments)
-
-```rust
-mod output_format_basic {
-    //! Tests for basic format conversions (semver ↔ pep440 ↔ zerv)
-    use super::*;
-
-    #[rstest]
-    #[case::semver("semver", "1.2.3")]
-    #[case::pep440("pep440", "1.2.3")]
-    fn test_format(#[case] format: &str, #[case] expected: &str) {
-        // Test implementation
-    }
-}
-```
+- Use rstest fixtures for common test setup
+- Use `#[case]` for testing multiple input/output variations
+- Organize related tests in modules with `//!` documentation
+- Follow the patterns documented in overview.md
 
 ## Module Documentation
 

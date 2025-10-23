@@ -160,7 +160,7 @@ tests/integration_tests/version/
 
 - ✅ Created `tests/integration_tests/version/overrides/mod.rs`
 - Implement individual OverridesConfig tests:
-    - ✅ `vcs.rs`: --tag-version, --distance, --dirty, --clean, --current-branch, --commit-hash (37 tests total)
+    - ✅ `vcs.rs`: --tag-version, --distance, --dirty, --clean, --bumped-branch, --bumped-commit-hash, --bumped-timestamp (37 tests total)
         - **Status**: Tests implemented with clean module structure and fixture helpers
         - **Test Results**: **35 passing ✅, 0 failing, 1 ignored (known bug)**
         - **Coverage**:
@@ -169,14 +169,51 @@ tests/integration_tests/version/
             - ✅ Conflict detection works (--dirty/--no-dirty, --clean with --distance/--dirty)
             - ✅ Hash truncation to 7 characters works as expected
             - ✅ Distance and dirty overrides with zerv output format
+            - ⚠️ MISSING: --bumped-timestamp tests
         - **Ignored Test** (1 test - known bug):
             - `test_tag_version_and_distance`: Distance override doesn't affect tier calculation when combined with tag-version override
         - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
         - **Impact**: VCS overrides are fully functional except for one edge case (tag+distance tier calculation)
-    - ❌ `components.rs`: --major, --minor, --patch individually
-    - ❌ `schema_components.rs`: --core, --extra-core, --build individually
-    - ❌ `schema_components.rs`: --core, --extra-core, --build individually
-    - ❌ `combinations.rs`: Override combinations, conflicting options (clean vs distance/dirty), boolean flag behavior
+    - 🔄 `primary.rs`: --major, --minor, --patch (matches src/version/zerv/bump/vars_primary.rs) (34 tests total)
+        - **Status**: Renamed from components.rs for consistency with source code structure
+        - **Test Results**: **34 passing ✅, 0 failing**
+        - **Coverage**:
+            - ✅ Individual component overrides (--major, --minor, --patch) with multiple values
+            - ✅ Component overrides with different output formats (semver, pep440, zerv)
+            - ✅ Component override combinations (2 and 3 components together)
+            - ✅ Component overrides preserve prerelease data
+            - ✅ Component overrides preserve VCS data (distance, dirty, branch)
+        - **Test Organization**: 5 modules (major_override, minor_override, patch_override, component_combinations, component_with_prerelease, component_with_vcs_data)
+        - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
+    - 🔄 `secondary.rs`: --epoch, --post, --dev, --pre-release-label, --pre-release-num (matches src/version/zerv/bump/vars_secondary.rs)
+        - **Status**: NEW - mirrors vars_secondary.rs structure
+        - **Coverage Needed**:
+            - Individual overrides for each secondary component
+            - Different output format support (semver, pep440, zerv)
+            - Combinations of secondary components
+            - Preserve other version data (primary components, VCS data)
+            - Pre-release label + number interactions
+    - ❌ `custom.rs`: --custom (JSON variable overrides)
+        - **Status**: TODO - custom variables for template usage
+        - **Coverage Needed**:
+            - Valid JSON parsing
+            - Template variable substitution
+            - Error handling for invalid JSON
+            - Nested JSON structures
+    - ❌ `schema.rs`: --core, --extra-core, --build
+        - **Status**: TODO - schema component overrides with index=value syntax
+        - **Coverage Needed**:
+            - Index=value parsing (e.g., --core 0=5)
+            - Template syntax (e.g., --core 1={{major}})
+            - Multiple component overrides
+            - Error handling for invalid syntax
+    - ❌ `combinations.rs`: Override combinations across categories
+        - **Status**: TODO - cross-category override interactions
+        - **Coverage Needed**:
+            - Primary + Secondary combinations
+            - VCS + Component overrides
+            - Schema + VCS overrides
+            - Complex multi-category scenarios
 - Use ZervFixture with stdin source for all tests
 - Test and validate override functionality
 

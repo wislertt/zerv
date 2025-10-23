@@ -94,7 +94,8 @@ mod tag_version_override {
         let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --tag-version 5.0.0 --input-format semver --output-format semver",
+            "version --source stdin --tag-version 5.0.0 \
+             --input-format semver --output-format semver",
             zerv_ron,
         );
 
@@ -106,7 +107,8 @@ mod tag_version_override {
         let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --tag-version v2.0.0 --input-format semver --output-format semver",
+            "version --source stdin --tag-version v2.0.0 \
+             --input-format semver --output-format semver",
             zerv_ron,
         );
 
@@ -326,10 +328,11 @@ mod bumped_branch_override {
     fn test_bumped_branch_with_special_chars(clean_fixture: ZervFixture) {
         let zerv_ron = clean_fixture.build().to_string();
 
-        let output = TestCommand::run_with_stdin(
-            r#"version --source stdin --bumped-branch "feature/USER-123" --output-template {{bumped_branch}}"#,
-            zerv_ron,
+        let cmd = format!(
+            r#"version --source stdin --bumped-branch "{}" --output-template "{}""#,
+            "feature/USER-123", "{{bumped_branch}}"
         );
+        let output = TestCommand::run_with_stdin(&cmd, zerv_ron);
 
         assert_eq!(output, "feature/USER-123");
     }
@@ -382,11 +385,55 @@ mod bumped_commit_hash_override {
         let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --bumped-commit-hash deadbeef --output-template {{bumped_commit_hash}}",
+            "version --source stdin --bumped-commit-hash deadbeef \
+             --output-template {{bumped_commit_hash}}",
             zerv_ron,
         );
 
         assert_eq!(output, "deadbeef");
+    }
+}
+
+mod bumped_timestamp_override {
+    use super::*;
+
+    #[rstest]
+    #[case::zerv_format(1672531200, "--output-format zerv", |output: &str, timestamp: i64| {
+        output.contains(&format!("bumped_timestamp: Some({timestamp})"))
+    })]
+    #[case::zerv_large(1704067200, "--output-format zerv", |output: &str, timestamp: i64| {
+        output.contains(&format!("bumped_timestamp: Some({timestamp})"))
+    })]
+    #[case::template_basic(
+        1672531200,
+        "--output-template {{bumped_timestamp}}",
+        |output: &str, timestamp: i64| {
+        output == timestamp.to_string()
+    })]
+    #[case::template_formatted(
+        1672531200,
+        r#"--output-template "{{format_timestamp bumped_timestamp format=\"compact_date\"}}""#,
+        |output: &str, _: i64| {
+            output == "20230101"
+        }
+    )]
+    fn test_bumped_timestamp_override(
+        clean_fixture: ZervFixture,
+        #[case] timestamp: i64,
+        #[case] output_option: &str,
+        #[case] assertion: impl Fn(&str, i64) -> bool,
+    ) {
+        let zerv_ron = clean_fixture.build().to_string();
+
+        let command =
+            format!("version --source stdin --bumped-timestamp {timestamp} {output_option}");
+        let output = TestCommand::run_with_stdin(&command, zerv_ron);
+
+        assert!(
+            assertion(&output, timestamp),
+            "Expected timestamp assertion to pass for timestamp {timestamp}, got: {}",
+            output
+        );
     }
 }
 
@@ -399,7 +446,8 @@ mod vcs_overrides_combined {
         let zerv_ron = clean_fixture.with_standard_tier_3().build().to_string();
 
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --tag-version 2.0.0 --input-format semver --distance 5 --output-format pep440",
+            "version --source stdin --tag-version 2.0.0 \
+             --input-format semver --distance 5 --output-format pep440",
             zerv_ron,
         );
 
@@ -436,7 +484,8 @@ mod vcs_overrides_combined {
         let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --bumped-branch dev --bumped-commit-hash abc123 --output-template {{bumped_branch}}-{{bumped_commit_hash}}",
+            "version --source stdin --bumped-branch dev --bumped-commit-hash abc123 \
+             --output-template {{bumped_branch}}-{{bumped_commit_hash}}",
             zerv_ron,
         );
 
@@ -448,7 +497,9 @@ mod vcs_overrides_combined {
         let zerv_ron = clean_fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --tag-version 3.0.0 --input-format semver --distance 10 --dirty --bumped-branch feature --bumped-commit-hash xyz789 --output-format zerv",
+            "version --source stdin --tag-version 3.0.0 \
+             --input-format semver --distance 10 --dirty \
+             --bumped-branch feature --bumped-commit-hash xyz789 --output-format zerv",
             zerv_ron,
         );
 

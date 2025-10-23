@@ -23,5 +23,5 @@ make update     # Update Rust toolchain and dependencies
 ## Slash Commands
 
 ```bash
-/audit-all      # Run comprehensive code quality audit (comments, imports, constants, etc.)
+/audit          # Run code quality audit and fix violations for uncommitted files
 ```

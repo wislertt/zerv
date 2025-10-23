@@ -35,7 +35,7 @@ Zerv is a dynamic versioning CLI tool written in Rust that generates versions fo
 8. ❌ Place `use` statements inside functions (except rare naming conflict cases)
 9. ❌ Use comment dividers for test grouping (use `mod` blocks instead)
 
-**📋 Run `/audit-all` to check for violations automatically**
+**📋 Run `/audit` to check and fix violations automatically**
 
 ---
 
@@ -144,8 +144,8 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 
 **Slash Commands** (Simple, predefined workflows):
 
-- `/audit-all` - Run comprehensive code quality audit
-- Use for: Deterministic tasks, checklists, audits
+- `/audit` - Run code quality audit and fix violations
+- Use for: Detecting and fixing code quality violations efficiently
 
 **Agents** (Complex, multi-step exploration):
 
