@@ -470,4 +470,105 @@ mod tests {
         assert_eq!(args1.main.output_format, args2.main.output_format);
         assert_eq!(args1.overrides.dirty, args2.overrides.dirty);
     }
+
+    // Tests for uncovered methods
+
+    #[test]
+    fn test_with_schema_ron() {
+        let args = VersionArgsFixture::new()
+            .with_schema_ron("core: [{var: \"major\"}]")
+            .build();
+        assert_eq!(
+            args.main.schema_ron,
+            Some("core: [{var: \"major\"}]".to_string())
+        );
+    }
+
+    #[test]
+    fn test_with_output_template() {
+        let args = VersionArgsFixture::new()
+            .with_output_template("v{{major}}.{{minor}}.{{patch}}")
+            .build();
+        assert_eq!(
+            args.main.output_template,
+            Some(crate::cli::utils::template::Template::Value(
+                "v{{major}}.{{minor}}.{{patch}}".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn test_with_output_prefix() {
+        let args = VersionArgsFixture::new()
+            .with_output_prefix("release-")
+            .build();
+        assert_eq!(args.main.output_prefix, Some("release-".to_string()));
+    }
+
+    #[test]
+    fn test_with_no_dirty() {
+        let args = VersionArgsFixture::new().with_no_dirty(true).build();
+        assert!(args.overrides.no_dirty);
+
+        let args2 = VersionArgsFixture::new().with_no_dirty(false).build();
+        assert!(!args2.overrides.no_dirty);
+    }
+
+    #[test]
+    fn test_with_clean_flag() {
+        let args = VersionArgsFixture::new().with_clean_flag(true).build();
+        assert!(args.overrides.clean);
+
+        let args2 = VersionArgsFixture::new().with_clean_flag(false).build();
+        assert!(!args2.overrides.clean);
+    }
+
+    #[test]
+    fn test_with_commit_hash() {
+        let args = VersionArgsFixture::new()
+            .with_commit_hash("deadbeef1234567890")
+            .build();
+        assert_eq!(
+            args.overrides.bumped_commit_hash,
+            Some("deadbeef1234567890".to_string())
+        );
+    }
+
+    #[test]
+    fn test_with_custom() {
+        let args = VersionArgsFixture::new()
+            .with_custom("build_number")
+            .build();
+        assert_eq!(args.overrides.custom, Some("build_number".to_string()));
+    }
+
+    #[test]
+    fn test_all_uncovered_methods_chainable() {
+        let args = VersionArgsFixture::new()
+            .with_schema_ron("test-schema")
+            .with_output_template("{{version}}")
+            .with_output_prefix("v")
+            .with_no_dirty(true)
+            .with_clean_flag(true)
+            .with_commit_hash("hash123")
+            .with_custom("custom_value")
+            .build();
+
+        // Verify all settings were applied
+        assert_eq!(args.main.schema_ron, Some("test-schema".to_string()));
+        assert_eq!(
+            args.main.output_template,
+            Some(crate::cli::utils::template::Template::Value(
+                "{{version}}".to_string()
+            ))
+        );
+        assert_eq!(args.main.output_prefix, Some("v".to_string()));
+        assert!(args.overrides.no_dirty);
+        assert!(args.overrides.clean);
+        assert_eq!(
+            args.overrides.bumped_commit_hash,
+            Some("hash123".to_string())
+        );
+        assert_eq!(args.overrides.custom, Some("custom_value".to_string()));
+    }
 }

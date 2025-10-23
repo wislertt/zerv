@@ -75,9 +75,10 @@ Plans in `.claude/plan/` are temporary working documents with short lifecycle:
 
 ---
 
-## 📖 Essential Commands
+## 📖 Essential Commands & Workflows
 
 @.claude/ref/workflows/commands.md
+@.claude/ref/workflows/coverage.md
 
 ---
 

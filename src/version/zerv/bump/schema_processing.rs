@@ -414,4 +414,156 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains(expected_error));
     }
+
+    #[test]
+    fn test_process_schema_section_unknown_section() {
+        let mut zerv = ZervFixture::new().build();
+        let result = zerv.process_schema_section("unknown_section", &[], &[]);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Unknown schema section: unknown_section")
+        );
+    }
+
+    #[test]
+    fn test_process_var_field_pre_release_and_post() {
+        let mut zerv = ZervFixture::new()
+            .with_extra_core_components(vec![Component::Var(Var::PreRelease)])
+            .build();
+
+        // Test PreRelease field (line 62)
+        zerv.process_schema_component("extra_core", 0, Some("5".to_string()), None)
+            .unwrap();
+
+        // Test Post field (line 60)
+        let mut zerv2 = ZervFixture::new()
+            .with_extra_core_components(vec![Component::Var(Var::Post)])
+            .build();
+        zerv2
+            .process_schema_component("extra_core", 0, Some("3".to_string()), None)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_process_var_field_other_var_types() {
+        // Test other Var types that go to the catch-all case (line 83-84)
+        let mut zerv = ZervFixture::new()
+            .with_extra_core_components(vec![Component::Var(Var::Distance)])
+            .build();
+
+        let result = zerv.process_schema_component("extra_core", 0, Some("5".to_string()), None);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Cannot process VCS-derived field")
+        );
+    }
+
+    #[test]
+    fn test_process_integer_component_error() {
+        let mut component = Component::Str("not_an_int".to_string());
+        let result = Zerv::process_integer_component(&mut component, Some("5".to_string()), None);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Expected UInt component")
+        );
+    }
+
+    #[test]
+    fn test_process_string_component_error() {
+        let mut component = Component::UInt(42);
+        let result =
+            Zerv::process_string_component(&mut component, Some("override".to_string()), None);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Expected String component")
+        );
+    }
+
+    #[test]
+    fn test_process_schema_component_unknown_section() {
+        let mut zerv = ZervFixture::new().build();
+        let result = zerv.process_schema_component("unknown_section", 0, None, None);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Unknown schema section")
+        );
+    }
+
+    #[test]
+    fn test_process_schema_component_index_out_of_bounds() {
+        let mut zerv = ZervFixture::new()
+            .with_core_components(vec![Component::Var(Var::Major)])
+            .build();
+
+        let result = zerv.process_schema_component("core", 5, None, None); // Index 5 doesn't exist
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Index 5 out of bounds")
+        );
+    }
+
+    #[test]
+    fn test_process_schema_component_timestamp_error() {
+        let mut zerv = ZervFixture::new()
+            .with_extra_core_components(vec![Component::Var(Var::Timestamp(
+                "compact_date".to_string(),
+            ))])
+            .build();
+
+        let result = zerv.process_schema_component("extra_core", 0, None, None);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Cannot process timestamp component")
+        );
+    }
+
+    #[test]
+    fn test_process_schema_component_with_build_section_integer() {
+        let mut zerv = ZervFixture::new().with_build(Component::UInt(123)).build();
+
+        // This should execute the build section integer processing (lines 224-225, 235-236)
+        zerv.process_schema_component("build", 0, Some("200".to_string()), Some("10".to_string()))
+            .unwrap();
+
+        assert_eq!(zerv.schema.build()[0], Component::UInt(210)); // 200 + 10
+    }
+
+    #[test]
+    fn test_process_schema_component_with_extra_core_section_integer() {
+        let mut zerv = ZervFixture::new()
+            .with_extra_core_components(vec![Component::UInt(50)])
+            .build();
+
+        // This should execute the extra_core section integer processing
+        zerv.process_schema_component(
+            "extra_core",
+            0,
+            Some("100".to_string()),
+            Some("25".to_string()),
+        )
+        .unwrap();
+
+        assert_eq!(zerv.schema.extra_core()[0], Component::UInt(125)); // 100 + 25
+    }
 }

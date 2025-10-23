@@ -13,6 +13,8 @@ make test       # Full test suite: Docker Git + Docker tests enabled (full cover
 make test_flaky # Run 5 iterations to detect flaky tests
 ```
 
+**Coverage Analysis**: See @.claude/ref/workflows/coverage.md for detailed coverage workflow
+
 ## Code Quality
 
 ```bash

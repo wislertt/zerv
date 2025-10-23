@@ -146,3 +146,212 @@ impl From<ZervVars> for ZervVarsFixture {
         Self { vars }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_creates_default_fixture() {
+        let fixture = ZervVarsFixture::new();
+        let vars = fixture.build();
+
+        assert_eq!(vars.major, Some(1));
+        assert_eq!(vars.minor, Some(0));
+        assert_eq!(vars.patch, Some(0));
+        assert_eq!(vars.pre_release, None);
+        assert_eq!(vars.epoch, None);
+        assert_eq!(vars.post, None);
+        assert_eq!(vars.dev, None);
+    }
+
+    #[test]
+    fn test_with_version() {
+        let vars = ZervVarsFixture::new().with_version(2, 5, 3).build();
+
+        assert_eq!(vars.major, Some(2));
+        assert_eq!(vars.minor, Some(5));
+        assert_eq!(vars.patch, Some(3));
+    }
+
+    #[test]
+    fn test_with_pre_release_with_number() {
+        let vars = ZervVarsFixture::new()
+            .with_pre_release(PreReleaseLabel::Alpha, Some(5))
+            .build();
+
+        assert!(vars.pre_release.is_some());
+        let pre = vars.pre_release.unwrap();
+        assert_eq!(pre.label, PreReleaseLabel::Alpha);
+        assert_eq!(pre.number, Some(5));
+    }
+
+    #[test]
+    fn test_with_pre_release_without_number() {
+        let vars = ZervVarsFixture::new()
+            .with_pre_release(PreReleaseLabel::Beta, None)
+            .build();
+
+        assert!(vars.pre_release.is_some());
+        let pre = vars.pre_release.unwrap();
+        assert_eq!(pre.label, PreReleaseLabel::Beta);
+        assert_eq!(pre.number, None);
+    }
+
+    #[test]
+    fn test_with_epoch() {
+        let vars = ZervVarsFixture::new().with_epoch(42).build();
+
+        assert_eq!(vars.epoch, Some(42));
+    }
+
+    #[test]
+    fn test_with_post() {
+        let vars = ZervVarsFixture::new().with_post(10).build();
+
+        assert_eq!(vars.post, Some(10));
+    }
+
+    #[test]
+    fn test_with_dev() {
+        let vars = ZervVarsFixture::new().with_dev(7).build();
+
+        assert_eq!(vars.dev, Some(7));
+    }
+
+    #[test]
+    fn test_with_distance() {
+        let vars = ZervVarsFixture::new().with_distance(5).build();
+
+        assert_eq!(vars.distance, Some(5));
+    }
+
+    #[test]
+    fn test_with_dirty_true() {
+        let vars = ZervVarsFixture::new().with_dirty(true).build();
+
+        assert_eq!(vars.dirty, Some(true));
+    }
+
+    #[test]
+    fn test_with_dirty_false() {
+        let vars = ZervVarsFixture::new().with_dirty(false).build();
+
+        assert_eq!(vars.dirty, Some(false));
+    }
+
+    #[test]
+    fn test_with_bumped_branch() {
+        let vars = ZervVarsFixture::new()
+            .with_bumped_branch("feature/test".to_string())
+            .build();
+
+        assert_eq!(vars.bumped_branch, Some("feature/test".to_string()));
+    }
+
+    #[test]
+    fn test_with_bumped_commit_hash() {
+        let vars = ZervVarsFixture::new()
+            .with_bumped_commit_hash("deadbeef1234567890".to_string())
+            .build();
+
+        assert_eq!(
+            vars.bumped_commit_hash,
+            Some("deadbeef1234567890".to_string())
+        );
+    }
+
+    #[test]
+    fn test_with_last_branch() {
+        let vars = ZervVarsFixture::new()
+            .with_last_branch("main".to_string())
+            .build();
+
+        assert_eq!(vars.last_branch, Some("main".to_string()));
+    }
+
+    #[test]
+    fn test_with_last_commit_hash() {
+        let vars = ZervVarsFixture::new()
+            .with_last_commit_hash("abcdef1234567890".to_string())
+            .build();
+
+        assert_eq!(vars.last_commit_hash, Some("abcdef1234567890".to_string()));
+    }
+
+    #[test]
+    fn test_with_last_timestamp() {
+        let vars = ZervVarsFixture::new()
+            .with_last_timestamp(1703000000)
+            .build();
+
+        assert_eq!(vars.last_timestamp, Some(1703000000));
+    }
+
+    #[test]
+    fn test_from_zerv_vars() {
+        let original_vars = ZervVars {
+            major: Some(2),
+            minor: Some(1),
+            patch: Some(0),
+            pre_release: Some(PreReleaseVar {
+                label: PreReleaseLabel::Rc,
+                number: Some(3),
+            }),
+            epoch: Some(1),
+            post: Some(5),
+            dev: Some(2),
+            distance: Some(10),
+            dirty: Some(true),
+            bumped_branch: Some("release".to_string()),
+            bumped_commit_hash: Some("hash123".to_string()),
+            bumped_timestamp: Some(1703123456),
+            last_branch: Some("main".to_string()),
+            last_commit_hash: Some("hash456".to_string()),
+            last_timestamp: Some(1703000000),
+            custom: serde_json::json!({}),
+        };
+
+        let fixture = ZervVarsFixture::from(original_vars.clone());
+        let result_vars = fixture.build();
+
+        assert_eq!(result_vars, original_vars);
+    }
+
+    #[test]
+    fn test_chainable_methods_complex() {
+        let vars = ZervVarsFixture::new()
+            .with_version(3, 2, 1)
+            .with_pre_release(PreReleaseLabel::Beta, Some(4))
+            .with_epoch(2)
+            .with_post(1)
+            .with_dev(3)
+            .with_distance(7)
+            .with_dirty(true)
+            .with_bumped_branch("develop".to_string())
+            .with_bumped_commit_hash("commit123".to_string())
+            .with_last_branch("main".to_string())
+            .with_last_commit_hash("commit456".to_string())
+            .with_last_timestamp(1703000000)
+            .build();
+
+        // Verify all values are set correctly
+        assert_eq!(vars.major, Some(3));
+        assert_eq!(vars.minor, Some(2));
+        assert_eq!(vars.patch, Some(1));
+        assert!(vars.pre_release.is_some());
+        let pre = vars.pre_release.as_ref().unwrap();
+        assert_eq!(pre.label, PreReleaseLabel::Beta);
+        assert_eq!(pre.number, Some(4));
+        assert_eq!(vars.epoch, Some(2));
+        assert_eq!(vars.post, Some(1));
+        assert_eq!(vars.dev, Some(3));
+        assert_eq!(vars.distance, Some(7));
+        assert_eq!(vars.dirty, Some(true));
+        assert_eq!(vars.bumped_branch, Some("develop".to_string()));
+        assert_eq!(vars.bumped_commit_hash, Some("commit123".to_string()));
+        assert_eq!(vars.last_branch, Some("main".to_string()));
+        assert_eq!(vars.last_commit_hash, Some("commit456".to_string()));
+        assert_eq!(vars.last_timestamp, Some(1703000000));
+    }
+}

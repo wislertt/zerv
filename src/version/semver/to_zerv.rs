@@ -220,7 +220,10 @@ mod tests {
 
     use super::*;
     use crate::test_utils::zerv::zerv_semver::to;
-    use crate::version::zerv::Zerv;
+    use crate::version::zerv::{
+        PrecedenceOrder,
+        Zerv,
+    };
 
     #[rstest]
     #[case("1.2.3", to::v1_2_3().build())]
@@ -325,5 +328,242 @@ mod tests {
         let converted: SemVer = zerv.into();
 
         assert_eq!(original.to_string(), converted.to_string());
+    }
+
+    #[test]
+    fn test_custom_schema_not_supported() {
+        let semver: SemVer = "1.2.3".parse().unwrap();
+        let custom_schema = ZervSchema::new_with_precedence(
+            vec![Component::Var(Var::Major)],
+            vec![],
+            vec![],
+            PrecedenceOrder::default(),
+        )
+        .unwrap();
+        let result = semver.to_zerv_with_schema(&custom_schema);
+        assert!(result.is_err());
+        match result {
+            Err(ZervError::NotImplemented(msg)) => {
+                assert!(msg.contains("Custom schemas"));
+            }
+            _ => panic!("Expected NotImplemented error"),
+        }
+    }
+
+    #[test]
+    fn test_pre_release_processor_edge_cases() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars::default();
+        let mut result_schema = schema.clone();
+        let processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+
+        // Test is_var_set with non-special vars (line 38)
+        assert!(!processor.is_var_set(&Var::Major));
+        assert!(!processor.is_var_set(&Var::Minor));
+        assert!(!processor.is_var_set(&Var::Patch));
+        // Build doesn't exist as a Var, use a custom var that doesn't match the special cases
+        assert!(!processor.is_var_set(&Var::Custom(String::from("test"))));
+    }
+
+    #[test]
+    fn test_finalize_var_with_pre_release_number() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars {
+            pre_release: Some(PreReleaseVar {
+                label: PreReleaseLabel::Alpha,
+                number: None,
+            }),
+            ..Default::default()
+        };
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+
+        // This should execute line 49
+        processor.finalize_var(Var::PreRelease, Some(5)).unwrap();
+        assert_eq!(vars.pre_release.unwrap().number, Some(5));
+    }
+
+    #[test]
+    fn test_finalize_var_with_unknown_var() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars::default();
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+
+        // This should execute line 52 (the _ => {} branch)
+        processor
+            .finalize_var(Var::Custom(String::from("unknown")), Some(123))
+            .unwrap();
+        // Should not crash and should add to schema
+    }
+
+    #[test]
+    fn test_handle_duplicate_with_var_set_and_pending() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars {
+            epoch: Some(1), // Var is already set
+            ..Default::default()
+        };
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+        processor.pending_var = Some(Var::Post); // Different pending var
+
+        // This should execute line 67 (finalize pending when var is set)
+        let result = processor.handle_duplicate("epoch", Var::Epoch);
+        assert!(result.unwrap());
+        assert!(processor.pending_var.is_none());
+    }
+
+    #[test]
+    fn test_process_new_var_with_pre_release_success() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars::default();
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+
+        // This should execute lines 79-84
+        processor.process_new_var("alpha", Var::PreRelease).unwrap();
+        drop(processor); // Release the mutable borrow
+        assert!(vars.pre_release.is_some());
+        assert_eq!(vars.pre_release.unwrap().label, PreReleaseLabel::Alpha);
+    }
+
+    #[test]
+    fn test_process_new_var_with_pre_release_fallback() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars::default();
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+
+        // This should execute line 90 (add_string when pre-release label not recognized)
+        processor
+            .process_new_var("unknown", Var::PreRelease)
+            .unwrap();
+        drop(processor); // Release the mutable borrow
+        assert!(vars.pre_release.is_none());
+    }
+
+    #[test]
+    fn test_process_new_var_with_non_pre_release() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars::default();
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+
+        // This should execute lines 87-88
+        processor
+            .process_new_var("some_string", Var::Epoch)
+            .unwrap();
+        assert_eq!(processor.pending_var, Some(Var::Epoch));
+    }
+
+    #[test]
+    fn test_process_string_identifier_with_pending_pre_release() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars::default();
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+        processor.pending_var = Some(Var::PreRelease);
+
+        // This should execute lines 109-113
+        SemVer::process_string_identifier(&mut processor, "additional_string").unwrap();
+        assert!(processor.pending_var.is_none());
+    }
+
+    #[test]
+    fn test_process_string_identifier_finalize_pending() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars::default();
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+        processor.pending_var = Some(Var::Epoch);
+
+        // This should execute lines 124-125
+        SemVer::process_string_identifier(&mut processor, "some_string").unwrap();
+        assert!(processor.pending_var.is_none());
+    }
+
+    #[test]
+    fn test_process_string_identifier_with_new_var() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars::default();
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+
+        // This should execute line 130
+        SemVer::process_string_identifier(&mut processor, "alpha").unwrap();
+        drop(processor); // Release the mutable borrow
+        assert!(vars.pre_release.is_some());
+    }
+
+    #[test]
+    fn test_process_uint_identifier_with_pending_var() {
+        let schema = ZervSchema::semver_default().unwrap();
+        let mut vars = ZervVars::default();
+        let mut result_schema = schema.clone();
+        let mut processor = PreReleaseProcessor::new(&mut vars, &mut result_schema);
+        processor.pending_var = Some(Var::Epoch);
+
+        // This should execute line 142
+        SemVer::process_uint_identifier(&mut processor, 5).unwrap();
+        drop(processor); // Release the mutable borrow
+        assert_eq!(vars.epoch, Some(5));
+    }
+
+    #[test]
+    fn test_process_string_identifier_calls_process_string() {
+        let schema = ZervSchema::semver_default().unwrap();
+
+        // Create a pre-release with string identifier to trigger line 156
+        // Use a valid pre-release format with a non-recognized label
+        let semver: SemVer = "1.0.0-customlabel".parse().unwrap();
+        let zerv = semver.to_zerv_with_schema(&schema).unwrap();
+        assert!(
+            zerv.schema
+                .extra_core()
+                .iter()
+                .any(|c| matches!(c, Component::Str(s) if s == "customlabel"))
+        );
+    }
+
+    #[test]
+    fn test_to_zerv_with_schema_with_pre_release() {
+        let semver: SemVer = "1.2.3-alpha.1".parse().unwrap();
+        let schema = ZervSchema::semver_default().unwrap();
+
+        // This should execute line 199
+        let result = semver.to_zerv_with_schema(&schema);
+        assert!(result.is_ok());
+        let zerv = result.unwrap();
+        assert!(zerv.vars.pre_release.is_some());
+    }
+
+    #[test]
+    fn test_to_zerv_with_schema_pending_var() {
+        let semver: SemVer = "1.2.3-alpha".parse().unwrap(); // No number after alpha
+        let schema = ZervSchema::semver_default().unwrap();
+
+        // This should execute line 203 (finalize pending var)
+        let result = semver.to_zerv_with_schema(&schema);
+        assert!(result.is_ok());
+        let zerv = result.unwrap();
+        assert!(
+            zerv.schema
+                .extra_core()
+                .iter()
+                .any(|c| matches!(c, Component::Var(Var::PreRelease)))
+        );
+    }
+
+    #[test]
+    fn test_to_zerv_with_schema_build_metadata() {
+        let semver: SemVer = "1.2.3+build.123".parse().unwrap();
+        let schema = ZervSchema::semver_default().unwrap();
+
+        // This should execute line 207
+        let result = semver.to_zerv_with_schema(&schema);
+        assert!(result.is_ok());
+        let zerv = result.unwrap();
+        assert!(!zerv.schema.build().is_empty());
     }
 }

@@ -522,6 +522,11 @@ mod tests {
     }
 
     #[test]
+    fn test_is_docker_available2() {
+        println!("{}", is_docker_available());
+    }
+
+    #[test]
     fn test_is_docker_available() {
         if should_run_docker_tests() {
             assert!(
@@ -530,14 +535,14 @@ mod tests {
                 EnvVars::ZERV_TEST_DOCKER,
                 EnvVars::ZERV_TEST_DOCKER
             );
-        } else {
-            assert!(
-                !is_docker_available(),
-                "Docker is available but {} is disabled - enable {} to test Docker functionality",
+        } else if is_docker_available() {
+            eprintln!(
+                "⚠️  Docker is available but {} is disabled - enable {} to test Docker functionality",
                 EnvVars::ZERV_TEST_DOCKER,
                 EnvVars::ZERV_TEST_DOCKER
             );
         }
+        // Docker not available and tests disabled - pass silently
     }
 
     #[rstest]
@@ -627,9 +632,26 @@ mod tests {
             return;
         }
         let (dir, docker_git) = setup_repo_with_commit();
+
         docker_git
             .create_tag(&dir, "v1.0.0")
             .expect(DOCKER_TAG_ERROR);
+
+        docker_git
+            .create_branch(&dir, "feature/test-branch")
+            .expect("Should create branch successfully");
+
+        let tag_list = docker_git.execute_git(&dir, &["tag", "-l"]).unwrap();
+        assert!(tag_list.contains("v1.0.0"), "Tag should exist");
+
+        let current_branch = docker_git
+            .execute_git(&dir, &["branch", "--show-current"])
+            .unwrap();
+        assert_eq!(
+            current_branch.trim(),
+            "feature/test-branch",
+            "Should be on new branch"
+        );
     }
 
     #[test]

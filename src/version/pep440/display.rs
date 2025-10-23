@@ -191,4 +191,53 @@ mod tests {
         let version = PEP440::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Alpha, None);
         assert_eq!(version.to_string(), "1.2.3a");
     }
+
+    #[test]
+    fn test_display_individual_components() {
+        // Test individual component formatting to ensure all write! lines are covered
+
+        // Test release formatting (line 31)
+        let version = PEP440::new(vec![9, 8, 7]);
+        assert_eq!(version.to_string(), "9.8.7");
+
+        // Test pre-release label formatting (line 35)
+        let mut version = PEP440::new(vec![1, 0, 0]);
+        version.pre_label = Some(PreReleaseLabel::Rc);
+        version.pre_number = None;
+        assert_eq!(version.to_string(), "1.0.0rc");
+
+        // Test pre-release number formatting (line 37)
+        let mut version = PEP440::new(vec![1, 0, 0]);
+        version.pre_label = Some(PreReleaseLabel::Beta);
+        version.pre_number = Some(5);
+        assert_eq!(version.to_string(), "1.0.0b5");
+
+        // Test post-release label formatting (line 43)
+        let mut version = PEP440::new(vec![1, 0, 0]);
+        version.post_label = Some(crate::version::pep440::core::PostLabel::Post);
+        version.post_number = None;
+        assert_eq!(version.to_string(), "1.0.0.post");
+
+        // Test post-release number formatting (line 45)
+        let mut version = PEP440::new(vec![1, 0, 0]);
+        version.post_label = Some(crate::version::pep440::core::PostLabel::Post);
+        version.post_number = Some(7);
+        assert_eq!(version.to_string(), "1.0.0.post7");
+
+        // Test dev-release label formatting (line 51)
+        let mut version = PEP440::new(vec![1, 0, 0]);
+        version.dev_label = Some(crate::version::pep440::core::DevLabel::Dev);
+        version.dev_number = None;
+        assert_eq!(version.to_string(), "1.0.0.dev");
+
+        // Test dev-release number formatting (line 53)
+        let mut version = PEP440::new(vec![1, 0, 0]);
+        version.dev_label = Some(crate::version::pep440::core::DevLabel::Dev);
+        version.dev_number = Some(3);
+        assert_eq!(version.to_string(), "1.0.0.dev3");
+
+        // Test local version formatting (line 59)
+        let version = PEP440::new(vec![1, 0, 0]).with_local("test123");
+        assert_eq!(version.to_string(), "1.0.0+test123");
+    }
 }

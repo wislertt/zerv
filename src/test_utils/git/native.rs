@@ -62,4 +62,9 @@ impl GitOperations for NativeGit {
         self.execute_git(test_dir, &["commit", "-m", message])?;
         Ok(())
     }
+
+    fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
+        self.execute_git(test_dir, &["tag", tag])?;
+        Ok(())
+    }
 }
