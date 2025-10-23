@@ -1,3 +1,4 @@
+pub mod bumps;
 pub mod main;
 pub mod overrides;
 
