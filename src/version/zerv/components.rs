@@ -852,4 +852,219 @@ mod tests {
     fn test_try_from_secondary_label(#[case] input: &str, #[case] expected: Option<Var>) {
         assert_eq!(Var::try_from_secondary_label(input), expected);
     }
+
+    // Additional tests for resolve_expanded_values_with_key_sanitizer coverage
+    #[rstest]
+    #[case(Var::Epoch, 3, vec!["epoch", "3"])]
+    #[case(Var::Post, 5, vec!["post", "5"])]
+    #[case(Var::Dev, 10, vec!["dev", "10"])]
+    fn test_var_expanded_with_key_sanitizer_metadata(
+        #[case] var: Var,
+        #[case] value: u64,
+        #[case] expected: Vec<&str>,
+    ) {
+        let zerv = match var {
+            Var::Epoch => base_fixture().with_epoch(value).build(),
+            Var::Post => base_fixture().with_post(value).build(),
+            Var::Dev => base_fixture().with_dev(value).build(),
+            _ => panic!("Invalid var"),
+        };
+        let value_sanitizer = Sanitizer::uint();
+        let key_sanitizer = Sanitizer::key();
+        let result: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
+        assert_eq!(
+            var.resolve_expanded_values_with_key_sanitizer(
+                &zerv.vars,
+                &value_sanitizer,
+                &key_sanitizer
+            ),
+            result
+        );
+    }
+
+    #[test]
+    fn test_var_expanded_with_key_sanitizer_commit_hash_short() {
+        let zerv = base_fixture()
+            .with_commit_hash("abcdef1234567890".to_string())
+            .build();
+        let value_sanitizer = Sanitizer::semver_str();
+        let key_sanitizer = Sanitizer::key();
+        assert_eq!(
+            Var::BumpedCommitHashShort.resolve_expanded_values_with_key_sanitizer(
+                &zerv.vars,
+                &value_sanitizer,
+                &key_sanitizer
+            ),
+            vec!["commit".to_string(), "abcdef1".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_var_expanded_with_key_sanitizer_commit_hash() {
+        let zerv = base_fixture()
+            .with_commit_hash("abcdef1234567890".to_string())
+            .build();
+        let value_sanitizer = Sanitizer::semver_str();
+        let key_sanitizer = Sanitizer::key();
+        let result = Var::BumpedCommitHash.resolve_expanded_values_with_key_sanitizer(
+            &zerv.vars,
+            &value_sanitizer,
+            &key_sanitizer,
+        );
+        // Key sanitizer converts underscores to dots
+        assert_eq!(
+            result,
+            vec!["commit.hash".to_string(), "abcdef1234567890".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_var_expanded_with_key_sanitizer_timestamp() {
+        let mut zerv = base_fixture().build();
+        zerv.vars.bumped_timestamp = Some(1703123456);
+        let value_sanitizer = Sanitizer::uint();
+        let key_sanitizer = Sanitizer::key();
+        assert_eq!(
+            Var::BumpedTimestamp.resolve_expanded_values_with_key_sanitizer(
+                &zerv.vars,
+                &value_sanitizer,
+                &key_sanitizer
+            ),
+            vec!["timestamp".to_string(), "1703123456".to_string()]
+        );
+    }
+
+    #[rstest]
+    #[case(Var::LastBranch, "last.branch", "last.branch")]
+    #[case(Var::LastCommitHash, "abc123", "abc123")]
+    #[case(Var::LastCommitHashShort, "abc1234567", "abc1234")]
+    fn test_var_expanded_with_key_sanitizer_last_fields(
+        #[case] var: Var,
+        #[case] value: &str,
+        #[case] expected_value: &str,
+    ) {
+        let mut zerv = base_fixture().build();
+        match var {
+            Var::LastBranch => zerv.vars.last_branch = Some(value.to_string()),
+            Var::LastCommitHash => zerv.vars.last_commit_hash = Some(value.to_string()),
+            Var::LastCommitHashShort => zerv.vars.last_commit_hash = Some(value.to_string()),
+            _ => {}
+        }
+        let value_sanitizer = Sanitizer::semver_str();
+        let key_sanitizer = Sanitizer::key();
+        let result = var.resolve_expanded_values_with_key_sanitizer(
+            &zerv.vars,
+            &value_sanitizer,
+            &key_sanitizer,
+        );
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[1], expected_value);
+    }
+
+    #[test]
+    fn test_var_expanded_with_key_sanitizer_last_timestamp() {
+        let mut zerv = base_fixture().build();
+        zerv.vars.last_timestamp = Some(1703123456);
+        let value_sanitizer = Sanitizer::uint();
+        let key_sanitizer = Sanitizer::key();
+        let result = Var::LastTimestamp.resolve_expanded_values_with_key_sanitizer(
+            &zerv.vars,
+            &value_sanitizer,
+            &key_sanitizer,
+        );
+        // Key sanitizer converts underscores to dots
+        assert_eq!(
+            result,
+            vec!["last.timestamp".to_string(), "1703123456".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_var_expanded_with_key_sanitizer_dirty() {
+        let mut zerv = base_fixture().build();
+        zerv.vars.dirty = Some(true);
+        let value_sanitizer = Sanitizer::semver_str();
+        let key_sanitizer = Sanitizer::key();
+        assert_eq!(
+            Var::Dirty.resolve_expanded_values_with_key_sanitizer(
+                &zerv.vars,
+                &value_sanitizer,
+                &key_sanitizer
+            ),
+            vec!["dirty".to_string(), "true".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_var_expanded_with_key_sanitizer_custom_separator() {
+        let zerv = custom_fixture().build();
+        let value_sanitizer = Sanitizer::semver_str();
+        // When using "_" as separator, "metadata.author" will be split by "." (the default)
+        // and each part will be sanitized, then joined with "_"
+        let key_sanitizer = Sanitizer::str(Some("_"), false, false, None);
+        let var = Var::Custom("metadata.author".to_string());
+        // The split happens by the separator in the sanitizer (which is "_")
+        // But the key name uses "." so it splits by that
+        let result = var.resolve_expanded_values_with_key_sanitizer(
+            &zerv.vars,
+            &value_sanitizer,
+            &key_sanitizer,
+        );
+        // Should split metadata.author by "_" (separator) -> no split happens
+        // So we get single key "metadata_author" (sanitized) + value
+        assert_eq!(
+            result,
+            vec!["metadata_author".to_string(), "ci".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_var_expanded_with_key_sanitizer_timestamp_pattern() {
+        let mut zerv = base_fixture().build();
+        zerv.vars.bumped_timestamp = Some(1703123456);
+        let value_sanitizer = Sanitizer::semver_str();
+        let key_sanitizer = Sanitizer::key();
+        let var = Var::Timestamp("YYYY".to_string());
+        assert_eq!(
+            var.resolve_expanded_values_with_key_sanitizer(
+                &zerv.vars,
+                &value_sanitizer,
+                &key_sanitizer
+            ),
+            vec!["2023".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_var_expanded_with_key_sanitizer_timestamp_no_value() {
+        let zerv = base_fixture().build();
+        let value_sanitizer = Sanitizer::semver_str();
+        let key_sanitizer = Sanitizer::key();
+        let var = Var::Timestamp("YYYY".to_string());
+        assert_eq!(
+            var.resolve_expanded_values_with_key_sanitizer(
+                &zerv.vars,
+                &value_sanitizer,
+                &key_sanitizer
+            ),
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn test_var_expanded_with_key_sanitizer_pre_release_no_number() {
+        let zerv = base_fixture()
+            .with_pre_release(PreReleaseLabel::Rc, None)
+            .build();
+        let value_sanitizer = Sanitizer::uint();
+        let key_sanitizer = Sanitizer::key();
+        assert_eq!(
+            Var::PreRelease.resolve_expanded_values_with_key_sanitizer(
+                &zerv.vars,
+                &value_sanitizer,
+                &key_sanitizer
+            ),
+            vec!["rc".to_string()]
+        );
+    }
 }

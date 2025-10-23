@@ -24,12 +24,12 @@ pub fn init_logging(verbose: bool) {
         EnvFilter::new("error")
     };
 
-    fmt()
+    let _result = fmt()
         .with_writer(std::io::stderr)
         .with_env_filter(filter)
         .with_target(false)
         .compact()
-        .init();
+        .try_init();
 }
 
 #[cfg(test)]
@@ -44,6 +44,34 @@ mod tests {
         assert!(
             result.is_ok(),
             "init_logging should not panic with verbose=false"
+        );
+    }
+
+    #[test]
+    fn test_init_logging_with_verbose_flag() {
+        let result = std::panic::catch_unwind(|| {
+            init_logging(true);
+        });
+        assert!(
+            result.is_ok(),
+            "init_logging should not panic with verbose=true"
+        );
+    }
+
+    #[test]
+    fn test_init_logging_with_rust_log_env() {
+        unsafe {
+            std::env::set_var(EnvVars::RUST_LOG, "debug");
+        }
+        let result = std::panic::catch_unwind(|| {
+            init_logging(false);
+        });
+        unsafe {
+            std::env::remove_var(EnvVars::RUST_LOG);
+        }
+        assert!(
+            result.is_ok(),
+            "init_logging should not panic with RUST_LOG set"
         );
     }
 }

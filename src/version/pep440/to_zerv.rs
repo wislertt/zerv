@@ -148,4 +148,33 @@ mod tests {
 
         assert_eq!(original.to_string(), converted.to_string());
     }
+
+    #[test]
+    fn test_custom_schema_not_supported() {
+        let pep440: PEP440 = "1.2.3".parse().unwrap();
+        let custom_schema = ZervSchema::semver_default().unwrap();
+        let result = pep440.to_zerv_with_schema(&custom_schema);
+
+        assert!(result.is_err());
+        match result {
+            Err(ZervError::NotImplemented(msg)) => {
+                assert!(msg.contains("Custom schemas"));
+            }
+            _ => panic!("Expected NotImplemented error"),
+        }
+    }
+
+    #[test]
+    fn test_extended_release_parts() {
+        // Test PEP440 versions with more than 3 release parts
+        let pep440: PEP440 = "1.2.3.4.5".parse().unwrap();
+        let zerv: Zerv = pep440.into();
+
+        // Verify that extra parts are added to core
+        assert_eq!(zerv.vars.major, Some(1));
+        assert_eq!(zerv.vars.minor, Some(2));
+        assert_eq!(zerv.vars.patch, Some(3));
+        // Extra parts should be in schema core
+        assert!(zerv.schema.core().len() >= 5);
+    }
 }
