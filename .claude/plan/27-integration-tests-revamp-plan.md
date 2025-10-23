@@ -156,7 +156,7 @@ tests/integration_tests/version/
 - ✅ `directory.rs`: Test `-C` flag for changing working directory before execution (✅ PASSED - 4 tests: 2 Git integration + 2 error handling)
 - ✅ `combinations.rs`: Test MainConfig option combinations (format + schema, template + format, etc.) (✅ PASSED - 38 tests)
 
-#### Phase 3: Implement Override Tests (`overrides/`) 🔄 IN PROGRESS
+#### Phase 3: Implement Override Tests (`overrides/`) ✅ COMPLETED
 
 - ✅ Created `tests/integration_tests/version/overrides/mod.rs`
 - Implement individual OverridesConfig tests:
@@ -174,8 +174,8 @@ tests/integration_tests/version/
             - `test_tag_version_and_distance`: Distance override doesn't affect tier calculation when combined with tag-version override
         - **Test Quality**: Tests follow new guidelines (module-level fixtures, `TestCommand::run_with_stdin`, rstest parameterization)
         - **Impact**: VCS overrides are fully functional except for one edge case (tag+distance tier calculation)
-    - 🔄 `primary.rs`: --major, --minor, --patch (matches src/version/zerv/bump/vars_primary.rs) (34 tests total)
-        - **Status**: Renamed from components.rs for consistency with source code structure
+    - ✅ `primary.rs`: --major, --minor, --patch (matches src/version/zerv/bump/vars_primary.rs) (34 tests total)
+        - **Status**: ✅ COMPLETED - renamed from components.rs for consistency with source code structure
         - **Test Results**: **34 passing ✅, 0 failing**
         - **Coverage**:
             - ✅ Individual component overrides (--major, --minor, --patch) with multiple values
@@ -205,31 +205,43 @@ tests/integration_tests/version/
             - ✅ Integration with template helpers (sanitize, hash, prefix)
             - ✅ Real-world scenarios (CI metadata, deployment tags, Docker tags)
         - **Test Organization**: 6 modules (basic_json_parsing, nested_json, combined_with_version, combined_with_vcs, error_handling, template_helpers, real_world_scenarios)
-    - ❌ `schema.rs`: --core, --extra-core, --build
-        - **Status**: TODO - schema component overrides with index=value syntax
-        - **Coverage Needed**:
-            - Index=value parsing (e.g., --core 0=5)
-            - Template syntax (e.g., --core 1={{major}})
-            - Multiple component overrides
-            - Error handling for invalid syntax
-    - ❌ `combinations.rs`: Override combinations across categories
-        - **Status**: TODO - cross-category override interactions
-        - **Coverage Needed**:
-            - Primary + Secondary combinations
-            - VCS + Component overrides
-            - Schema + VCS overrides
-            - Complex multi-category scenarios
+    - ✅ `schema.rs`: --core, --extra-core, --build
+        - **Status**: ✅ COMPLETED - schema component overrides with index=value syntax
+        - **Test Results**: **25 passing ✅, 0 failed**
+        - **Coverage**:
+            - ✅ Index=value parsing (e.g., --core 0=5)
+            - ✅ Multiple component overrides
+            - ✅ Error handling for invalid syntax and out-of-bounds indices
+            - ✅ Understanding of limitations (VCS-derived fields cannot be overridden)
+    - ✅ `combinations.rs`: Override combinations across categories
+        - **Status**: ✅ COMPLETED - cross-category override interactions
+        - **Test Results**: **15 passing ✅, 0 failed**
+        - **Coverage**:
+            - ✅ Primary + Secondary combinations
+            - ✅ VCS + Component overrides
+            - ✅ Schema + VCS overrides
+            - ✅ Complex multi-category scenarios
+            - ✅ Override precedence ordering
+            - ✅ Custom variables with other overrides
+
+**Phase 3 Summary:**
+
+- ✅ **Total**: 168 override tests (167 passing, 0 failed, 1 ignored)
+- ✅ **Coverage**: All OverrideConfig options comprehensively tested
+- ✅ **Performance**: Fast stdin-based testing following new guidelines
+- ✅ **Quality**: Uses rstest fixtures, proper module organization, TestCommand::run_with_stdin
 - Use ZervFixture with stdin source for all tests
 - Test and validate override functionality
 
 #### Phase 4: Implement Bump Tests (`bumps/`)
 
 - Create `tests/integration_tests/version/bumps/mod.rs`
-- Implement individual BumpsConfig tests:
-    - `field_based.rs`: --bump-major, --bump-minor individually
-    - `schema_based.rs`: --bump-core, --bump-extra-core individually
-    - `context.rs`: --bump-context, --no-bump-context individually
-    - `combinations.rs`: Bump combinations
+- Implement individual BumpsConfig tests (matching src/cli/version/args/bumps.rs structure):
+    - `primary.rs`: --bump-major, --bump-minor, --bump-patch (matches src/version/zerv/bump/vars_primary.rs)
+    - `secondary.rs`: --bump-epoch, --bump-post, --bump-dev, --bump-pre-release-num, --bump-pre-release-label (matches src/version/zerv/bump/vars_secondary.rs)
+    - `schema.rs`: --bump-core, --bump-extra-core, --bump-build
+    - `context.rs`: --bump-context, --no-bump-context
+    - `combinations.rs`: Bump combinations across categories
 - Use ZervFixture with stdin source for all tests
 - Test and validate bump functionality
 
