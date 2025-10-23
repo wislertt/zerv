@@ -21,7 +21,7 @@ _test:
 		--features test-utils \
 		--out Xml --out Html --out Lcov \
 		--output-dir coverage \
-		--include-tests --exclude-files src/main.rs --exclude-files tests/ \
+		--exclude-files src/main.rs --exclude-files '**/tests/**' \
 		-- --quiet
 
 # Quick testing without Docker tests
