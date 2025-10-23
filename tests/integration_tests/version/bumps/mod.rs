@@ -16,7 +16,7 @@ pub mod primary;
 pub mod schema;
 pub mod secondary;
 // Other modules will be enabled as they're fixed
-// pub mod combinations;
+pub mod combinations;
 
 /// Base Zerv fixture for bump tests with version 1.2.3-alpha.1
 #[fixture]
