@@ -12,9 +12,9 @@ use zerv::test_utils::ZervFixture;
 use zerv::version::PreReleaseLabel;
 
 pub mod primary;
+pub mod schema;
 pub mod secondary;
 // Other modules will be enabled as they're fixed
-// pub mod schema;
 // pub mod context;
 // pub mod combinations;
 
