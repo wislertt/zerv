@@ -6,4 +6,5 @@
 //! - OverrideConfig + BumpsConfig
 //! - All three modules together
 
+pub mod main_bump_interactions;
 pub mod main_override_interactions;
