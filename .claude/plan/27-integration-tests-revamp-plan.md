@@ -230,149 +230,22 @@ Ensure comprehensive coverage of:
 
 ### 8. Test Code Quality Guidelines
 
-**For comprehensive pattern guide, see `.dev/29-integration-test-consistency-improvements.md`**
+**All tests in this revamp MUST follow the standards documented in `.claude/ref/`:**
 
-#### Default Pattern: `TestCommand::run_with_stdin()` (90% of tests)
+- **Code Style**: `.claude/ref/standards/code-style.md` (modules, imports, comments, line length)
+- **Testing Patterns**: `.claude/ref/testing/integration-tests.md` (TestCommand patterns, rstest fixtures)
+- **Error Handling**: `.claude/ref/standards/error-handling.md` (ZervError, error context)
+- **Constants**: `.claude/ref/standards/constants.md` (use constants instead of bare strings)
 
-For simple stdin → stdout success tests, use the convenience helper:
+**Key Testing Patterns** (from `.claude/ref/testing/integration-tests.md`):
 
-```rust
-let output = TestCommand::run_with_stdin(
-    "version --source stdin --output-format semver",
-    zerv_ron
-);
-assert_eq!(output, "1.2.3");
-```
+- **Default**: Use `TestCommand::run_with_stdin()` for 90% of tests (simple stdin → stdout)
+- **Builder Pattern**: Use `TestCommand::new()` ONLY for stderr inspection or failure testing
+- **Fixtures**: Use rstest `#[fixture]` instead of helper functions
+- **Parameterization**: Use `#[rstest]` with `#[case]` for test variations
+- **Organization**: Use `mod` blocks for grouping (NOT comment dividers)
 
-**When to use**: stdout-only tests that should succeed
-
-#### Builder Pattern (10% of tests)
-
-Use the builder pattern ONLY when you need:
-
-- Stderr inspection
-- Failure testing
-- Multiple output assertions
-
-```rust
-// Failure testing
-let output = TestCommand::new()
-    .args_from_str("version --invalid-flag")
-    .assert_failure();
-assert!(output.stderr().contains("error"));
-
-// Stderr inspection
-let output = TestCommand::new()
-    .args_from_str("version --source stdin -v")
-    .stdin(zerv_ron)
-    .assert_success();
-assert!(output.stderr().contains("debug"));
-assert_eq!(output.stdout().trim(), "1.2.3");
-```
-
-#### Use rstest Fixtures (Not Helper Functions)
-
-```rust
-use rstest::{fixture, rstest};
-
-// ✅ GOOD: rstest fixtures
-#[fixture]
-fn tier_1_fixture() -> ZervFixture {
-    ZervFixture::new()
-        .with_version(1, 0, 0)
-        .with_standard_tier_1()
-}
-
-#[rstest]
-fn test_tier_1(tier_1_fixture: ZervFixture) {
-    let zerv_ron = tier_1_fixture.build().to_string();
-    let output = TestCommand::run_with_stdin("version --source stdin", zerv_ron);
-    assert_eq!(output, "1.0.0");
-}
-
-// ❌ BAD: helper functions (manual injection)
-fn create_tier_1_fixture(version: (u64, u64, u64)) -> ZervFixture {
-    ZervFixture::new()
-        .with_version(version.0, version.1, version.2)
-        .with_standard_tier_1()
-}
-
-#[test]
-fn test_tier_1() {
-    let fixture = create_tier_1_fixture((1, 0, 0)); // Manual call
-    // ...
-}
-```
-
-**Why fixtures are better**:
-
-- Automatic injection by rstest
-- Better test isolation
-- Less boilerplate
-- Can be combined with `#[case]` parameters
-
-#### Use rstest Parameterization
-
-```rust
-#[rstest]
-#[case::semver("semver", "1.0.0")]
-#[case::pep440("pep440", "1.0.0")]
-fn test_formats(#[case] format: &str, #[case] expected: &str) {
-    // Test implementation
-}
-```
-
-#### Organize Tests with Modules (Not Comments)
-
-```rust
-// ❌ BAD: Comment dividers
-// ============================================================================
-// Output Format Tests
-// ============================================================================
-
-#[test]
-fn test_output_format_semver() { }
-
-// ✅ GOOD: Module organization
-mod output_format {
-    //! Tests for output format conversions
-    use super::*;
-
-    #[rstest]
-    #[case::semver("semver", "1.2.3")]
-    fn test_conversion(#[case] format: &str, #[case] expected: &str) {
-        // Test implementation
-    }
-}
-```
-
-#### Module Documentation
-
-Add documentation to test modules explaining what they test:
-
-```rust
-mod schema_preset_standard {
-    //! Tests for the built-in zerv-standard schema preset.
-    //!
-    //! Covers all three tiers:
-    //! - Tier 1: Tagged, clean (major.minor.patch)
-    //! - Tier 2: Distance, clean (major.minor.patch+distance)
-    //! - Tier 3: Dirty (major.minor.patch-dev.timestamp+metadata)
-
-    use super::*;
-    // tests...
-}
-```
-
-#### Test Constants
-
-Define constants at module level for readability:
-
-```rust
-const DEV_TIMESTAMP: u64 = 1234567890;
-const TEST_BRANCH: &str = "feature.branch";
-const TEST_COMMIT_HASH: &str = "abc123def456";
-```
+See `.claude/ref/testing/integration-tests.md` for detailed examples and patterns.
 
 ## Implementation Steps
 
