@@ -1,11 +1,14 @@
 # Code Quality Audit & Fix
 
-Fast, reliable audit and fix workflow for uncommitted Rust files.
+Fast, reliable audit and fix workflow for any code files.
 
 ## Usage
 
 ```bash
-/audit            # Detect violations and fix them manually
+/audit                           # Audit uncommitted files only (default)
+/audit check the cli module      # NLP: Audit src/cli/ directory
+/audit review main file          # NLP: Audit src/main.rs or src/lib.rs
+/audit look at tests and cli     # NLP: Audit tests/ and src/cli/
 ```
 
 ## Scripts
@@ -19,25 +22,82 @@ Fast, reliable audit and fix workflow for uncommitted Rust files.
 - `quick.sh` - Just show long lines (no colors, minimal output)
 - `summary.sh` - File and violation counts
 
-## Daily Workflow
+## Audit Workflow
+
+**When you run `/audit` command:**
+
+### 1. Pre-flight checks (REQUIRED) 🔴
 
 ```bash
-# 1. Pre-flight checks (REQUIRED)
 make lint test            # Ensure code builds and tests pass
+```
 
-# 2. Detect violations
-./audit/quick.sh          # See what needs fixing
-./audit/audit.sh          # Full audit with fix suggestions
+⚠️ **If this fails, stop here and fix lint/test errors first!**
+The audit cannot proceed if the code doesn't build or tests don't pass.
 
-# 3. Fix violations manually
-# - Break long rstest attributes across lines
-# - Split long command strings (NOT raw strings)
-# - Extract complex strings to variables
+### 2. Extract target paths 🎯
 
-# 4. Verify fixes
+**From user request (NLP):**
+
+- "cli" → `src/cli/` directory
+- "tests" → `tests/` directory
+- "main" → `src/main.*` files
+- "config" → files with "config" in name
+- "docs" → `*.md`, `docs/` directory
+- "scripts" → `*.sh`, `scripts/` directory
+- No paths specified → Use uncommitted files:
+
+```bash
+# Get all uncommitted files
+git status --porcelain | sed 's/^[[:space:]]*[AMD?]//'
+```
+
+### 3. Detect violations 📋
+
+**Auto-detected by scripts:**
+
+- Long lines (>100 chars)
+- Bad comment patterns
+- Inline imports in functions
+
+```bash
+./audit/quick.sh          # Fast: Show long lines
+./audit/audit.sh          # Full: All violations + suggestions
+```
+
+**Manual checks required:**
+
+- Constants usage (bare strings vs constants)
+- Error handling patterns
+- Code reuse violations
+- Test organization
+
+### 4. Fix violations manually 🔧
+
+- Break long rstest attributes across lines
+- Split long command strings (NOT raw strings)
+- Extract complex strings to variables
+- Check constants usage in related files
+- Verify error handling patterns
+
+### 5. Verify fixes ✅
+
+```bash
 ./audit/summary.sh        # Check remaining violations
 make lint test            # Ensure fixes don't break functionality
 ```
+
+### NLP Path Examples 🗣️
+
+**Natural language requests:**
+
+- "audit the cli code" → `src/cli/`
+- "check documentation" → `*.md`, `docs/`
+- "review config files" → Files matching `*config*`
+- "audit scripts" → `*.sh`, `scripts/`
+- "check workflows" → `.github/workflows/`
+- "audit everything" → Entire repository
+- No specific mention → Uncommitted files only
 
 ## Common Fixes
 
