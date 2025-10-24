@@ -199,12 +199,6 @@ mod schema_override_combinations {
         "5",
         "5.1.0+feature.test.branch.5.abc123d"
     )]
-    #[case::calver_schema_with_year_override(
-        "--schema zerv-calver",
-        "--major",
-        "2024",
-        "2025.10.23-0+feature.test.branch.5.abc123d"
-    )]
     fn test_schema_preset_with_component_overrides(
         base_fixture: ZervFixture,
         #[case] schema_arg: &str,
@@ -218,6 +212,32 @@ mod schema_override_combinations {
                 "version --source stdin {} {} {} --output-format semver",
                 schema_arg, override_arg, value
             ),
+            zerv_ron,
+        );
+        assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn test_calver_schema_with_year_override_dynamic() {
+        let base_fixture = ZervFixture::new()
+            .with_version(2, 1, 0)
+            .with_vcs_data(
+                Some(5),
+                Some(true),
+                Some("feature/test-branch".to_string()),
+                Some("abc123def456".to_string()),
+                None,
+                None,
+                None,
+            )
+            .with_standard_tier_1();
+
+        let zerv_ron = base_fixture.build().to_string();
+        let today_date = chrono::Utc::now().format("%Y.%m.%d").to_string();
+        let expected = format!("{}-5+feature.test.branch.5.abc123d", today_date);
+
+        let output = TestCommand::run_with_stdin(
+            "version --source stdin --schema zerv-calver --patch 5 --output-format semver",
             zerv_ron,
         );
         assert_eq!(output, expected);

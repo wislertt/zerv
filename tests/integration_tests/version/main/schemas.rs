@@ -163,7 +163,10 @@ mod schema_preset_calver {
         let output =
             TestCommand::run_with_stdin("version --source stdin --schema zerv-calver", zerv_ron);
 
-        assert_eq!(output, "2025.10.23-0+3", "CalVer tier 2 format");
+        let today_date = chrono::Utc::now().format("%Y.%m.%d").to_string();
+        let expected = format!("{}-0+3", today_date);
+
+        assert_eq!(output, expected, "CalVer tier 2 format");
     }
 
     #[rstest]
