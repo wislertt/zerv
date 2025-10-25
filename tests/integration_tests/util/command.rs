@@ -207,6 +207,17 @@ impl TestCommand {
             .trim()
             .to_string()
     }
+
+    /// Convenience method: create command, provide stdin, and expect failure
+    pub fn run_with_stdin_expect_fail(args: &str, input: String) -> String {
+        Self::new()
+            .args_from_str(args)
+            .stdin(input)
+            .assert_failure()
+            .stderr()
+            .trim()
+            .to_string()
+    }
 }
 
 #[cfg(test)]
@@ -304,5 +315,19 @@ mod tests {
         let output = TestCommand::run_with_stdin(args, zerv_ron);
 
         assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn test_run_with_stdin_expect_fail() {
+        use zerv::test_utils::ZervFixture;
+
+        let zerv_ron = ZervFixture::new().with_version(1, 2, 3).build().to_string();
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --invalid-flag",
+            zerv_ron,
+        );
+
+        // Verify it returns stderr directly
+        assert!(result.contains("unexpected argument") || result.contains("invalid"));
     }
 }

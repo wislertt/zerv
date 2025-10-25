@@ -275,15 +275,13 @@ mod schema_validation {
     fn test_unknown_preset_error(tier_1_fixture: ZervFixture) {
         let zerv_ron = tier_1_fixture.build().to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema invalid-schema")
-            .stdin(zerv_ron)
-            .assert_failure();
-
-        let stderr = output.stderr();
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --schema invalid-schema",
+            zerv_ron,
+        );
         assert!(
-            stderr.contains("Unknown schema") || stderr.contains("invalid-schema"),
-            "Should show unknown schema error, got: {stderr}"
+            result.contains("Unknown schema") || result.contains("invalid-schema"),
+            "Should show unknown schema error, got: {result}"
         );
     }
 
@@ -292,18 +290,14 @@ mod schema_validation {
         let zerv_ron = tier_1_fixture.build().to_string();
         let schema_ron = ZervSchemaFixture::standard_tier_1().build().to_string();
 
-        let output = TestCommand::new()
-            .args_from_str(format!(
-                "version --source stdin --schema zerv-standard --schema-ron '{schema_ron}'"
-            ))
-            .stdin(zerv_ron)
-            .assert_failure();
-
-        let stderr = output.stderr();
+        let result = TestCommand::run_with_stdin_expect_fail(
+            &format!("version --source stdin --schema zerv-standard --schema-ron '{schema_ron}'"),
+            zerv_ron,
+        );
         assert!(
-            stderr.contains("Conflicting") || stderr.contains("both"),
+            result.contains("Conflicting") || result.contains("both"),
             "Should show conflict error when both schema \
-             and schema-ron are specified, got: {stderr}"
+             and schema-ron are specified, got: {result}"
         );
     }
 
@@ -312,17 +306,13 @@ mod schema_validation {
         let zerv_ron = tier_1_fixture.build().to_string();
         let invalid_schema = r#"(core:[var(Invalid),extra_core:[]"#;
 
-        let output = TestCommand::new()
-            .args_from_str(format!(
-                "version --source stdin --schema-ron '{invalid_schema}'"
-            ))
-            .stdin(zerv_ron)
-            .assert_failure();
-
-        let stderr = output.stderr();
+        let result = TestCommand::run_with_stdin_expect_fail(
+            &format!("version --source stdin --schema-ron '{invalid_schema}'"),
+            zerv_ron,
+        );
         assert!(
-            stderr.contains("parse") || stderr.contains("invalid") || stderr.contains("RON"),
-            "Should show RON parse error, got: {stderr}"
+            result.contains("parse") || result.contains("invalid") || result.contains("RON"),
+            "Should show RON parse error, got: {result}"
         );
     }
 }

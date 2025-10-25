@@ -227,17 +227,11 @@ mod error_handling {
     fn test_invalid_json() {
         let zerv_ron = ZervFixture::new().with_version(1, 0, 0).build().to_string();
 
-        TestCommand::new()
-            .args([
-                "version",
-                "--source",
-                "stdin",
-                "--custom",
-                r#"{"invalid": json}"#,
-            ])
-            .stdin(zerv_ron)
-            .assert_failure()
-            .assert_stderr_contains("Invalid custom JSON");
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --custom '{\"invalid\": json}'",
+            zerv_ron,
+        );
+        assert!(result.contains("Invalid custom JSON"));
     }
 
     #[rstest]

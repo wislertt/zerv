@@ -76,10 +76,7 @@ mod core_bump {
             STDIN, SEMVER
         );
 
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(input)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, input);
     }
 
     #[test]
@@ -90,10 +87,7 @@ mod core_bump {
             STDIN, SEMVER
         );
 
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(input)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, input);
     }
 }
 
@@ -207,10 +201,7 @@ mod build_bump {
         );
 
         // schema_with_vcs_fixture has VCS-derived build components which cannot be bumped
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(input)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, input);
     }
 
     #[test]
@@ -222,10 +213,7 @@ mod build_bump {
         );
 
         // standard_schema_fixture has no build components
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(input)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, input);
     }
 }
 
@@ -292,10 +280,7 @@ mod error_handling {
         let input = standard_schema_fixture.build().to_string();
         let args = format!("version --source {} {} {}", STDIN, flag, arg_value);
 
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(input)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, input);
     }
 
     #[rstest]
@@ -309,10 +294,7 @@ mod error_handling {
         let input = standard_schema_fixture.build().to_string();
         let args = format!("version --source {} {} {}", STDIN, flag, arg_value);
 
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(input)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, input);
     }
 
     #[test]
@@ -323,10 +305,7 @@ mod error_handling {
             STDIN, SEMVER
         );
 
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(input)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, input);
     }
 
     #[test]
@@ -337,9 +316,6 @@ mod error_handling {
             STDIN, SEMVER
         );
 
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(input)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, input);
     }
 }

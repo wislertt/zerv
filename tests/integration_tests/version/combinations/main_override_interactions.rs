@@ -357,10 +357,7 @@ mod error_scenarios {
 
         // Test conflicting dirty flags (--dirty vs --clean)
         let args = "version --source stdin --dirty --clean";
-        TestCommand::new()
-            .args_from_str(args)
-            .stdin(zerv_ron)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(args, zerv_ron);
     }
 
     #[test]
@@ -369,10 +366,7 @@ mod error_scenarios {
 
         // Test invalid schema with overrides
         let args = "version --source stdin --schema invalid-schema --major 5";
-        TestCommand::new()
-            .args_from_str(args)
-            .stdin(zerv_ron)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(args, zerv_ron);
     }
 
     #[test]
@@ -393,9 +387,6 @@ mod error_scenarios {
 
         // Test invalid core component index
         let args = "version --source stdin --core 10=5 --output-format semver";
-        TestCommand::new()
-            .args_from_str(args)
-            .stdin(zerv_ron)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(args, zerv_ron);
     }
 }

@@ -526,15 +526,13 @@ mod vcs_override_conflicts {
     ) {
         let zerv_ron = clean_fixture.build().to_string();
 
-        let output = TestCommand::new()
-            .args_from_str(format!("version --source stdin {args}"))
-            .stdin(zerv_ron)
-            .assert_failure();
-
-        let stderr = output.stderr();
+        let result = TestCommand::run_with_stdin_expect_fail(
+            &format!("version --source stdin {args}"),
+            zerv_ron,
+        );
         assert!(
-            stderr.contains(flag1) && stderr.contains(flag2),
-            "Expected conflict error mentioning both flags, got: {stderr}"
+            result.contains(flag1) && result.contains(flag2),
+            "Expected conflict error mentioning both flags, got: {result}"
         );
     }
 }

@@ -266,25 +266,11 @@ mod schema_override_bump_combinations {
     #[rstest]
     fn test_calver_schema_override_with_bump(calver_fixture: ZervFixture) {
         let zerv_ron = calver_fixture.build().to_string();
-        let result = TestCommand::new()
-            .args([
-                "version",
-                "--source",
-                "stdin",
-                "--output-format",
-                "zerv",
-                "--core",
-                "0=2024",
-                "--core",
-                "1=11",
-                "--bump-core",
-                "2=3",
-            ])
-            .stdin(zerv_ron.clone())
-            .assert_failure();
-
-        let stderr = result.stderr();
-        assert!(stderr.contains("Invalid bump target") && stderr.contains("timestamp component"));
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --core 0=2024 --core 1=11 --bump-core 2=3",
+            zerv_ron.clone(),
+        );
+        assert!(result.contains("Invalid bump target") && result.contains("timestamp component"));
     }
 
     #[rstest]
@@ -301,41 +287,23 @@ mod schema_override_bump_combinations {
     fn test_build_override_fails_for_empty_build_section(base_fixture: ZervFixture) {
         let zerv_ron = base_fixture.build().to_string();
 
-        let result = TestCommand::new()
-            .args([
-                "version",
-                "--source",
-                "stdin",
-                "--output-format",
-                "zerv",
-                "--build",
-                "0=test", // Should fail - tier 1 has empty build section
-            ])
-            .stdin(zerv_ron.clone())
-            .assert_failure();
-
-        let stderr = result.stderr();
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --build 0=test", // Should fail - tier 1 has empty build section
+            zerv_ron.clone(),
+        );
         // TODO: make error message contain part of schema
-        // assert!(stderr.contains("build") && stderr.contains("index 0 out of bounds"));
-        assert!(stderr.contains("Index 0 out of bounds"));
+        // assert!(result.contains("build") && result.contains("index 0 out of bounds"));
+        assert!(result.contains("Index 0 out of bounds"));
     }
 
     #[rstest]
     fn test_build_override_fails_for_negative_index(base_fixture: ZervFixture) {
         let zerv_ron = base_fixture.build().to_string();
         // TODO: negative index should not fail
-        let _result = TestCommand::new()
-            .args([
-                "version",
-                "--source",
-                "stdin",
-                "--output-format",
-                "zerv",
-                "--build",
-                "-1=test", // Should fail - negative index
-            ])
-            .stdin(zerv_ron.clone())
-            .assert_failure();
+        let _result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --build -1=test", // Should fail - negative index
+            zerv_ron.clone(),
+        );
 
         // let stderr = result.stderr();
         // assert!(stderr.contains("build") && stderr.contains("invalid index"));
@@ -367,24 +335,14 @@ mod schema_override_bump_combinations {
     #[rstest]
     fn test_schema_override_too_large_index_fails(base_fixture: ZervFixture) {
         let zerv_ron = base_fixture.build().to_string();
-        let result = TestCommand::new()
-            .args([
-                "version",
-                "--source",
-                "stdin",
-                "--output-format",
-                "zerv",
-                "--core",
-                "10=5", // Should fail - index 10 out of bounds
-            ])
-            .stdin(zerv_ron.clone())
-            .assert_failure();
-
-        let stderr = result.stderr();
-        println!("Actual stderr: {}", stderr);
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --core 10=5", // Should fail - index 10 out of bounds
+            zerv_ron.clone(),
+        );
+        println!("Actual stderr: {}", result);
         // TODO: include schema part in error message
-        // assert!(stderr.contains("core") && stderr.contains("Index 10 out of bounds"));
-        assert!(stderr.contains("Index 10 out of bounds"));
+        // assert!(result.contains("core") && result.contains("Index 10 out of bounds"));
+        assert!(result.contains("Index 10 out of bounds"));
     }
 }
 
@@ -394,61 +352,30 @@ mod error_scenarios {
     #[rstest]
     fn test_conflicting_overrides_with_bumps() {
         let zerv_ron = base_fixture().build().to_string();
-        let result = TestCommand::new()
-            .args([
-                "version",
-                "--source",
-                "stdin",
-                "--dirty",
-                "--clean", // Conflicting flags
-                "--bump-major",
-            ])
-            .stdin(zerv_ron.clone())
-            .assert_failure();
-
-        let stderr = result.stderr();
-        assert!(stderr.contains("dirty") || stderr.contains("clean"));
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --dirty --clean --bump-major", // Conflicting flags
+            zerv_ron.clone(),
+        );
+        assert!(result.contains("dirty") || result.contains("clean"));
     }
 
     #[rstest]
     fn test_invalid_schema_override_with_bump() {
         let zerv_ron = base_fixture().build().to_string();
-        let result = TestCommand::new()
-            .args([
-                "version",
-                "--source",
-                "stdin",
-                "--output-format",
-                "zerv",
-                "--core",
-                "99=1", // Invalid index
-                "--bump-major",
-            ])
-            .stdin(zerv_ron.clone())
-            .assert_failure();
-
-        let stderr = result.stderr();
-        assert!(stderr.contains("core") || stderr.contains("99"));
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --core 99=1 --bump-major", // Invalid index
+            zerv_ron.clone(),
+        );
+        assert!(result.contains("core") || result.contains("99"));
     }
 
     #[rstest]
     fn test_invalid_custom_json_with_bump() {
         let zerv_ron = base_fixture().build().to_string();
-        let result = TestCommand::new()
-            .args([
-                "version",
-                "--source",
-                "stdin",
-                "--output-format",
-                "zerv",
-                "--custom",
-                "{invalid json}", // Invalid JSON
-                "--bump-minor",
-            ])
-            .stdin(zerv_ron.clone())
-            .assert_failure();
-
-        let stderr = result.stderr();
-        assert!(stderr.contains("custom") || stderr.contains("json"));
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --custom '{invalid json}' --bump-minor", // Invalid JSON
+            zerv_ron.clone(),
+        );
+        assert!(result.contains("custom") || result.contains("json"));
     }
 }

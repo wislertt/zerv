@@ -395,19 +395,17 @@ mod template_validation_errors {
         let fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv_ron = fixture.build().to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --output-format pep440 --output-template '{{major}}.{{minor}}.{{patch}}'")
-            .stdin(zerv_ron)
-            .assert_failure();
-
-        let stderr = output.stderr();
-        assert!(
-            stderr.contains("Cannot use --output-template with --output-format"),
-            "Should error when using --output-template with --output-format. Got stderr: {stderr}"
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format pep440 --output-template '{{major}}.{{minor}}.{{patch}}'",
+            zerv_ron,
         );
         assert!(
-            stderr.contains("Use --output-format alone for pure format output"),
-            "Error message should explain the distinction between format and template. Got stderr: {stderr}"
+            result.contains("Cannot use --output-template with --output-format"),
+            "Should error when using --output-template with --output-format. Got result: {result}"
+        );
+        assert!(
+            result.contains("Use --output-format alone for pure format output"),
+            "Error message should explain the distinction between format and template. Got result: {result}"
         );
     }
 
@@ -416,19 +414,17 @@ mod template_validation_errors {
         let fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv_ron = fixture.build().to_string();
 
-        let output = TestCommand::new()
-            .args_from_str("version --source stdin --output-template '{{major}}.{{minor}}.{{patch}}' --output-prefix v")
-            .stdin(zerv_ron)
-            .assert_failure();
-
-        let stderr = output.stderr();
-        assert!(
-            stderr.contains("Cannot use --output-template with --output-prefix"),
-            "Should error when using --output-template with --output-prefix. Got stderr: {stderr}"
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-template '{{major}}.{{minor}}.{{patch}}' --output-prefix v",
+            zerv_ron,
         );
         assert!(
-            stderr.contains("Add the prefix directly in your template"),
-            "Error message should suggest adding prefix in template. Got stderr: {stderr}"
+            result.contains("Cannot use --output-template with --output-prefix"),
+            "Should error when using --output-template with --output-prefix. Got result: {result}"
+        );
+        assert!(
+            result.contains("Add the prefix directly in your template"),
+            "Error message should suggest adding prefix in template. Got result: {result}"
         );
     }
 }

@@ -107,10 +107,7 @@ mod core_overrides {
         );
 
         // Should fail with index out of bounds error
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(zerv_ron)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, zerv_ron);
     }
 
     #[rstest]
@@ -206,10 +203,10 @@ mod build_overrides {
         let zerv_ron = standard_tier2_fixture().build().to_string();
 
         // This should fail because build[0] = BumpedBranch (VCS-derived)
-        TestCommand::new()
-            .args_from_str("version --source stdin --build 0=test-branch --output-format zerv")
-            .stdin(zerv_ron)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --build 0=test-branch --output-format zerv",
+            zerv_ron,
+        );
     }
 
     #[test]
@@ -218,10 +215,10 @@ mod build_overrides {
         let zerv_ron = standard_tier1_fixture().build().to_string();
 
         // Should fail because build section is empty (index 0 out of bounds)
-        TestCommand::new()
-            .args_from_str("version --source stdin --build 0=test --output-format zerv")
-            .stdin(zerv_ron)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --build 0=test --output-format zerv",
+            zerv_ron,
+        );
     }
 }
 
@@ -292,10 +289,7 @@ mod error_handling {
         let args = format!("version --source stdin {} {}", flag, arg_value);
 
         // Should produce an error but not crash
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(zerv_ron)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, zerv_ron);
     }
 
     #[rstest]
@@ -310,10 +304,7 @@ mod error_handling {
         let args = format!("version --source stdin {} {}", flag, arg_value);
 
         // Should fail with error but not crash
-        TestCommand::new()
-            .args_from_str(&args)
-            .stdin(zerv_ron)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(&args, zerv_ron);
     }
 
     #[test]
@@ -332,9 +323,9 @@ mod error_handling {
         let zerv_ron = standard_tier1_fixture().build().to_string();
 
         // Should fail because tier 1 has empty build section
-        TestCommand::new()
-            .args_from_str("version --source stdin --build 0=test --output-format zerv")
-            .stdin(zerv_ron)
-            .assert_failure();
+        TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --build 0=test --output-format zerv",
+            zerv_ron,
+        );
     }
 }
