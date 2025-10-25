@@ -1,4 +1,5 @@
 use super::core::Zerv;
+use super::schema::SchemaPartName;
 use crate::cli::version::args::ResolvedArgs;
 use crate::error::ZervError;
 
@@ -31,7 +32,7 @@ impl Zerv {
                     self.process_patch(args.overrides.patch, args.bumps.bump_patch.flatten())?
                 }
                 Precedence::Core => self.process_schema_section(
-                    "core",
+                    SchemaPartName::Core,
                     &args.overrides.core,
                     &args.bumps.bump_core,
                 )?,
@@ -47,12 +48,12 @@ impl Zerv {
                     self.process_dev(args.overrides.dev, args.bumps.bump_dev.flatten())?
                 }
                 Precedence::ExtraCore => self.process_schema_section(
-                    "extra_core",
+                    SchemaPartName::ExtraCore,
                     &args.overrides.extra_core,
                     &args.bumps.bump_extra_core,
                 )?,
                 Precedence::Build => self.process_schema_section(
-                    "build",
+                    SchemaPartName::Build,
                     &args.overrides.build,
                     &args.bumps.bump_build,
                 )?,

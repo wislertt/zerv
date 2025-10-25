@@ -57,20 +57,6 @@ impl ZervSchemaPart {
         Self { name, components }
     }
 
-    // TODO: [Next] delete this
-    pub fn from_str(
-        name: &str,
-        schema: &crate::version::zerv::schema::ZervSchema,
-    ) -> Result<Self, ZervError> {
-        let name = SchemaPartName::from_str(name)?;
-        let components = match name {
-            SchemaPartName::Core => schema.core().clone(),
-            SchemaPartName::ExtraCore => schema.extra_core().clone(),
-            SchemaPartName::Build => schema.build().clone(),
-        };
-        Ok(Self { name, components })
-    }
-
     pub fn len(&self) -> usize {
         self.components.len()
     }
@@ -315,48 +301,6 @@ mod tests {
             // Valid index should return range suggestion but no specific index suggestion
             let suggestion = part.suggest_valid_index_range(1);
             assert_eq!(suggestion.unwrap(), "Valid indices: 0 to 1 or -1 to -2");
-        }
-
-        #[test]
-        fn test_zerv_schema_part_from_str() {
-            let schema = crate::version::zerv::schema::ZervSchema::new(
-                vec![
-                    Component::Var(Var::Major),
-                    Component::Var(Var::Minor),
-                    Component::Var(Var::Patch),
-                ], // All primary components must be in core
-                vec![],
-                vec![],
-            )
-            .unwrap();
-
-            let part = ZervSchemaPart::from_str("core", &schema).unwrap();
-            assert_eq!(part.name, SchemaPartName::Core);
-
-            let part = ZervSchemaPart::from_str("extra_core", &schema).unwrap();
-            assert_eq!(part.name, SchemaPartName::ExtraCore);
-
-            let part = ZervSchemaPart::from_str("build", &schema).unwrap();
-            assert_eq!(part.name, SchemaPartName::Build);
-        }
-
-        #[test]
-        fn test_zerv_schema_part_from_str_invalid() {
-            let schema = crate::version::zerv::schema::ZervSchema::new(
-                vec![Component::Var(Var::Major)],
-                vec![],
-                vec![],
-            )
-            .unwrap();
-
-            let result = ZervSchemaPart::from_str("invalid", &schema);
-            assert!(result.is_err());
-            assert!(
-                result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("Invalid schema part name")
-            );
         }
     }
 }

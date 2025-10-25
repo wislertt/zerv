@@ -13,6 +13,7 @@ use super::super::components::{
     Component,
     Var,
 };
+use super::part::SchemaPartName;
 use crate::error::ZervError;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,6 +37,14 @@ impl ZervSchema {
 
     pub fn build(&self) -> &Vec<Component> {
         &self.build
+    }
+
+    pub fn get_part(&self, part_name: &SchemaPartName) -> &Vec<Component> {
+        match part_name {
+            SchemaPartName::Core => &self.core,
+            SchemaPartName::ExtraCore => &self.extra_core,
+            SchemaPartName::Build => &self.build,
+        }
     }
 
     pub fn precedence_order(&self) -> &PrecedenceOrder {
@@ -80,6 +89,18 @@ impl ZervSchema {
         temp_schema.validate()?;
         self.build = build;
         Ok(())
+    }
+
+    pub fn set_part(
+        &mut self,
+        part_name: SchemaPartName,
+        components: Vec<Component>,
+    ) -> Result<(), ZervError> {
+        match part_name {
+            SchemaPartName::Core => self.set_core(components),
+            SchemaPartName::ExtraCore => self.set_extra_core(components),
+            SchemaPartName::Build => self.set_build(components),
+        }
     }
 
     pub fn set_precedence_order(&mut self, precedence_order: PrecedenceOrder) {
