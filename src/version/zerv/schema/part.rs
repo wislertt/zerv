@@ -111,12 +111,6 @@ impl ZervSchemaPart {
 
 impl Display for ZervSchemaPart {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        // TODO: delete this
-        if self.components.is_empty() {
-            return write!(f, "{}: No fields available", self.name);
-        }
-
-        // Simple implementation, exactly like ZervSchema::Display
         let ron_string = ron::to_string(&self.components).map_err(|_| std::fmt::Error)?;
         write!(f, "{}: {}", self.name, ron_string)
     }
@@ -209,7 +203,7 @@ mod tests {
             let part = ZervSchemaPart::new(SchemaPartName::Build, &schema);
 
             let display = format!("{}", part);
-            assert_eq!(display, "build: No fields available");
+            assert_eq!(display, "build: []");
 
             let suggestion = part.suggest_valid_index_range(0);
             assert_eq!(suggestion, Some("The section is empty".to_string()));

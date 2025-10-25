@@ -298,7 +298,7 @@ mod schema_override_bump_combinations {
         );
         assert!(
             result.contains("Index 0 is out of bounds for build")
-                && result.contains("build: No fields available")
+                && result.contains("build: []")
                 && result.contains("The section is empty")
         );
     }
@@ -369,7 +369,7 @@ mod schema_override_bump_combinations {
 
         assert!(
                 result.contains("Error: Override specification 'not_a_number' requires explicit value (use index=value format)")
-                && result.contains("build: No fields available")
+                && result.contains("build: []")
             );
     }
 
@@ -384,7 +384,7 @@ mod schema_override_bump_combinations {
 
         assert!(
             result.contains("Error: Invalid tilde index: '~abc' is not a valid number")
-                && result.contains("build: No fields available")
+                && result.contains("build: []")
         );
     }
 
