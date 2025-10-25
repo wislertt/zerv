@@ -92,8 +92,8 @@ mod tests {
     #[case("1.2.3", None, None, "1.2.3")]
     // Bump with 0 - should be no-op (no reset logic applied)
     #[case("1.2.3", None, Some(0), "1.2.3")]
-    // #[case("1.0.0+build.123", None, Some(1), "2.0.0+build.123")] // TODO: think about reset state apart from ZervVars later
-    // #[case("1.5.2-rc.1+build.456", None, Some(1), "2.0.0+build.456")]
+    #[case("1.0.0+build.123", None, Some(1), "2.0.0")]
+    #[case("1.5.2-rc.1+build.456", None, Some(1), "2.0.0")]
     fn test_process_major(
         #[case] starting_version: &str,
         #[case] override_value: Option<u32>,
