@@ -1,5 +1,7 @@
 use std::io;
 
+use crate::version::zerv::schema::ZervSchemaPart;
+
 /// Main error type for the zerv library
 #[derive(Debug)]
 pub enum ZervError {
@@ -40,8 +42,12 @@ pub enum ZervError {
     ConflictingOptions(String),
     /// Invalid argument provided
     InvalidArgument(String),
-    /// Invalid bump target
-    InvalidBumpTarget(String),
+    /// Invalid bump target with schema context
+    InvalidBumpTarget {
+        message: String,
+        schema_part: ZervSchemaPart,
+        suggestion: Option<String>,
+    },
     /// Feature not yet implemented
     NotImplemented(String),
     /// Template processing error
@@ -79,7 +85,23 @@ impl std::fmt::Display for ZervError {
             ZervError::UnknownSource(source) => write!(f, "Unknown source: {source}"),
             ZervError::ConflictingOptions(msg) => write!(f, "Conflicting options: {msg}"),
             ZervError::InvalidArgument(msg) => write!(f, "Invalid argument: {msg}"),
-            ZervError::InvalidBumpTarget(msg) => write!(f, "Invalid bump target: {msg}"),
+            ZervError::InvalidBumpTarget {
+                message,
+                schema_part,
+                suggestion,
+            } => {
+                write!(f, "{}", message)?;
+
+                // Add schema section information with RON formatting (uses Display trait)
+                write!(f, "\nSchema section: {}", schema_part)?;
+
+                // Add suggestions if available
+                if let Some(suggestion) = suggestion {
+                    write!(f, "\n{}", suggestion)?;
+                }
+
+                Ok(())
+            }
             ZervError::NotImplemented(msg) => write!(f, "Not implemented: {msg}"),
             ZervError::TemplateError(msg) => write!(f, "Template error: {msg}"),
 
@@ -134,7 +156,22 @@ impl PartialEq for ZervError {
             (ZervError::UnknownSource(a), ZervError::UnknownSource(b)) => a == b,
             (ZervError::ConflictingOptions(a), ZervError::ConflictingOptions(b)) => a == b,
             (ZervError::InvalidArgument(a), ZervError::InvalidArgument(b)) => a == b,
-            (ZervError::InvalidBumpTarget(a), ZervError::InvalidBumpTarget(b)) => a == b,
+            (
+                ZervError::InvalidBumpTarget {
+                    message: msg_a,
+                    schema_part: part_a,
+                    suggestion: suggestion_a,
+                },
+                ZervError::InvalidBumpTarget {
+                    message: msg_b,
+                    schema_part: part_b,
+                    suggestion: suggestion_b,
+                },
+            ) => {
+                msg_a == msg_b
+                    && format!("{}", part_a) == format!("{}", part_b)
+                    && suggestion_a == suggestion_b
+            }
             (ZervError::NotImplemented(a), ZervError::NotImplemented(b)) => a == b,
             (ZervError::TemplateError(a), ZervError::TemplateError(b)) => a == b,
             _ => false,

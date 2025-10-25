@@ -270,7 +270,12 @@ mod schema_override_bump_combinations {
             "version --source stdin --output-format zerv --core 0=2024 --core 1=11 --bump-core 2=3",
             zerv_ron.clone(),
         );
-        assert!(result.contains("Invalid bump target") && result.contains("timestamp component"));
+        assert!(
+            result.contains("Cannot process timestamp component")
+                && result.contains(
+                    "core: [var(ts(\"YYYY\")),var(ts(\"MM\")),var(ts(\"DD\")),var(Patch)]"
+                )
+        );
     }
 
     #[rstest]
@@ -294,7 +299,11 @@ mod schema_override_bump_combinations {
         // println!("{result}");
         // TODO: make error message contain part of schema
         // assert!(result.contains("build") && result.contains("index 0 out of bounds"));
-        assert!(result.contains("Index 0 out of bounds"));
+        assert!(
+            result.contains("Index 0 is out of bounds for build")
+                && result.contains("build: No fields available")
+                && result.contains("The section is empty")
+        );
     }
 
     #[rstest]
@@ -343,7 +352,11 @@ mod schema_override_bump_combinations {
         println!("Actual stderr: {}", result);
         // TODO: include schema part in error message
         // assert!(result.contains("core") && result.contains("Index 10 out of bounds"));
-        assert!(result.contains("Index 10 out of bounds"));
+        assert!(
+            result.contains("Index 10 is out of bounds for core")
+                && result.contains("core: [var(Major),var(Minor),var(Patch)]")
+                && result.contains("Valid indices: 0 to 2 or -1 to -3. Did you mean index 2?")
+        );
     }
 }
 

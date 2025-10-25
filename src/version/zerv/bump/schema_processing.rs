@@ -4,6 +4,10 @@ use crate::version::zerv::components::{
     Var,
 };
 use crate::version::zerv::core::Zerv;
+use crate::version::zerv::schema::{
+    SchemaPartName,
+    ZervSchemaPart,
+};
 
 impl Zerv {
     pub fn process_schema_section(
@@ -12,18 +16,32 @@ impl Zerv {
         overrides: &[String],
         bumps: &[String],
     ) -> Result<(), ZervError> {
-        let component_count = match section {
-            "core" => self.schema.core().len(),
-            "extra_core" => self.schema.extra_core().len(),
-            "build" => self.schema.build().len(),
+        // TODO: [Next] replace with Enum
+        let schema_part = match section {
+            "core" => ZervSchemaPart::new(SchemaPartName::Core, &self.schema),
+            "extra_core" => ZervSchemaPart::new(SchemaPartName::ExtraCore, &self.schema),
+            "build" => ZervSchemaPart::new(SchemaPartName::Build, &self.schema),
             _ => {
-                return Err(ZervError::InvalidBumpTarget(format!(
-                    "Unknown schema section: {section}"
-                )));
+                let available_sections = vec!["core", "extra_core", "build"];
+                let suggestion = available_sections
+                    .into_iter()
+                    .min_by_key(|s| {
+                        s.chars()
+                            .zip(section.chars())
+                            .filter(|(a, b)| a != b)
+                            .count()
+                    })
+                    .map(|suggestion| format!("Did you mean '{}'?", suggestion));
+
+                return Err(ZervError::InvalidBumpTarget {
+                    message: format!("Unknown schema section: '{section}'"),
+                    schema_part: ZervSchemaPart::new(SchemaPartName::Core, &self.schema),
+                    suggestion,
+                });
             }
         };
 
-        let specs = Self::parse_and_validate_process_specs(overrides, bumps, component_count)?;
+        let specs = Self::parse_and_validate_process_specs(overrides, bumps, schema_part.clone())?;
 
         // Process specs in order from lower index to higher index
         for (index, override_value, bump_value) in specs {
@@ -35,9 +53,11 @@ impl Zerv {
     fn parse_var_field_values(
         override_value: Option<&str>,
         bump_value: Option<&str>,
+        schema_part: ZervSchemaPart,
     ) -> Result<(Option<u32>, Option<u32>), ZervError> {
-        let override_val = Self::parse_optional_u32(override_value, "VarField")?;
-        let bump_val = Self::parse_optional_u32(bump_value, "VarField")?;
+        let override_val =
+            Self::parse_optional_u32(override_value, "VarField", schema_part.clone())?;
+        let bump_val = Self::parse_optional_u32(bump_value, "VarField", schema_part.clone())?;
         Ok((override_val, bump_val))
     }
 
@@ -46,10 +66,14 @@ impl Zerv {
         var: &Var,
         override_value: Option<String>,
         bump_value: Option<String>,
+        schema_part: ZervSchemaPart,
     ) -> Result<(), ZervError> {
         // Parse override and bump values
-        let (override_val, bump_val) =
-            Self::parse_var_field_values(override_value.as_deref(), bump_value.as_deref())?;
+        let (override_val, bump_val) = Self::parse_var_field_values(
+            override_value.as_deref(),
+            bump_value.as_deref(),
+            schema_part.clone(),
+        )?;
 
         // Process field with both override and bump values
         match var {
@@ -61,9 +85,11 @@ impl Zerv {
             Var::Dev => self.process_dev(override_val, bump_val)?,
             Var::PreRelease => self.process_pre_release_num(override_val, bump_val)?,
             Var::Custom(field_name) => {
-                return Err(ZervError::InvalidBumpTarget(format!(
-                    "Unknown field: {field_name}"
-                )));
+                return Err(ZervError::InvalidBumpTarget {
+                    message: format!("Unknown field: {field_name}"),
+                    schema_part,
+                    suggestion: None,
+                });
             }
             Var::Distance
             | Var::Dirty
@@ -75,14 +101,23 @@ impl Zerv {
             | Var::LastCommitHash
             | Var::LastCommitHashShort
             | Var::LastTimestamp => {
-                return Err(ZervError::InvalidBumpTarget(format!(
-                    "Cannot process VCS-derived field: {var:?}"
-                )));
+                return Err(ZervError::InvalidBumpTarget {
+                    message: format!("Cannot process VCS-derived field: {var:?}"),
+                    schema_part: schema_part.clone(),
+                    suggestion: Some(
+                        "VCS fields are automatically managed and cannot be manually overridden"
+                            .to_string(),
+                    ),
+                });
             }
             _ => {
-                return Err(ZervError::InvalidBumpTarget(format!(
-                    "Cannot process field: {var:?}"
-                )));
+                return Err(ZervError::InvalidBumpTarget {
+                    message: format!("Cannot process field: {var:?}"),
+                    schema_part: schema_part.clone(),
+                    suggestion: Some(
+                        "This field type is not supported for schema processing".to_string(),
+                    ),
+                });
             }
         }
 
@@ -93,11 +128,13 @@ impl Zerv {
         component: &mut Component,
         override_value: Option<String>,
         bump_value: Option<String>,
+        schema_part: ZervSchemaPart,
     ) -> Result<(), ZervError> {
         if let Component::UInt(current_value) = component {
             // Parse override and bump values for UInt components
-            let override_val = Self::parse_optional_u32(override_value.as_deref(), "UInt")?;
-            let bump_val = Self::parse_optional_u32(bump_value.as_deref(), "UInt")?;
+            let override_val =
+                Self::parse_optional_u32(override_value.as_deref(), "UInt", schema_part.clone())?;
+            let bump_val = Self::parse_optional_u32(bump_value.as_deref(), "UInt", schema_part)?;
 
             // Calculate new value: override first, then bump from that base
             let base_value = if let Some(override_val) = override_val {
@@ -120,9 +157,11 @@ impl Zerv {
             *current_value = new_value;
             Ok(())
         } else {
-            Err(ZervError::InvalidBumpTarget(
-                "Expected UInt component".to_string(),
-            ))
+            Err(ZervError::InvalidBumpTarget {
+                message: "Expected UInt component".to_string(),
+                schema_part,
+                suggestion: None,
+            })
         }
     }
 
@@ -130,6 +169,7 @@ impl Zerv {
         component: &mut Component,
         override_value: Option<String>,
         bump_value: Option<String>,
+        schema_part: ZervSchemaPart,
     ) -> Result<(), ZervError> {
         if let Component::Str(current_value) = component {
             // 1. Override step - set absolute value if specified
@@ -144,9 +184,11 @@ impl Zerv {
 
             Ok(())
         } else {
-            Err(ZervError::InvalidBumpTarget(
-                "Expected String component".to_string(),
-            ))
+            Err(ZervError::InvalidBumpTarget {
+                message: "Expected String component".to_string(),
+                schema_part,
+                suggestion: None,
+            })
         }
     }
 
@@ -163,16 +205,33 @@ impl Zerv {
             "extra_core" => self.schema.extra_core().len(),
             "build" => self.schema.build().len(),
             _ => {
-                return Err(ZervError::InvalidBumpTarget(format!(
-                    "Unknown schema section: {section}"
-                )));
+                let schema_part = ZervSchemaPart::new(
+                    SchemaPartName::Core, // Use Core as default for unknown section
+                    &self.schema,
+                );
+                return Err(ZervError::InvalidBumpTarget {
+                    message: format!("Unknown schema section: {section}"),
+                    schema_part,
+                    suggestion: None,
+                });
             }
         };
 
         if index >= components_len {
-            return Err(ZervError::InvalidBumpTarget(format!(
-                "Index {index} out of bounds for {section} section"
-            )));
+            let schema_part = ZervSchemaPart::new(
+                match section {
+                    "core" => SchemaPartName::Core,
+                    "extra_core" => SchemaPartName::ExtraCore,
+                    "build" => SchemaPartName::Build,
+                    _ => SchemaPartName::Core, // Default to Core for safety
+                },
+                &self.schema,
+            );
+            return Err(ZervError::InvalidBumpTarget {
+                message: format!("Index {index} out of bounds for {section} section"),
+                schema_part,
+                suggestion: None,
+            });
         }
 
         let component = match section {
@@ -185,14 +244,34 @@ impl Zerv {
         match component {
             Component::Var(var) => match var {
                 Var::Timestamp(_) => {
-                    return Err(ZervError::InvalidBumpTarget(
-                        "Cannot process timestamp component - timestamps are generated dynamically"
+                    let schema_part = ZervSchemaPart::new(
+                        match section {
+                            "core" => SchemaPartName::Core,
+                            "extra_core" => SchemaPartName::ExtraCore,
+                            "build" => SchemaPartName::Build,
+                            _ => unreachable!(),
+                        },
+                        &self.schema,
+                    );
+                    return Err(ZervError::InvalidBumpTarget {
+                        message: "Cannot process timestamp component - timestamps are generated dynamically"
                             .to_string(),
-                    ));
+                        schema_part,
+                        suggestion: None,
+                    });
                 }
                 _ => {
                     let var_clone = var.clone();
-                    self.process_var_field(&var_clone, override_value, bump_value)?;
+                    let schema_part = ZervSchemaPart::new(
+                        match section {
+                            "core" => SchemaPartName::Core,
+                            "extra_core" => SchemaPartName::ExtraCore,
+                            "build" => SchemaPartName::Build,
+                            _ => unreachable!(),
+                        },
+                        &self.schema,
+                    );
+                    self.process_var_field(&var_clone, override_value, bump_value, schema_part)?;
                 }
             },
             Component::Str(_) => {
@@ -204,10 +283,20 @@ impl Zerv {
                     "build" => self.schema.build().clone(),
                     _ => unreachable!(),
                 };
+                let schema_part = ZervSchemaPart::new(
+                    match section {
+                        "core" => SchemaPartName::Core,
+                        "extra_core" => SchemaPartName::ExtraCore,
+                        "build" => SchemaPartName::Build,
+                        _ => unreachable!(),
+                    },
+                    &self.schema,
+                );
                 Self::process_string_component(
                     &mut components_vec[index],
                     override_value,
                     bump_value,
+                    schema_part,
                 )?;
                 match section {
                     "core" => self.schema.set_core(components_vec)?,
@@ -225,10 +314,20 @@ impl Zerv {
                     "build" => self.schema.build().clone(),
                     _ => unreachable!(),
                 };
+                let schema_part = ZervSchemaPart::new(
+                    match section {
+                        "core" => SchemaPartName::Core,
+                        "extra_core" => SchemaPartName::ExtraCore,
+                        "build" => SchemaPartName::Build,
+                        _ => unreachable!(),
+                    },
+                    &self.schema,
+                );
                 Self::process_integer_component(
                     &mut components_vec[index],
                     override_value,
                     bump_value,
+                    schema_part,
                 )?;
                 match section {
                     "core" => self.schema.set_core(components_vec)?,
@@ -420,11 +519,11 @@ mod tests {
         let mut zerv = ZervFixture::new().build();
         let result = zerv.process_schema_section("unknown_section", &[], &[]);
         assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
         assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Unknown schema section: unknown_section")
+            error_msg.contains("Unknown schema section: 'unknown_section'")
+                && error_msg.contains("Schema section: core: [var(Major),var(Minor),var(Patch)]")
+                && error_msg.contains("Did you mean 'core'?")
         );
     }
 
@@ -467,7 +566,19 @@ mod tests {
     #[test]
     fn test_process_integer_component_error() {
         let mut component = Component::Str("not_an_int".to_string());
-        let result = Zerv::process_integer_component(&mut component, Some("5".to_string()), None);
+        let schema = crate::version::zerv::schema::ZervSchema::new(
+            vec![Component::Var(Var::Major)], // Core must have at least one component
+            vec![],
+            vec![],
+        )
+        .unwrap();
+        let schema_part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
+        let result = Zerv::process_integer_component(
+            &mut component,
+            Some("5".to_string()),
+            None,
+            schema_part,
+        );
         assert!(result.is_err());
         assert!(
             result
@@ -480,8 +591,19 @@ mod tests {
     #[test]
     fn test_process_string_component_error() {
         let mut component = Component::UInt(42);
-        let result =
-            Zerv::process_string_component(&mut component, Some("override".to_string()), None);
+        let schema = crate::version::zerv::schema::ZervSchema::new(
+            vec![Component::Var(Var::Major)], // Core must have at least one component
+            vec![],
+            vec![],
+        )
+        .unwrap();
+        let schema_part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
+        let result = Zerv::process_string_component(
+            &mut component,
+            Some("override".to_string()),
+            None,
+            schema_part,
+        );
         assert!(result.is_err());
         assert!(
             result
