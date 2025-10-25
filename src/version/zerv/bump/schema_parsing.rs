@@ -25,13 +25,45 @@ impl Zerv {
     }
 
     fn parse_index(index_str: &str, schema_part: ZervSchemaPart) -> Result<usize, ZervError> {
-        let idx = index_str
-            .parse::<isize>()
-            .map_err(|_| ZervError::InvalidBumpTarget {
-                message: format!("Invalid index: '{}' is not a valid number", index_str),
-                schema_part: schema_part.clone(),
-                suggestion: None,
-            })?;
+        let idx = if let Some(tilde_str) = index_str.strip_prefix('~') {
+            // Handle ~N notation (Git-style counting from end)
+            let n = tilde_str
+                .parse::<isize>()
+                .map_err(|_| ZervError::InvalidBumpTarget {
+                    message: format!(
+                        "Invalid tilde index: '~{}' is not a valid number",
+                        tilde_str
+                    ),
+                    schema_part: schema_part.clone(),
+                    suggestion: Some(
+                        "Use ~1 for last element, ~2 for second-to-last, etc.".to_string(),
+                    ),
+                })?;
+            if n <= 0 {
+                return Err(ZervError::InvalidBumpTarget {
+                    message: format!(
+                        "Tilde index '~{}' must be positive (use ~1 for last element)",
+                        tilde_str
+                    ),
+                    schema_part: schema_part.clone(),
+                    suggestion: Some(
+                        "Use ~1 for last element, ~2 for second-to-last, etc.".to_string(),
+                    ),
+                });
+            }
+            -n // Convert ~1 to -1, ~2 to -2, etc.
+        } else {
+            // Handle regular numeric indices (positive and negative)
+            index_str
+                .parse::<isize>()
+                .map_err(|_| ZervError::InvalidBumpTarget {
+                    message: format!("Invalid index: '{}' is not a valid number", index_str),
+                    schema_part: schema_part.clone(),
+                    suggestion: Some(
+                        "Use positive indices (0, 1, 2) or tilde notation (~1, ~2)".to_string(),
+                    ),
+                })?
+        };
 
         let schema_len = schema_part.len();
 
@@ -360,5 +392,113 @@ mod tests {
         let result = Zerv::parse_override_spec(spec, schema_part);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains(expected_error));
+    }
+
+    // Test parse_override_spec with tilde notation (new functionality)
+    #[rstest]
+    #[case("~1=5", 3, 2, "5")] // tilde 1 (last element) with explicit value
+    #[case("~2=2024", 3, 1, "2024")] // tilde 2 (second-to-last) with explicit value
+    #[case("~3=release", 3, 0, "release")] // tilde 3 (third-to-last) with explicit value
+    fn test_parse_override_spec_tilde_notation_valid(
+        #[case] spec: &str,
+        #[case] _schema_len: usize,
+        #[case] expected_index: usize,
+        #[case] expected_value: &str,
+    ) {
+        let schema = ZervSchemaFixture::empty().with_major_minor_patch().build();
+        let schema_part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
+        let (index, value) = Zerv::parse_override_spec(spec, schema_part).unwrap();
+        assert_eq!(index, expected_index);
+        assert_eq!(value, expected_value);
+    }
+
+    // Test parse_bump_spec with tilde notation
+    #[rstest]
+    #[case("~1=5", 3, 2, "5")] // tilde 1 with explicit value
+    #[case("~2", 3, 1, "1")] // tilde 2 with default value
+    #[case("~3=beta", 3, 0, "beta")] // tilde 3 with string value
+    fn test_parse_bump_spec_tilde_notation_valid(
+        #[case] spec: &str,
+        #[case] _schema_len: usize,
+        #[case] expected_index: usize,
+        #[case] expected_value: &str,
+    ) {
+        let schema = ZervSchemaFixture::empty().with_major_minor_patch().build();
+        let schema_part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
+        let (index, value) = Zerv::parse_bump_spec(spec, schema_part).unwrap();
+        assert_eq!(index, expected_index);
+        assert_eq!(value, expected_value);
+    }
+
+    // Test parse_and_validate_process_specs with tilde notation
+    #[rstest]
+    #[case(
+        vec!["~1=final"],
+        vec!["~2=alpha"],
+        vec![
+            (1, None, Some("alpha".to_string())), // Bump (~2 maps to 1)
+            (2, Some("final".to_string()), None), // Override (~1 maps to 2)
+        ]
+    )] // tilde notation mixed
+    fn test_parse_and_validate_process_specs_tilde_notation(
+        #[case] overrides: Vec<&str>,
+        #[case] bumps: Vec<&str>,
+        #[case] expected: Vec<(usize, Option<String>, Option<String>)>,
+    ) {
+        let schema = ZervSchemaFixture::empty().with_major_minor_patch().build();
+        let schema_part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
+        let override_strings: Vec<String> = overrides.iter().map(|s| s.to_string()).collect();
+        let bump_strings: Vec<String> = bumps.iter().map(|s| s.to_string()).collect();
+        let specs =
+            Zerv::parse_and_validate_process_specs(&override_strings, &bump_strings, schema_part)
+                .unwrap();
+        assert_eq!(specs, expected);
+    }
+
+    // Test tilde notation error cases
+    #[rstest]
+    #[case("~0=5", "Tilde index '~0' must be positive")] // zero is not allowed
+    #[case("~4=5", "Negative index -4 is out of bounds")] // out of bounds for 3-element schema (converts to -4)
+    #[case("~abc=5", "Invalid tilde index: '~abc' is not a valid number")] // non-numeric
+    #[case("~-1=5", "Tilde index '~-1' must be positive")] // negative tilde (parses as tilde index -1)
+    fn test_parse_override_spec_tilde_notation_invalid(
+        #[case] spec: &str,
+        #[case] expected_error: &str,
+    ) {
+        let schema = ZervSchemaFixture::empty().with_major_minor_patch().build();
+        let schema_part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
+        let result = Zerv::parse_override_spec(spec, schema_part);
+        assert!(result.is_err());
+        let actual_error = result.unwrap_err().to_string();
+        assert!(
+            actual_error.contains(expected_error),
+            "Expected error to contain '{}', but got: '{}'",
+            expected_error,
+            actual_error
+        );
+    }
+
+    // Test tilde notation equivalence with negative indices
+    #[rstest]
+    #[case("~1", "-1")] // tilde 1 equals negative 1
+    #[case("~2", "-2")] // tilde 2 equals negative 2
+    #[case("~3", "-3")] // tilde 3 equals negative 3
+    fn test_tilde_notation_equivalence_with_negative_indices(
+        #[case] tilde_spec: &str,
+        #[case] negative_spec: &str,
+    ) {
+        let schema = ZervSchemaFixture::empty().with_major_minor_patch().build();
+        let schema_part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
+
+        let (tilde_index, tilde_value) =
+            Zerv::parse_override_spec(format!("{}=test", tilde_spec).as_str(), schema_part.clone())
+                .unwrap();
+
+        let (negative_index, negative_value) =
+            Zerv::parse_override_spec(format!("{}=test", negative_spec).as_str(), schema_part)
+                .unwrap();
+
+        assert_eq!(tilde_index, negative_index);
+        assert_eq!(tilde_value, negative_value);
     }
 }

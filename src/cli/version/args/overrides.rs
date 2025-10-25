@@ -98,7 +98,7 @@ pub struct OverridesConfig {
         long,
         value_name = "INDEX=VALUE",
         num_args = 1..,
-        help = "Override core schema component by index=value (e.g., --core 0=5 or --core 1={{major}})"
+        help = "Override core schema component by index=value (e.g., --core 0=5, --core ~1=2024, --core 1={{major}})"
     )]
     pub core: Vec<Template<String>>,
 
@@ -107,7 +107,7 @@ pub struct OverridesConfig {
         long,
         value_name = "INDEX=VALUE",
         num_args = 1..,
-        help = "Override extra-core schema component by index=value (e.g., --extra-core 0=5 or --extra-core 1={{branch}})"
+        help = "Override extra-core schema component by index=value (e.g., --extra-core 0=5, --extra-core ~1=beta, --extra-core 1={{branch}})"
     )]
     pub extra_core: Vec<Template<String>>,
 
@@ -116,7 +116,7 @@ pub struct OverridesConfig {
         long,
         value_name = "INDEX=VALUE",
         num_args = 1..,
-        help = "Override build schema component by index=value (e.g., --build 0=5 or --build 1={{commit_short}})"
+        help = "Override build schema component by index=value (e.g., --build 0=5, --build ~1=release, --build 1={{commit_short}})"
     )]
     pub build: Vec<Template<String>>,
 }

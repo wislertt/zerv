@@ -220,6 +220,36 @@ mod build_overrides {
             zerv_ron,
         );
     }
+
+    #[test]
+    fn test_core_override_with_tilde_one_index_succeeds() {
+        // Test that --core with ~1 works (last element) and doesn't fail
+        let zerv_ron = standard_tier1_fixture().build().to_string();
+
+        let output = TestCommand::run_with_stdin(
+            "version --source stdin --core ~1=2024 --output-format zerv",
+            zerv_ron,
+        );
+
+        // Verify it runs without error and contains the override value
+        assert!(!output.is_empty());
+        assert!(output.contains("2024"));
+    }
+
+    #[test]
+    fn test_core_override_with_tilde_two_index_succeeds() {
+        // Test that --core with ~2 works (second-to-last element)
+        let zerv_ron = standard_tier1_fixture().build().to_string();
+
+        let output = TestCommand::run_with_stdin(
+            "version --source stdin --core ~2=123 --output-format zerv",
+            zerv_ron,
+        );
+
+        // Verify it runs without error and contains the override value
+        assert!(!output.is_empty());
+        assert!(output.contains("123"));
+    }
 }
 
 mod schema_combinations {

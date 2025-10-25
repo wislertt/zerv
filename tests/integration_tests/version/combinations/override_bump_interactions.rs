@@ -296,9 +296,6 @@ mod schema_override_bump_combinations {
             "version --source stdin --output-format zerv --build 0=test", // Should fail - tier 1 has empty build section
             zerv_ron.clone(),
         );
-        // println!("{result}");
-        // TODO: make error message contain part of schema
-        // assert!(result.contains("build") && result.contains("index 0 out of bounds"));
         assert!(
             result.contains("Index 0 is out of bounds for build")
                 && result.contains("build: No fields available")
@@ -307,40 +304,89 @@ mod schema_override_bump_combinations {
     }
 
     #[rstest]
-    fn test_build_override_fails_for_negative_index(base_fixture: ZervFixture) {
+    fn test_build_override_tilde_notation_cli_parsing(base_fixture: ZervFixture) {
         let zerv_ron = base_fixture.build().to_string();
-        // TODO: negative index should not fail
-        let _result = TestCommand::run_with_stdin_expect_fail(
-            "version --source stdin --output-format zerv --build -1=test", // Should fail - negative index
+
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --build ~1=test",
             zerv_ron.clone(),
         );
 
-        // let stderr = result.stderr();
-        // assert!(stderr.contains("build") && stderr.contains("invalid index"));
+        assert!(result.contains("index") && result.contains("out of bounds"));
+        assert!(!result.contains("unexpected argument"));
     }
 
-    // TODO: error message is incorrect
-    // #[rstest]
-    // fn test_build_override_fails_for_invalid_syntax(base_fixture: ZervFixture) {
-    //     let zerv_ron = base_fixture.build().to_string();
+    #[rstest]
+    fn test_core_override_tilde_notation_success(base_fixture: ZervFixture) {
+        let zerv_ron = base_fixture.build().to_string();
 
-    //     let result = TestCommand::new()
-    //         .args(&[
-    //             "version",
-    //             "--source",
-    //             "stdin",
-    //             "--output-format",
-    //             "zerv",
-    //             "--build",
-    //             "not_a_number", // Should fail - invalid value
-    //         ])
-    //         .stdin(zerv_ron.clone())
-    //         .assert_failure();
+        let result = TestCommand::run_with_stdin(
+            "version --source stdin --core ~1=999 --output-format zerv",
+            zerv_ron.clone(),
+        );
 
-    //     let stderr = result.stderr();
-    //     println!("Actual stderr: {}", stderr);
-    //     assert!(stderr.contains("build") && stderr.contains("invalid value"));
-    // }
+        assert!(!result.is_empty());
+        assert!(result.contains("999"));
+        assert!(result.contains("patch: Some(999)"));
+    }
+
+    #[rstest]
+    fn test_core_override_tilde_two_notation_success(base_fixture: ZervFixture) {
+        let zerv_ron = base_fixture.build().to_string();
+
+        let result = TestCommand::run_with_stdin(
+            "version --source stdin --core ~2=777 --output-format zerv",
+            zerv_ron.clone(),
+        );
+
+        assert!(!result.is_empty());
+        assert!(result.contains("777"));
+        assert!(result.contains("minor: Some(777)"));
+    }
+
+    #[rstest]
+    fn test_negative_index_cli_parsing_fails(base_fixture: ZervFixture) {
+        let zerv_ron = base_fixture.build().to_string();
+
+        // Test that -1 (negative index) fails at CLI argument parsing stage
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --build -1=test",
+            zerv_ron.clone(),
+        );
+
+        // Should fail with CLI parsing error, not index error
+        assert!(result.contains("unexpected argument '-1'"));
+    }
+
+    #[rstest]
+    fn test_build_override_fails_for_invalid_syntax(base_fixture: ZervFixture) {
+        let zerv_ron = base_fixture.build().to_string();
+
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --build not_a_number",
+            zerv_ron.clone(),
+        );
+
+        assert!(
+                result.contains("Error: Override specification 'not_a_number' requires explicit value (use index=value format)")
+                && result.contains("build: No fields available")
+            );
+    }
+
+    #[rstest]
+    fn test_build_override_fails_for_invalid_tilde_syntax(base_fixture: ZervFixture) {
+        let zerv_ron = base_fixture.build().to_string();
+
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --output-format zerv --build ~abc=invalid",
+            zerv_ron.clone(),
+        );
+
+        assert!(
+            result.contains("Error: Invalid tilde index: '~abc' is not a valid number")
+                && result.contains("build: No fields available")
+        );
+    }
 
     #[rstest]
     fn test_schema_override_too_large_index_fails(base_fixture: ZervFixture) {
@@ -350,8 +396,6 @@ mod schema_override_bump_combinations {
             zerv_ron.clone(),
         );
         println!("Actual stderr: {}", result);
-        // TODO: include schema part in error message
-        // assert!(result.contains("core") && result.contains("Index 10 out of bounds"));
         assert!(
             result.contains("Index 10 is out of bounds for core")
                 && result.contains("core: [var(Major),var(Minor),var(Patch)]")
