@@ -291,6 +291,7 @@ mod schema_override_bump_combinations {
             "version --source stdin --output-format zerv --build 0=test", // Should fail - tier 1 has empty build section
             zerv_ron.clone(),
         );
+        // println!("{result}");
         // TODO: make error message contain part of schema
         // assert!(result.contains("build") && result.contains("index 0 out of bounds"));
         assert!(result.contains("Index 0 out of bounds"));
