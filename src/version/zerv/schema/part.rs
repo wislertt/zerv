@@ -111,6 +111,7 @@ impl ZervSchemaPart {
 
 impl Display for ZervSchemaPart {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        // TODO: delete this
         if self.components.is_empty() {
             return write!(f, "{}: No fields available", self.name);
         }

@@ -6,6 +6,7 @@
 //! - OverrideConfig + BumpsConfig
 //! - All three modules together
 
+pub mod complex_workflow_scenarios;
 pub mod main_bump_interactions;
 pub mod main_override_interactions;
 pub mod override_bump_interactions;
