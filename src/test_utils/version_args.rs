@@ -4,6 +4,7 @@ use crate::test_utils::types::{
     BumpType,
     OverrideType,
 };
+use crate::version::zerv::schema::SchemaPartName;
 
 /// Test fixture for creating VersionArgs with sensible defaults and chainable methods
 pub struct VersionArgsFixture {
@@ -274,18 +275,15 @@ impl VersionArgsFixture {
                         Some(v) => format!("{index}={v}"), // "0=5"
                         None => index.to_string(),         // "0"
                     };
-                    match section.as_str() {
-                        "core" => {
+                    match section {
+                        SchemaPartName::Core => {
                             self.args.bumps.bump_core.push(spec.into());
                         }
-                        "extra_core" => {
+                        SchemaPartName::ExtraCore => {
                             self.args.bumps.bump_extra_core.push(spec.into());
                         }
-                        "build" => {
+                        SchemaPartName::Build => {
                             self.args.bumps.bump_build.push(spec.into());
-                        }
-                        _ => {
-                            // Unknown section - ignore for now
                         }
                     }
                 }

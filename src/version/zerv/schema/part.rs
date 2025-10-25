@@ -4,6 +4,7 @@ use std::fmt::{
 };
 use std::str::FromStr;
 
+use super::ZervSchema;
 use crate::error::ZervError;
 use crate::version::zerv::components::Component;
 
@@ -48,7 +49,7 @@ pub struct ZervSchemaPart {
 }
 
 impl ZervSchemaPart {
-    pub fn new(name: SchemaPartName, schema: &crate::version::zerv::schema::ZervSchema) -> Self {
+    pub fn new(name: SchemaPartName, schema: &ZervSchema) -> Self {
         let components = match name {
             SchemaPartName::Core => schema.core().clone(),
             SchemaPartName::ExtraCore => schema.extra_core().clone(),
@@ -123,10 +124,8 @@ impl Display for ZervSchemaPart {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::zerv::components::{
-        Component,
-        Var,
-    };
+    use crate::test_utils::zerv::ZervSchemaFixture;
+    use crate::version::zerv::components::Component;
 
     mod schema_part_name_tests {
         use super::*;
@@ -176,14 +175,7 @@ mod tests {
 
         #[test]
         fn test_schema_part_core_section() {
-            let components = vec![
-                Component::Var(Var::Major),
-                Component::Var(Var::Minor),
-                Component::Var(Var::Patch),
-            ];
-            let schema =
-                crate::version::zerv::schema::ZervSchema::new(components.clone(), vec![], vec![])
-                    .unwrap();
+            let schema = ZervSchemaFixture::empty().with_major_minor_patch().build();
             let part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
 
             // Test Display implementation - assert exact expected output
@@ -200,14 +192,7 @@ mod tests {
 
         #[test]
         fn test_schema_part_negative_index_suggestion() {
-            let components = vec![
-                Component::Var(Var::Major),
-                Component::Var(Var::Minor),
-                Component::Var(Var::Patch),
-            ];
-            let schema =
-                crate::version::zerv::schema::ZervSchema::new(components.clone(), vec![], vec![])
-                    .unwrap();
+            let schema = ZervSchemaFixture::empty().with_major_minor_patch().build();
             let part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
 
             let suggestion = part.suggest_valid_index_range(-5);
@@ -219,12 +204,7 @@ mod tests {
 
         #[test]
         fn test_schema_part_empty_section() {
-            let schema = crate::version::zerv::schema::ZervSchema::new(
-                vec![Component::Var(Var::Major)], // Core must have at least one component
-                vec![],
-                vec![],
-            )
-            .unwrap();
+            let schema = ZervSchemaFixture::empty().build();
             let part = ZervSchemaPart::new(SchemaPartName::Build, &schema);
 
             let display = format!("{}", part);
@@ -236,12 +216,12 @@ mod tests {
 
         #[test]
         fn test_schema_part_mixed_components() {
-            let schema = crate::version::zerv::schema::ZervSchema::new(
-                vec![Component::Var(Var::Major)], // Major must be in core
-                vec![Component::Str("test".to_string()), Component::UInt(42)],
-                vec![],
-            )
-            .unwrap();
+            let schema = ZervSchemaFixture::empty()
+                .with_extra_core(vec![
+                    Component::Str("test".to_string()),
+                    Component::UInt(42),
+                ])
+                .build();
             let part = ZervSchemaPart::new(SchemaPartName::ExtraCore, &schema);
 
             let display = format!("{}", part);
@@ -250,22 +230,12 @@ mod tests {
 
         #[test]
         fn test_schema_part_len_and_empty() {
-            let empty_schema = crate::version::zerv::schema::ZervSchema::new(
-                vec![Component::Var(Var::Major)], // Core must have at least one component
-                vec![],
-                vec![],
-            )
-            .unwrap();
+            let empty_schema = ZervSchemaFixture::empty().build();
             let part = ZervSchemaPart::new(SchemaPartName::Build, &empty_schema); // Use empty section
             assert_eq!(part.len(), 0);
             assert!(part.is_empty());
 
-            let single_schema = crate::version::zerv::schema::ZervSchema::new(
-                vec![Component::Var(Var::Major)],
-                vec![],
-                vec![],
-            )
-            .unwrap();
+            let single_schema = ZervSchemaFixture::empty().build();
             let part = ZervSchemaPart::new(SchemaPartName::Core, &single_schema);
             assert_eq!(part.len(), 1);
             assert!(!part.is_empty());
@@ -273,12 +243,7 @@ mod tests {
 
         #[test]
         fn test_schema_part_single_element_suggestion() {
-            let schema = crate::version::zerv::schema::ZervSchema::new(
-                vec![Component::Var(Var::Major)],
-                vec![],
-                vec![],
-            )
-            .unwrap();
+            let schema = ZervSchemaFixture::empty().build();
             let part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
 
             let suggestion = part.suggest_valid_index_range(5);
@@ -290,12 +255,7 @@ mod tests {
 
         #[test]
         fn test_schema_part_valid_indices_no_suggestion() {
-            let schema = crate::version::zerv::schema::ZervSchema::new(
-                vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
-                vec![],
-                vec![],
-            )
-            .unwrap();
+            let schema = ZervSchemaFixture::empty().with_major_minor().build();
             let part = ZervSchemaPart::new(SchemaPartName::Core, &schema);
 
             // Valid index should return range suggestion but no specific index suggestion

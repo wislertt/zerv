@@ -248,6 +248,7 @@ mod tests {
     use crate::test_utils::ZervFixture;
     use crate::utils::constants::bump_types;
     use crate::version::zerv::components::Component;
+    use crate::version::zerv::schema::ZervSchema;
 
     // Test schema processing functions (core, extra_core, build)
     #[rstest]
@@ -468,7 +469,7 @@ mod tests {
     #[test]
     fn test_process_integer_component_error() {
         let mut component = Component::Str("not_an_int".to_string());
-        let schema = crate::version::zerv::schema::ZervSchema::new(
+        let schema = ZervSchema::new(
             vec![Component::Var(Var::Major)], // Core must have at least one component
             vec![],
             vec![],
@@ -493,7 +494,7 @@ mod tests {
     #[test]
     fn test_process_string_component_error() {
         let mut component = Component::UInt(42);
-        let schema = crate::version::zerv::schema::ZervSchema::new(
+        let schema = ZervSchema::new(
             vec![Component::Var(Var::Major)], // Core must have at least one component
             vec![],
             vec![],

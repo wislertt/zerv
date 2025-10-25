@@ -1,4 +1,5 @@
 use crate::version::zerv::core::PreReleaseLabel;
+use crate::version::zerv::schema::SchemaPartName;
 
 /// Enum for bump types - stores increment value and label (test-only)
 #[derive(Debug, Clone, PartialEq)]
@@ -12,7 +13,7 @@ pub enum BumpType {
     Post(u64),
     Dev(u64),
     SchemaBump {
-        section: String,
+        section: SchemaPartName,
         index: i32,
         value: Option<u64>,
     },
