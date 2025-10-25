@@ -123,7 +123,7 @@ mod tests {
 
         // Test Display implementation - assert exact expected output
         let display = format!("{}", part);
-        assert_eq!(display, "core: [Var(Major), Var(Minor), Var(Patch)]");
+        assert_eq!(display, "core: [var(Major),var(Minor),var(Patch)]");
 
         // Test suggestion
         let suggestion = part.suggest_valid_index_range(5);
@@ -165,7 +165,7 @@ mod tests {
         let part = ZervSchemaPart::new("mixed", &components);
 
         let display = format!("{}", part);
-        assert_eq!(display, "mixed: [Var(Major), \"test\", 42]");
+        assert_eq!(display, "mixed: [var(Major),str(\"test\"),uint(42)]");
     }
 
     #[test]
@@ -448,7 +448,7 @@ mod tests {
 
         let available = format!("{}", part);
         // Should use RON formatting
-        assert_eq!(available, "core: [Var(Major), Var(Minor), Var(Patch)]");
+        assert_eq!(available, "core: [var(Major),var(Minor),var(Patch)]");
 
         let suggestion = part.suggest_valid_index_range(5);
         assert_eq!(suggestion.unwrap(), "Valid indices: 0 to 2 or -1 to -3. Did you mean index 2?");
@@ -489,7 +489,7 @@ mod tests {
         let part = ZervSchemaPart::new("mixed", &components);
 
         let available = format!("{}", part);
-        assert_eq!(available, "mixed: [Var(Major), \"test\", 42]");
+        assert_eq!(available, "mixed: [var(Major),str(\"test\"),uint(42)]");
     }
 }
 ```
