@@ -1,6 +1,6 @@
 # Comprehensive CLI Manual with LLM Integration
 
-## Status: Planned
+## Status: In Progress (Phase 1.2-1.3 Completed)
 
 ## Priority: High
 
@@ -26,7 +26,7 @@
 
 #### 1.2 Create Initial Comprehensive Manual
 
-- **File**: `docs/llms.txt` (following llmstxt.org standard)
+- **File**: `docs/llms.md` (following llmstxt.org standard, using .md for better maintainability)
 - **Length**: 1,500-2,000 words (concise but comprehensive for LLM context)
 - **Format**: Markdown following llms.txt standard (H1 title, optional summary blockquote, detailed sections)
 - **Audience**: Beginner to intermediate CLI users
@@ -91,7 +91,7 @@
 - **Location**: `src/cli/app.rs` in `run_with_args()`
 - **Approach**: Embedded manual using `include_str!()` macro
 - **Features**:
-    - Embed manual at compile time: `const LLMS_TXT: &str = include_str!("../../docs/llms.txt");`
+    - Embed manual at compile time: `const LLMS_MD: &str = include_str!("../../docs/llms.md");`
     - Display embedded content directly (no external file dependency)
     - Use system pager if available
     - Handle compilation error if manual file missing
@@ -230,7 +230,7 @@
 ```
 docs/
 ├── AUTO.md                   # Auto-generated basic help (renamed from CLI.md)
-├── llms.txt                  # LLM-optimized manual following llmstxt.org standard (new, embedded)
+├── llms.md                   # LLM-optimized manual following llms.txt standard (new, embedded)
 └── .last-update              # Documentation sync timestamp (new)
 
 CHANGELOG.md            # Feature changes (create/update)
