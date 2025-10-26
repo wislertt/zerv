@@ -13,6 +13,7 @@ Zerv is a dynamic versioning CLI tool written in Rust that generates versions fo
 **MANDATORY - These rules must ALWAYS be followed:**
 
 1. ✅ **Use constants** instead of bare strings (fields, formats, sources, schemas) → Use `crate::utils::constants::*`
+    - **For environment variables**: Use `crate::config::EnvVars::*` (e.g., `EnvVars::PAGER`, `EnvVars::RUST_LOG`)
 2. ✅ **Use `ZervError`** for custom errors and `io::Error::other()` for IO errors
 3. ✅ **Use `get_git_impl()`** for environment-aware Git operations
 4. ✅ **Use `should_run_docker_tests()`** for Docker-dependent tests

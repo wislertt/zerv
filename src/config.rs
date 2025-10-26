@@ -24,6 +24,16 @@ impl EnvVars {
     ///
     /// Set to `false` or `0` to skip Docker tests on systems without Docker.
     pub const ZERV_TEST_DOCKER: &'static str = "ZERV_TEST_DOCKER";
+
+    /// Preferred pager program for displaying manual pages.
+    ///
+    /// Examples:
+    /// * `PAGER=less` - Use less pager
+    /// * `PAGER=more` - Use more pager
+    /// * `PAGER=most` - Use most pager
+    ///
+    /// If not set, Zerv will fall back to searching for common pagers (less, more, most).
+    pub const PAGER: &'static str = "PAGER";
 }
 
 #[derive(Debug, Clone, Default)]

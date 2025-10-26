@@ -15,6 +15,8 @@ use crate::cli::version::VersionArgs;
 system (VCS) data using configurable schemas. It supports multiple input sources, output formats, \
 and advanced override capabilities for CI/CD workflows.
 
+Use --llm-help to display the comprehensive CLI manual with detailed examples and guidance.
+
 EXAMPLES:
   # Basic version generation from git
   zerv version
@@ -40,8 +42,12 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
+    /// Display comprehensive CLI manual for humans and AI assistants
+    #[arg(long = "llm-help", help = "Display comprehensive CLI manual")]
+    pub llm_help: bool,
+
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -71,17 +77,17 @@ mod tests {
     fn test_cli_structure() {
         // Test that CLI can be parsed
         let cli = Cli::try_parse_from(["zerv", "version"]).unwrap();
-        assert!(matches!(cli.command, Commands::Version(_)));
+        assert!(matches!(cli.command, Some(Commands::Version(_))));
 
         let cli = Cli::try_parse_from(["zerv", "check", "1.0.0"]).unwrap();
-        assert!(matches!(cli.command, Commands::Check(_)));
+        assert!(matches!(cli.command, Some(Commands::Check(_))));
     }
 
     #[test]
     fn test_cli_with_directory() {
         let cli = Cli::try_parse_from(["zerv", "version", "-C", "/tmp"]).unwrap();
-        assert!(matches!(cli.command, Commands::Version(_)));
-        if let Commands::Version(version_args) = cli.command {
+        assert!(matches!(cli.command, Some(Commands::Version(_))));
+        if let Some(Commands::Version(version_args)) = cli.command {
             assert_eq!(version_args.main.directory, Some("/tmp".to_string()));
         }
     }
