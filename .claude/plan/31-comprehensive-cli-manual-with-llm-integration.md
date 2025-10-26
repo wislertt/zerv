@@ -138,8 +138,8 @@
 - **Location**: `.claude/commands/update-docs.md`
 - **Function**:
     - Detect documentation-relevant changes since last marker
-    - Generate changelog summary
-    - Update COMPREHENSIVE.md with new content
+    - Generate changelog summary in temporary cache directory
+    - Update llms.md with new content based on changelog analysis
     - Refresh marker timestamp
 
 ##### 3.2.1 Slash Command Workflow
@@ -155,7 +155,7 @@
 3. **Git diff**: Get uncommitted changes with `git diff HEAD`
 4. **Generate changelog**: Create `docs/.cache/CHANGELOG.md` with summarized changes
 5. **Process changelog**: Analyze `docs/.cache/CHANGELOG.md` for CLI-relevant updates
-6. **Update documentation**: Apply changes to llms.txt based on changelog analysis
+6. **Update documentation**: Apply changes to llms.md based on changelog analysis
 7. **Refresh marker**: Update timestamp with `date -u +"%Y-%m-%dT%H:%M:%SZ" > docs/.last-update`
 
 ##### 3.2.3 Change Impact Analysis
@@ -183,9 +183,9 @@
 
 1. **Development**: Make code changes as usual
 2. **Review**: Periodically run `/update-docs`
-3. **Validation**: Review generated changelog and documentation updates
+3. **Validation**: Review changes and documentation updates
 4. **Commit**: Commit both documentation changes and marker update
-5. **Release**: Release notes automatically include documentation changes
+5. **Release**: Documentation changes are included in release
 
 #### 3.4 Marker File Management
 
@@ -226,7 +226,7 @@
 2. ✅ **`zerv --llm-help` command implemented** and working
 3. ✅ **Manual content is 1,500-2,000 words** optimized for LLM context (~800 words but very comprehensive)
 4. ✅ **15-20 practical examples** included and verified
-5. ❌ **Changelog-based maintenance system** established (not started)
+5. ❌ **Marker-based maintenance system** established (not started)
 6. ✅ **LLM-optimized content structure** for AI assistance
 7. ✅ **Integration with existing help system** seamless
 
@@ -240,7 +240,6 @@ docs/
 ├── llms.md                   # LLM-optimized manual following llms.txt standard (new, embedded) ✅
 └── .last-update              # Documentation sync timestamp (new) ❌
 
-CHANGELOG.md            # Feature changes (create/update) ❌
 src/cli/
 ├── parser.rs           # Add --llm-help flag ✅
 ├── app.rs             # Integration with llm_help module ✅
@@ -251,9 +250,9 @@ src/config.rs           # Added PAGER to EnvVars ✅
 
 ### Maintenance Responsibilities
 
-- **Developers**: Update CHANGELOG.md when adding/modifying features
-- **Release managers**: Review changelog for manual updates needed
-- **Documentation**: Keep manual aligned with feature changes
+- **Developers**: Run `/update-docs` when adding/modifying CLI features
+- **Release managers**: Review documentation updates before releases
+- **Documentation**: Keep manual aligned with feature changes using marker system
 
 ### Long-term Considerations
 
@@ -265,7 +264,7 @@ src/config.rs           # Added PAGER to EnvVars ✅
 
 ### Risk: Manual becomes outdated
 
-- **Mitigation**: Changelog-driven review process, automated checks
+- **Mitigation**: Marker-based review process, automated update detection
 
 ### Risk: Manual file missing at compile time
 
