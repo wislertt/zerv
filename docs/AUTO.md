@@ -38,12 +38,16 @@ zerv version --output-format zerv | zerv version --source stdin --schema calver
 
 zerv version -C /path/to/repo
 
-**Usage:** `zerv <COMMAND>`
+**Usage:** `zerv [OPTIONS] <COMMAND>`
 
 ###### **Subcommands:**
 
 - `version` — Generate version from VCS data with configurable schemas and overrides
 - `check` — Validate version string format compliance
+
+###### **Options:**
+
+- `-v`, `--verbose` — Use verbose output (enables debug-level logs to stderr). Use RUST_LOG for fine-grained control (e.g., RUST_LOG=zerv::vcs=debug)
 
 ## `zerv version`
 
@@ -83,8 +87,9 @@ for testing and CI/CD workflows.
 - `--dirty` — Override dirty state to true (sets dirty=true)
 - `--no-dirty` — Override dirty state to false (sets dirty=false)
 - `--clean` — Force clean release state (sets distance=0, dirty=false). Conflicts with --distance and --dirty
-- `--current-branch <CURRENT_BRANCH>` — Override current branch name
-- `--commit-hash <COMMIT_HASH>` — Override commit hash (full or short form)
+- `--bumped-branch <BUMPED_BRANCH>` — Override current branch name
+- `--bumped-commit-hash <BUMPED_COMMIT_HASH>` — Override commit hash (full or short form)
+- `--bumped-timestamp <BUMPED_TIMESTAMP>` — Override commit timestamp (Unix timestamp)
 - `--major <MAJOR>` — Override major version number
 - `--minor <MINOR>` — Override minor version number
 - `--patch <PATCH>` — Override patch version number
@@ -97,9 +102,9 @@ for testing and CI/CD workflows.
 
 - `--pre-release-num <PRE_RELEASE_NUM>` — Override pre-release number
 - `--custom <CUSTOM>` — Override custom variables in JSON format
-- `--core <INDEX=VALUE>` — Override core schema component by index=value (e.g., --core 0=5 or --core 1={{major}})
-- `--extra-core <INDEX=VALUE>` — Override extra-core schema component by index=value (e.g., --extra-core 0=5 or --extra-core 1={{branch}})
-- `--build <INDEX=VALUE>` — Override build schema component by index=value (e.g., --build 0=5 or --build 1={{commit_short}})
+- `--core <INDEX=VALUE>` — Override core schema component by index=value (e.g., --core 0=5, --core ~1=2024, --core 1={{major}})
+- `--extra-core <INDEX=VALUE>` — Override extra-core schema component by index=value (e.g., --extra-core 0=5, --extra-core ~1=beta, --extra-core 1={{branch}})
+- `--build <INDEX=VALUE>` — Override build schema component by index=value (e.g., --build 0=5, --build ~1=release, --build 1={{commit_short}})
 - `--bump-major <BUMP_MAJOR>` — Add to major version (default: 1)
 - `--bump-minor <BUMP_MINOR>` — Add to minor version (default: 1)
 - `--bump-patch <BUMP_PATCH>` — Add to patch version (default: 1)
