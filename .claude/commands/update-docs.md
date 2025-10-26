@@ -29,13 +29,17 @@ mkdir -p docs/.cache
 if [ -n "$MARKER_COMMIT" ] && [ "$MARKER_COMMIT" != "$CURRENT_COMMIT" ]; then
     git diff "$MARKER_COMMIT..HEAD" --name-status > docs/.cache/CHANGES.md
     git diff "$MARKER_COMMIT..HEAD" >> docs/.cache/CHANGES.md
+    # Include uncommitted changes only when there are commit changes
+    git diff HEAD >> docs/.cache/CHANGES.md 2>/dev/null || true
 elif [ -z "$MARKER_COMMIT" ]; then
     echo "First run - checking recent changes" > docs/.cache/CHANGES.md
     git log --oneline -10 >> docs/.cache/CHANGES.md
+    # Include uncommitted changes for first run
+    git diff HEAD >> docs/.cache/CHANGES.md 2>/dev/null || true
+else
+    # Marker commit matches HEAD, only check uncommitted changes
+    git diff HEAD > docs/.cache/CHANGES.md 2>/dev/null || echo "" > docs/.cache/CHANGES.md
 fi
-
-# Include uncommitted changes
-git diff HEAD >> docs/.cache/CHANGES.md 2>/dev/null || true
 
 # Analyze changes for CLI relevance
 echo "=== CHANGE ANALYSIS ===" > docs/.cache/CHANGELOG.md
