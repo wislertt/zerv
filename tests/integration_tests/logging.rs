@@ -2,13 +2,16 @@
 //!
 //! These tests verify that logging works correctly and doesn't interfere with normal operations.
 
+use zerv::config::EnvVars;
+
 use crate::integration_tests::util::command::TestCommand;
 
 #[test]
 fn test_verbose_flag_doesnt_crash() {
     let output = TestCommand::new()
         .args(["version", "--verbose"])
-        .env("RUST_LOG", "debug")
+        .env(EnvVars::RUST_LOG, "debug")
+        .env(EnvVars::ZERV_FORCE_RUST_LOG_OFF, "false")
         .output()
         .expect("Failed to run zerv");
 
@@ -75,7 +78,8 @@ fn test_verbose_with_stdin_piping() {
     // Generate zerv format output with verbose logging
     let zerv_output = TestCommand::new()
         .args(["version", "--verbose", "--output-format", "zerv"])
-        .env("RUST_LOG", "debug")
+        .env(EnvVars::RUST_LOG, "debug")
+        .env(EnvVars::ZERV_FORCE_RUST_LOG_OFF, "false")
         .assert_success()
         .stdout();
 
@@ -90,7 +94,8 @@ fn test_verbose_with_stdin_piping() {
             "semver",
         ])
         .stdin(zerv_output)
-        .env("RUST_LOG", "debug")
+        .env(EnvVars::RUST_LOG, "debug")
+        .env(EnvVars::ZERV_FORCE_RUST_LOG_OFF, "false")
         .assert_success();
 
     // Should produce semver output
