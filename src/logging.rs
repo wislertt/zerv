@@ -16,20 +16,40 @@ use crate::config::EnvVars;
 /// 2. --verbose flag - enables debug level
 /// 3. Default - error level only (Rust standard)
 pub fn init_logging(verbose: bool) {
-    let filter = if let Ok(rust_log) = std::env::var(EnvVars::RUST_LOG) {
+    let rust_log_env = std::env::var(EnvVars::RUST_LOG);
+
+    // ZERV_LOG_DEBUG: Unique keyword for debugging logging initialization in Ubuntu CI
+    eprintln!(
+        "ZERV_LOG_DEBUG: init_logging called with verbose={}, RUST_LOG={:?}",
+        verbose, rust_log_env
+    );
+
+    let filter = if let Ok(rust_log) = rust_log_env {
+        eprintln!(
+            "ZERV_LOG_DEBUG: Using RUST_LOG environment variable: {}",
+            rust_log
+        );
         EnvFilter::new(rust_log)
     } else if verbose {
+        eprintln!("ZERV_LOG_DEBUG: Using verbose mode, setting zerv=debug");
         EnvFilter::new("zerv=debug")
     } else {
+        eprintln!("ZERV_LOG_DEBUG: Using default error level logging");
         EnvFilter::new("error")
     };
 
+    eprintln!("ZERV_LOG_DEBUG: Final filter applied");
     let _result = fmt()
         .with_writer(std::io::stderr)
         .with_env_filter(filter)
         .with_target(false)
         .compact()
         .try_init();
+
+    eprintln!(
+        "ZERV_LOG_DEBUG: Logging initialization completed with result: {:?}",
+        _result
+    );
 }
 
 #[cfg(test)]
