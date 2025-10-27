@@ -15,9 +15,8 @@ lint:
 	cargo clippy --all-targets --all-features -- -D warnings
 	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
-# cargo_tarpaulin=off,zerv=off,handlebars=error
 _test:
-	RUST_BACKTRACE=1 RUST_LOG=cargo_tarpaulin=off,zerv=error,handlebars=error cargo tarpaulin \
+	RUST_BACKTRACE=1 RUST_LOG=cargo_tarpaulin=off cargo tarpaulin \
 		--features test-utils \
 		--out Xml --out Html --out Lcov \
 		--output-dir coverage \
