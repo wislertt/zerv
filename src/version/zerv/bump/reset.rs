@@ -13,7 +13,9 @@ impl Zerv {
             .precedence_order()
             .get_index(precedence)
             .ok_or_else(|| {
-                ZervError::InvalidBumpTarget(format!("Unknown precedence: {precedence:?}"))
+                ZervError::InvalidArgument(format!(
+                    "Unknown precedence: {precedence:?}. Valid precedences are: Epoch, Major, Minor, Patch, PreReleaseLabel, PreReleaseNum, Post, Dev"
+                ))
             })?;
 
         // Use a for loop over the precedence order

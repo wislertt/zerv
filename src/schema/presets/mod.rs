@@ -37,6 +37,7 @@ fn tier_1_extra_core() -> Vec<Component> {
 fn tier_2_build() -> Vec<Component> {
     vec![
         Component::Var(Var::BumpedBranch),
+        Component::Var(Var::Distance),
         Component::Var(Var::BumpedCommitHashShort),
     ]
 }
@@ -51,18 +52,25 @@ fn tier_3_extra_core() -> Vec<Component> {
 }
 
 fn tier_3_build() -> Vec<Component> {
-    vec![
-        Component::Var(Var::BumpedBranch),
-        Component::Var(Var::Distance),
-        Component::Var(Var::BumpedCommitHashShort),
-    ]
+    tier_2_build()
 }
 
 pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {
+    tracing::debug!("Loading preset schema: {}", name);
+
     match name {
-        "zerv-standard" => Some(ZervSchema::get_standard_schema(vars)),
-        "zerv-calver" => Some(ZervSchema::get_calver_schema(vars)),
-        _ => None,
+        "zerv-standard" => {
+            tracing::debug!("Using built-in zerv-standard schema");
+            Some(ZervSchema::get_standard_schema(vars))
+        }
+        "zerv-calver" => {
+            tracing::debug!("Using built-in zerv-calver schema");
+            Some(ZervSchema::get_calver_schema(vars))
+        }
+        _ => {
+            tracing::warn!("Unknown preset schema name: {}", name);
+            None
+        }
     }
 }
 

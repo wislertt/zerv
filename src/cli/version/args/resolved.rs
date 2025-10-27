@@ -28,8 +28,9 @@ pub struct ResolvedOverrides {
     pub dirty: bool,
     pub no_dirty: bool,
     pub clean: bool,
-    pub current_branch: Option<String>,
-    pub commit_hash: Option<String>,
+    pub bumped_branch: Option<String>,
+    pub bumped_commit_hash: Option<String>,
+    pub bumped_timestamp: Option<i64>,
 
     // Version component overrides (resolved from templates)
     pub major: Option<u32>,
@@ -94,8 +95,9 @@ impl ResolvedOverrides {
             dirty: overrides.dirty,
             no_dirty: overrides.no_dirty,
             clean: overrides.clean,
-            current_branch: overrides.current_branch.clone(),
-            commit_hash: overrides.commit_hash.clone(),
+            bumped_branch: overrides.bumped_branch.clone(),
+            bumped_commit_hash: overrides.bumped_commit_hash.clone(),
+            bumped_timestamp: overrides.bumped_timestamp,
 
             // Version component overrides (resolve templates)
             major: Self::resolve_template(&overrides.major, zerv)?,

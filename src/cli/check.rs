@@ -13,7 +13,7 @@ use crate::utils::constants::{
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 pub struct CheckArgs {
     /// Version string to validate
     pub version: String,

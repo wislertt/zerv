@@ -69,4 +69,22 @@ mod tests {
         let parsed: Zerv = ron::de::from_str(&ron_string).unwrap();
         assert_eq!(original, parsed);
     }
+
+    #[test]
+    fn test_zerv_display_always_produces_output() {
+        // Even with all None values, display should not panic
+        let schema = ZervSchema::new_with_precedence(
+            vec![Component::Var(Var::Major)],
+            vec![],
+            vec![],
+            PrecedenceOrder::default(),
+        )
+        .unwrap();
+        let vars = ZervVars::default();
+        let zerv = Zerv::new(schema, vars).unwrap();
+
+        let display_output = zerv.to_string();
+        // Should produce some output, not panic
+        assert!(!display_output.is_empty());
+    }
 }

@@ -3,6 +3,7 @@ use std::io::Write;
 use clap::Parser;
 
 use crate::cli::check::run_check_command;
+use crate::cli::llm_help::display_llm_help;
 use crate::cli::parser::{
     Cli,
     Commands,
@@ -15,13 +16,27 @@ pub fn run_with_args<W: Write>(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::try_parse_from(args)?;
 
+    crate::logging::init_logging(cli.verbose);
+
+    tracing::debug!("Zerv started with args: {:?}", cli);
+
+    // Handle --llm-help flag
+    if cli.llm_help {
+        display_llm_help(&mut writer)?;
+        return Ok(());
+    }
+
     match cli.command {
-        Commands::Version(version_args) => {
+        Some(Commands::Version(version_args)) => {
             let output = run_version_pipeline(*version_args)?;
             writeln!(writer, "{output}")?;
         }
-        Commands::Check(check_args) => {
+        Some(Commands::Check(check_args)) => {
             run_check_command(check_args)?;
+        }
+        None => {
+            // No subcommand provided, but --llm-help was not used either
+            // This will be handled by clap's default behavior
         }
     }
     Ok(())

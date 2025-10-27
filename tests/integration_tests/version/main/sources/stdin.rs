@@ -20,12 +20,12 @@ fn test_stdin_basic_output(
         .build()
         .to_string();
 
-    let output = TestCommand::new()
-        .args_from_str(format!("version --source stdin --output-format {format}"))
-        .stdin(zerv_ron)
-        .assert_success();
+    let output = TestCommand::run_with_stdin(
+        &format!("version --source stdin --output-format {format}"),
+        zerv_ron,
+    );
 
-    assert_eq!(output.stdout().trim(), expected);
+    assert_eq!(output, expected);
 }
 
 #[rstest]
@@ -43,12 +43,12 @@ fn test_stdin_with_prerelease(
         .build()
         .to_string();
 
-    let output = TestCommand::new()
-        .args_from_str(format!("version --source stdin --output-format {format}"))
-        .stdin(zerv_ron)
-        .assert_success();
+    let output = TestCommand::run_with_stdin(
+        &format!("version --source stdin --output-format {format}"),
+        zerv_ron,
+    );
 
-    assert_eq!(output.stdout().trim(), expected);
+    assert_eq!(output, expected);
 }
 
 #[rstest]
@@ -71,12 +71,10 @@ fn test_stdin_pep440_features(
 
     let zerv_ron = fixture.build().to_string();
 
-    let output = TestCommand::new()
-        .args_from_str("version --source stdin --output-format pep440")
-        .stdin(zerv_ron)
-        .assert_success();
+    let output =
+        TestCommand::run_with_stdin("version --source stdin --output-format pep440", zerv_ron);
 
-    assert_eq!(output.stdout().trim(), expected);
+    assert_eq!(output, expected);
 }
 
 #[rstest]
@@ -90,13 +88,10 @@ fn test_stdin_zerv_roundtrip(#[case] fixture: ZervFixture) {
 
     let zerv_ron = original_zerv.to_string();
 
-    let output = TestCommand::new()
-        .args_from_str("version --source stdin --output-format zerv")
-        .stdin(zerv_ron)
-        .assert_success();
+    let output =
+        TestCommand::run_with_stdin("version --source stdin --output-format zerv", zerv_ron);
 
-    let parsed_zerv: Zerv =
-        ron::from_str(output.stdout().trim()).expect("Failed to parse output as Zerv RON");
+    let parsed_zerv: Zerv = ron::from_str(&output).expect("Failed to parse output as Zerv RON");
 
     assert_eq!(
         parsed_zerv, original_zerv,

@@ -3,7 +3,6 @@ pub mod git;
 pub mod output;
 pub mod types;
 pub mod vcs_fixtures;
-pub mod version;
 pub mod version_args;
 pub mod zerv;
 
@@ -23,7 +22,7 @@ pub use vcs_fixtures::{
     get_real_pep440_vcs_data,
     get_real_semver_vcs_data,
 };
-pub use version::VersionTestUtils;
+// pub use version::VersionTestUtils;
 pub use version_args::VersionArgsFixture;
 // Zerv fixtures
 pub use zerv::{

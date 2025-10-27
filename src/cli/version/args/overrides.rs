@@ -4,7 +4,7 @@ use crate::cli::utils::template::Template;
 use crate::utils::constants::pre_release_labels;
 
 /// Override configuration for VCS and version components
-#[derive(Parser, Default)]
+#[derive(Parser, Default, Debug)]
 pub struct OverridesConfig {
     // ============================================================================
     // VCS OVERRIDE OPTIONS
@@ -31,7 +31,7 @@ pub struct OverridesConfig {
     #[arg(long, action = clap::ArgAction::SetTrue, help = "Override dirty state to false (sets dirty=false)")]
     pub no_dirty: bool,
 
-    /// Set distance=0 and dirty=false (clean release state)
+    /// Set distance=None and dirty=false (clean release state)
     #[arg(
         long,
         help = "Force clean release state (sets distance=0, dirty=false). Conflicts with --distance and --dirty"
@@ -40,11 +40,15 @@ pub struct OverridesConfig {
 
     /// Override the detected current branch name
     #[arg(long, help = "Override current branch name")]
-    pub current_branch: Option<String>,
+    pub bumped_branch: Option<String>,
 
     /// Override the detected commit hash
     #[arg(long, help = "Override commit hash (full or short form)")]
-    pub commit_hash: Option<String>,
+    pub bumped_commit_hash: Option<String>,
+
+    /// Override the detected commit timestamp
+    #[arg(long, help = "Override commit timestamp (Unix timestamp)")]
+    pub bumped_timestamp: Option<i64>,
 
     // ============================================================================
     // VERSION COMPONENT OVERRIDE OPTIONS
@@ -94,7 +98,7 @@ pub struct OverridesConfig {
         long,
         value_name = "INDEX=VALUE",
         num_args = 1..,
-        help = "Override core schema component by index=value (e.g., --core 0=5 or --core 1={{major}})"
+        help = "Override core schema component by index=value (e.g., --core 0=5, --core ~1=2024, --core 1={{major}})"
     )]
     pub core: Vec<Template<String>>,
 
@@ -103,7 +107,7 @@ pub struct OverridesConfig {
         long,
         value_name = "INDEX=VALUE",
         num_args = 1..,
-        help = "Override extra-core schema component by index=value (e.g., --extra-core 0=5 or --extra-core 1={{branch}})"
+        help = "Override extra-core schema component by index=value (e.g., --extra-core 0=5, --extra-core ~1=beta, --extra-core 1={{branch}})"
     )]
     pub extra_core: Vec<Template<String>>,
 
@@ -112,7 +116,7 @@ pub struct OverridesConfig {
         long,
         value_name = "INDEX=VALUE",
         num_args = 1..,
-        help = "Override build schema component by index=value (e.g., --build 0=5 or --build 1={{commit_short}})"
+        help = "Override build schema component by index=value (e.g., --build 0=5, --build ~1=release, --build 1={{commit_short}})"
     )]
     pub build: Vec<Template<String>>,
 }

@@ -5,6 +5,7 @@ use super::TestCommand;
 #[rstest]
 #[case("1.2.3", "Valid PEP440 format")]
 #[case("1.2.3", "Valid SemVer format")]
+#[case("1.2.3.4.5", "Valid PEP440 format")]
 fn test_check_command_valid_versions(#[case] version: &str, #[case] expected_text: &str) {
     TestCommand::new()
         .arg("check")
@@ -13,17 +14,15 @@ fn test_check_command_valid_versions(#[case] version: &str, #[case] expected_tex
         .assert_stdout_contains(expected_text);
 }
 
-// TODO: Fix validation - currently accepts "1.2.3.4.5" as valid when it should fail
-// #[rstest]
-// #[case("invalid.version.string")]
-// #[case("not-a-version")]
-// #[case("1.2.3.4.5")]
-// fn test_check_command_invalid_versions(#[case] version: &str) {
-//     TestCommand::new()
-//         .arg("check")
-//         .arg(version)
-//         .assert_failure();
-// }
+#[rstest]
+#[case("invalid.version.string")]
+#[case("not-a-version")]
+fn test_check_command_invalid_versions(#[case] version: &str) {
+    TestCommand::new()
+        .arg("check")
+        .arg(version)
+        .assert_failure();
+}
 
 #[test]
 fn test_check_command_error_message_quality() {

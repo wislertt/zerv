@@ -22,8 +22,9 @@ fn test_version_args_defaults() {
     assert!(!args.overrides.dirty);
     assert!(!args.overrides.no_dirty);
     assert!(!args.overrides.clean);
-    assert!(args.overrides.current_branch.is_none());
-    assert!(args.overrides.commit_hash.is_none());
+    assert!(args.overrides.bumped_branch.is_none());
+    assert!(args.overrides.bumped_commit_hash.is_none());
+    assert!(args.overrides.bumped_timestamp.is_none());
     assert!(args.overrides.post.is_none());
     assert!(args.overrides.dev.is_none());
     assert!(args.overrides.pre_release_label.is_none());
@@ -64,9 +65,9 @@ fn test_version_args_with_overrides() {
         "--distance",
         "5",
         "--dirty",
-        "--current-branch",
+        "--bumped-branch",
         "feature/test",
-        "--commit-hash",
+        "--bumped-commit-hash",
         "abc123",
         "--input-format",
         "semver",
@@ -81,10 +82,13 @@ fn test_version_args_with_overrides() {
     assert!(!args.overrides.no_dirty);
     assert!(!args.overrides.clean);
     assert_eq!(
-        args.overrides.current_branch,
+        args.overrides.bumped_branch,
         Some("feature/test".to_string())
     );
-    assert_eq!(args.overrides.commit_hash, Some("abc123".to_string()));
+    assert_eq!(
+        args.overrides.bumped_commit_hash,
+        Some("abc123".to_string())
+    );
     assert_eq!(args.main.input_format, formats::SEMVER);
     assert_eq!(args.main.output_prefix, Some("version:".to_string()));
 }
@@ -181,9 +185,9 @@ fn test_validate_clean_with_non_conflicting_options() {
         "--clean",
         "--tag-version",
         "v2.0.0",
-        "--current-branch",
+        "--bumped-branch",
         "main",
-        "--commit-hash",
+        "--bumped-commit-hash",
         "abc123",
     ])
     .unwrap();

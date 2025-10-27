@@ -10,8 +10,8 @@ fn main() {
         Some("generate-docs") => {
             let markdown = clap_markdown::help_markdown_custom::<Cli>(&MarkdownOptions::new());
 
-            // Use provided path or default to docs/CLI.md
-            let output_path = args.get(2).map(|s| s.as_str()).unwrap_or("docs/CLI.md");
+            // Use provided path or default to docs/AUTO.md
+            let output_path = args.get(2).map(|s| s.as_str()).unwrap_or("docs/AUTO.md");
 
             // Create parent directory if it doesn't exist
             if let Some(parent) = Path::new(output_path).parent() {
@@ -27,7 +27,7 @@ fn main() {
         _ => {
             eprintln!("Usage: cargo xtask <TASK> [OPTIONS]");
             eprintln!("Tasks:");
-            eprintln!("  generate-docs [PATH]    Generate CLI documentation (default: docs/CLI.md)");
+            eprintln!("  generate-docs [PATH]    Generate CLI documentation (default: docs/AUTO.md)");
         }
     }
 }

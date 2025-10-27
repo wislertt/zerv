@@ -45,10 +45,7 @@ pub trait GitOperations {
     fn init_repo_no_commit(&self, test_dir: &TestDir) -> io::Result<()>;
 
     /// Create a git tag
-    fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
-        self.execute_git(test_dir, &["tag", tag])?;
-        Ok(())
-    }
+    fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()>;
 
     /// Create a commit
     fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()>;

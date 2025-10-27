@@ -62,6 +62,11 @@ impl TestDir {
         self.create_file("README.md", "# Test Repository")?;
         Ok(())
     }
+
+    /// Consume TestDir and return the inner TempDir
+    pub fn into_inner(self) -> TempDir {
+        self.inner
+    }
 }
 
 #[cfg(test)]

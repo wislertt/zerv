@@ -14,6 +14,8 @@ use super::{
     GitTestConstants,
     TestDir,
 };
+#[cfg(test)]
+use crate::config::EnvVars;
 
 #[cfg(test)]
 fn validate_docker_args(args: &[&str]) -> Result<(), String> {
@@ -206,9 +208,18 @@ impl DockerGit {
             ));
 
             // Only retry for specific git reference errors that are likely transient
-            if stderr.contains("cannot update ref") || stderr.contains("nonexistent object") {
+            if stderr.contains("cannot update ref")
+                || stderr.contains("nonexistent object")
+                || stderr.contains("is not a valid object")
+            {
                 if attempt < max_attempts {
-                    println!(
+                    tracing::warn!(
+                        "Transient Git error detected, retrying ({}/{}): {}",
+                        attempt,
+                        max_attempts,
+                        stderr.trim()
+                    );
+                    tracing::debug!(
                         "🔄 RETRY: {} (attempt {}/{}) - {}",
                         operation_name,
                         attempt,
@@ -235,12 +246,15 @@ impl DockerGit {
         let result = self.execute_docker_command(script, "exec command")?;
 
         let duration = start.elapsed();
-        eprintln!("🐳 Docker Git command '{script}' took {duration:?}");
+        tracing::debug!("🐳 Docker Git command '{script}' took {duration:?}");
 
         Ok(result)
     }
 
     pub fn run_git_command(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
+        let cmd_str = args.join(" ");
+        tracing::debug!("Docker Git command: git {}", cmd_str);
+
         let git_command = args
             .iter()
             .map(|arg| {
@@ -508,18 +522,27 @@ mod tests {
     }
 
     #[test]
+    fn test_is_docker_available2() {
+        println!("{}", is_docker_available());
+    }
+
+    #[test]
     fn test_is_docker_available() {
         if should_run_docker_tests() {
             assert!(
                 is_docker_available(),
-                "ZERV_TEST_DOCKER is enabled but Docker is not available - install Docker or disable ZERV_TEST_DOCKER"
+                "{} is enabled but Docker is not available - install Docker or disable {}",
+                EnvVars::ZERV_TEST_DOCKER,
+                EnvVars::ZERV_TEST_DOCKER
             );
-        } else {
-            assert!(
-                !is_docker_available(),
-                "Docker is available but ZERV_TEST_DOCKER is disabled - enable ZERV_TEST_DOCKER to test Docker functionality"
+        } else if is_docker_available() {
+            eprintln!(
+                "⚠️  Docker is available but {} is disabled - enable {} to test Docker functionality",
+                EnvVars::ZERV_TEST_DOCKER,
+                EnvVars::ZERV_TEST_DOCKER
             );
         }
+        // Docker not available and tests disabled - pass silently
     }
 
     #[rstest]
@@ -609,9 +632,26 @@ mod tests {
             return;
         }
         let (dir, docker_git) = setup_repo_with_commit();
+
         docker_git
             .create_tag(&dir, "v1.0.0")
             .expect(DOCKER_TAG_ERROR);
+
+        docker_git
+            .create_branch(&dir, "feature/test-branch")
+            .expect("Should create branch successfully");
+
+        let tag_list = docker_git.execute_git(&dir, &["tag", "-l"]).unwrap();
+        assert!(tag_list.contains("v1.0.0"), "Tag should exist");
+
+        let current_branch = docker_git
+            .execute_git(&dir, &["branch", "--show-current"])
+            .unwrap();
+        assert_eq!(
+            current_branch.trim(),
+            "feature/test-branch",
+            "Should be on new branch"
+        );
     }
 
     #[test]

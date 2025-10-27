@@ -1,5 +1,6 @@
 pub mod app;
 pub mod check;
+pub mod llm_help;
 pub mod parser;
 pub mod utils;
 pub mod version;

@@ -143,6 +143,16 @@ impl TestCommand {
         self
     }
 
+    /// Set an environment variable for the command
+    pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        self.cmd.env(key, val);
+        self
+    }
+
     /// Execute the command and return output
     pub fn output(&mut self) -> io::Result<Output> {
         if let Some(ref input) = self.stdin_input {
@@ -155,7 +165,15 @@ impl TestCommand {
             let mut child = self.cmd.spawn()?;
 
             if let Some(mut stdin) = child.stdin.take() {
-                stdin.write_all(input.as_bytes())?;
+                let result = stdin.write_all(input.as_bytes());
+                drop(stdin);
+
+                if let Err(e) = result {
+                    if e.kind() == io::ErrorKind::BrokenPipe {
+                    } else {
+                        return Err(e);
+                    }
+                }
             }
 
             child.wait_with_output()
@@ -185,6 +203,28 @@ impl TestCommand {
             "Expected command to fail but it succeeded"
         );
         TestOutput::new(output)
+    }
+
+    /// Convenience method: create command, provide stdin, and return stdout
+    pub fn run_with_stdin(args: &str, input: String) -> String {
+        Self::new()
+            .args_from_str(args)
+            .stdin(input)
+            .assert_success()
+            .stdout()
+            .trim()
+            .to_string()
+    }
+
+    /// Convenience method: create command, provide stdin, and expect failure
+    pub fn run_with_stdin_expect_fail(args: &str, input: String) -> String {
+        Self::new()
+            .args_from_str(args)
+            .stdin(input)
+            .assert_failure()
+            .stderr()
+            .trim()
+            .to_string()
     }
 }
 
@@ -266,5 +306,36 @@ mod tests {
         cmd.args_from_str(args).stdin(zerv_ron);
         let output = cmd.assert_success();
         assert_eq!(output.stdout().trim(), expected);
+    }
+
+    #[rstest]
+    #[case("version --source stdin", "1.2.3")]
+    #[case("version --source stdin --output-format semver", "1.2.3")]
+    #[case("version --source stdin --output-format pep440", "1.2.3")]
+    #[case(
+        r#"version --source stdin --output-template "v{{major}}.{{minor}}""#,
+        "v1.2"
+    )]
+    fn test_run_with_stdin(#[case] args: &str, #[case] expected: &str) {
+        use zerv::test_utils::ZervFixture;
+
+        let zerv_ron = ZervFixture::new().with_version(1, 2, 3).build().to_string();
+        let output = TestCommand::run_with_stdin(args, zerv_ron);
+
+        assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn test_run_with_stdin_expect_fail() {
+        use zerv::test_utils::ZervFixture;
+
+        let zerv_ron = ZervFixture::new().with_version(1, 2, 3).build().to_string();
+        let result = TestCommand::run_with_stdin_expect_fail(
+            "version --source stdin --invalid-flag",
+            zerv_ron,
+        );
+
+        // Verify it returns stderr directly
+        assert!(result.contains("unexpected argument") || result.contains("invalid"));
     }
 }

@@ -15,13 +15,16 @@ lint:
 	cargo clippy --all-targets --all-features -- -D warnings
 	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
-# Internal helper - no environment variables set
 _test:
-	RUST_BACKTRACE=1 cargo tarpaulin \
+	RUST_BACKTRACE=1 RUST_LOG=cargo_tarpaulin=off cargo tarpaulin \
 		--features test-utils \
 		--out Xml --out Html --out Lcov \
 		--output-dir coverage \
-		--include-tests --exclude-files src/main.rs --exclude-files tests/
+		--include-tests \
+		--exclude-files 'src/main.rs' \
+		--exclude-files '**/tests/**' \
+		--exclude-files 'src/test_utils/git/native.rs' \
+		-- --quiet
 
 # Quick testing without Docker tests
 test_easy:

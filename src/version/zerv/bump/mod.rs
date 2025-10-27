@@ -1,4 +1,5 @@
 use super::core::Zerv;
+use super::schema::SchemaPartName;
 use crate::cli::version::args::ResolvedArgs;
 use crate::error::ZervError;
 
@@ -31,7 +32,7 @@ impl Zerv {
                     self.process_patch(args.overrides.patch, args.bumps.bump_patch.flatten())?
                 }
                 Precedence::Core => self.process_schema_section(
-                    "core",
+                    SchemaPartName::Core,
                     &args.overrides.core,
                     &args.bumps.bump_core,
                 )?,
@@ -47,12 +48,12 @@ impl Zerv {
                     self.process_dev(args.overrides.dev, args.bumps.bump_dev.flatten())?
                 }
                 Precedence::ExtraCore => self.process_schema_section(
-                    "extra_core",
+                    SchemaPartName::ExtraCore,
                     &args.overrides.extra_core,
                     &args.bumps.bump_extra_core,
                 )?,
                 Precedence::Build => self.process_schema_section(
-                    "build",
+                    SchemaPartName::Build,
                     &args.overrides.build,
                     &args.bumps.bump_build,
                 )?,
@@ -77,6 +78,7 @@ mod tests {
         ZervFixture,
     };
     use crate::version::semver::SemVer;
+    use crate::version::zerv::schema::SchemaPartName;
 
     // Test multiple bump combinations with reset logic
     #[rstest]
@@ -180,39 +182,39 @@ mod tests {
     #[rstest]
     #[case(
         "1.2.3",
-        vec![BumpType::SchemaBump { section: "core".to_string(), index: 0, value: None }],
+        vec![BumpType::SchemaBump { section: SchemaPartName::Core, index: 0, value: None }],
         "2.0.0"  // core[0] (major) bumped by 1, resets minor+patch
     )]
     #[case(
         "1.2.3",
-        vec![BumpType::SchemaBump { section: "core".to_string(), index: 0, value: Some(5) }],
+        vec![BumpType::SchemaBump { section: SchemaPartName::Core, index: 0, value: Some(5) }],
         "6.0.0"  // core[0] (major) bumped by 5, resets minor+patch
     )]
     #[case(
         "1.2.3",
-        vec![BumpType::SchemaBump { section: "core".to_string(), index: 1, value: Some(3) }],
+        vec![BumpType::SchemaBump { section: SchemaPartName::Core, index: 1, value: Some(3) }],
         "1.5.0"  // core[1] (minor) bumped by 3, resets patch
     )]
     #[case(
         "1.2.3",
-        vec![BumpType::SchemaBump { section: "core".to_string(), index: -1, value: None }],
+        vec![BumpType::SchemaBump { section: SchemaPartName::Core, index: -1, value: None }],
         "1.2.4"  // core[-1] (patch, last component) bumped by 1, no reset
     )]
     #[case(
         "1.2.3",
-        vec![BumpType::SchemaBump { section: "core".to_string(), index: -1, value: Some(7) }],
+        vec![BumpType::SchemaBump { section: SchemaPartName::Core, index: -1, value: Some(7) }],
         "1.2.10" // core[-1] (patch) bumped by 7, no reset
     )]
     #[case(
         "1.2.3",
-        vec![BumpType::SchemaBump { section: "core".to_string(), index: -2, value: Some(2) }],
+        vec![BumpType::SchemaBump { section: SchemaPartName::Core, index: -2, value: Some(2) }],
         "1.4.0"  // core[-2] (minor, second-to-last) bumped by 2, resets patch
     )]
     #[case(
         "1.2.3",
         vec![
-            BumpType::SchemaBump { section: "core".to_string(), index: 0, value: None },
-            BumpType::SchemaBump { section: "core".to_string(), index: 1, value: None }
+            BumpType::SchemaBump { section: SchemaPartName::Core, index: 0, value: None },
+            BumpType::SchemaBump { section: SchemaPartName::Core, index: 1, value: None }
         ],
         "2.1.0"  // major bump resets minor+patch, then minor bump resets patch
     )]

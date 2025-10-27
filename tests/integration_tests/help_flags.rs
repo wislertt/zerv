@@ -1,4 +1,5 @@
 use rstest::rstest;
+use zerv::config::EnvVars;
 
 use crate::util::TestCommand;
 
@@ -143,6 +144,46 @@ fn test_check_command_help() {
         stdout.contains("Validate"),
         "Should contain validation description"
     );
+}
+
+#[rstest]
+#[case(None, "default")]
+#[case(Some(""), "empty pager")]
+#[case(Some("nonexistent-pager"), "invalid pager")]
+fn test_llm_help_flag(#[case] pager_env: Option<&str>, #[case] description: &str) {
+    let test_output = match pager_env {
+        Some(pager) => TestCommand::new()
+            .env(EnvVars::PAGER, pager)
+            .arg("--llm-help")
+            .assert_success(),
+        None => TestCommand::new().arg("--llm-help").assert_success(),
+    };
+
+    let stdout = test_output.stdout();
+
+    // Should contain the comprehensive CLI manual
+    assert!(
+        stdout.contains("# Zerv CLI Documentation"),
+        "Should contain manual title with {}: {stdout}",
+        description
+    );
+
+    // Should have substantial content for the main test case
+    if pager_env.is_none() {
+        assert!(
+            stdout.len() > 1000,
+            "Manual should have substantial content with {} (got {} chars)",
+            description,
+            stdout.len()
+        );
+    } else {
+        // For pager edge cases, just verify there's output
+        assert!(
+            !stdout.is_empty(),
+            "Should have output content with {}",
+            description
+        );
+    }
 }
 
 #[test]

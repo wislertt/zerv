@@ -11,8 +11,27 @@ pub struct Validation;
 
 impl Validation {
     /// Validate main configuration
-    pub fn validate_main(_main: &MainConfig) -> Result<(), ZervError> {
-        // Main config validation (currently no conflicts to check)
+    pub fn validate_main(main: &MainConfig) -> Result<(), ZervError> {
+        // Check for --output-template conflicts
+        if main.output_template.is_some() {
+            if main.output_format != crate::utils::constants::formats::SEMVER {
+                return Err(ZervError::ConflictingOptions(
+                    "Cannot use --output-template with --output-format. \
+                     Use --output-format alone for pure format output, \
+                     or --output-template alone for custom formatting"
+                        .to_string(),
+                ));
+            }
+            if main.output_prefix.is_some() {
+                return Err(ZervError::ConflictingOptions(
+                    "Cannot use --output-template with --output-prefix. \
+                     Add the prefix directly in your template instead \
+                     (e.g., 'v{{major}}.{{minor}}.{{patch}}')"
+                        .to_string(),
+                ));
+            }
+        }
+
         Ok(())
     }
 

@@ -1,0 +1,10 @@
+# clippy.toml - Clippy configuration for zerv project
+
+# Warn on too many lines in functions (helps catch overly complex functions)
+# This indirectly helps with readability
+too-many-lines-threshold = 100
+
+# Warn on cognitive complexity (helps catch complex logic that might benefit from refactoring)
+cognitive-complexity-threshold = 15
+
+# These settings help enforce code quality that reduces long lines

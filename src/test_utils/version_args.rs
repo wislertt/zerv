@@ -4,6 +4,7 @@ use crate::test_utils::types::{
     BumpType,
     OverrideType,
 };
+use crate::version::zerv::schema::SchemaPartName;
 
 /// Test fixture for creating VersionArgs with sensible defaults and chainable methods
 pub struct VersionArgsFixture {
@@ -105,13 +106,13 @@ impl VersionArgsFixture {
 
     /// Set current branch
     pub fn with_current_branch(mut self, branch: &str) -> Self {
-        self.args.overrides.current_branch = Some(branch.to_string());
+        self.args.overrides.bumped_branch = Some(branch.to_string());
         self
     }
 
     /// Set commit hash
     pub fn with_commit_hash(mut self, hash: &str) -> Self {
-        self.args.overrides.commit_hash = Some(hash.to_string());
+        self.args.overrides.bumped_commit_hash = Some(hash.to_string());
         self
     }
 
@@ -274,18 +275,15 @@ impl VersionArgsFixture {
                         Some(v) => format!("{index}={v}"), // "0=5"
                         None => index.to_string(),         // "0"
                     };
-                    match section.as_str() {
-                        "core" => {
+                    match section {
+                        SchemaPartName::Core => {
                             self.args.bumps.bump_core.push(spec.into());
                         }
-                        "extra_core" => {
+                        SchemaPartName::ExtraCore => {
                             self.args.bumps.bump_extra_core.push(spec.into());
                         }
-                        "build" => {
+                        SchemaPartName::Build => {
                             self.args.bumps.bump_build.push(spec.into());
-                        }
-                        _ => {
-                            // Unknown section - ignore for now
                         }
                     }
                 }
@@ -303,10 +301,15 @@ impl VersionArgsFixture {
                 }
                 OverrideType::Distance(distance) => self.args.overrides.distance = Some(distance),
                 OverrideType::Dirty(dirty) => self.args.overrides.dirty = dirty,
-                OverrideType::CurrentBranch(branch) => {
-                    self.args.overrides.current_branch = Some(branch)
+                OverrideType::BumpedBranch(branch) => {
+                    self.args.overrides.bumped_branch = Some(branch)
                 }
-                OverrideType::CommitHash(hash) => self.args.overrides.commit_hash = Some(hash),
+                OverrideType::BumpedCommitHash(hash) => {
+                    self.args.overrides.bumped_commit_hash = Some(hash)
+                }
+                OverrideType::BumpedTimestamp(timestamp) => {
+                    self.args.overrides.bumped_timestamp = Some(timestamp)
+                }
                 OverrideType::Major(major) => self.args.overrides.major = Some(major.into()),
                 OverrideType::Minor(minor) => self.args.overrides.minor = Some(minor.into()),
                 OverrideType::Patch(patch) => self.args.overrides.patch = Some(patch.into()),
@@ -385,10 +388,13 @@ mod tests {
         assert_eq!(args.overrides.distance, Some(10));
         assert!(args.overrides.dirty);
         assert_eq!(
-            args.overrides.current_branch,
+            args.overrides.bumped_branch,
             Some("feature/test".to_string())
         );
-        assert_eq!(args.overrides.commit_hash, Some("deadbeef".to_string()));
+        assert_eq!(
+            args.overrides.bumped_commit_hash,
+            Some("deadbeef".to_string())
+        );
     }
 
     #[test]
@@ -433,7 +439,7 @@ mod tests {
             OverrideType::TagVersion("v2.0.0".to_string()),
             OverrideType::Distance(15),
             OverrideType::Dirty(true),
-            OverrideType::CurrentBranch("main".to_string()),
+            OverrideType::BumpedBranch("main".to_string()),
         ];
 
         let args = VersionArgsFixture::new()
@@ -444,7 +450,7 @@ mod tests {
         assert_eq!(args.overrides.tag_version, Some("v2.0.0".to_string()));
         assert_eq!(args.overrides.distance, Some(15));
         assert!(args.overrides.dirty);
-        assert_eq!(args.overrides.current_branch, Some("main".to_string()));
+        assert_eq!(args.overrides.bumped_branch, Some("main".to_string()));
         assert_eq!(args.main.output_format, formats::PEP440);
     }
 
@@ -461,5 +467,106 @@ mod tests {
         assert_eq!(args1.main.input_format, args2.main.input_format);
         assert_eq!(args1.main.output_format, args2.main.output_format);
         assert_eq!(args1.overrides.dirty, args2.overrides.dirty);
+    }
+
+    // Tests for uncovered methods
+
+    #[test]
+    fn test_with_schema_ron() {
+        let args = VersionArgsFixture::new()
+            .with_schema_ron("core: [{var: \"major\"}]")
+            .build();
+        assert_eq!(
+            args.main.schema_ron,
+            Some("core: [{var: \"major\"}]".to_string())
+        );
+    }
+
+    #[test]
+    fn test_with_output_template() {
+        let args = VersionArgsFixture::new()
+            .with_output_template("v{{major}}.{{minor}}.{{patch}}")
+            .build();
+        assert_eq!(
+            args.main.output_template,
+            Some(crate::cli::utils::template::Template::Value(
+                "v{{major}}.{{minor}}.{{patch}}".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn test_with_output_prefix() {
+        let args = VersionArgsFixture::new()
+            .with_output_prefix("release-")
+            .build();
+        assert_eq!(args.main.output_prefix, Some("release-".to_string()));
+    }
+
+    #[test]
+    fn test_with_no_dirty() {
+        let args = VersionArgsFixture::new().with_no_dirty(true).build();
+        assert!(args.overrides.no_dirty);
+
+        let args2 = VersionArgsFixture::new().with_no_dirty(false).build();
+        assert!(!args2.overrides.no_dirty);
+    }
+
+    #[test]
+    fn test_with_clean_flag() {
+        let args = VersionArgsFixture::new().with_clean_flag(true).build();
+        assert!(args.overrides.clean);
+
+        let args2 = VersionArgsFixture::new().with_clean_flag(false).build();
+        assert!(!args2.overrides.clean);
+    }
+
+    #[test]
+    fn test_with_commit_hash() {
+        let args = VersionArgsFixture::new()
+            .with_commit_hash("deadbeef1234567890")
+            .build();
+        assert_eq!(
+            args.overrides.bumped_commit_hash,
+            Some("deadbeef1234567890".to_string())
+        );
+    }
+
+    #[test]
+    fn test_with_custom() {
+        let args = VersionArgsFixture::new()
+            .with_custom("build_number")
+            .build();
+        assert_eq!(args.overrides.custom, Some("build_number".to_string()));
+    }
+
+    #[test]
+    fn test_all_uncovered_methods_chainable() {
+        let args = VersionArgsFixture::new()
+            .with_schema_ron("test-schema")
+            .with_output_template("{{version}}")
+            .with_output_prefix("v")
+            .with_no_dirty(true)
+            .with_clean_flag(true)
+            .with_commit_hash("hash123")
+            .with_custom("custom_value")
+            .build();
+
+        // Verify all settings were applied
+        assert_eq!(args.main.schema_ron, Some("test-schema".to_string()));
+        assert_eq!(
+            args.main.output_template,
+            Some(crate::cli::utils::template::Template::Value(
+                "{{version}}".to_string()
+            ))
+        );
+        assert_eq!(args.main.output_prefix, Some("v".to_string()));
+        assert!(args.overrides.no_dirty);
+        assert!(args.overrides.clean);
+        assert_eq!(
+            args.overrides.bumped_commit_hash,
+            Some("hash123".to_string())
+        );
+        assert_eq!(args.overrides.custom, Some("custom_value".to_string()));
     }
 }

@@ -1,23 +1,71 @@
 use std::env;
 
+/// Centralized environment variable names used throughout Zerv.
+/// Following uv's pattern for maintainability and documentation.
+pub struct EnvVars;
+
+impl EnvVars {
+    /// Control logging verbosity (standard Rust ecosystem convention).
+    ///
+    /// Examples:
+    /// * `RUST_LOG=zerv=debug` - Debug logs for Zerv
+    /// * `RUST_LOG=trace` - Trace-level logging
+    /// * `RUST_LOG=zerv::vcs=debug` - Module-specific logging
+    ///
+    /// See [tracing documentation](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html)
+    pub const RUST_LOG: &'static str = "RUST_LOG";
+
+    /// Force logging off for CI environments (Ubuntu CI).
+    ///
+    /// When set to any value, all logging is disabled regardless of RUST_LOG setting.
+    /// Used specifically to prevent debug log spam in Ubuntu CI.
+    pub const ZERV_FORCE_RUST_LOG_OFF: &'static str = "ZERV_FORCE_RUST_LOG_OFF";
+
+    /// Use native Git instead of Docker Git for tests (default: false).
+    ///
+    /// Set to `true` or `1` to enable native Git in test environments.
+    pub const ZERV_TEST_NATIVE_GIT: &'static str = "ZERV_TEST_NATIVE_GIT";
+
+    /// Enable Docker-dependent tests (default: true).
+    ///
+    /// Set to `false` or `0` to skip Docker tests on systems without Docker.
+    pub const ZERV_TEST_DOCKER: &'static str = "ZERV_TEST_DOCKER";
+
+    /// Preferred pager program for displaying manual pages.
+    ///
+    /// Examples:
+    /// * `PAGER=less` - Use less pager
+    /// * `PAGER=more` - Use more pager
+    /// * `PAGER=most` - Use most pager
+    ///
+    /// If not set, Zerv will fall back to searching for common pagers (less, more, most).
+    pub const PAGER: &'static str = "PAGER";
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ZervConfig {
     pub test_native_git: bool,
     pub test_docker: bool,
+    pub force_rust_log_off: bool,
 }
 
 impl ZervConfig {
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
-        let test_native_git = Self::parse_bool_env("ZERV_TEST_NATIVE_GIT", false)?;
-        let test_docker = Self::parse_bool_env("ZERV_TEST_DOCKER", true)?;
+        let test_native_git = Self::parse_bool_env(EnvVars::ZERV_TEST_NATIVE_GIT, false)?;
+        let test_docker = Self::parse_bool_env(EnvVars::ZERV_TEST_DOCKER, true)?;
+        let force_rust_log_off = Self::parse_bool_env(EnvVars::ZERV_FORCE_RUST_LOG_OFF, false)?;
 
         Ok(ZervConfig {
             test_native_git,
             test_docker,
+            force_rust_log_off,
         })
     }
 
-    fn parse_bool_env(var_name: &str, default: bool) -> Result<bool, Box<dyn std::error::Error>> {
+    pub fn parse_bool_env(
+        var_name: &str,
+        default: bool,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
         match env::var(var_name) {
             Ok(val) => Ok(val == "true" || val == "1"),
             Err(_) => Ok(default),
@@ -30,6 +78,10 @@ impl ZervConfig {
 
     pub fn should_run_docker_tests(&self) -> bool {
         self.test_docker
+    }
+
+    pub fn should_force_rust_log_off(&self) -> bool {
+        self.force_rust_log_off
     }
 }
 
@@ -71,70 +123,121 @@ mod tests {
     #[test]
     #[serial]
     fn test_default_config() {
-        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        let _guard = EnvGuard::new(&[
+            EnvVars::ZERV_TEST_NATIVE_GIT,
+            EnvVars::ZERV_TEST_DOCKER,
+            EnvVars::ZERV_FORCE_RUST_LOG_OFF,
+        ]);
         unsafe {
-            env::remove_var("ZERV_TEST_NATIVE_GIT");
-            env::remove_var("ZERV_TEST_DOCKER");
+            env::remove_var(EnvVars::ZERV_TEST_NATIVE_GIT);
+            env::remove_var(EnvVars::ZERV_TEST_DOCKER);
+            env::remove_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF);
         }
 
         let config = ZervConfig::load().expect("Failed to load default config");
         assert!(!config.should_use_native_git());
         assert!(config.should_run_docker_tests());
+        assert!(!config.should_force_rust_log_off());
     }
 
     #[test]
     #[serial]
     fn test_native_git_env_var() {
-        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        let _guard = EnvGuard::new(&[
+            EnvVars::ZERV_TEST_NATIVE_GIT,
+            EnvVars::ZERV_TEST_DOCKER,
+            EnvVars::ZERV_FORCE_RUST_LOG_OFF,
+        ]);
         unsafe {
-            env::remove_var("ZERV_TEST_DOCKER");
-            env::set_var("ZERV_TEST_NATIVE_GIT", "true");
+            env::remove_var(EnvVars::ZERV_TEST_DOCKER);
+            env::remove_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF);
+            env::set_var(EnvVars::ZERV_TEST_NATIVE_GIT, "true");
         }
 
         let config = ZervConfig::load().expect("Failed to load config with native git enabled");
         assert!(config.should_use_native_git());
         assert!(config.should_run_docker_tests());
+        assert!(!config.should_force_rust_log_off());
     }
 
     #[test]
     #[serial]
     fn test_docker_tests_env_var() {
-        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        let _guard = EnvGuard::new(&[
+            EnvVars::ZERV_TEST_NATIVE_GIT,
+            EnvVars::ZERV_TEST_DOCKER,
+            EnvVars::ZERV_FORCE_RUST_LOG_OFF,
+        ]);
         unsafe {
-            env::remove_var("ZERV_TEST_NATIVE_GIT");
-            env::set_var("ZERV_TEST_DOCKER", "true");
+            env::remove_var(EnvVars::ZERV_TEST_NATIVE_GIT);
+            env::remove_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF);
+            env::set_var(EnvVars::ZERV_TEST_DOCKER, "true");
         }
 
         let config = ZervConfig::load().expect("Failed to load config with docker tests enabled");
         assert!(!config.should_use_native_git());
         assert!(config.should_run_docker_tests());
+        assert!(!config.should_force_rust_log_off());
     }
 
     #[test]
     #[serial]
     fn test_both_env_vars() {
-        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        let _guard = EnvGuard::new(&[
+            EnvVars::ZERV_TEST_NATIVE_GIT,
+            EnvVars::ZERV_TEST_DOCKER,
+            EnvVars::ZERV_FORCE_RUST_LOG_OFF,
+        ]);
         unsafe {
-            env::set_var("ZERV_TEST_NATIVE_GIT", "true");
-            env::set_var("ZERV_TEST_DOCKER", "true");
+            env::set_var(EnvVars::ZERV_TEST_NATIVE_GIT, "true");
+            env::set_var(EnvVars::ZERV_TEST_DOCKER, "true");
+            env::remove_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF);
         }
 
         let config = ZervConfig::load().expect("Failed to load config with both env vars set");
         assert!(config.should_use_native_git());
         assert!(config.should_run_docker_tests());
+        assert!(!config.should_force_rust_log_off());
     }
 
     #[test]
     #[serial]
     fn test_false_values() {
-        let _guard = EnvGuard::new(&["ZERV_TEST_NATIVE_GIT", "ZERV_TEST_DOCKER"]);
+        let _guard = EnvGuard::new(&[
+            EnvVars::ZERV_TEST_NATIVE_GIT,
+            EnvVars::ZERV_TEST_DOCKER,
+            EnvVars::ZERV_FORCE_RUST_LOG_OFF,
+        ]);
         unsafe {
-            env::set_var("ZERV_TEST_NATIVE_GIT", "false");
-            env::set_var("ZERV_TEST_DOCKER", "false");
+            env::set_var(EnvVars::ZERV_TEST_NATIVE_GIT, "false");
+            env::set_var(EnvVars::ZERV_TEST_DOCKER, "false");
+            env::set_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF, "false");
         }
 
         let config = ZervConfig::load().expect("Failed to load config with false values");
         assert!(!config.should_use_native_git());
         assert!(!config.should_run_docker_tests());
+        assert!(!config.should_force_rust_log_off());
+    }
+
+    #[test]
+    #[serial]
+    fn test_force_rust_log_off_env_var() {
+        let _guard = EnvGuard::new(&[
+            EnvVars::ZERV_TEST_NATIVE_GIT,
+            EnvVars::ZERV_TEST_DOCKER,
+            EnvVars::ZERV_FORCE_RUST_LOG_OFF,
+        ]);
+        unsafe {
+            env::remove_var(EnvVars::ZERV_TEST_NATIVE_GIT);
+            env::remove_var(EnvVars::ZERV_TEST_DOCKER);
+            env::set_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF, "true");
+        }
+
+        let config =
+            ZervConfig::load().expect("Failed to load config with force rust log off enabled");
+        assert!(!config.should_use_native_git());
+        assert!(config.should_run_docker_tests());
+        assert!(config.should_force_rust_log_off());
     }
 }

@@ -12,7 +12,13 @@ impl FromStr for ZervSchema {
 }
 
 pub fn parse_ron_schema(ron_str: &str) -> Result<ZervSchema, ZervError> {
-    ron_str.parse()
+    tracing::debug!("Parsing RON schema ({} bytes)", ron_str.len());
+    tracing::debug!("RON schema content:\n{}", ron_str);
+
+    ron_str.parse().map_err(|e| {
+        tracing::error!("Failed to parse RON schema: {}", e);
+        e
+    })
 }
 
 #[cfg(test)]

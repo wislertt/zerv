@@ -1,3 +1,8 @@
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 use serde::{
     Deserialize,
     Serialize,
@@ -8,6 +13,7 @@ use super::super::components::{
     Component,
     Var,
 };
+use super::part::SchemaPartName;
 use crate::error::ZervError;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -31,6 +37,14 @@ impl ZervSchema {
 
     pub fn build(&self) -> &Vec<Component> {
         &self.build
+    }
+
+    pub fn get_part(&self, part_name: &SchemaPartName) -> &Vec<Component> {
+        match part_name {
+            SchemaPartName::Core => &self.core,
+            SchemaPartName::ExtraCore => &self.extra_core,
+            SchemaPartName::Build => &self.build,
+        }
     }
 
     pub fn precedence_order(&self) -> &PrecedenceOrder {
@@ -75,6 +89,18 @@ impl ZervSchema {
         temp_schema.validate()?;
         self.build = build;
         Ok(())
+    }
+
+    pub fn set_part(
+        &mut self,
+        part_name: SchemaPartName,
+        components: Vec<Component>,
+    ) -> Result<(), ZervError> {
+        match part_name {
+            SchemaPartName::Core => self.set_core(components),
+            SchemaPartName::ExtraCore => self.set_extra_core(components),
+            SchemaPartName::Build => self.set_build(components),
+        }
     }
 
     pub fn set_precedence_order(&mut self, precedence_order: PrecedenceOrder) {
@@ -157,6 +183,13 @@ impl ZervSchema {
 
     pub fn pep440_based_precedence_order() -> PrecedenceOrder {
         PrecedenceOrder::pep440_based()
+    }
+}
+
+impl Display for ZervSchema {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let ron_string = ron::to_string(self).map_err(|_| std::fmt::Error)?;
+        write!(f, "{}", ron_string)
     }
 }
 
@@ -283,5 +316,22 @@ mod tests {
     fn test_pep440_based_precedence_order() {
         let order = ZervSchema::pep440_based_precedence_order();
         assert_eq!(order, PrecedenceOrder::pep440_based());
+    }
+
+    #[rstest]
+    #[case::custom_schema(
+        ZervSchema::new(
+            vec![Component::Var(Var::Major), Component::Var(Var::Minor)],
+            vec![Component::Var(Var::Epoch)],
+            vec![],
+        ).expect("Failed to create schema")
+    )]
+    #[case::standard_tier_1(ZervSchema::zerv_standard_tier_1())]
+    fn test_to_string_roundtrip(#[case] original: ZervSchema) {
+        let ron_string = original.to_string();
+        let reconstructed: ZervSchema =
+            ron::from_str(&ron_string).expect("Failed to reconstruct schema");
+
+        assert_eq!(original, reconstructed);
     }
 }

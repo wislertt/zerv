@@ -12,8 +12,8 @@ fn test_overrides_config_defaults() {
     assert!(!config.dirty);
     assert!(!config.no_dirty);
     assert!(!config.clean);
-    assert!(config.current_branch.is_none());
-    assert!(config.commit_hash.is_none());
+    assert!(config.bumped_branch.is_none());
+    assert!(config.bumped_commit_hash.is_none());
 
     // Version component overrides should be None by default
     assert!(config.major.is_none());
@@ -36,9 +36,9 @@ fn test_overrides_config_with_values() {
         "--distance",
         "5",
         "--dirty",
-        "--current-branch",
+        "--bumped-branch",
         "feature/test",
-        "--commit-hash",
+        "--bumped-commit-hash",
         "abc123",
         "--major",
         "2",
@@ -58,8 +58,8 @@ fn test_overrides_config_with_values() {
     assert!(config.dirty);
     assert!(!config.no_dirty);
     assert!(!config.clean);
-    assert_eq!(config.current_branch, Some("feature/test".to_string()));
-    assert_eq!(config.commit_hash, Some("abc123".to_string()));
+    assert_eq!(config.bumped_branch, Some("feature/test".to_string()));
+    assert_eq!(config.bumped_commit_hash, Some("abc123".to_string()));
     assert_eq!(config.major, Some(2.into()));
     assert_eq!(config.minor, Some(1.into()));
     assert_eq!(config.patch, Some(0.into()));
@@ -133,9 +133,9 @@ fn test_validate_overrides_clean_with_non_conflicting_options() {
         "--clean",
         "--tag-version",
         "v2.0.0",
-        "--current-branch",
+        "--bumped-branch",
         "main",
-        "--commit-hash",
+        "--bumped-commit-hash",
         "abc123",
     ])
     .unwrap();
