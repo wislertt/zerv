@@ -17,17 +17,7 @@ use crate::config::EnvVars;
 /// 3. Default - error level only (Rust standard)
 pub fn init_logging(verbose: bool) {
     let filter = if let Ok(rust_log) = std::env::var(EnvVars::RUST_LOG) {
-        // If RUST_LOG is set to off, error, or warn, use it directly
-        if rust_log == "off" || rust_log == "error" || rust_log == "warn" {
-            EnvFilter::new(rust_log)
-        } else {
-            // Otherwise, parse it normally but ensure no debug level leaks through
-            let mut filter = EnvFilter::new(rust_log);
-            // Forcefully disable debug level for all crates, including handlebars
-            filter = filter.add_directive("handlebars=error".parse().unwrap());
-            filter = filter.add_directive("zerv=error".parse().unwrap());
-            filter
-        }
+        EnvFilter::new(rust_log)
     } else if verbose {
         EnvFilter::new("zerv=debug")
     } else {
