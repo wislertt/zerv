@@ -42,6 +42,22 @@ jobs:
 
             - run: cargo install cargo-tarpaulin --locked || true
 
+            - name: Debug logging initialization
+              run: |
+                  echo "=== Testing ZERV_LOG_DEBUG output ==="
+                  echo "Environment variables:"
+                  echo "RUST_LOG: $RUST_LOG"
+                  echo "RUST_LOG_STYLE: $RUST_LOG_STYLE"
+                  echo "TRACING_LEVEL: $TRACING_LEVEL"
+                  echo "LOG_LEVEL: $LOG_LEVEL"
+                  echo ""
+                  echo "Running test with full output capture:"
+                  RUST_LOG=off cargo test test_conflicting_flags::case_3_clean_and_dirty --quiet 2>&1 | grep "ZERV_LOG_DEBUG" || echo "No ZERV_LOG_DEBUG found in test output"
+                  echo ""
+                  echo "Running simple version command to trigger logging:"
+                  RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "ZERV_LOG_DEBUG" || echo "No ZERV_LOG_DEBUG found in version command"
+                  echo "=== End debug test ==="
+
             - run: make _test
               shell: bash
 
