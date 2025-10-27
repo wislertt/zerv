@@ -19,9 +19,20 @@ pub fn init_logging(verbose: bool) {
     let rust_log_env = std::env::var(EnvVars::RUST_LOG);
 
     // ZERV_LOG_DEBUG: Unique keyword for debugging logging initialization in Ubuntu CI
+    // Check OS to help debug Ubuntu-specific issues
+    let os_info = if cfg!(target_os = "linux") {
+        "LINUX"
+    } else if cfg!(target_os = "macos") {
+        "MACOS"
+    } else if cfg!(target_os = "windows") {
+        "WINDOWS"
+    } else {
+        "UNKNOWN"
+    };
+
     eprintln!(
-        "ZERV_LOG_DEBUG: init_logging called with verbose={}, RUST_LOG={:?}",
-        verbose, rust_log_env
+        "ZERV_LOG_DEBUG: [{}] init_logging called with verbose={}, RUST_LOG={:?}",
+        os_info, verbose, rust_log_env
     );
 
     let filter = if let Ok(rust_log) = rust_log_env {
@@ -29,7 +40,18 @@ pub fn init_logging(verbose: bool) {
             "ZERV_LOG_DEBUG: Using RUST_LOG environment variable: {}",
             rust_log
         );
-        EnvFilter::new(rust_log)
+
+        // If RUST_LOG is set to off, error, or warn, use it directly
+        if rust_log == "off" || rust_log == "error" || rust_log == "warn" {
+            EnvFilter::new(rust_log)
+        } else {
+            // Otherwise, parse it normally but ensure no debug level leaks through
+            let mut filter = EnvFilter::new(rust_log);
+            // Forcefully disable debug level for all crates, including handlebars
+            filter = filter.add_directive("handlebars=error".parse().unwrap());
+            filter = filter.add_directive("zerv=error".parse().unwrap());
+            filter
+        }
     } else if verbose {
         eprintln!("ZERV_LOG_DEBUG: Using verbose mode, setting zerv=debug");
         EnvFilter::new("zerv=debug")

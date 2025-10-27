@@ -34,6 +34,21 @@ where
 
     /// Render Handlebars template using Zerv object as context
     fn render_template(template: &str, zerv: &Zerv) -> Result<String, ZervError> {
+        let os_info = if cfg!(target_os = "linux") {
+            "LINUX"
+        } else if cfg!(target_os = "macos") {
+            "MACOS"
+        } else if cfg!(target_os = "windows") {
+            "WINDOWS"
+        } else {
+            "UNKNOWN"
+        };
+
+        eprintln!(
+            "ZERV_TEMPLATE_DEBUG: [{}] About to render template: {}",
+            os_info, template
+        );
+
         let mut handlebars = handlebars::Handlebars::new();
         handlebars.set_strict_mode(false); // Allow missing variables
 
@@ -45,9 +60,19 @@ where
         let context = serde_json::to_value(template_context)
             .map_err(|e| ZervError::TemplateError(format!("Serialization error: {e}")))?;
 
-        handlebars
+        eprintln!(
+            "ZERV_TEMPLATE_DEBUG: [{}] About to call handlebars.render_template",
+            os_info
+        );
+        let result = handlebars
             .render_template(template, &context)
-            .map_err(|e| ZervError::TemplateError(format!("Template render error: {e}")))
+            .map_err(|e| ZervError::TemplateError(format!("Template render error: {e}")));
+
+        eprintln!(
+            "ZERV_TEMPLATE_DEBUG: [{}] Template render completed",
+            os_info
+        );
+        result
     }
 }
 

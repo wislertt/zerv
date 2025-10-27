@@ -41,9 +41,24 @@ impl GitVcs {
     /// Run git command and return output
     fn run_git_command(&self, args: &[&str]) -> Result<String> {
         let cmd_str = args.join(" ");
-        eprintln!("ZERV_GIT_DEBUG: About to log git command via tracing");
+
+        // OS-specific debug to understand Ubuntu vs macOS differences
+        let os_info = if cfg!(target_os = "linux") {
+            "LINUX"
+        } else if cfg!(target_os = "macos") {
+            "MACOS"
+        } else if cfg!(target_os = "windows") {
+            "WINDOWS"
+        } else {
+            "UNKNOWN"
+        };
+
+        eprintln!(
+            "ZERV_GIT_DEBUG: [{}] About to log git command via tracing",
+            os_info
+        );
         tracing::debug!("Running git command: git {}", cmd_str);
-        eprintln!("ZERV_GIT_DEBUG: Tracing debug call completed");
+        eprintln!("ZERV_GIT_DEBUG: [{}] Tracing debug call completed", os_info);
 
         let output = Command::new("git")
             .args(args)

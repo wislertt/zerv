@@ -293,9 +293,27 @@ mod tests {
         let zerv = draft.create_zerv_version(&args).unwrap();
 
         // Test the actual schema structure
+        let os_info = if cfg!(target_os = "linux") {
+            "LINUX"
+        } else if cfg!(target_os = "macos") {
+            "MACOS"
+        } else if cfg!(target_os = "windows") {
+            "WINDOWS"
+        } else {
+            "UNKNOWN"
+        };
+
+        eprintln!(
+            "ZERV_SCHEMA_DEBUG: [{}] About to log schema components via tracing",
+            os_info
+        );
         tracing::debug!("Core components: {:?}", zerv.schema.core());
         tracing::debug!("Extra core components: {:?}", zerv.schema.extra_core());
         tracing::debug!("Build components: {:?}", zerv.schema.build());
+        eprintln!(
+            "ZERV_SCHEMA_DEBUG: [{}] Schema tracing debug calls completed",
+            os_info
+        );
 
         // Verify core structure
         assert_eq!(zerv.schema.core().len(), 3);

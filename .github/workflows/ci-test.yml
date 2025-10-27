@@ -44,39 +44,40 @@ jobs:
 
             - name: Debug logging initialization
               run: |
-                  echo "=== Testing ZERV_LOG_DEBUG output ==="
-                  echo "Environment variables:"
-                  echo "RUST_LOG: $RUST_LOG"
-                  echo "RUST_LOG_STYLE: $RUST_LOG_STYLE"
-                  echo "TRACING_LEVEL: $TRACING_LEVEL"
-                  echo "LOG_LEVEL: $LOG_LEVEL"
-                  echo ""
-                  echo "Running test with full output capture:"
-                  RUST_LOG=off cargo test test_conflicting_flags::case_3_clean_and_dirty --quiet 2>&1 | grep "ZERV_LOG_DEBUG" || echo "No ZERV_LOG_DEBUG found in test output"
-                  echo ""
-                  echo "Running simple version command to trigger logging:"
-                  RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "ZERV_LOG_DEBUG" || echo "No ZERV_LOG_DEBUG found in version command"
-                  echo ""
-                  echo "Running version command to check for git debug output:"
-                  RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "ZERV_GIT_DEBUG" || echo "No ZERV_GIT_DEBUG found in version command"
-                  echo ""
-                  echo "Running version command to check for actual git debug logs:"
-                  RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "Running git command" || echo "No 'Running git command' logs found"
-                  echo ""
-                  echo "=== TESTING WITH TARPAULIN (this is where the issue likely occurs) ==="
-                  echo "Running tarpaulin with debug output capture:"
-                  RUST_BACKTRACE=1 RUST_LOG=off RUST_LOG_STYLE=never TRACING_LEVEL=off LOG_LEVEL=off cargo tarpaulin \
-                    --features test-utils \
-                    --out Xml \
-                    --output-dir coverage \
-                    --include-tests \
-                    --exclude-files 'src/main.rs' \
-                    --exclude-files '**/tests/**' \
-                    --exclude-files 'src/test_utils/git/native.rs' \
-                    test_conflicting_flags::case_3_clean_and_dirty \
-                    -- --quiet 2>&1 | grep -E "(Running git command|Rendering helper)" || echo "No debug logs found in tarpaulin run"
-                  echo "=== End tarpaulin test ==="
-                  echo "=== End debug test ==="
+                  echo "=== OS DEBUG: ${{ runner.os }} ==="
+                    echo "=== Testing ZERV_LOG_DEBUG output ==="
+                    echo "Environment variables:"
+                    echo "RUST_LOG: $RUST_LOG"
+                    echo "RUST_LOG_STYLE: $RUST_LOG_STYLE"
+                    echo "TRACING_LEVEL: $TRACING_LEVEL"
+                    echo "LOG_LEVEL: $LOG_LEVEL"
+                    echo ""
+                    echo "Running test with full output capture:"
+                    RUST_LOG=off cargo test test_conflicting_flags::case_3_clean_and_dirty --quiet 2>&1 | grep "ZERV_LOG_DEBUG" || echo "No ZERV_LOG_DEBUG found in test output"
+                    echo ""
+                    echo "Running simple version command to trigger logging:"
+                    RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "ZERV_LOG_DEBUG" || echo "No ZERV_LOG_DEBUG found in version command"
+                    echo ""
+                    echo "Running version command to check for git debug output:"
+                    RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "ZERV_GIT_DEBUG" || echo "No ZERV_GIT_DEBUG found in version command"
+                    echo ""
+                    echo "Running version command to check for actual git debug logs:"
+                    RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "Running git command" || echo "No 'Running git command' logs found"
+                    echo ""
+                    echo "=== TESTING WITH TARPAULIN (this is where the issue likely occurs) ==="
+                    echo "Running tarpaulin with debug output capture:"
+                    RUST_BACKTRACE=1 RUST_LOG=off RUST_LOG_STYLE=never TRACING_LEVEL=off LOG_LEVEL=off cargo tarpaulin \
+                      --features test-utils \
+                      --out Xml \
+                      --output-dir coverage \
+                      --include-tests \
+                      --exclude-files 'src/main.rs' \
+                      --exclude-files '**/tests/**' \
+                      --exclude-files 'src/test_utils/git/native.rs' \
+                      test_conflicting_flags::case_3_clean_and_dirty \
+                      -- --quiet 2>&1 | grep -E "(Running git command|Rendering helper)" || echo "No debug logs found in tarpaulin run"
+                    echo "=== End tarpaulin test ==="
+                    echo "=== End debug test ==="
 
             - run: make _test
               shell: bash
