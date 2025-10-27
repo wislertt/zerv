@@ -62,6 +62,20 @@ jobs:
                   echo ""
                   echo "Running version command to check for actual git debug logs:"
                   RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "Running git command" || echo "No 'Running git command' logs found"
+                  echo ""
+                  echo "=== TESTING WITH TARPAULIN (this is where the issue likely occurs) ==="
+                  echo "Running tarpaulin with debug output capture:"
+                  RUST_BACKTRACE=1 RUST_LOG=off RUST_LOG_STYLE=never TRACING_LEVEL=off LOG_LEVEL=off cargo tarpaulin \
+                    --features test-utils \
+                    --out Xml \
+                    --output-dir coverage \
+                    --include-tests \
+                    --exclude-files 'src/main.rs' \
+                    --exclude-files '**/tests/**' \
+                    --exclude-files 'src/test_utils/git/native.rs' \
+                    test_conflicting_flags::case_3_clean_and_dirty \
+                    -- --quiet 2>&1 | grep -E "(Running git command|Rendering helper)" || echo "No debug logs found in tarpaulin run"
+                  echo "=== End tarpaulin test ==="
                   echo "=== End debug test ==="
 
             - run: make _test
