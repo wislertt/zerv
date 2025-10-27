@@ -41,7 +41,9 @@ impl GitVcs {
     /// Run git command and return output
     fn run_git_command(&self, args: &[&str]) -> Result<String> {
         let cmd_str = args.join(" ");
+        eprintln!("ZERV_GIT_DEBUG: About to log git command via tracing");
         tracing::debug!("Running git command: git {}", cmd_str);
+        eprintln!("ZERV_GIT_DEBUG: Tracing debug call completed");
 
         let output = Command::new("git")
             .args(args)

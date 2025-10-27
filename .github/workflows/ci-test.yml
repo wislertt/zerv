@@ -56,6 +56,12 @@ jobs:
                   echo ""
                   echo "Running simple version command to trigger logging:"
                   RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "ZERV_LOG_DEBUG" || echo "No ZERV_LOG_DEBUG found in version command"
+                  echo ""
+                  echo "Running version command to check for git debug output:"
+                  RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "ZERV_GIT_DEBUG" || echo "No ZERV_GIT_DEBUG found in version command"
+                  echo ""
+                  echo "Running version command to check for actual git debug logs:"
+                  RUST_LOG=off cargo run --bin=zerv version 2>&1 | grep "Running git command" || echo "No 'Running git command' logs found"
                   echo "=== End debug test ==="
 
             - run: make _test
