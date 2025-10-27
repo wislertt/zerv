@@ -17,6 +17,7 @@ jobs:
         env:
             ZERV_TEST_NATIVE_GIT: true
             ZERV_TEST_DOCKER: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+            FORCE_RUST_LOG_OFF: ${{ matrix.os == 'ubuntu-latest' && '1' || '' }}
         steps:
             - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
               with:

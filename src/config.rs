@@ -15,6 +15,12 @@ impl EnvVars {
     /// See [tracing documentation](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html)
     pub const RUST_LOG: &'static str = "RUST_LOG";
 
+    /// Force logging off for CI environments (Ubuntu CI).
+    ///
+    /// When set to any value, all logging is disabled regardless of RUST_LOG setting.
+    /// Used specifically to prevent debug log spam in Ubuntu CI.
+    pub const FORCE_RUST_LOG_OFF: &'static str = "FORCE_RUST_LOG_OFF";
+
     /// Use native Git instead of Docker Git for tests (default: false).
     ///
     /// Set to `true` or `1` to enable native Git in test environments.

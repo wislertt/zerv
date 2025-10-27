@@ -16,9 +16,11 @@ use crate::config::EnvVars;
 /// 2. --verbose flag - enables debug level
 /// 3. Default - error level only (Rust standard)
 pub fn init_logging(verbose: bool) {
-    let filter = if let Ok(_rust_log) = std::env::var(EnvVars::RUST_LOG) {
-        // EnvFilter::new(rust_log)
+    let filter = if std::env::var(EnvVars::FORCE_RUST_LOG_OFF).is_ok() {
+        // Force logging off for CI environments
         EnvFilter::new("off")
+    } else if let Ok(rust_log) = std::env::var(EnvVars::RUST_LOG) {
+        EnvFilter::new(rust_log)
     } else if verbose {
         EnvFilter::new("zerv=debug")
     } else {
