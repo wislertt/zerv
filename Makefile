@@ -16,7 +16,7 @@ lint:
 	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
 _test:
-	RUST_BACKTRACE=1 RUST_LOG=cargo_tarpaulin=off cargo tarpaulin \
+	RUST_BACKTRACE=1 RUST_LOG=cargo_tarpaulin=off,zerv=off cargo tarpaulin \
 		--features test-utils \
 		--out Xml --out Html --out Lcov \
 		--output-dir coverage \

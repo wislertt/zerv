@@ -165,7 +165,15 @@ impl TestCommand {
             let mut child = self.cmd.spawn()?;
 
             if let Some(mut stdin) = child.stdin.take() {
-                stdin.write_all(input.as_bytes())?;
+                let result = stdin.write_all(input.as_bytes());
+                drop(stdin);
+
+                if let Err(e) = result {
+                    if e.kind() == io::ErrorKind::BrokenPipe {
+                    } else {
+                        return Err(e);
+                    }
+                }
             }
 
             child.wait_with_output()
