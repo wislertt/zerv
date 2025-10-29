@@ -211,7 +211,6 @@ mod tests {
             main: MainConfig {
                 schema: Some("zerv-standard".to_string()),
                 schema_ron: Some(ron_schema.to_string()),
-                ..Default::default()
             },
             ..Default::default()
         };

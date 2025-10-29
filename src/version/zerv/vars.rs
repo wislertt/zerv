@@ -144,7 +144,7 @@ impl ZervVars {
         if let Some(ref tag_version) = args.overrides.tag_version {
             // Use existing InputFormatHandler for parsing
             let version_object =
-                InputFormatHandler::parse_version_string(tag_version, &args.main.input_format)?;
+                InputFormatHandler::parse_version_string(tag_version, &args.input.input_format)?;
             let parsed_vars = ZervVars::from(version_object);
 
             // Apply parsed version components to self

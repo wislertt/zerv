@@ -10,11 +10,11 @@ use crate::utils::constants::{
 #[test]
 fn test_version_args_defaults() {
     let args = VersionArgs::try_parse_from(["version"]).unwrap();
-    assert_eq!(args.main.source, sources::GIT);
+    assert_eq!(args.input.source, sources::GIT);
     assert!(args.main.schema.is_none());
     assert!(args.main.schema_ron.is_none());
-    assert_eq!(args.main.input_format, formats::AUTO);
-    assert_eq!(args.main.output_format, formats::SEMVER);
+    assert_eq!(args.input.input_format, formats::AUTO);
+    assert_eq!(args.output.output_format, formats::SEMVER);
 
     // VCS override options should be None/false by default
     assert!(args.overrides.tag_version.is_none());
@@ -52,8 +52,8 @@ fn test_version_args_defaults() {
     assert!(!args.bumps.no_bump_context);
 
     // Output options should be None by default
-    assert!(args.main.output_template.is_none());
-    assert!(args.main.output_prefix.is_none());
+    assert!(args.output.output_template.is_none());
+    assert!(args.output.output_prefix.is_none());
 }
 
 #[test]
@@ -89,8 +89,8 @@ fn test_version_args_with_overrides() {
         args.overrides.bumped_commit_hash,
         Some("abc123".to_string())
     );
-    assert_eq!(args.main.input_format, formats::SEMVER);
-    assert_eq!(args.main.output_prefix, Some("version:".to_string()));
+    assert_eq!(args.input.input_format, formats::SEMVER);
+    assert_eq!(args.output.output_prefix, Some("version:".to_string()));
 }
 
 #[test]
@@ -279,8 +279,8 @@ fn test_context_control_all_scenarios() {
 #[test]
 fn test_version_args_fixture() {
     let args = VersionArgsFixture::new().build();
-    assert_eq!(args.main.source, sources::GIT);
-    assert_eq!(args.main.output_format, formats::SEMVER);
+    assert_eq!(args.input.source, sources::GIT);
+    assert_eq!(args.output.output_format, formats::SEMVER);
 
     let args_with_overrides = VersionArgsFixture::new()
         .with_tag_version("v2.0.0")

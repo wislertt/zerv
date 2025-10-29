@@ -1,4 +1,5 @@
 use clap::Parser;
+use clap::builder::PossibleValuesParser;
 
 use crate::cli::utils::template::Template;
 use crate::utils::constants::pre_release_labels;
@@ -38,7 +39,7 @@ pub struct BumpsConfig {
     pub bump_epoch: Option<Option<Template<u32>>>,
 
     /// Bump pre-release label (alpha, beta, rc) and reset number to 0
-    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(pre_release_labels::VALID_LABELS),
+    #[arg(long, value_parser = PossibleValuesParser::new(pre_release_labels::VALID_LABELS),
           help = "Bump pre-release label (alpha, beta, rc) and reset number to 0")]
     pub bump_pre_release_label: Option<String>,
 

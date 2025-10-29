@@ -6,7 +6,6 @@ use clap::Parser;
 use crate::error::ZervError;
 use crate::utils::constants::{
     SUPPORTED_FORMAT_NAMES,
-    SUPPORTED_FORMATS,
     format_names,
     formats,
 };
@@ -79,7 +78,10 @@ pub fn run_check_command(args: CheckArgs) -> Result<(), ZervError> {
         }
         Some(format) => {
             eprintln!("✗ Unknown format: {format}");
-            eprintln!("Supported formats: {}", SUPPORTED_FORMATS.join(", "));
+            eprintln!(
+                "Supported formats: {}",
+                formats::SUPPORTED_FORMATS.join(", ")
+            );
             return Err(ZervError::UnknownFormat(format.to_string()));
         }
     }

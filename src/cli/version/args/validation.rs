@@ -1,7 +1,10 @@
 use super::{
     BumpsConfig,
-    MainConfig,
     OverridesConfig,
+};
+use crate::cli::common::args::{
+    InputConfig,
+    OutputConfig,
 };
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
@@ -10,28 +13,9 @@ use crate::error::ZervError;
 pub struct Validation;
 
 impl Validation {
-    /// Validate main configuration
-    pub fn validate_main(main: &MainConfig) -> Result<(), ZervError> {
-        // Check for --output-template conflicts
-        if main.output_template.is_some() {
-            if main.output_format != crate::utils::constants::formats::SEMVER {
-                return Err(ZervError::ConflictingOptions(
-                    "Cannot use --output-template with --output-format. \
-                     Use --output-format alone for pure format output, \
-                     or --output-template alone for custom formatting"
-                        .to_string(),
-                ));
-            }
-            if main.output_prefix.is_some() {
-                return Err(ZervError::ConflictingOptions(
-                    "Cannot use --output-template with --output-prefix. \
-                     Add the prefix directly in your template instead \
-                     (e.g., 'v{{major}}.{{minor}}.{{patch}}')"
-                        .to_string(),
-                ));
-            }
-        }
-
+    /// Validate main configuration (using shared validation)
+    pub fn validate_main(_input: &InputConfig, _output: &OutputConfig) -> Result<(), ZervError> {
+        // Validation is now handled by the shared Validation::validate_io function
         Ok(())
     }
 

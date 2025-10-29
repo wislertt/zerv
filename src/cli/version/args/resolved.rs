@@ -3,9 +3,12 @@ use std::str::FromStr;
 
 use super::{
     BumpsConfig,
-    MainConfig,
     OverridesConfig,
     VersionArgs,
+};
+use crate::cli::common::args::{
+    InputConfig,
+    OutputConfig,
 };
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
@@ -16,7 +19,8 @@ use crate::version::Zerv;
 pub struct ResolvedArgs {
     pub overrides: ResolvedOverrides,
     pub bumps: ResolvedBumps,
-    pub main: MainConfig, // Keep entire MainConfig for simplicity
+    pub input: InputConfig,   // Reusable input config
+    pub output: OutputConfig, // Reusable output config
 }
 
 /// Resolved overrides with all templates rendered to values
@@ -81,7 +85,8 @@ impl ResolvedArgs {
         Ok(ResolvedArgs {
             overrides,
             bumps,
-            main: args.main.clone(),
+            input: args.input.clone(),
+            output: args.output.clone(),
         })
     }
 }
@@ -142,6 +147,7 @@ impl ResolvedOverrides {
     }
 
     /// Get the dirty override state (None = use VCS, Some(bool) = override)
+    // TODO: this is duplicated
     pub fn dirty_override(&self) -> Option<bool> {
         match (self.dirty, self.no_dirty) {
             (true, false) => Some(true),    // --dirty

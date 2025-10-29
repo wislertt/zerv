@@ -1,5 +1,11 @@
 use clap::Parser;
 
+use crate::cli::common::args::{
+    InputConfig,
+    OutputConfig,
+    Validation as CommonValidation,
+};
+
 pub mod bumps;
 pub mod main;
 pub mod overrides;
@@ -10,7 +16,6 @@ pub mod validation;
 mod tests {
     pub mod bumps_tests;
     pub mod combination_tests;
-    pub mod main_tests;
     pub mod overrides_tests;
     pub mod resolved_tests;
     pub mod validation_tests;
@@ -77,6 +82,12 @@ EXAMPLES:
 #[derive(Debug)]
 pub struct VersionArgs {
     #[command(flatten)]
+    pub input: InputConfig,
+
+    #[command(flatten)]
+    pub output: OutputConfig,
+
+    #[command(flatten)]
     pub main: MainConfig,
 
     #[command(flatten)]
@@ -90,8 +101,10 @@ impl VersionArgs {
     /// Validate arguments and return early errors
     /// This provides early validation before VCS processing
     pub fn validate(&mut self) -> Result<(), crate::error::ZervError> {
-        // Validate individual modules
-        Validation::validate_main(&self.main)?;
+        // Use shared validation for input/output
+        CommonValidation::validate_io(&self.input, &self.output)?;
+
+        // Validate version-specific modules
         Validation::validate_overrides(&self.overrides)?;
         Validation::validate_bumps(&self.bumps)?;
 

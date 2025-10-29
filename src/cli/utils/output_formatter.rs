@@ -1,9 +1,6 @@
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
-use crate::utils::constants::{
-    SUPPORTED_FORMATS,
-    formats,
-};
+use crate::utils::constants::formats;
 use crate::version::Zerv;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
@@ -43,14 +40,14 @@ impl OutputFormatter {
             format => Err(ZervError::UnknownFormat(format!(
                 "Unknown output format: '{}'. Supported formats: {}",
                 format,
-                SUPPORTED_FORMATS.join(", ")
+                formats::SUPPORTED_FORMATS.join(", ")
             ))),
         }
     }
 
     /// Get list of supported output formats
     pub fn supported_formats() -> &'static [&'static str] {
-        SUPPORTED_FORMATS
+        formats::SUPPORTED_FORMATS
     }
 }
 

@@ -1,4 +1,5 @@
 use clap::Parser;
+use clap::builder::PossibleValuesParser;
 
 use crate::cli::utils::template::Template;
 use crate::utils::constants::pre_release_labels;
@@ -78,7 +79,7 @@ pub struct OverridesConfig {
     pub dev: Option<Template<u32>>,
 
     /// Override pre-release label
-    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(pre_release_labels::VALID_LABELS),
+    #[arg(long, value_parser = PossibleValuesParser::new(pre_release_labels::VALID_LABELS),
           help = "Override pre-release label (alpha, beta, rc)")]
     pub pre_release_label: Option<String>,
 
