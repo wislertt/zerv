@@ -36,3 +36,57 @@ impl Default for FlowSpecificConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_flow_specific_config_default() {
+        let config = FlowSpecificConfig::default();
+        assert_eq!(config.branch_rules, None);
+        assert!(!config.with_pre_release);
+        assert!(!config.base_only);
+        assert_eq!(config.post_mode, post_modes::TAG);
+    }
+
+    #[test]
+    fn test_flow_specific_config_with_pre_release_true() {
+        let config = FlowSpecificConfig {
+            with_pre_release: true,
+            base_only: false,
+            ..Default::default()
+        };
+        assert!(config.with_pre_release);
+        assert!(!config.base_only);
+    }
+
+    #[test]
+    fn test_flow_specific_config_base_only_true() {
+        let config = FlowSpecificConfig {
+            with_pre_release: false,
+            base_only: true,
+            ..Default::default()
+        };
+        assert!(!config.with_pre_release);
+        assert!(config.base_only);
+    }
+
+    #[test]
+    fn test_flow_specific_config_post_mode_tag() {
+        let config = FlowSpecificConfig {
+            post_mode: post_modes::TAG.to_string(),
+            ..Default::default()
+        };
+        assert_eq!(config.post_mode, post_modes::TAG);
+    }
+
+    #[test]
+    fn test_flow_specific_config_post_mode_commit() {
+        let config = FlowSpecificConfig {
+            post_mode: post_modes::COMMIT.to_string(),
+            ..Default::default()
+        };
+        assert_eq!(config.post_mode, post_modes::COMMIT);
+    }
+}

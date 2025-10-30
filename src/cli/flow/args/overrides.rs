@@ -52,3 +52,86 @@ impl OverridesConfig {
         BoolResolution::resolve_opposing_flags(self.dirty, self.no_dirty)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_overrides_config_default() {
+        let config = OverridesConfig::default();
+        assert_eq!(config.tag_version, None);
+        assert_eq!(config.distance, None);
+        assert!(!config.dirty);
+        assert!(!config.no_dirty);
+        assert!(!config.clean);
+        assert_eq!(config.current_branch, None);
+        assert_eq!(config.commit_hash, None);
+    }
+
+    #[test]
+    fn test_dirty_override_true() {
+        let config = OverridesConfig {
+            dirty: true,
+            no_dirty: false,
+            ..Default::default()
+        };
+        assert_eq!(config.dirty_override(), Some(true));
+    }
+
+    #[test]
+    fn test_dirty_override_false() {
+        let config = OverridesConfig {
+            dirty: false,
+            no_dirty: true,
+            ..Default::default()
+        };
+        assert_eq!(config.dirty_override(), Some(false));
+    }
+
+    #[test]
+    fn test_dirty_override_none() {
+        let config = OverridesConfig {
+            dirty: false,
+            no_dirty: false,
+            ..Default::default()
+        };
+        assert_eq!(config.dirty_override(), None);
+    }
+
+    #[test]
+    fn test_overrides_config_tag_version() {
+        let config = OverridesConfig {
+            tag_version: Some("v1.2.3".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(config.tag_version, Some("v1.2.3".to_string()));
+    }
+
+    #[test]
+    fn test_overrides_config_distance() {
+        let config = OverridesConfig {
+            distance: Some(5),
+            ..Default::default()
+        };
+        assert_eq!(config.distance, Some(5));
+    }
+
+    #[test]
+    fn test_overrides_config_current_branch() {
+        let config = OverridesConfig {
+            current_branch: Some("main".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(config.current_branch, Some("main".to_string()));
+    }
+
+    #[test]
+    fn test_overrides_config_commit_hash() {
+        let config = OverridesConfig {
+            commit_hash: Some("abc123".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(config.commit_hash, Some("abc123".to_string()));
+    }
+}

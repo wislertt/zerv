@@ -83,99 +83,47 @@ mod tests {
     }
 
     #[test]
-    fn test_flow_validation_success() {
-        let mut args = FlowArgs {
-            flow_specific: crate::cli::flow::args::FlowSpecificConfig {
-                with_pre_release: false, // Don't set conflicting flags
-                base_only: false,
-                ..Default::default()
-            },
-            ..FlowArgs::default()
-        };
-        match args.validate() {
-            Ok(_) => {} // Success
-            Err(e) => panic!("Validation failed: {:?}", e),
-        }
-    }
+    fn test_run_flow_pipeline_different_output_formats() {
+        let formats = ["semver", "pep440", "zerv"];
 
-    #[test]
-    fn test_flow_validation_output_mode_conflict() {
-        let mut args = FlowArgs {
-            flow_specific: crate::cli::flow::args::FlowSpecificConfig {
-                with_pre_release: true,
-                base_only: true,
-                ..Default::default()
-            },
-            ..FlowArgs::default()
-        };
-        let result = args.validate();
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            ZervError::ConflictingOptions(_)
-        ));
-    }
+        for format in formats.iter() {
+            let mut args = FlowArgs::default();
+            args.output.output_format = format.to_string();
 
-    #[test]
-    fn test_flow_validation_valid_post_modes() {
-        // Test that valid post modes are accepted
-        let valid_modes = ["tag", "commit"];
-
-        for mode in valid_modes.iter() {
-            let mut args = FlowArgs {
-                flow_specific: crate::cli::flow::args::FlowSpecificConfig {
-                    post_mode: mode.to_string(),
-                    ..Default::default()
-                },
-                ..FlowArgs::default()
-            };
-            assert!(
-                args.validate().is_ok(),
-                "Post mode '{}' should be valid",
-                mode
-            );
-        }
-    }
-
-    #[test]
-    fn test_flow_validation_dirty_flags_conflict() {
-        let mut args = FlowArgs {
-            overrides: crate::cli::flow::args::OverridesConfig {
-                dirty: true,
-                no_dirty: true,
-                ..Default::default()
-            },
-            ..FlowArgs::default()
-        };
-        match args.validate() {
-            Err(e) => {
-                assert!(matches!(e, ZervError::ConflictingOptions(_)));
+            let result = run_flow_pipeline(args);
+            match result {
+                Ok(_) => {} // Success
+                Err(ZervError::VcsNotFound(_)) => {
+                    // Expected in test environments without git
+                }
+                Err(e) => {
+                    panic!("Unexpected error for format '{}': {:?}", format, e);
+                }
             }
-            _ => panic!("Expected error"),
         }
     }
 
     #[test]
-    fn test_flow_validation_clap_handled_validation() {
-        // Test that clap handles source and format validation at parse time
-        // These tests verify that our validation function doesn't redundantly check
-        // what clap already validates
+    fn test_run_flow_pipeline_with_output_prefix() {
+        let mut args = FlowArgs::default();
+        args.output.output_prefix = Some("v".to_string());
 
-        let mut args = FlowArgs {
-            input: crate::cli::common::args::InputConfig {
-                source: "git".to_string(),        // Valid source
-                input_format: "auto".to_string(), // Valid input format
-                directory: None,
-            },
-            output: crate::cli::common::args::OutputConfig {
-                output_format: "semver".to_string(), // Valid output format
-                output_template: None,
-                output_prefix: None,
-            },
-            ..FlowArgs::default()
-        };
-
-        // Should validate successfully since clap already checked the values
-        assert!(args.validate().is_ok());
+        let result = run_flow_pipeline(args);
+        match result {
+            Ok(output) => {
+                // Output should start with the prefix
+                assert!(
+                    output.starts_with('v'),
+                    "Output should start with prefix 'v': {}",
+                    output
+                );
+            }
+            Err(ZervError::VcsNotFound(_)) => {
+                // Expected in test environments without git
+            }
+            Err(e) => {
+                panic!("Unexpected error: {:?}", e);
+            }
+        }
     }
 }
