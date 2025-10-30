@@ -30,9 +30,9 @@
 
 ### 🔄 **Next Steps:**
 
-- **Phase 2**: Implement branch pattern system and flow-to-version translation logic
-- **Phase 3**: Complete pipeline assembly with actual version command integration
-- **Phase 4**: Comprehensive testing and documentation
+- **Phase 2**: Implement basic flow pipeline structure with version command integration (IN PROGRESS)
+- **Phase 3**: Add branch pattern system and flow-to-version translation logic
+- **Phase 4**: Complete pipeline assembly and comprehensive testing
 
 ## Goals
 
@@ -94,9 +94,36 @@
     - ✅ Add proper error propagation in dispatch
 - **Validation**: ✅ `zerv flow --help` shows all arguments correctly
 
-### Phase 2: Flow Logic as Translation Layer
+### Phase 2: Basic Flow Pipeline Implementation
 
-#### Step 4: Create Branch Pattern System
+#### Step 4: Implement Basic run_flow_pipeline Structure 🔄
+
+- **File**: `src/cli/flow/pipeline.rs` (update existing file)
+- **Tasks**:
+    - 🔄 Implement basic `run_flow_pipeline()` function structure
+    - 🔄 Call `zerv version --output-format zerv` using existing version pipeline
+    - 🔄 Parse RON output to Zerv object using existing parsing logic
+    - 🔄 Use `OutputFormatter::format_output()` for consistent output formatting
+    - 🔄 Keep it simple - no argument translation yet, just basic version call
+    - 🔄 Return formatted string result like version pipeline
+    - **TODO**: Fix import paths and error types for compilation
+- **Validation**: Basic flow pipeline works and returns version output
+
+#### Step 5: Create Version Command Wrapper 🔄
+
+- **File**: `src/cli/flow/wrapper.rs` (new file)
+- **Tasks**:
+    - 🔄 Create wrapper to call existing `run_version_pipeline()` function
+    - 🔄 Set up default `VersionArgs` with `--output-format zerv` for RON output
+    - 🔄 Parse returned RON string into `Zerv` object using existing deserialization
+    - **TODO**: Fix import path to `crate::version::zerv::core::Zerv`
+    - **TODO**: Fix error type for deserialization errors
+    - 🔄 Reuse all existing version logic - no duplication
+- **Validation**: Wrapper successfully calls version command and returns Zerv object
+
+### Phase 3: Flow Logic as Translation Layer
+
+#### Step 6: Create Branch Pattern System
 
 - **File**: `src/cli/flow/branch_rules.rs` (new file)
 - **Tasks**:
@@ -108,7 +135,7 @@
     - Keep it simple - just pattern matching and rule lookup
 - **Validation**: Pattern matching works correctly for branch detection
 
-#### Step 5: Create Flow-to-Version Translation Logic
+#### Step 7: Create Flow-to-Version Translation Logic
 
 - **File**: `src/cli/flow/translator.rs` (new file)
 - **Tasks**:
@@ -121,33 +148,21 @@
     - Keep logic minimal - just translation, no version calculation
 - **Validation**: Translation produces correct `VersionArgs` for all scenarios
 
-#### Step 6: Create Version Command Wrapper
+### Phase 4: Pipeline Assembly
 
-- **File**: `src/cli/flow/wrapper.rs` (new file)
-- **Tasks**:
-    - Create wrapper to call existing `run_version_pipeline()` function
-    - Support multiple version command calls if needed (like piping)
-    - Handle conversion between flow output modes and version command options
-    - Parse Zerv objects returned from version command for further processing
-    - Ensure proper error handling from version command calls
-    - Reuse all existing version logic - no duplication
-- **Validation**: Wrapper successfully calls version command and returns results
-
-### Phase 3: Pipeline Assembly
-
-#### Step 7: Assemble Flow Pipeline
+#### Step 8: Assemble Flow Pipeline
 
 - **File**: `src/cli/flow/pipeline.rs` (continued)
 - **Tasks**:
-    - Create `run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError>` function
-    - Simple pipeline: validate args → translate to version args → call version command → format output
+    - Update `run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError>` function
+    - Complete pipeline: validate args → translate to version args → call version command → format output
     - Use existing `run_version_pipeline()` for all heavy lifting
     - Handle output mode translation (`--with-pre-release`, `--base-only`)
     - Keep flow logic minimal - most work delegated to version command
     - Add verbose output showing translation results for debugging
 - **Validation**: Complete flow works end-to-end using version command
 
-#### Step 8: Add Argument Validation ✅
+#### Step 9: Add Argument Validation ✅
 
 - **File**: `src/cli/flow/args/validation.rs`
 - **Tasks**:
@@ -160,9 +175,9 @@
     - ✅ Use shared validation for input/output conflicts
 - **Validation**: ✅ All validation scenarios work correctly
 
-### Phase 4: Testing and Documentation
+### Phase 5: Testing and Documentation
 
-#### Step 9: Add Comprehensive Test Suite
+#### Step 10: Add Comprehensive Test Suite
 
 - **Files**:
     - `src/cli/flow/` - Add `#[cfg(test)] mod tests` blocks to each module
@@ -176,7 +191,7 @@
     - Test error scenarios and edge cases
 - **Validation**: All tests pass and coverage is adequate
 
-#### Step 10: Update Documentation and Help Text
+#### Step 11: Update Documentation and Help Text
 
 - **Files**:
     - `src/cli/flow/args.rs` - Update doc comments for help text
