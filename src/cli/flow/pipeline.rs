@@ -1,15 +1,11 @@
 use ron::from_str;
 
-use crate::cli::common::args::{
-    InputConfig,
-    OutputConfig,
-};
+use crate::cli::common::args::OutputConfig;
 use crate::cli::flow::args::FlowArgs;
 use crate::cli::utils::output_formatter::OutputFormatter;
 use crate::cli::version::args::VersionArgs;
 use crate::cli::version::pipeline::run_version_pipeline;
 use crate::error::ZervError;
-use crate::utils::constants::*;
 
 /// Main flow pipeline handler
 ///
@@ -28,11 +24,7 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
     // For now, just call version command with zerv output format
     // TODO: Phase 2+ - Translate flow arguments to version arguments
     let version_args = VersionArgs {
-        input: InputConfig {
-            source: sources::GIT.to_string(),
-            input_format: "auto".to_string(),
-            directory: None,
-        },
+        input: args.input.clone(),
         output: OutputConfig {
             output_format: "zerv".to_string(),
             output_template: None,
@@ -64,66 +56,74 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::{
+        GitRepoFixture,
+        assert_version_expectation,
+        should_run_docker_tests,
+    };
 
-    #[test]
-    fn test_run_flow_pipeline_basic() {
-        let args = FlowArgs::default();
-        let result = run_flow_pipeline(args);
-        // Should work now (assuming git repo exists)
-        // Note: This test may fail in environments without git
-        match result {
-            Ok(_) => {} // Success
-            Err(ZervError::VcsNotFound(_)) => {
-                // Expected in test environments without git
-            }
-            Err(e) => {
-                panic!("Unexpected error: {:?}", e);
-            }
-        }
-    }
+    fn test_flow_pipeline_with_fixture(
+        fixture_path: &str,
+        semver_expectation: &str,
+        pep440_expectation: &str,
+    ) {
+        let test_cases = vec![
+            ("semver", semver_expectation),
+            ("pep440", pep440_expectation),
+        ];
 
-    #[test]
-    fn test_run_flow_pipeline_different_output_formats() {
-        let formats = ["semver", "pep440", "zerv"];
-
-        for format in formats.iter() {
+        for (format_name, expectation) in test_cases {
             let mut args = FlowArgs::default();
-            args.output.output_format = format.to_string();
+            args.input.directory = Some(fixture_path.to_string());
+            args.output.output_format = format_name.to_string();
 
             let result = run_flow_pipeline(args);
-            match result {
-                Ok(_) => {} // Success
-                Err(ZervError::VcsNotFound(_)) => {
-                    // Expected in test environments without git
-                }
-                Err(e) => {
-                    panic!("Unexpected error for format '{}': {:?}", format, e);
-                }
-            }
+            assert!(
+                result.is_ok(),
+                "Flow pipeline should succeed with {} format at {}",
+                format_name,
+                fixture_path
+            );
+            let output = result.unwrap();
+            assert!(
+                !output.is_empty(),
+                "Flow pipeline should produce output for {} format",
+                format_name
+            );
+
+            assert_version_expectation(expectation, &output);
+
+            println!("✓ Flow pipeline output ({}): {}", format_name, output);
         }
     }
 
     #[test]
-    fn test_run_flow_pipeline_with_output_prefix() {
-        let mut args = FlowArgs::default();
-        args.output.output_prefix = Some("v".to_string());
-
-        let result = run_flow_pipeline(args);
-        match result {
-            Ok(output) => {
-                // Output should start with the prefix
-                assert!(
-                    output.starts_with('v'),
-                    "Output should start with prefix 'v': {}",
-                    output
-                );
-            }
-            Err(ZervError::VcsNotFound(_)) => {
-                // Expected in test environments without git
-            }
-            Err(e) => {
-                panic!("Unexpected error: {:?}", e);
-            }
+    fn test_trunk_based_development_flow() {
+        if !should_run_docker_tests() {
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
+
+        // Step 1: Start with a clean tag
+        let fixture =
+            GitRepoFixture::tagged("v1.0.0").expect("Failed to create git fixture with tag");
+        let fixture_path = fixture.path().to_string_lossy();
+
+        test_flow_pipeline_with_fixture(&fixture_path, r"1.0.0", r"1.0.0");
+
+        // Step 2: Checkout feature branch
+        fixture
+            .checkout_branch("feature-1")
+            .expect("Failed to checkout feature-1 branch");
+
+        test_flow_pipeline_with_fixture(&fixture_path, r"1.0.0", r"1.0.0");
+
+        // Step 3: Make dirty working directory
+        fixture.make_dirty().expect("Failed to make fixture dirty");
+
+        test_flow_pipeline_with_fixture(
+            &fixture_path,
+            r"1.0.0+feature.1.0.{{commit_hash_7}}",
+            r"1.0.0+feature.1.0.{{commit_hash_7}}",
+        );
     }
 }
