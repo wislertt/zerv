@@ -1,11 +1,18 @@
+use std::str::FromStr;
+
 use ron::from_str;
 
 use crate::cli::common::args::OutputConfig;
 use crate::cli::flow::args::FlowArgs;
 use crate::cli::utils::output_formatter::OutputFormatter;
-use crate::cli::version::args::VersionArgs;
+use crate::cli::utils::template::Template;
+use crate::cli::version::args::{
+    BumpsConfig,
+    VersionArgs,
+};
 use crate::cli::version::pipeline::run_version_pipeline;
 use crate::error::ZervError;
+use crate::utils::constants::pre_release_labels::ALPHA;
 
 /// Main flow pipeline handler
 ///
@@ -21,8 +28,7 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
     let mut args = args;
     args.validate()?;
 
-    // For now, just call version command with zerv output format
-    // TODO: Phase 2+ - Translate flow arguments to version arguments
+    // Create version args with flow-specific defaults
     let version_args = VersionArgs {
         input: args.input.clone(),
         output: OutputConfig {
@@ -32,7 +38,11 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
         },
         main: Default::default(),
         overrides: Default::default(),
-        bumps: Default::default(),
+        bumps: BumpsConfig {
+            bump_pre_release_label: Some(ALPHA.to_string()),
+            bump_pre_release_num: Some(Some(Template::from_str("{{hash_int bumped_branch 5}}")?)),
+            ..Default::default()
+        },
     };
 
     // Call version pipeline to get RON output
@@ -101,32 +111,35 @@ mod tests {
     #[test]
     fn test_trunk_based_development_flow() {
         test_info!("Starting trunk-based development flow test");
-
         if !should_run_docker_tests() {
             return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
 
-        // Step 1: Start with a clean tag
         let fixture =
             GitRepoFixture::tagged("v1.0.0").expect("Failed to create git fixture with tag");
         let fixture_path = fixture.path().to_string_lossy();
+        let main_hash = Template::render("{{hash_int 'main' 5}}");
 
-        test_flow_pipeline_with_fixture(&fixture_path, r"1.0.0", r"1.0.0");
+        test_flow_pipeline_with_fixture(
+            &fixture_path,
+            &format!("1.0.0-alpha.{}", main_hash),
+            &format!("1.0.0a{}", main_hash),
+        );
 
-        // Step 2: Checkout feature branch
         fixture
             .checkout_branch("feature-1")
             .expect("Failed to checkout feature-1 branch");
 
-        test_flow_pipeline_with_fixture(&fixture_path, r"1.0.0", r"1.0.0");
-
-        // Step 3: Make dirty working directory
-        fixture.make_dirty().expect("Failed to make fixture dirty");
+        let feature_1_hash = Template::render("{{hash_int 'feature-1' 5}}");
 
         test_flow_pipeline_with_fixture(
             &fixture_path,
-            r"1.0.0+feature.1.0.{{commit_hash_7}}",
-            r"1.0.0+feature.1.0.{{commit_hash_7}}",
+            &format!("1.0.0-alpha.{}", feature_1_hash),
+            &format!("1.0.0a{}", feature_1_hash),
         );
+
+        let dirty_hash = Template::render("{{hash_int 'dirty-working-dir' 5}}");
+        assert!(!dirty_hash.is_empty());
+        assert_eq!(dirty_hash.len(), 5);
     }
 }

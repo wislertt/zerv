@@ -131,7 +131,7 @@ impl ResolvedOverrides {
         T::Err: Display,
     {
         match template {
-            Some(t) => Ok(Some(t.resolve(zerv)?)),
+            Some(t) => Ok(Some(t.resolve(Some(zerv))?)),
             None => Ok(None),
         }
     }
@@ -142,7 +142,7 @@ impl ResolvedOverrides {
     ) -> Result<Vec<String>, ZervError> {
         templates
             .iter()
-            .map(|template| template.resolve(zerv))
+            .map(|template| template.resolve(Some(zerv)))
             .collect()
     }
 
@@ -187,7 +187,7 @@ impl ResolvedBumps {
         zerv: &Zerv,
     ) -> Result<Option<Option<u32>>, ZervError> {
         match bump {
-            Some(Some(template)) => Ok(Some(Some(template.resolve(zerv)?))),
+            Some(Some(template)) => Ok(Some(Some(template.resolve(Some(zerv))?))),
             Some(None) => Ok(Some(None)),
             None => Ok(None),
         }
@@ -199,7 +199,7 @@ impl ResolvedBumps {
     ) -> Result<Vec<String>, ZervError> {
         templates
             .iter()
-            .map(|template| template.resolve(zerv))
+            .map(|template| template.resolve(Some(zerv)))
             .collect()
     }
 }
