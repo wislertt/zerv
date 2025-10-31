@@ -56,6 +56,7 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_info;
     use crate::test_utils::{
         GitRepoFixture,
         assert_version_expectation,
@@ -93,12 +94,14 @@ mod tests {
 
             assert_version_expectation(expectation, &output);
 
-            println!("✓ Flow pipeline output ({}): {}", format_name, output);
+            test_info!("Flow pipeline output ({}): {}", format_name, output);
         }
     }
 
     #[test]
     fn test_trunk_based_development_flow() {
+        test_info!("Starting trunk-based development flow test");
+
         if !should_run_docker_tests() {
             return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
