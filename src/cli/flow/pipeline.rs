@@ -32,13 +32,7 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
             bump_pre_release_label: args.bump_pre_release_label(),
             bump_pre_release_num: args.bump_pre_release_num(),
             bump_patch: Some(Some(Template::new(
-                "
-            {{#if (and pre_release (or dirty distance))}}
-                1
-            {{else}}
-                0
-            {{/if}}"
-                    .to_string(),
+                args.build_conditional_pre_release_template("1"),
             ))),
             ..Default::default()
         },
