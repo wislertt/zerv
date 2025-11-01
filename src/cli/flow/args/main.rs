@@ -98,8 +98,13 @@ impl Default for FlowArgs {
 }
 
 impl FlowArgs {
-    pub fn build_conditional_pre_release_template(&self, content: &str) -> String {
+    pub fn build_patch_bump_template(&self, content: &str) -> String {
         let if_part = "{{#if (and pre_release (or dirty distance))}}";
+        let else_part = "{{else}}None{{/if}}";
+        if_part.to_string() + content + else_part
+    }
+    pub fn build_pre_release_bump_template(&self, content: &str) -> String {
+        let if_part = "{{#if (or dirty distance)}}";
         let else_part = "{{else}}None{{/if}}";
         if_part.to_string() + content + else_part
     }
@@ -146,7 +151,10 @@ impl FlowArgs {
     }
 
     pub fn bump_pre_release_label(&self) -> Option<Template<String>> {
-        self.pre_release_label.clone().map(Template::new)
+        self.pre_release_label.clone().map(|label| {
+            let template = self.build_pre_release_bump_template(&label);
+            Template::new(template)
+        })
     }
 
     pub fn bump_pre_release_num(&self) -> Option<Option<Template<u32>>> {
@@ -162,12 +170,16 @@ impl FlowArgs {
                     "{{hash_int bumped_branch ".to_string() + &hash_len + "}}"
                 };
 
-                let template =
-                    self.build_conditional_pre_release_template(&pre_release_num_content);
+                let template = self.build_pre_release_bump_template(&pre_release_num_content);
 
                 Some(Some(Template::new(template)))
             }
         }
+    }
+
+    pub fn bump_patch(&self) -> Option<Option<Template<u32>>> {
+        let template = self.build_patch_bump_template("1");
+        Some(Some(Template::new(template)))
     }
 }
 
@@ -326,10 +338,8 @@ mod tests {
         fn test_default_returns_alpha() {
             let mut args = FlowArgs::default();
             args.validate().unwrap(); // This sets the default pre_release_label
-            assert_eq!(
-                args.bump_pre_release_label(),
-                Some(Template::new("alpha".to_string()))
-            );
+            let expected = args.build_pre_release_bump_template("alpha");
+            assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
         }
 
         #[rstest]
@@ -340,10 +350,8 @@ mod tests {
                 pre_release_label: Some(label.to_string()),
                 ..FlowArgs::default()
             };
-            assert_eq!(
-                args.bump_pre_release_label(),
-                Some(Template::new(label.to_string()))
-            );
+            let expected = args.build_pre_release_bump_template(label);
+            assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
         }
 
         #[test]
@@ -361,10 +369,8 @@ mod tests {
 
             // After validation, pre_release_label should be set to "alpha"
             assert_eq!(args.pre_release_label, Some("alpha".to_string()));
-            assert_eq!(
-                args.bump_pre_release_label(),
-                Some(Template::new("alpha".to_string()))
-            );
+            let expected = args.build_pre_release_bump_template("alpha");
+            assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
         }
 
         #[test]
@@ -406,7 +412,7 @@ mod tests {
             let template = result.unwrap().unwrap();
 
             // Generate expected template using the helper function
-            let expected = args.build_conditional_pre_release_template(&num.to_string());
+            let expected = args.build_pre_release_bump_template(&num.to_string());
             assert_eq!(template.content(), expected);
         }
 
@@ -435,7 +441,7 @@ mod tests {
 
             // Generate expected template from input
             let content = "{{hash_int bumped_branch ".to_string() + &length.to_string() + "}}";
-            let expected = args.build_conditional_pre_release_template(&content);
+            let expected = args.build_pre_release_bump_template(&content);
             assert_eq!(template.content(), expected);
         }
     }
@@ -488,10 +494,8 @@ mod tests {
             assert!(args.validate().is_ok());
 
             // Test bump_pre_release_label
-            assert_eq!(
-                args.bump_pre_release_label(),
-                Some(Template::new(label.to_string()))
-            );
+            let expected = args.build_pre_release_bump_template(label);
+            assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
 
             // Test bump_pre_release_num
             let result = args.bump_pre_release_num();
@@ -499,13 +503,13 @@ mod tests {
 
             if let Some(num_value) = num {
                 let template = result.unwrap().unwrap();
-                let expected = args.build_conditional_pre_release_template(&num_value.to_string());
+                let expected = args.build_pre_release_bump_template(&num_value.to_string());
                 assert_eq!(template.content(), expected);
             } else {
                 let template = result.unwrap().unwrap();
                 let content =
                     "{{hash_int bumped_branch ".to_string() + &hash_len.to_string() + "}}";
-                let expected = args.build_conditional_pre_release_template(&content);
+                let expected = args.build_pre_release_bump_template(&content);
                 assert_eq!(template.content(), expected);
             }
         }
