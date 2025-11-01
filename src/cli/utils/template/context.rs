@@ -2,9 +2,9 @@ use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
 use crate::version::zerv::Zerv;
 
-/// Template context for Tera rendering
+/// Template context for rendering
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
-pub struct TeraTemplateContext {
+pub struct TemplateContext {
     // Core version fields
     pub major: Option<u64>,
     pub minor: Option<u64>,
@@ -46,7 +46,7 @@ pub struct PreReleaseContext {
     pub number: Option<u64>,
 }
 
-impl TeraTemplateContext {
+impl TemplateContext {
     pub fn from_zerv(zerv: &Zerv) -> Self {
         let vars = &zerv.vars;
         Self {
@@ -88,11 +88,11 @@ mod tests {
     };
 
     #[test]
-    fn test_tera_template_context_from_zerv_basic() {
+    fn test_template_context_from_zerv_basic() {
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
-        let context = TeraTemplateContext::from_zerv(zerv);
+        let context = TemplateContext::from_zerv(zerv);
 
         assert_eq!(context.major, Some(1));
         assert_eq!(context.minor, Some(2));
@@ -106,7 +106,7 @@ mod tests {
     }
 
     #[test]
-    fn test_tera_template_context_from_zerv_with_vcs() {
+    fn test_template_context_from_zerv_with_vcs() {
         let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
             Some(5),
             Some(true),
@@ -118,7 +118,7 @@ mod tests {
         );
         let zerv = zerv_fixture.zerv();
 
-        let context = TeraTemplateContext::from_zerv(zerv);
+        let context = TemplateContext::from_zerv(zerv);
 
         assert_eq!(context.distance, Some(5));
         assert_eq!(context.dirty, Some(true));
@@ -132,13 +132,13 @@ mod tests {
     }
 
     #[test]
-    fn test_tera_template_context_from_zerv_with_pre_release() {
+    fn test_template_context_from_zerv_with_pre_release() {
         let zerv_fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(crate::version::zerv::PreReleaseLabel::Alpha, Some(1));
         let zerv = zerv_fixture.zerv();
 
-        let context = TeraTemplateContext::from_zerv(zerv);
+        let context = TemplateContext::from_zerv(zerv);
 
         assert!(context.pre_release.is_some());
         let pre_release = context.pre_release.unwrap();
@@ -147,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn test_tera_template_context_from_zerv_with_custom_vars() {
+    fn test_template_context_from_zerv_with_custom_vars() {
         let vars = ZervVars {
             major: Some(1),
             minor: Some(0),
@@ -162,7 +162,7 @@ mod tests {
         let schema = ZervSchema::semver_default().unwrap();
         let zerv = Zerv::new(schema, vars).unwrap();
 
-        let context = TeraTemplateContext::from_zerv(&zerv);
+        let context = TemplateContext::from_zerv(&zerv);
 
         assert_eq!(context.custom["build"], "42");
         assert_eq!(context.custom["metadata"], "test");
