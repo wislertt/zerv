@@ -1,9 +1,9 @@
-mod context;
-mod helpers;
-mod types;
+// Re-export Handlebars implementation from subdirectory
+pub mod handlebars;
 
-pub use context::{
+// Re-export handlebars types for backward compatibility
+pub use handlebars::{
     PreReleaseContext,
+    Template,
     TemplateContext,
 };
-pub use types::Template;
