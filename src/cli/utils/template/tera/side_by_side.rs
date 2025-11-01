@@ -348,4 +348,276 @@ mod tests {
         let result_clean = tera_template.render(zerv_clean).unwrap();
         assert_eq!(result_clean, "2.0.0+unknown");
     }
+
+    #[test]
+    fn test_simple_tera_function_debug() {
+        let mut tera = tera::Tera::default();
+        let result = crate::cli::utils::template::tera::functions::register_functions(&mut tera);
+        assert!(result.is_ok(), "Function registration failed: {:?}", result);
+
+        // Try adding a simple template with custom function
+        let add_result = tera.add_raw_template("test", "{{ sanitize(value=value) }}");
+        println!("Add template result: {:?}", add_result);
+
+        if let Err(e) = add_result {
+            panic!("Failed to add template: {}", e);
+        }
+    }
+
+    #[test]
+    fn test_side_by_side_sanitize_helper() {
+        // Handlebars: {{sanitize bumped_branch preset='dotted'}}
+        // Tera: {{ sanitize(bumped_branch, preset="dotted") }}
+        let hb_template: HandlebarsTemplate<String> =
+            HandlebarsTemplate::from("{{sanitize bumped_branch preset='dotted'}}".to_string());
+        let tera_template =
+            match TeraTemplate::new("{{ sanitize(value=bumped_branch) }}".to_string()) {
+                Ok(template) => template,
+                Err(e) => {
+                    println!("Tera template error: {:?}", e);
+                    panic!("Template creation failed");
+                }
+            };
+
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+            None,
+            None,
+            Some("feature/test-branch".to_string()),
+            None,
+            None,
+            None,
+            None,
+        );
+        let zerv = zerv_fixture.zerv();
+
+        let hb_result = hb_template.resolve(Some(zerv)).unwrap().unwrap();
+        let tera_result = tera_template.render(zerv).unwrap();
+
+        assert_eq!(hb_result, "feature.test.branch");
+        assert_eq!(tera_result, "feature.test.branch");
+        assert_eq!(hb_result, tera_result);
+    }
+
+    #[test]
+    fn test_side_by_side_sanitize_helper_pep440() {
+        // Handlebars: {{sanitize bumped_branch preset='pep440'}}
+        // Tera: {{ sanitize(bumped_branch, preset="pep440") }}
+        let hb_template: HandlebarsTemplate<String> =
+            HandlebarsTemplate::from("{{sanitize bumped_branch preset='pep440'}}".to_string());
+        let tera_template =
+            TeraTemplate::new("{{ sanitize(value=bumped_branch, preset=\"pep440\") }}".to_string())
+                .unwrap();
+
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+            None,
+            None,
+            Some("feature/test-branch".to_string()),
+            None,
+            None,
+            None,
+            None,
+        );
+        let zerv = zerv_fixture.zerv();
+
+        let hb_result = hb_template.resolve(Some(zerv)).unwrap().unwrap();
+        let tera_result = tera_template.render(zerv).unwrap();
+
+        assert_eq!(hb_result, "feature.test.branch");
+        assert_eq!(tera_result, "feature.test.branch");
+        assert_eq!(hb_result, tera_result);
+    }
+
+    #[test]
+    fn test_side_by_side_sanitize_helper_uint() {
+        // Handlebars: {{sanitize bumped_branch preset='uint'}}
+        // Tera: {{ sanitize(bumped_branch, preset="uint") }}
+        let hb_template: HandlebarsTemplate<String> =
+            HandlebarsTemplate::from("{{sanitize bumped_branch preset='uint'}}".to_string());
+        let tera_template =
+            TeraTemplate::new("{{ sanitize(value=bumped_branch, preset=\"uint\") }}".to_string())
+                .unwrap();
+
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+            None,
+            None,
+            Some("12345".to_string()),
+            None,
+            None,
+            None,
+            None,
+        );
+        let zerv = zerv_fixture.zerv();
+
+        let hb_result = hb_template.resolve(Some(zerv)).unwrap().unwrap();
+        let tera_result = tera_template.render(zerv).unwrap();
+
+        assert_eq!(hb_result, "12345");
+        assert_eq!(tera_result, "12345");
+        assert_eq!(hb_result, tera_result);
+    }
+
+    #[test]
+    fn test_side_by_side_hash_helper() {
+        // Handlebars: {{hash bumped_branch 7}}
+        // Tera: {{ hash(bumped_branch, length=7) }}
+        let hb_template: HandlebarsTemplate<String> =
+            HandlebarsTemplate::from("{{hash bumped_branch 7}}".to_string());
+        let tera_template =
+            TeraTemplate::new("{{ hash(value=bumped_branch, length=7) }}".to_string()).unwrap();
+
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+            None,
+            None,
+            Some("main".to_string()),
+            None,
+            None,
+            None,
+            None,
+        );
+        let zerv = zerv_fixture.zerv();
+
+        let hb_result = hb_template.resolve(Some(zerv)).unwrap().unwrap();
+        let tera_result = tera_template.render(zerv).unwrap();
+
+        // Both should produce 7-character hex strings
+        assert_eq!(hb_result.len(), 7);
+        assert_eq!(tera_result.len(), 7);
+        assert!(hb_result.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(tera_result.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_side_by_side_hash_int_helper() {
+        // Handlebars: {{hash_int bumped_branch 10 true}}
+        // Tera: {{ hash_int(bumped_branch, length=10, allow_leading_zero=true) }}
+        let hb_template: HandlebarsTemplate<String> =
+            HandlebarsTemplate::from("{{hash_int bumped_branch 10 true}}".to_string());
+        let tera_template = TeraTemplate::new(
+            "{{ hash_int(value=bumped_branch, length=10, allow_leading_zero=true) }}".to_string(),
+        )
+        .unwrap();
+
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+            None,
+            None,
+            Some("main".to_string()),
+            None,
+            None,
+            None,
+            None,
+        );
+        let zerv = zerv_fixture.zerv();
+
+        let hb_result = hb_template.resolve(Some(zerv)).unwrap().unwrap();
+        let tera_result = tera_template.render(zerv).unwrap();
+
+        // Both should produce 10-character hex strings with leading zeros allowed
+        assert_eq!(hb_result.len(), 10);
+        assert_eq!(tera_result.len(), 10);
+        assert!(hb_result.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(tera_result.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_side_by_side_prefix_helper() {
+        // Handlebars: {{prefix bumped_branch 5}}
+        // Tera: {{ prefix(bumped_branch, length=5) }}
+        let hb_template: HandlebarsTemplate<String> =
+            HandlebarsTemplate::from("{{prefix bumped_branch 5}}".to_string());
+        let tera_template =
+            TeraTemplate::new("{{ prefix(value=bumped_branch, length=5) }}".to_string()).unwrap();
+
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+            None,
+            None,
+            Some("feature-branch".to_string()),
+            None,
+            None,
+            None,
+            None,
+        );
+        let zerv = zerv_fixture.zerv();
+
+        let hb_result = hb_template.resolve(Some(zerv)).unwrap().unwrap();
+        let tera_result = tera_template.render(zerv).unwrap();
+
+        assert_eq!(hb_result, "featu");
+        assert_eq!(tera_result, "featu");
+        assert_eq!(hb_result, tera_result);
+    }
+
+    #[test]
+    fn test_side_by_side_timestamp_helper() {
+        // Handlebars: {{format_timestamp bumped_timestamp}}
+        // Tera: {{ format_timestamp(bumped_timestamp, format="%Y-%m-%d") }}
+        let hb_template: HandlebarsTemplate<String> =
+            HandlebarsTemplate::from("{{format_timestamp last_timestamp}}".to_string());
+        let tera_template = TeraTemplate::new(
+            "{{ format_timestamp(value=last_timestamp, format=\"%Y-%m-%d\") }}".to_string(),
+        )
+        .unwrap();
+
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+            Some(0),
+            None,
+            None,
+            None,
+            None,
+            Some(1698675600),
+            None,
+        );
+        let zerv = zerv_fixture.zerv();
+
+        let hb_result = hb_template.resolve(Some(zerv)).unwrap().unwrap();
+        let tera_result = tera_template.render(zerv).unwrap();
+
+        // Both should produce date in YYYY-MM-DD format
+        assert!(hb_result.contains("2023-10-30"));
+        assert!(tera_result.contains("2023-10-30"));
+        assert_eq!(hb_result, tera_result);
+    }
+
+    #[test]
+    fn test_side_by_side_math_helper_add() {
+        // Handlebars: {{add major 1}}
+        // Tera: {{ major + 1 }}
+        let hb_template: HandlebarsTemplate<String> =
+            HandlebarsTemplate::from("{{add major 1}}".to_string());
+        let tera_template = TeraTemplate::new("{{ major + 1 }}".to_string()).unwrap();
+
+        let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
+        let zerv = zerv_fixture.zerv();
+
+        let hb_result = hb_template.resolve(Some(zerv)).unwrap().unwrap();
+        let tera_result = tera_template.render(zerv).unwrap();
+
+        // Both should return the mathematical result of major + 1
+        assert_eq!(hb_result, "2");
+        assert_eq!(tera_result, "2");
+    }
+
+    #[test]
+    fn test_tera_custom_functions_complex_usage() {
+        // Test complex usage of Tera custom functions
+        // This demonstrates how Tera can combine custom functions with built-in operations
+        let tera_template = TeraTemplate::new(
+            "v{{ major }}.{{ minor }}.{{ patch }}-{{ sanitize(value=bumped_branch, preset=\"dotted\") }}+{{ hash(value=bumped_commit_hash_short, length=8) }}"
+                .to_string(),
+        ).unwrap();
+
+        let zerv_fixture = ZervFixture::new().with_version(1, 2, 3).with_vcs_data(
+            Some(0),
+            None,
+            Some("feature/test-branch".to_string()),
+            Some("abcdef123456789".to_string()),
+            None,
+            None,
+            None,
+        );
+        let zerv = zerv_fixture.zerv();
+
+        let result = tera_template.render(zerv).unwrap();
+
+        assert_eq!(result, "v1.2.3-feature.test.branch+11e0e658");
+    }
 }
