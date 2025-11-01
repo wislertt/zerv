@@ -20,20 +20,22 @@ pub fn assert_version_expectation(expectation: &str, actual: &str) {
         if !token.is_empty() {
             assert!(
                 actual.len() >= actual_pos + token.len(),
-                "Expected literal '{}' at position {} in '{}'",
+                "Version assertion failed\nExpected: '{}'\nActual:   '{}'\nExpected literal '{}' at position {}",
+                expectation,
+                actual,
                 token,
-                actual_pos,
-                actual
+                actual_pos
             );
 
             assert_eq!(
                 &actual[actual_pos..actual_pos + token.len()],
                 *token,
-                "Expected '{}' at position {} but got '{}' in '{}'",
+                "Version assertion failed\nExpected: '{}'\nActual:   '{}'\nExpected '{}' at position {} but got '{}'",
+                expectation,
+                actual,
                 token,
                 actual_pos,
-                &actual[actual_pos..actual_pos + token.len()],
-                actual
+                &actual[actual_pos..actual_pos + token.len()]
             );
             actual_pos += token.len();
         }
@@ -59,7 +61,7 @@ pub fn assert_version_expectation(expectation: &str, actual: &str) {
                 } else {
                     // Consecutive placeholder, extract length from placeholder name
                     let placeholder_key = placeholder.trim_matches(&['{', '}'][..]);
-                    get_fixed_length_from_placeholder_name(placeholder_key)
+                    get_fixed_length_from_placeholder_name(expectation, placeholder_key)
                 }
             } else {
                 // Last placeholder
@@ -68,7 +70,9 @@ pub fn assert_version_expectation(expectation: &str, actual: &str) {
 
             assert!(
                 actual.len() >= actual_pos + segment_len,
-                "Not enough characters for placeholder '{}' at position {}",
+                "Version assertion failed\nExpected: '{}'\nActual:   '{}'\nNot enough characters for placeholder '{}' at position {}",
+                expectation,
+                actual,
                 placeholder,
                 actual_pos
             );
@@ -76,12 +80,13 @@ pub fn assert_version_expectation(expectation: &str, actual: &str) {
             let actual_segment = &actual[actual_pos..actual_pos + segment_len];
             assert!(
                 regex.is_match(actual_segment),
-                "Expected placeholder '{}' (regex: '{}') to match '{}' at position {} in '{}'",
+                "Version assertion failed\nExpected: '{}'\nActual:   '{}'\nExpected placeholder '{}' (regex: '{}') to match '{}' at position {}",
+                expectation,
+                actual,
                 placeholder,
                 regex_pattern,
                 actual_segment,
-                actual_pos,
-                actual
+                actual_pos
             );
 
             actual_pos += segment_len;
@@ -91,7 +96,8 @@ pub fn assert_version_expectation(expectation: &str, actual: &str) {
     assert_eq!(
         actual_pos,
         actual.len(),
-        "Unexpected trailing characters in actual string: '{}'",
+        "Version assertion failed\nExpected: '{}'\nActual:   '{}'\nUnexpected trailing characters in actual string",
+        expectation,
         actual
     );
 }
@@ -101,20 +107,20 @@ pub fn assert_version_expectation(expectation: &str, actual: &str) {
 /// - "commit_hash_7" -> 7
 /// - "version_3" -> 3
 /// - "build_id_10" -> 10
-fn get_fixed_length_from_placeholder_name(placeholder_name: &str) -> usize {
+fn get_fixed_length_from_placeholder_name(expectation: &str, placeholder_name: &str) -> usize {
     if let Some(last_part) = placeholder_name.split('_').next_back() {
         if let Ok(length) = last_part.parse::<usize>() {
             length
         } else {
             panic!(
-                "Placeholder '{}' must end with '_<number>' for consecutive placeholders",
-                placeholder_name
+                "Version assertion failed\nExpected: '{}'\nPlaceholder '{}' must end with '_<number>' for consecutive placeholders",
+                expectation, placeholder_name
             );
         }
     } else {
         panic!(
-            "Invalid placeholder name format: '{}', must contain '_' and end with number",
-            placeholder_name
+            "Version assertion failed\nExpected: '{}'\nInvalid placeholder name format: '{}', must contain '_' and end with number",
+            expectation, placeholder_name
         );
     }
 }

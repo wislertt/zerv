@@ -1,12 +1,19 @@
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 #[cfg(unix)]
 use libc;
 
-use super::{GitOperations, GitTestConstants, TestDir};
+use super::{
+    GitOperations,
+    GitTestConstants,
+    TestDir,
+};
 #[cfg(test)]
 use crate::config::EnvVars;
 

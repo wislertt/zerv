@@ -1,6 +1,7 @@
 use clap::Parser;
 
 use super::super::*;
+use crate::cli::utils::template::Template;
 
 #[test]
 fn test_bumps_config_defaults() {
@@ -45,7 +46,10 @@ fn test_bumps_config_with_values() {
     assert_eq!(config.bump_major, Some(Some(1.into())));
     assert_eq!(config.bump_minor, Some(Some(2.into())));
     assert_eq!(config.bump_patch, Some(Some(3.into())));
-    assert_eq!(config.bump_pre_release_label, Some("alpha".to_string()));
+    assert_eq!(
+        config.bump_pre_release_label,
+        Some(Template::Value("alpha".to_string()))
+    );
     assert!(config.bump_context);
     assert!(!config.no_bump_context);
 }

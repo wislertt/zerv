@@ -132,7 +132,8 @@ impl VersionArgsFixture {
 
     /// Set pre-release label
     pub fn with_pre_release_label(mut self, label: &str) -> Self {
-        self.args.overrides.pre_release_label = Some(label.to_string());
+        use crate::cli::utils::template::Template;
+        self.args.overrides.pre_release_label = Some(Template::Value(label.to_string()));
         self
     }
 
@@ -218,7 +219,8 @@ impl VersionArgsFixture {
 
     /// Set bump pre-release label
     pub fn with_bump_pre_release_label(mut self, label: &str) -> Self {
-        self.args.bumps.bump_pre_release_label = Some(label.to_string());
+        use crate::cli::utils::template::Template;
+        self.args.bumps.bump_pre_release_label = Some(Template::Value(label.to_string()));
         self
     }
 
@@ -316,7 +318,8 @@ impl VersionArgsFixture {
                 OverrideType::Post(post) => self.args.overrides.post = Some(post.into()),
                 OverrideType::Dev(dev) => self.args.overrides.dev = Some(dev.into()),
                 OverrideType::PreReleaseLabel(label) => {
-                    self.args.overrides.pre_release_label = Some(label)
+                    use crate::cli::utils::template::Template;
+                    self.args.overrides.pre_release_label = Some(Template::Value(label))
                 }
                 OverrideType::PreReleaseNum(num) => {
                     self.args.overrides.pre_release_num = Some(num.into())

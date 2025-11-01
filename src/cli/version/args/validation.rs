@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use super::{
     BumpsConfig,
     OverridesConfig,
@@ -8,6 +10,7 @@ use crate::cli::common::args::{
 };
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
+use crate::utils::constants::pre_release_labels;
 
 /// Validation methods for argument combinations
 pub struct Validation;
@@ -230,6 +233,42 @@ impl Validation {
         } else {
             // Positive index: 0, 1, 2, etc.
             index.chars().all(|c| c.is_ascii_digit())
+        }
+    }
+
+    /// Custom validator for pre-release label templates
+    /// Accepts static values (alpha, beta, rc), None keywords (none, null, etc.), or template strings
+    pub fn validate_pre_release_template(s: &str) -> Result<Template<String>, String> {
+        let trimmed = s.trim().to_lowercase();
+
+        // Check for None keywords (pass through as-is, will be handled in resolution)
+        if matches!(
+            trimmed.as_str(),
+            "none" | "null" | "nil" | "nothing" | "empty"
+        ) {
+            return Ok(Template::Value(s.to_string()));
+        }
+
+        // Check for valid static pre-release labels
+        if pre_release_labels::VALID_LABELS.contains(&s) {
+            return Ok(Template::Value(s.to_string()));
+        }
+
+        // Check if it's a template string
+        if s.contains("{{") && s.contains("}}") {
+            // Validate template syntax by attempting to create Template
+            match Template::<String>::from_str(s) {
+                Ok(template) => Ok(template),
+                Err(e) => Err(format!("Invalid template syntax: {}", e)),
+            }
+        } else {
+            Err(format!(
+                "Invalid pre-release label '{}'. Must be one of: {}, {}, {}, or a valid template containing '{{{{' and '}}}}'",
+                s,
+                pre_release_labels::VALID_LABELS.join(", "),
+                "none",
+                "null"
+            ))
         }
     }
 }

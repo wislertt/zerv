@@ -295,20 +295,24 @@ mod tests {
 
     #[test]
     fn test_bump_pre_release_label_invalid() {
-        let mut zerv = ZervFixture::from_semver_str("1.0.0").build();
         let args = VersionArgsFixture::new()
             .with_bump_pre_release_label("invalid")
             .build();
         let dummy_zerv = crate::test_utils::zerv::ZervFixture::new().build();
-        let resolved_args =
-            crate::cli::version::args::ResolvedArgs::resolve(&args, &dummy_zerv).unwrap();
-        let result = zerv.process_pre_release_label(&resolved_args);
-        assert!(result.is_err());
+
+        // Template validation now catches invalid pre-release labels at resolution stage
+        let resolved_result = crate::cli::version::args::ResolvedArgs::resolve(&args, &dummy_zerv);
+        assert!(resolved_result.is_err());
         assert!(
-            result
+            resolved_result
                 .unwrap_err()
                 .to_string()
-                .contains("Invalid pre-release label")
+                .contains("Template resolved to invalid pre-release label")
         );
+
+        // If we were to continue processing (which we won't because resolution failed),
+        // the processing would also fail
+        // let result = zerv.process_pre_release_label(&resolved_args);
+        // assert!(result.is_err());
     }
 }

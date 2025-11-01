@@ -12,7 +12,43 @@ use crate::cli::common::args::{
 };
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
+use crate::utils::constants::pre_release_labels;
 use crate::version::Zerv;
+
+/// Resolve pre-release label template with strict validation
+/// Shared utility function used by both ResolvedOverrides and ResolvedBumps
+fn resolve_pre_release_label(
+    template: &Option<Template<String>>,
+    zerv: &Zerv,
+) -> Result<Option<String>, ZervError> {
+    match template {
+        Some(t) => {
+            let resolved = t.resolve(Some(zerv))?;
+
+            // Handle None keywords after template resolution
+            let trimmed = resolved.trim().to_lowercase();
+            if matches!(
+                trimmed.as_str(),
+                "none" | "null" | "nil" | "nothing" | "empty"
+            ) {
+                return Ok(None);
+            }
+
+            // Strict validation: ensure resolved value is a valid pre-release label
+            if !pre_release_labels::VALID_LABELS.contains(&resolved.as_str()) {
+                return Err(ZervError::TemplateError(format!(
+                    "Template resolved to invalid pre-release label '{}'. Must be one of: {} or None keywords: {}",
+                    resolved,
+                    pre_release_labels::VALID_LABELS.join(", "),
+                    "none, null, nil, nothing, empty"
+                )));
+            }
+
+            Ok(Some(resolved))
+        }
+        None => Ok(None),
+    }
+}
 
 /// Resolved version of VersionArgs with templates rendered
 #[derive(Debug, Clone)]
@@ -111,7 +147,7 @@ impl ResolvedOverrides {
             epoch: Self::resolve_template(&overrides.epoch, zerv)?,
             post: Self::resolve_template(&overrides.post, zerv)?,
             dev: Self::resolve_template(&overrides.dev, zerv)?,
-            pre_release_label: overrides.pre_release_label.clone(),
+            pre_release_label: resolve_pre_release_label(&overrides.pre_release_label, zerv)?,
             pre_release_num: Self::resolve_template(&overrides.pre_release_num, zerv)?,
             custom: overrides.custom.clone(),
 
@@ -169,7 +205,7 @@ impl ResolvedBumps {
             bump_dev: Self::resolve_bump(&bumps.bump_dev, zerv)?,
             bump_pre_release_num: Self::resolve_bump(&bumps.bump_pre_release_num, zerv)?,
             bump_epoch: Self::resolve_bump(&bumps.bump_epoch, zerv)?,
-            bump_pre_release_label: bumps.bump_pre_release_label.clone(),
+            bump_pre_release_label: resolve_pre_release_label(&bumps.bump_pre_release_label, zerv)?,
 
             // Schema-based bumps (resolve templates)
             bump_core: Self::resolve_template_strings(&bumps.bump_core, zerv)?,

@@ -1,6 +1,7 @@
 use clap::Parser;
 
 use super::super::*;
+use crate::cli::utils::template::Template;
 use crate::test_utils::VersionArgsFixture;
 use crate::utils::constants::{
     formats,
@@ -333,7 +334,10 @@ fn test_validate_pre_release_flags_no_conflict() {
     let mut args = VersionArgsFixture::new()
         .with_pre_release_label("alpha")
         .build();
-    assert_eq!(args.overrides.pre_release_label, Some("alpha".to_string()));
+    assert_eq!(
+        args.overrides.pre_release_label,
+        Some(Template::Value("alpha".to_string()))
+    );
     assert_eq!(args.bumps.bump_pre_release_label, None);
     assert!(args.validate().is_ok());
 
@@ -341,6 +345,9 @@ fn test_validate_pre_release_flags_no_conflict() {
         .with_bump_pre_release_label("beta")
         .build();
     assert_eq!(args.overrides.pre_release_label, None);
-    assert_eq!(args.bumps.bump_pre_release_label, Some("beta".to_string()));
+    assert_eq!(
+        args.bumps.bump_pre_release_label,
+        Some(Template::Value("beta".to_string()))
+    );
     assert!(args.validate().is_ok());
 }

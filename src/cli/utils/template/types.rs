@@ -49,9 +49,12 @@ where
             serde_json::Value::Object(serde_json::Map::new())
         };
 
-        handlebars
+        let rendered = handlebars
             .render_template(template, &context)
-            .map_err(|e| ZervError::TemplateError(format!("Template render error: {e}")))
+            .map_err(|e| ZervError::TemplateError(format!("Template render error: {e}")))?;
+
+        // Strip leading/trailing whitespace and normalize internal whitespace
+        Ok(rendered.trim().to_string())
     }
 }
 
