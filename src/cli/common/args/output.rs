@@ -14,10 +14,10 @@ pub struct OutputConfig {
           help = format!("Output format: '{}' (default), '{}', or '{}' (RON format for piping)", formats::SEMVER, formats::PEP440, formats::ZERV))]
     pub output_format: String,
 
-    /// Output template for custom formatting (Handlebars syntax)
+    /// Output template for custom formatting (Tera syntax: {{ variable }})
     #[arg(
         long,
-        help = "Output template for custom formatting (Handlebars syntax)"
+        help = "Output template for custom formatting (Tera syntax: {{ variable }})"
     )]
     pub output_template: Option<Template<String>>,
 
