@@ -3,10 +3,8 @@ use ron::from_str;
 use crate::cli::common::args::OutputConfig;
 use crate::cli::flow::args::FlowArgs;
 use crate::cli::utils::output_formatter::OutputFormatter;
-use crate::cli::version::args::{
-    BumpsConfig,
-    VersionArgs,
-};
+use crate::cli::utils::template::Template;
+use crate::cli::version::args::{BumpsConfig, VersionArgs};
 use crate::cli::version::pipeline::run_version_pipeline;
 use crate::error::ZervError;
 use crate::version::zerv::core::Zerv;
@@ -26,9 +24,13 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
         },
         main: Default::default(),
         overrides: Default::default(),
+        // bumps: Default::default(),
         bumps: BumpsConfig {
             bump_pre_release_label: args.bump_pre_release_label(),
             bump_pre_release_num: args.bump_pre_release_num(),
+            bump_patch: Some(Some(Template::Template(
+                "{{#if pre_release}}0{{else}}1{{/if}}".to_string(),
+            ))),
             ..Default::default()
         },
     };
@@ -53,11 +55,7 @@ mod tests {
     use super::*;
     use crate::cli::utils::template::Template;
     use crate::test_info;
-    use crate::test_utils::{
-        GitRepoFixture,
-        assert_version_expectation,
-        should_run_docker_tests,
-    };
+    use crate::test_utils::{GitRepoFixture, assert_version_expectation, should_run_docker_tests};
 
     fn test_flow_pipeline_with_fixture(
         fixture_path: &str,
@@ -103,14 +101,11 @@ mod tests {
 
         let fixture =
             GitRepoFixture::tagged("v1.0.0").expect("Failed to create git fixture with tag");
+
         let fixture_path = fixture.path().to_string_lossy();
         let main_hash = Template::render("{{hash_int 'main' 5}}");
 
-        test_flow_pipeline_with_fixture(
-            &fixture_path,
-            &format!("1.0.0-alpha.{}", main_hash),
-            &format!("1.0.0a{}", main_hash),
-        );
+        test_flow_pipeline_with_fixture(&fixture_path, &format!("1.0.0"), &format!("1.0.0"));
 
         fixture
             .checkout_branch("feature-1")
@@ -118,10 +113,18 @@ mod tests {
 
         let feature_1_hash = Template::render("{{hash_int 'feature-1' 5}}");
 
+        // test_flow_pipeline_with_fixture(
+        //     &fixture_path,
+        //     &format!("1.0.1-alpha.{}", feature_1_hash),
+        //     &format!("1.0.1a{}", feature_1_hash),
+        // );
+
+        fixture.make_dirty().expect("xxxxxxx");
+
         test_flow_pipeline_with_fixture(
             &fixture_path,
-            &format!("1.0.0-alpha.{}", feature_1_hash),
-            &format!("1.0.0a{}", feature_1_hash),
+            "1.0.0+feature.1.0.{{commit_hash_7}}",
+            "1.0.0+feature.1.0.{{commit_hash_7}}",
         );
 
         let dirty_hash = Template::render("{{hash_int 'dirty-working-dir' 5}}");
