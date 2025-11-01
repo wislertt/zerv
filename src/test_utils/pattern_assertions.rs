@@ -1,15 +1,7 @@
-use handlebars::Handlebars;
 use regex::Regex;
-use serde_json::json;
 
 pub fn assert_version_expectation(expectation: &str, actual: &str) {
-    let handlebars = Handlebars::new();
-
-    let template_data = json!({
-        "commit_hash_7": "[a-f0-9]{7}"
-    });
-
-    let re: Regex = Regex::new(r"\{\{[^}]+\}\}").expect("Invalid regex for tokenization");
+    let re: Regex = Regex::new(r"\{[^}]+\}").expect("Invalid regex for tokenization");
     let tokens: Vec<&str> = re.split(expectation).collect();
     let placeholders: Vec<_> = re.find_iter(expectation).map(|m| m.as_str()).collect();
 
@@ -43,9 +35,31 @@ pub fn assert_version_expectation(expectation: &str, actual: &str) {
         // Match placeholder (regex match)
         if i < placeholders.len() {
             let placeholder = placeholders[i];
-            let regex_pattern = handlebars
-                .render_template(placeholder, &template_data)
-                .expect("Failed to render template");
+
+            // Convert placeholder to regex pattern
+            // Handle common template patterns
+            let regex_pattern = match placeholder.trim_matches(&['{', '}'][..]).trim() {
+                "commit_hash_7" => "[a-f0-9]{7}".to_string(),
+                "commit_hash" => "[a-f0-9]+".to_string(),
+                "major" => r"\d+".to_string(),
+                "minor" => r"\d+".to_string(),
+                "patch" => r"\d+".to_string(),
+                "post" => r"\d+".to_string(),
+                "dev" => r"\d+".to_string(),
+                "epoch" => r"\d+".to_string(),
+                other => {
+                    // For unknown placeholders, extract any length suffix
+                    if let Some(last_part) = other.split('_').next_back() {
+                        if let Ok(length) = last_part.parse::<usize>() {
+                            format!("[a-f0-9]{{{}}}", length)
+                        } else {
+                            "[a-f0-9]+".to_string() // fallback
+                        }
+                    } else {
+                        "[a-f0-9]+".to_string() // fallback
+                    }
+                }
+            };
 
             let regex = Regex::new(&regex_pattern).expect("Invalid regex pattern");
 
@@ -132,12 +146,12 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case("0.7.74+dev.4.{{commit_hash_7}}", "0.7.74+dev.4.d4738bb")]
-    #[case("1.0.0+dev.1.{{commit_hash_7}}", "1.0.0+dev.1.a1b2c3d")]
-    #[case("prefix-{{commit_hash_7}}-suffix", "prefix-d4738bb-suffix")]
-    #[case("{{commit_hash_7}}-middle-{{commit_hash_7}}", "d4738bb-middle-a1b2c3d")]
+    #[case("0.7.74+dev.4.{commit_hash_7}", "0.7.74+dev.4.d4738bb")]
+    #[case("1.0.0+dev.1.{commit_hash_7}", "1.0.0+dev.1.a1b2c3d")]
+    #[case("prefix-{commit_hash_7}-suffix", "prefix-d4738bb-suffix")]
+    #[case("{commit_hash_7}-middle-{commit_hash_7}", "d4738bb-middle-a1b2c3d")]
     #[case(
-        "{{commit_hash_7}}{{commit_hash_7}}{{commit_hash_7}}",
+        "{commit_hash_7}{commit_hash_7}{commit_hash_7}",
         "d4738bba1b2c3dabc1234"
     )]
     #[case("exact-match-no-placeholders", "exact-match-no-placeholders")]
@@ -147,22 +161,22 @@ mod tests {
 
     #[rstest]
     #[case(
-        "0.7.74+dev.4.{{commit_hash_7}}",
+        "0.7.74+dev.4.{commit_hash_7}",
         "1.7.74+dev.4.d4738bb",
         "Expected '0.7.74+dev.4.' at position 0"
     )]
     #[case(
-        "0.7.74+dev.4.{{commit_hash_7}}",
+        "0.7.74+dev.4.{commit_hash_7}",
         "0.7.74+dev.4.xyz1234",
-        "Expected placeholder '{{commit_hash_7}}' (regex: '[a-f0-9]{7}') to match 'xyz1234'"
+        "Expected placeholder '{commit_hash_7}' (regex: '[a-f0-9]{7}') to match 'xyz1234'"
     )]
     #[case(
-        "{{commit_hash_7}}{{commit_hash_7}}",
+        "{commit_hash_7}{commit_hash_7}",
         "d4738bb",
-        "Not enough characters for placeholder '{{commit_hash_7}}'"
+        "Not enough characters for placeholder '{commit_hash_7}'"
     )]
     #[case(
-        "prefix-{{commit_hash_7}}",
+        "prefix-{commit_hash_7}",
         "prefix-d4738bb-extra",
         "Unexpected trailing characters in actual string"
     )]

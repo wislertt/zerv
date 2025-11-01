@@ -132,7 +132,10 @@ mod template_helpers_sanitize {
     #[case::lower_dotted("Feature/API-v2", "lower_dotted", "feature.api.v2")]
     #[case::pep440("Build-ID-0051", "pep440", "build.id.51")]
     fn test_sanitize_presets(#[case] input: &str, #[case] preset: &str, #[case] expected: &str) {
-        let template = format!("{{{{sanitize bumped_branch preset=\"{preset}\"}}}}");
+        let template = format!(
+            "{{{{ sanitize(value='bumped_branch', preset=\"{}\") }}}}",
+            preset
+        );
         let fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
             None,
             None,
@@ -148,12 +151,12 @@ mod template_helpers_sanitize {
     #[rstest]
     #[case::custom_separator(
         "feature-branch",
-        "{{sanitize bumped_branch separator=\"_\"}}",
+        "{{ sanitize(value='bumped_branch', separator=\"_\") }}",
         "feature_branch"
     )]
     #[case::max_length(
         "VeryLongBranchName",
-        "{{sanitize bumped_branch max_length=10 lowercase=false}}",
+        "{{ sanitize(value='bumped_branch', max_length=10, lowercase=false) }}",
         "VeryLongBr"
     )]
     fn test_sanitize_custom(#[case] input: &str, #[case] template: &str, #[case] expected: &str) {
@@ -174,9 +177,9 @@ mod template_helpers_hash {
     use super::*;
 
     #[rstest]
-    #[case::default("{{hash bumped_branch}}", "c7dedb4")]
-    #[case::custom_length("{{hash bumped_branch 10}}", "c7dedb4632")]
-    #[case::hash_int("{{hash_int bumped_branch}}", "7126668")]
+    #[case::default("{{ hash(value='bumped_branch') }}", "c7dedb4")]
+    #[case::custom_length("{{ hash(value='bumped_branch', length=10) }}", "c7dedb4632")]
+    #[case::hash_int("{{ hash_int(value='bumped_branch') }}", "1440218")]
     fn test_hash(#[case] template: &str, #[case] expected: &str) {
         let fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
             None,
@@ -196,7 +199,7 @@ mod template_helpers_prefix {
 
     #[test]
     fn test_prefix() {
-        let template = "{{prefix bumped_commit_hash 7}}";
+        let template = "{{ prefix(value=bumped_commit_hash, length=7) }}";
         let fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
             None,
             None,
@@ -214,13 +217,13 @@ mod template_helpers_timestamp {
     use super::*;
 
     #[rstest]
-    #[case::default("{{format_timestamp last_timestamp}}", "2023-12-21")]
+    #[case::default("{{ format_timestamp(value=last_timestamp) }}", "2023-12-21")]
     #[case::compact_date(
-        r#"{{format_timestamp last_timestamp format="compact_date"}}"#,
+        r#"{{ format_timestamp(value=last_timestamp, format="compact_date") }}"#,
         "20231221"
     )]
     #[case::compact_datetime(
-        r#"{{format_timestamp last_timestamp format="compact_datetime"}}"#,
+        r#"{{ format_timestamp(value=last_timestamp, format="compact_datetime") }}"#,
         "20231221015056"
     )]
     fn test_timestamp(#[case] template: &str, #[case] expected: &str) {
@@ -241,9 +244,9 @@ mod template_helpers_math {
     use super::*;
 
     #[rstest]
-    #[case::add("{{add major minor}}", (1, 2, 3), "3")]
-    #[case::subtract("{{subtract major minor}}", (5, 2, 0), "3")]
-    #[case::multiply("{{multiply major minor}}", (3, 4, 0), "12")]
+    #[case::add("{{ major + minor }}", (1, 2, 3), "3")]
+    #[case::subtract("{{ major - minor }}", (5, 2, 0), "3")]
+    #[case::multiply("{{ major * minor }}", (3, 4, 0), "12")]
     fn test_math(#[case] template: &str, #[case] version: (u64, u64, u64), #[case] expected: &str) {
         let fixture = ZervFixture::new().with_version(version.0, version.1, version.2);
         assert_eq!(run_template(template, fixture), expected);
@@ -275,7 +278,7 @@ mod template_complex_scenarios {
     fn test_tier_3_pattern() {
         let template = concat!(
             "{{major}}.{{minor}}.{{patch}}.dev{{dev}}+",
-            "{{sanitize bumped_branch}}.{{bumped_commit_hash_short}}"
+            "{{ sanitize(value='bumped_branch') }}.{{bumped_commit_hash_short}}"
         );
         let fixture = ZervFixture::new()
             .with_version(1, 0, 0)
@@ -298,8 +301,8 @@ mod template_complex_scenarios {
     #[test]
     fn test_multiple_helpers() {
         let template = concat!(
-            r#"{{major}}.{{minor}}.{{patch}}-{{sanitize bumped_branch preset="dotted"}}."#,
-            r#"{{format_timestamp last_timestamp format="compact_date"}}"#
+            r#"{{major}}.{{minor}}.{{patch}}-{{ sanitize(value=bumped_branch, preset="dotted") }}."#,
+            r#"{{ format_timestamp(value=last_timestamp, format="compact_date") }}"#
         );
         let fixture = ZervFixture::new().with_version(2, 1, 0).with_vcs_data(
             None,
@@ -319,8 +322,8 @@ mod template_complex_scenarios {
     #[test]
     fn test_calver_pattern() {
         let template = concat!(
-            r#"{{format_timestamp last_timestamp format="%Y"}}."#,
-            r#"{{format_timestamp last_timestamp format="%m"}}.{{major}}"#
+            r#"{{ format_timestamp(value=last_timestamp, format="%Y") }}."#,
+            r#"{{ format_timestamp(value=last_timestamp, format="%m") }}.{{major}}"#
         );
         let fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
             None,
@@ -340,12 +343,12 @@ mod template_edge_cases {
 
     #[rstest]
     #[case::missing_vars(
-        "{{major}}.{{minor}}.{{patch}}{{#if epoch}}-epoch{{/if}}",
+        "{{major}}.{{minor}}.{{patch}}{% if epoch %}-epoch{% endif %}",
         |f: ZervFixture| f,
         "1.0.0"
     )]
     #[case::conditional(
-        "{{#if epoch}}{{epoch}}!{{/if}}{{major}}.{{minor}}.{{patch}}",
+        "{% if epoch %}{{epoch}}!{% endif %}{{major}}.{{minor}}.{{patch}}",
         |f: ZervFixture| f.with_epoch(2),
         "2!1.0.0"
     )]

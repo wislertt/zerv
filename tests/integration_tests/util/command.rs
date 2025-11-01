@@ -278,7 +278,7 @@ mod tests {
         r#"version --source stdin --output-template "{{major}}.{{minor}}.{{patch}}""#,
         "1.2.3"
     )]
-    #[case(Some(2), r#"version --source stdin --output-template "{{#if epoch}}{{epoch}}!{{/if}}{{major}}.{{minor}}.{{patch}}""#, "2!1.2.3")]
+    #[case(Some(2), r#"version --source stdin --output-template "{% if epoch %}{{epoch}}!{% endif %}{{major}}.{{minor}}.{{patch}}""#, "2!1.2.3")]
     #[case(
         None,
         r#"version --source stdin --output-template "Version {{major}}.{{minor}}""#,

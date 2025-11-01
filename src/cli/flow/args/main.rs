@@ -66,7 +66,7 @@ pub struct FlowArgs {
     #[arg(
         long,
         value_parser = clap::value_parser!(u32),
-        help = "Pre-release number for flow versions (integer, default: {{hash_int bumped_branch HASH_BRANCH_LEN}})"
+        help = "Pre-release number for flow versions (integer, default: {{ hash_int(value='bumped_branch', length=HASH_BRANCH_LEN) }})"
     )]
     pub pre_release_num: Option<u32>,
 
@@ -99,13 +99,13 @@ impl Default for FlowArgs {
 
 impl FlowArgs {
     pub fn build_patch_bump_template(&self, content: &str) -> String {
-        let if_part = "{{#if (and pre_release (or dirty distance))}}";
-        let else_part = "{{else}}None{{/if}}";
+        let if_part = "{% if pre_release and (dirty or distance) %}";
+        let else_part = "{% else %}None{% endif %}";
         if_part.to_string() + content + else_part
     }
     pub fn build_pre_release_bump_template(&self, content: &str) -> String {
-        let if_part = "{{#if (or dirty distance)}}";
-        let else_part = "{{else}}None{{/if}}";
+        let if_part = "{% if dirty or distance %}";
+        let else_part = "{% else %}None{% endif %}";
         if_part.to_string() + content + else_part
     }
 
@@ -167,7 +167,10 @@ impl FlowArgs {
                 let pre_release_num_content = if let Some(num) = self.pre_release_num {
                     num.to_string()
                 } else {
-                    "{{hash_int bumped_branch ".to_string() + &hash_len + "}}"
+                    format!(
+                        "{{{{ hash_int(value='bumped_branch', length={}) }}}}",
+                        hash_len
+                    )
                 };
 
                 let template = self.build_pre_release_bump_template(&pre_release_num_content);
@@ -440,7 +443,10 @@ mod tests {
             let template = result.unwrap().unwrap();
 
             // Generate expected template from input
-            let content = "{{hash_int bumped_branch ".to_string() + &length.to_string() + "}}";
+            let content = format!(
+                "{{{{ hash_int(value='bumped_branch', length={}) }}}}",
+                length
+            );
             let expected = args.build_pre_release_bump_template(&content);
             assert_eq!(template.content(), expected);
         }
@@ -507,8 +513,10 @@ mod tests {
                 assert_eq!(template.content(), expected);
             } else {
                 let template = result.unwrap().unwrap();
-                let content =
-                    "{{hash_int bumped_branch ".to_string() + &hash_len.to_string() + "}}";
+                let content = format!(
+                    "{{{{ hash_int(value='bumped_branch', length={}) }}}}",
+                    hash_len
+                );
                 let expected = args.build_pre_release_bump_template(&content);
                 assert_eq!(template.content(), expected);
             }

@@ -1,12 +1,5 @@
-// Re-export Handlebars implementation from subdirectory
-pub mod handlebars;
-
-// Re-export Tera implementation from subdirectory
+// Tera template implementation
 pub mod tera;
-
-// Integration testing for template engine migration
-#[cfg(any(test, feature = "test-utils"))]
-pub mod integration;
 
 use std::fmt::Display;
 use std::str::FromStr;

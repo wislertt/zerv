@@ -299,7 +299,7 @@ mod template_override_combinations {
 
         // Test sanitize helper with overridden values
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --bumped-branch 'feature/test' --output-template '{{sanitize bumped_branch preset=\"dotted\"}}'",
+            "version --source stdin --bumped-branch 'feature/test' --output-template '{{ sanitize(value=bumped_branch, preset=\"dotted\") }}'",
             zerv_ron,
         );
         assert_eq!(output, "feature.test");
@@ -311,7 +311,7 @@ mod template_override_combinations {
 
         // Test hash helper with overridden branch name
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --bumped-branch 'feature/very-long-branch-name-for-testing' --output-template '{{hash bumped_branch}}'",
+            "version --source stdin --bumped-branch 'feature/very-long-branch-name-for-testing' --output-template '{{ hash(value=bumped_branch) }}'",
             zerv_ron,
         );
 
@@ -375,7 +375,7 @@ mod error_scenarios {
 
         // Test template with invalid custom variable reference - this succeeds but outputs empty string
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --custom '{}' --output-template '{{custom.nonexistent}}'",
+            "version --source stdin --custom '{}' --output-template '{{ custom.nonexistent | default(value=\"\") }}'",
             zerv_ron,
         );
         assert_eq!(output, ""); // Missing custom variables render as empty strings

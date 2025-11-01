@@ -259,7 +259,7 @@ mod template_bump_combinations {
 
         // Test sanitize helper with bumped version
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --bump-major --bumped-branch 'feature/test' --output-template '{{sanitize bumped_branch preset=\"dotted\"}}-v{{major}}'",
+            "version --source stdin --bump-major --bumped-branch 'feature/test' --output-template '{{ sanitize(value=bumped_branch, preset=\"dotted\") }}-v{{major}}'",
             zerv_ron,
         );
         assert_eq!(output, "feature.test-v3");

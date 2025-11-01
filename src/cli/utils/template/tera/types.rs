@@ -30,7 +30,9 @@ where
         // Add the template to Tera instance
         let template_name = "template";
         tera.add_raw_template(template_name, &template)
-            .map_err(|e| ZervError::TemplateError(format!("Failed to parse template: {}", e)))?;
+            .map_err(|e| {
+                ZervError::TemplateError(format!("Failed to parse template '{}': {}", template, e))
+            })?;
 
         Ok(Self {
             template,
@@ -69,7 +71,9 @@ where
         // Add the template to Tera instance
         let template_name = "template";
         tera.add_raw_template(template_name, template)
-            .map_err(|e| ZervError::TemplateError(format!("Failed to parse template: {}", e)))?;
+            .map_err(|e| {
+                ZervError::TemplateError(format!("Failed to parse template '{}': {}", template, e))
+            })?;
 
         // Create template context from Zerv object or empty context
         let context = if let Some(z) = zerv {
@@ -80,9 +84,9 @@ where
             tera::Context::new()
         };
 
-        let rendered = tera
-            .render(template_name, &context)
-            .map_err(|e| ZervError::TemplateError(format!("Template render error: {e}")))?;
+        let rendered = tera.render(template_name, &context).map_err(|e| {
+            ZervError::TemplateError(format!("Template render error '{}': {}", template, e))
+        })?;
 
         // Strip leading/trailing whitespace and normalize internal whitespace
         Ok(rendered.trim().to_string())
@@ -105,7 +109,12 @@ where
                     ZervError::TemplateError(format!("Failed to serialize context: {}", e))
                 })?,
             )
-            .map_err(|e| ZervError::TemplateError(format!("Failed to render template: {}", e)))
+            .map_err(|e| {
+                ZervError::TemplateError(format!(
+                    "Failed to render template '{}': {}",
+                    self.template, e
+                ))
+            })
     }
 
     /// Get the raw template string

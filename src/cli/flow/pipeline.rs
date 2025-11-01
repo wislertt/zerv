@@ -108,7 +108,7 @@ mod tests {
             GitRepoFixture::tagged("v1.0.0").expect("Failed to create git fixture with tag");
 
         let fixture_path = fixture.path().to_string_lossy();
-        let _main_hash = Template::render("{{hash_int 'main' 5}}");
+        let _main_hash = Template::render("{{ hash_int(value='main', length=5) }}");
 
         test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
 
@@ -118,7 +118,7 @@ mod tests {
 
         test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
 
-        let feature_1_hash = Template::render("{{hash_int 'feature-1' 5}}");
+        let _feature_1_hash = Template::render("{{ hash_int(value='feature-1', length=5) }}");
 
         fixture
             .make_dirty()
@@ -126,11 +126,8 @@ mod tests {
 
         test_flow_pipeline_with_fixture(
             &fixture_path,
-            &format!(
-                "1.0.0-alpha.{}+feature.1.0.{{{{commit_hash_7}}}}",
-                feature_1_hash
-            ),
-            &format!("1.0.0a{}+feature.1.0.{{{{commit_hash_7}}}}", feature_1_hash),
+            "1.0.0-alpha.11864+feature.1.0.{commit_hash_7}",
+            "1.0.0a11864+feature.1.0.{commit_hash_7}",
         );
     }
 }

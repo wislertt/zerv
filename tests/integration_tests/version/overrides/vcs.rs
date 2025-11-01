@@ -412,7 +412,7 @@ mod bumped_timestamp_override {
     })]
     #[case::template_formatted(
         1672531200,
-        r#"--output-template "{{format_timestamp bumped_timestamp format=\"compact_date\"}}""#,
+        r#"--output-template "{{ format_timestamp(value=bumped_timestamp, format=\"compact_date\") }}""#,
         |output: &str, _: i64| {
             output == "20230101"
         }

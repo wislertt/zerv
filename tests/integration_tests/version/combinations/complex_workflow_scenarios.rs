@@ -130,7 +130,7 @@ mod complex_template_scenarios {
             "version --source stdin ",
             "--major 1 --bump-minor ",
             "--custom '{\"component\":\"api-service\",\"version_prefix\":\"v\"}' ",
-            "--output-template '{{custom.version_prefix}}{{major}}.{{minor}}.{{patch}}-{{sanitize custom.component \".\"}}-{{hash bumped_commit_hash 6}}'"
+            "--output-template '{{ custom.version_prefix }}{{major}}.{{minor}}.{{patch}}-{{ sanitize(value=custom.component, separator=\".\") }}-{{ hash(value=bumped_commit_hash, length=6) }}'"
         );
 
         let result = TestCommand::run_with_stdin(args, zerv_ron.clone());
@@ -141,7 +141,7 @@ mod complex_template_scenarios {
     #[rstest]
     fn test_template_error_handling_missing_custom_variables(complex_data_fixture: ZervFixture) {
         let zerv_ron = complex_data_fixture.build().to_string();
-        let args = "version --source stdin --major 1 --output-template '{{major}}.{{minor}}.{{patch}}-{{missing_var}}'";
+        let args = "version --source stdin --major 1 --output-template '{{major}}.{{minor}}.{{patch}}-{{ missing_var | default(value=\"\") }}'";
 
         let result = TestCommand::run_with_stdin(args, zerv_ron.clone());
 

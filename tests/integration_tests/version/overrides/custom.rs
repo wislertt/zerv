@@ -244,7 +244,7 @@ mod error_handling {
             concat!(
                 "version --source stdin ",
                 r#"--custom '{"build":"123"}' "#,
-                "--output-template '{{custom.nonexistent}}'"
+                "--output-template '{{ custom.nonexistent | default(value=\"\") }}'"
             ),
             zerv_ron,
         );
@@ -296,7 +296,7 @@ mod template_helpers {
             concat!(
                 "version --source stdin ",
                 r#"--custom '{"branch":"feature/test-branch"}' "#,
-                r#"--output-template "{{sanitize custom.branch separator=\"_\"}}""#
+                r#"--output-template "{{ sanitize(value=custom.branch, separator=\"_\") }}""#
             ),
             zerv_ron,
         );
@@ -312,7 +312,7 @@ mod template_helpers {
             concat!(
                 "version --source stdin ",
                 r#"--custom '{"env":"production"}' "#,
-                r#"--output-template "{{hash custom.env}}""#
+                r#"--output-template "{{ hash(value=custom.env) }}""#
             ),
             zerv_ron,
         );
@@ -328,7 +328,7 @@ mod template_helpers {
             concat!(
                 "version --source stdin ",
                 r#"--custom '{"build":"abc123def"}' "#,
-                r#"--output-template "{{prefix custom.build 3}}""#
+                r#"--output-template "{{ prefix(value=custom.build, length=3) }}""#
             ),
             zerv_ron,
         );

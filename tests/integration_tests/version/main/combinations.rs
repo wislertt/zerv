@@ -126,7 +126,7 @@ mod schema_template {
         let cmd = format!(
             concat!(
                 "version --source stdin --schema-ron '{}' --output-template ",
-                r#""{{{{epoch}}}}:{{{{semver}}}}-{{{{sanitize bumped_branch}}}}""#
+                r#""{{{{epoch}}}}:{{{{semver}}}}-{{{{ sanitize(value=bumped_branch) }}}}""#
             ),
             schema_ron
         );
@@ -216,7 +216,7 @@ mod template_helpers {
             .to_string();
 
         let result = TestCommand::run_with_stdin(
-            r#"version --source stdin --output-template "{{semver}}-{{sanitize bumped_branch}}""#,
+            r#"version --source stdin --output-template "{{semver}}-{{ sanitize(value=bumped_branch) }}""#,
             zerv_ron,
         );
 

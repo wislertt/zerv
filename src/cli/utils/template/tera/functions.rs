@@ -12,6 +12,12 @@ use tera::{
 use crate::error::ZervError;
 use crate::utils::sanitize::Sanitizer;
 
+/// Timestamp format patterns
+mod timestamp_patterns {
+    pub const COMPACT_DATE: &str = "compact_date";
+    pub const COMPACT_DATETIME: &str = "compact_datetime";
+}
+
 /// Register custom Tera functions
 pub fn register_functions(tera: &mut Tera) -> Result<(), ZervError> {
     tera.register_function("sanitize", Box::new(sanitize_function));
@@ -128,9 +134,9 @@ fn hash_int_function(
     let hash = hasher.finish();
 
     let result = if allow_leading_zero {
-        format!("{:0width$x}", hash, width = length)
+        format!("{:0width$}", hash, width = length)
     } else {
-        format!("{:x}", hash)
+        format!("{}", hash)
     };
 
     let short = if result.len() > length {
@@ -170,18 +176,28 @@ fn format_timestamp_function(
         tera::Error::msg("format_timestamp function requires a 'value' parameter")
     })?;
 
-    // Default format if not specified
+    // Default format if not specified, and handle special format names
     let format = args
         .get("format")
         .and_then(|v| v.as_str())
-        .unwrap_or("%Y-%m-%d %H:%M:%S");
+        .unwrap_or("%Y-%m-%d");
+
+    let chrono_format = match format {
+        timestamp_patterns::COMPACT_DATE => "%Y%m%d",
+        timestamp_patterns::COMPACT_DATETIME => "%Y%m%d%H%M%S",
+        _ => format,
+    };
 
     // Convert timestamp to DateTime and format
-    use chrono::DateTime;
+    use chrono::{
+        DateTime,
+        Utc,
+    };
 
     let dt = DateTime::from_timestamp(timestamp as i64, 0)
-        .ok_or_else(|| tera::Error::msg("Invalid timestamp"))?;
-    let formatted = dt.format(format).to_string();
+        .ok_or_else(|| tera::Error::msg("Invalid timestamp"))?
+        .with_timezone(&Utc);
+    let formatted = dt.format(chrono_format).to_string();
 
     Ok(Value::String(formatted))
 }
