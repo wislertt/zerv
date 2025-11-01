@@ -18,7 +18,7 @@ impl OutputFormatter {
     ) -> Result<String, ZervError> {
         // 1. Resolve template if provided, otherwise use standard format
         let mut output = if let Some(template) = output_template {
-            template.resolve(Some(zerv_object))?
+            template.resolve(Some(zerv_object))?.unwrap_or_default()
         } else {
             Self::format_base_output(zerv_object, output_format)?
         };

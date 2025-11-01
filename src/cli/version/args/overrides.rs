@@ -1,7 +1,6 @@
 use clap::Parser;
 
 use crate::cli::utils::template::Template;
-use crate::cli::version::args::validation::Validation;
 
 /// Override configuration for VCS and version components
 #[derive(Parser, Default, Debug)]
@@ -78,8 +77,10 @@ pub struct OverridesConfig {
     pub dev: Option<Template<u32>>,
 
     /// Override pre-release label
-    #[arg(long, value_parser = Validation::validate_pre_release_template,
-          help = "Override pre-release label (alpha, beta, rc, none, null). Supports templates like '{{{{#if dirty}}}}dev{{{{else}}}}beta{{{{/if}}}}'")]
+    #[arg(
+        long,
+        help = "Override pre-release label (alpha, beta, rc, none, null). Supports templates like '{{{{#if dirty}}}}dev{{{{else}}}}beta{{{{/if}}}}'"
+    )]
     pub pre_release_label: Option<Template<String>>,
 
     /// Override pre-release number

@@ -62,7 +62,7 @@ impl VersionArgsFixture {
 
     /// Set output template
     pub fn with_output_template(mut self, template: &str) -> Self {
-        self.args.output.output_template = Some(Template::Value(template.to_string()));
+        self.args.output.output_template = Some(Template::new(template.to_string()));
         self
     }
 
@@ -120,20 +120,20 @@ impl VersionArgsFixture {
 
     /// Set post value
     pub fn with_post(mut self, post: u32) -> Self {
-        self.args.overrides.post = Some(Template::Value(post));
+        self.args.overrides.post = Some(Template::new(post.to_string()));
         self
     }
 
     /// Set dev value
     pub fn with_dev(mut self, dev: u32) -> Self {
-        self.args.overrides.dev = Some(Template::Value(dev));
+        self.args.overrides.dev = Some(Template::new(dev.to_string()));
         self
     }
 
     /// Set pre-release label
     pub fn with_pre_release_label(mut self, label: &str) -> Self {
         use crate::cli::utils::template::Template;
-        self.args.overrides.pre_release_label = Some(Template::Value(label.to_string()));
+        self.args.overrides.pre_release_label = Some(Template::new(label.to_string()));
         self
     }
 
@@ -220,7 +220,7 @@ impl VersionArgsFixture {
     /// Set bump pre-release label
     pub fn with_bump_pre_release_label(mut self, label: &str) -> Self {
         use crate::cli::utils::template::Template;
-        self.args.bumps.bump_pre_release_label = Some(Template::Value(label.to_string()));
+        self.args.bumps.bump_pre_release_label = Some(Template::new(label.to_string()));
         self
     }
 
@@ -319,7 +319,7 @@ impl VersionArgsFixture {
                 OverrideType::Dev(dev) => self.args.overrides.dev = Some(dev.into()),
                 OverrideType::PreReleaseLabel(label) => {
                     use crate::cli::utils::template::Template;
-                    self.args.overrides.pre_release_label = Some(Template::Value(label))
+                    self.args.overrides.pre_release_label = Some(Template::new(label))
                 }
                 OverrideType::PreReleaseNum(num) => {
                     self.args.overrides.pre_release_num = Some(num.into())
@@ -492,7 +492,7 @@ mod tests {
             .build();
         assert_eq!(
             args.output.output_template,
-            Some(crate::cli::utils::template::Template::Value(
+            Some(crate::cli::utils::template::Template::new(
                 "v{{major}}.{{minor}}.{{patch}}".to_string()
             ))
         );
@@ -559,7 +559,7 @@ mod tests {
         assert_eq!(args.main.schema_ron, Some("test-schema".to_string()));
         assert_eq!(
             args.output.output_template,
-            Some(crate::cli::utils::template::Template::Value(
+            Some(crate::cli::utils::template::Template::new(
                 "{{version}}".to_string()
             ))
         );

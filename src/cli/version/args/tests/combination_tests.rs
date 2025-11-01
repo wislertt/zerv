@@ -336,7 +336,7 @@ fn test_validate_pre_release_flags_no_conflict() {
         .build();
     assert_eq!(
         args.overrides.pre_release_label,
-        Some(Template::Value("alpha".to_string()))
+        Some(Template::new("alpha".to_string()))
     );
     assert_eq!(args.bumps.bump_pre_release_label, None);
     assert!(args.validate().is_ok());
@@ -347,7 +347,7 @@ fn test_validate_pre_release_flags_no_conflict() {
     assert_eq!(args.overrides.pre_release_label, None);
     assert_eq!(
         args.bumps.bump_pre_release_label,
-        Some(Template::Value("beta".to_string()))
+        Some(Template::new("beta".to_string()))
     );
     assert!(args.validate().is_ok());
 }

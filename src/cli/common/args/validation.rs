@@ -144,7 +144,7 @@ mod tests {
     fn test_validate_output_template_with_semver_success() {
         let output = OutputConfig {
             output_format: formats::SEMVER.to_string(),
-            output_template: Some(Template::Value("v{{major}}.{{minor}}".to_string())),
+            output_template: Some(Template::new("v{{major}}.{{minor}}".to_string())),
             output_prefix: None,
         };
         assert!(Validation::validate_output(&output).is_ok());
@@ -154,7 +154,7 @@ mod tests {
     fn test_validate_output_template_with_non_semver_fails() {
         let output = OutputConfig {
             output_format: formats::PEP440.to_string(),
-            output_template: Some(Template::Value("v{{major}}.{{minor}}".to_string())),
+            output_template: Some(Template::new("v{{major}}.{{minor}}".to_string())),
             output_prefix: None,
         };
         let result = Validation::validate_output(&output);
@@ -169,7 +169,7 @@ mod tests {
     fn test_validate_output_template_with_prefix_fails() {
         let output = OutputConfig {
             output_format: formats::SEMVER.to_string(),
-            output_template: Some(Template::Value("v{{major}}.{{minor}}".to_string())),
+            output_template: Some(Template::new("v{{major}}.{{minor}}".to_string())),
             output_prefix: Some("release-".to_string()),
         };
         let result = Validation::validate_output(&output);
@@ -192,7 +192,7 @@ mod tests {
         let input = create_valid_input();
         let output = OutputConfig {
             output_format: formats::PEP440.to_string(),
-            output_template: Some(Template::Value("template".to_string())),
+            output_template: Some(Template::new("template".to_string())),
             output_prefix: None,
         };
         let result = Validation::validate_io(&input, &output);
@@ -207,7 +207,7 @@ mod tests {
     fn test_validate_output_error_message_template_format() {
         let output = OutputConfig {
             output_format: formats::PEP440.to_string(),
-            output_template: Some(Template::Value("test".to_string())),
+            output_template: Some(Template::new("test".to_string())),
             output_prefix: None,
         };
         let result = Validation::validate_output(&output);
@@ -222,7 +222,7 @@ mod tests {
     fn test_validate_output_error_message_template_prefix() {
         let output = OutputConfig {
             output_format: formats::SEMVER.to_string(),
-            output_template: Some(Template::Value("test".to_string())),
+            output_template: Some(Template::new("test".to_string())),
             output_prefix: Some("v".to_string()),
         };
         let result = Validation::validate_output(&output);
@@ -248,7 +248,7 @@ mod tests {
     fn test_validate_output_zerv_format_with_template_fails() {
         let output = OutputConfig {
             output_format: formats::ZERV.to_string(),
-            output_template: Some(Template::Value("template".to_string())),
+            output_template: Some(Template::new("template".to_string())),
             output_prefix: None,
         };
         let result = Validation::validate_output(&output);
@@ -272,7 +272,7 @@ mod tests {
         // Test with complex template (should be valid with semver)
         let output = OutputConfig {
             output_format: formats::SEMVER.to_string(),
-            output_template: Some(Template::Value(
+            output_template: Some(Template::new(
                 "v{{major}}.{{minor}}.{{patch}}-{{pre_release}}".to_string(),
             )),
             output_prefix: None,

@@ -31,7 +31,7 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
         bumps: BumpsConfig {
             bump_pre_release_label: args.bump_pre_release_label(),
             bump_pre_release_num: args.bump_pre_release_num(),
-            bump_patch: Some(Some(Template::Template(
+            bump_patch: Some(Some(Template::new(
                 "
             {{#if (and pre_release (or dirty distance))}}
                 1

@@ -66,7 +66,7 @@ fn test_overrides_config_with_values() {
     assert_eq!(config.patch, Some(0.into()));
     assert_eq!(
         config.pre_release_label,
-        Some(Template::Value("alpha".to_string()))
+        Some(Template::new("alpha".to_string()))
     );
     assert_eq!(config.pre_release_num, Some(1.into()));
 }

@@ -140,7 +140,7 @@ impl FlowArgs {
     }
 
     pub fn bump_pre_release_label(&self) -> Option<Template<String>> {
-        self.pre_release_label.clone().map(Template::Value)
+        self.pre_release_label.clone().map(Template::new)
     }
 
     pub fn bump_pre_release_num(&self) -> Option<Option<Template<u32>>> {
@@ -157,7 +157,7 @@ impl FlowArgs {
             //     "{{{{hash_int bumped_branch {}}}}}",
             //     self.hash_branch_len
             // ))))
-            Some(Some(Template::Template(
+            Some(Some(Template::new(
                 "{{#if (and pre_release (or dirty distance))}}
                     {{hash_int bumped_branch 5}}
                 {{else}}

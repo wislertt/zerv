@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use super::{
     BumpsConfig,
     OverridesConfig,
@@ -10,7 +8,6 @@ use crate::cli::common::args::{
 };
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
-use crate::utils::constants::pre_release_labels;
 
 /// Validation methods for argument combinations
 pub struct Validation;
@@ -115,39 +112,39 @@ impl Validation {
     /// Resolve default bump values
     /// If a bump option is provided without a value, set it to 1 (the default)
     pub fn resolve_bump_defaults(bumps: &mut BumpsConfig) -> Result<(), ZervError> {
-        // Resolve bump_major: Some(None) -> Some(Some(Template::Value(1)))
+        // Resolve bump_major: Some(None) -> Some(Some(Template::new("1".to_string())))
         if let Some(None) = bumps.bump_major {
-            bumps.bump_major = Some(Some(Template::Value(1)));
+            bumps.bump_major = Some(Some(Template::new("1".to_string())));
         }
 
-        // Resolve bump_minor: Some(None) -> Some(Some(Template::Value(1)))
+        // Resolve bump_minor: Some(None) -> Some(Some(Template::new("1".to_string())))
         if let Some(None) = bumps.bump_minor {
-            bumps.bump_minor = Some(Some(Template::Value(1)));
+            bumps.bump_minor = Some(Some(Template::new("1".to_string())));
         }
 
-        // Resolve bump_patch: Some(None) -> Some(Some(Template::Value(1)))
+        // Resolve bump_patch: Some(None) -> Some(Some(Template::new("1".to_string())))
         if let Some(None) = bumps.bump_patch {
-            bumps.bump_patch = Some(Some(Template::Value(1)));
+            bumps.bump_patch = Some(Some(Template::new("1".to_string())));
         }
 
-        // Resolve bump_post: Some(None) -> Some(Some(Template::Value(1)))
+        // Resolve bump_post: Some(None) -> Some(Some(Template::new("1".to_string())))
         if let Some(None) = bumps.bump_post {
-            bumps.bump_post = Some(Some(Template::Value(1)));
+            bumps.bump_post = Some(Some(Template::new("1".to_string())));
         }
 
-        // Resolve bump_dev: Some(None) -> Some(Some(Template::Value(1)))
+        // Resolve bump_dev: Some(None) -> Some(Some(Template::new("1".to_string())))
         if let Some(None) = bumps.bump_dev {
-            bumps.bump_dev = Some(Some(Template::Value(1)));
+            bumps.bump_dev = Some(Some(Template::new("1".to_string())));
         }
 
-        // Resolve bump_pre_release_num: Some(None) -> Some(Some(Template::Value(1)))
+        // Resolve bump_pre_release_num: Some(None) -> Some(Some(Template::new("1".to_string())))
         if let Some(None) = bumps.bump_pre_release_num {
-            bumps.bump_pre_release_num = Some(Some(Template::Value(1)));
+            bumps.bump_pre_release_num = Some(Some(Template::new("1".to_string())));
         }
 
-        // Resolve bump_epoch: Some(None) -> Some(Some(Template::Value(1)))
+        // Resolve bump_epoch: Some(None) -> Some(Some(Template::new("1".to_string())))
         if let Some(None) = bumps.bump_epoch {
-            bumps.bump_epoch = Some(Some(Template::Value(1)));
+            bumps.bump_epoch = Some(Some(Template::new("1".to_string())));
         }
 
         Ok(())
@@ -179,10 +176,7 @@ impl Validation {
     fn validate_bump_section(specs: &[Template<String>], arg_name: &str) -> Result<(), ZervError> {
         for template in specs {
             // For validation, we only check the string format, not template resolution
-            let spec = match template {
-                Template::Value(s) => s,
-                Template::Template(s) => s, // Template strings are validated at resolution time
-            };
+            let spec = template.content();
             if !Self::is_valid_bump_spec(spec) {
                 return Err(ZervError::InvalidArgument(format!(
                     "{arg_name} argument '{spec}' must be in format 'index[=value]'"
@@ -233,42 +227,6 @@ impl Validation {
         } else {
             // Positive index: 0, 1, 2, etc.
             index.chars().all(|c| c.is_ascii_digit())
-        }
-    }
-
-    /// Custom validator for pre-release label templates
-    /// Accepts static values (alpha, beta, rc), None keywords (none, null, etc.), or template strings
-    pub fn validate_pre_release_template(s: &str) -> Result<Template<String>, String> {
-        let trimmed = s.trim().to_lowercase();
-
-        // Check for None keywords (pass through as-is, will be handled in resolution)
-        if matches!(
-            trimmed.as_str(),
-            "none" | "null" | "nil" | "nothing" | "empty"
-        ) {
-            return Ok(Template::Value(s.to_string()));
-        }
-
-        // Check for valid static pre-release labels
-        if pre_release_labels::VALID_LABELS.contains(&s) {
-            return Ok(Template::Value(s.to_string()));
-        }
-
-        // Check if it's a template string
-        if s.contains("{{") && s.contains("}}") {
-            // Validate template syntax by attempting to create Template
-            match Template::<String>::from_str(s) {
-                Ok(template) => Ok(template),
-                Err(e) => Err(format!("Invalid template syntax: {}", e)),
-            }
-        } else {
-            Err(format!(
-                "Invalid pre-release label '{}'. Must be one of: {}, {}, {}, or a valid template containing '{{{{' and '}}}}'",
-                s,
-                pre_release_labels::VALID_LABELS.join(", "),
-                "none",
-                "null"
-            ))
         }
     }
 }

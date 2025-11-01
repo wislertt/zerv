@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::marker::PhantomData;
 use std::str::FromStr;
 
 use super::context::TemplateContext;
@@ -6,30 +7,43 @@ use super::helpers::register_helpers;
 use crate::error::ZervError;
 use crate::version::Zerv;
 
-/// Template-aware type that can hold a direct value or template string
+/// Template-aware type that always stores a string template
 #[derive(Debug, Clone, PartialEq)]
-pub enum Template<T> {
-    Value(T),
-    Template(String), // Handlebars template string
+pub struct Template<T> {
+    content: String,
+    _phantom: PhantomData<T>,
 }
 
 impl<T> Template<T>
 where
-    T: FromStr + Clone,
+    T: FromStr + Clone + Display,
     T::Err: Display,
 {
-    /// Resolve template using optional Zerv object context, return final value
-    pub fn resolve(&self, zerv: Option<&Zerv>) -> Result<T, ZervError> {
-        match self {
-            Template::Value(v) => Ok(v.clone()),
-            Template::Template(template) => {
-                let rendered = Self::render_template(template, zerv)?;
-                let parsed = rendered.parse::<T>().map_err(|e| {
-                    ZervError::TemplateError(format!("Failed to parse '{rendered}': {e}"))
-                })?;
-                Ok(parsed)
-            }
+    /// Create a new template with content
+    pub fn new(content: String) -> Self {
+        Template {
+            content,
+            _phantom: PhantomData,
         }
+    }
+
+    /// Get the template content
+    pub fn content(&self) -> &str {
+        &self.content
+    }
+
+    pub fn resolve(&self, zerv: Option<&Zerv>) -> Result<Option<T>, ZervError> {
+        let rendered = Self::render_template(&self.content, zerv)?;
+
+        let trimmed = rendered.trim().to_lowercase();
+        if trimmed.is_empty() || matches!(trimmed.as_str(), "none" | "null" | "nil") {
+            return Ok(None);
+        }
+
+        let parsed = rendered
+            .parse::<T>()
+            .map_err(|e| ZervError::TemplateError(format!("Failed to parse '{rendered}': {e}")))?;
+        Ok(Some(parsed))
     }
 
     /// Render Handlebars template using optional Zerv object as context
@@ -62,20 +76,17 @@ impl Template<String> {
     /// Parse a template string and render it to final string result.
     /// Uses empty context (no Zerv object) and handles errors internally.
     pub fn render(template_str: &str) -> String {
-        let template = Self::from(template_str.to_string());
+        let template = Self::new(template_str.to_string());
         template
             .resolve(None)
+            .map(|opt| opt.unwrap_or_default())
             .unwrap_or_else(|e| format!("template_error: {}", e))
     }
 }
 
 impl From<String> for Template<String> {
     fn from(value: String) -> Self {
-        if value.contains("{{") && value.contains("}}") {
-            Template::Template(value)
-        } else {
-            Template::Value(value)
-        }
+        Template::new(value)
     }
 }
 
@@ -87,39 +98,25 @@ impl From<&str> for Template<String> {
 
 impl From<u32> for Template<u32> {
     fn from(value: u32) -> Self {
-        Template::Value(value)
+        Template::new(value.to_string())
     }
 }
 
 impl From<&str> for Template<u32> {
     fn from(value: &str) -> Self {
-        if value.contains("{{") && value.contains("}}") {
-            Template::Template(value.to_string())
-        } else {
-            match value.parse::<u32>() {
-                Ok(parsed) => Template::Value(parsed),
-                Err(_) => Template::Template(value.to_string()), // Fallback to template
-            }
-        }
+        Template::new(value.to_string())
     }
 }
 
 impl<T> FromStr for Template<T>
 where
-    T: FromStr,
+    T: FromStr + Clone + Display,
     T::Err: Display,
 {
     type Err = String;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        if input.contains("{{") && input.contains("}}") {
-            Ok(Template::Template(input.to_string()))
-        } else {
-            match input.parse::<T>() {
-                Ok(value) => Ok(Template::Value(value)),
-                Err(_) => Ok(Template::Template(input.to_string())), // Fallback to template
-            }
-        }
+        Ok(Template::new(input.to_string()))
     }
 }
 
@@ -133,8 +130,8 @@ mod tests {
     use crate::test_utils::zerv::ZervFixture;
 
     #[rstest]
-    #[case("{{template}}", Template::Template("{{template}}".to_string()))]
-    #[case("no_braces", Template::Value("no_braces".to_string()))]
+    #[case("{{template}}", Template::new("{{template}}".to_string()))]
+    #[case("no_braces", Template::new("no_braces".to_string()))]
     fn test_template_from_str(#[case] input: &str, #[case] expected: Template<String>) {
         let result = Template::from_str(input).unwrap();
         assert_eq!(result, expected);
@@ -147,7 +144,7 @@ mod tests {
         let template: Template<String> = Template::from_str(input).unwrap();
         let zerv = ZervFixture::new().with_version(1, 2, 0).build();
         let result = template.resolve(Some(&zerv)).unwrap();
-        assert_eq!(result, expected);
+        assert_eq!(result.unwrap(), expected);
     }
 
     #[rstest]
@@ -202,8 +199,88 @@ mod tests {
 
         let verbose_result = Template::from(template_str.to_string())
             .resolve(None)
+            .map(|opt| opt.unwrap_or_default())
             .unwrap_or_else(|e| format!("template_error: {}", e));
 
         assert_eq!(render_result, verbose_result);
+    }
+
+    #[rstest]
+    #[case("none", None)] // lowercase
+    #[case("NONE", None)] // uppercase
+    #[case("None", None)] // mixed case
+    #[case(" null ", None)] // with whitespace
+    #[case("null", None)] // null keyword
+    #[case("NULL", None)] // uppercase null
+    #[case("Nil", None)] // nil keyword
+    #[case("NIL", None)] // uppercase nil
+    #[case("", None)] // empty string
+    #[case("   ", None)] // whitespace only
+    #[case("empty", Some("empty"))] // should NOT be None - literal string
+    #[case("nothing", Some("nothing"))] // should NOT be None - literal string
+    #[case("~", Some("~"))] // should NOT be None - literal string
+    #[case("nonempty", Some("nonempty"))] // regular string
+    #[case("alpha", Some("alpha"))] // valid version component
+    fn test_template_resolve_none_keywords(#[case] input: &str, #[case] expected: Option<&str>) {
+        let template: Template<String> = Template::from_str(input).unwrap();
+        let result = template.resolve(None).unwrap();
+        assert_eq!(result, expected.map(|s| s.to_string()));
+    }
+
+    #[rstest]
+    #[case("{{major}}.{{minor}}.{{patch}}", Some("1.2.3"))] // normal template
+    #[case("1.2.3", Some("1.2.3"))] // static version string
+    #[case("none", None)] // none keyword without context
+    #[case("null", None)] // null keyword without context
+    #[case("empty", Some("empty"))] // literal string should not be None
+    fn test_template_resolve_none_keywords_with_context(
+        #[case] input: &str,
+        #[case] expected: Option<&str>,
+    ) {
+        let template: Template<String> = Template::from_str(input).unwrap();
+        let zerv = ZervFixture::new().with_version(1, 2, 3).build();
+        let result = template.resolve(Some(&zerv)).unwrap();
+        assert_eq!(result, expected.map(|s| s.to_string()));
+    }
+
+    #[test]
+    fn test_template_resolve_numeric_none_keywords() {
+        // Test with numeric templates
+        let template: Template<u32> = Template::from_str("none").unwrap();
+        let result = template.resolve(None).unwrap();
+        assert_eq!(result, None);
+
+        let template: Template<u32> = Template::from_str("null").unwrap();
+        let result = template.resolve(None).unwrap();
+        assert_eq!(result, None);
+
+        // Regular number should resolve
+        let template: Template<u32> = Template::from_str("5").unwrap();
+        let result = template.resolve(None).unwrap();
+        assert_eq!(result, Some(5));
+    }
+
+    #[test]
+    fn test_template_resolve_preserves_literal_strings() {
+        // Test that "empty", "nothing", "~" remain as literal strings
+        let test_cases = vec![
+            ("empty", "empty"),
+            ("nothing", "nothing"),
+            ("~", "~"),
+            ("  empty  ", "empty"), // trimmed but preserved
+            ("EMPTY", "EMPTY"),     // case preserved
+        ];
+
+        for (input, expected) in test_cases {
+            let template: Template<String> = Template::from_str(input).unwrap();
+            let result = template.resolve(None).unwrap();
+            assert_eq!(
+                result,
+                Some(expected.trim().to_string()),
+                "Input '{}' should resolve to '{}', not None",
+                input,
+                expected
+            );
+        }
     }
 }

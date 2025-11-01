@@ -55,7 +55,7 @@ mod tests {
     fn test_output_config_construction() {
         let config = OutputConfig {
             output_format: formats::PEP440.to_string(),
-            output_template: Some(Template::Value("v{{major}}.{{minor}}".to_string())),
+            output_template: Some(Template::new("v{{major}}.{{minor}}".to_string())),
             output_prefix: Some("release-".to_string()),
         };
         assert_eq!(config.output_format, formats::PEP440);
@@ -86,12 +86,12 @@ mod tests {
         let template_str = "v{{major}}.{{minor}}";
         let config = OutputConfig {
             output_format: formats::SEMVER.to_string(),
-            output_template: Some(Template::Value(template_str.to_string())),
+            output_template: Some(Template::new(template_str.to_string())),
             output_prefix: None,
         };
         assert!(config.output_template.is_some());
-        if let Some(Template::Value(template)) = config.output_template {
-            assert_eq!(template, template_str);
+        if let Some(template) = &config.output_template {
+            assert_eq!(template.content(), template_str);
         }
     }
 
@@ -110,7 +110,7 @@ mod tests {
         let template_str = "{{version}}-{{distance}}";
         let config = OutputConfig {
             output_format: formats::ZERV.to_string(),
-            output_template: Some(Template::Value(template_str.to_string())),
+            output_template: Some(Template::new(template_str.to_string())),
             output_prefix: Some("build-".to_string()),
         };
         assert_eq!(config.output_format, formats::ZERV);
@@ -122,7 +122,7 @@ mod tests {
     fn test_output_config_debug_format() {
         let config = OutputConfig {
             output_format: "pep440".to_string(),
-            output_template: Some(Template::Value("v{{major}}".to_string())),
+            output_template: Some(Template::new("v{{major}}".to_string())),
             output_prefix: Some("release-".to_string()),
         };
         let debug_str = format!("{:?}", config);
@@ -135,7 +135,7 @@ mod tests {
     fn test_output_config_clone() {
         let config = OutputConfig {
             output_format: "zerv".to_string(),
-            output_template: Some(Template::Value("{{version}}".to_string())),
+            output_template: Some(Template::new("{{version}}".to_string())),
             output_prefix: Some("build-".to_string()),
         };
         let cloned = config.clone();
@@ -159,14 +159,14 @@ mod tests {
         let template_str = "v{{major}}.{{minor}}.{{patch}}";
         let config = OutputConfig {
             output_format: formats::SEMVER.to_string(),
-            output_template: Some(Template::Value(template_str.to_string())),
+            output_template: Some(Template::new(template_str.to_string())),
             output_prefix: None,
         };
 
-        if let Some(Template::Value(template)) = config.output_template {
-            assert_eq!(template, template_str);
+        if let Some(template) = &config.output_template {
+            assert_eq!(template.content(), template_str);
         } else {
-            panic!("Expected Template::Value with the template string");
+            panic!("Expected Template::new with the template string");
         }
     }
 
@@ -175,14 +175,14 @@ mod tests {
         let complex_template = "v{{major}}.{{minor}}.{{patch}}-{{pre_release}}+{{build}}";
         let config = OutputConfig {
             output_format: formats::SEMVER.to_string(),
-            output_template: Some(Template::Value(complex_template.to_string())),
+            output_template: Some(Template::new(complex_template.to_string())),
             output_prefix: None,
         };
 
-        if let Some(Template::Value(template)) = config.output_template {
-            assert_eq!(template, complex_template);
+        if let Some(template) = &config.output_template {
+            assert_eq!(template.content(), complex_template);
         } else {
-            panic!("Expected Template::Value with complex template string");
+            panic!("Expected Template::new with complex template string");
         }
     }
 }

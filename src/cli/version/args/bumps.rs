@@ -1,7 +1,6 @@
 use clap::Parser;
 
 use crate::cli::utils::template::Template;
-use crate::cli::version::args::validation::Validation;
 
 /// Bump configuration for field-based and schema-based version bumping
 #[derive(Parser, Default, Debug)]
@@ -38,8 +37,10 @@ pub struct BumpsConfig {
     pub bump_epoch: Option<Option<Template<u32>>>,
 
     /// Bump pre-release label (alpha, beta, rc, none, null) and reset number to 0
-    #[arg(long, value_parser = Validation::validate_pre_release_template,
-          help = "Bump pre-release label (alpha, beta, rc, none, null) and reset number to 0. Supports templates like '{{{{#if (eq bumped_branch \"release\")}}}}rc{{{{else}}}}alpha{{{{/if}}}}'")]
+    #[arg(
+        long,
+        help = "Bump pre-release label (alpha, beta, rc, none, null) and reset number to 0. Supports templates like '{{{{#if (eq bumped_branch \"release\")}}}}rc{{{{else}}alpha{{{{/if}}}}'"
+    )]
     pub bump_pre_release_label: Option<Template<String>>,
 
     // ============================================================================
