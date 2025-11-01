@@ -181,27 +181,21 @@ impl FromStr for Template<String> {
     }
 }
 
-// Tests disabled - these were written for the old Handlebars API
-// and would require extensive updates to work with the new Tera implementation.
-// Comprehensive test coverage is already provided by the integration tests (585 tests passing).
-/*
+// Tests updated for Tera implementation
+// Comprehensive test coverage is provided by both unit and integration tests
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_utils::zerv::ZervFixture;
 
     #[test]
-    fn test_tera_template_new() {
-        let template =
-            Template::<String>::new("{{ major }}.{{ minor }}.{{ patch }}".to_string());
-        assert!(template.is_ok());
-
-        let template = template.unwrap();
+    fn test_template_new() {
+        let template = Template::<String>::new("{{ major }}.{{ minor }}.{{ patch }}".to_string());
         assert_eq!(template.content(), "{{ major }}.{{ minor }}.{{ patch }}");
     }
 
     #[test]
-    fn test_tera_template_from_str() {
+    fn test_template_from_str() {
         let template = Template::<String>::from_str("v{{ major }}.{{ minor }}");
         assert!(template.is_ok());
 
@@ -210,18 +204,14 @@ mod tests {
     }
 
     #[test]
-    fn test_tera_template_try_from() {
-        let template = Template::<String>::try_from("{{ major }}.{{ minor }}.{{ patch }}");
-        assert!(template.is_ok());
-
-        let template = template.unwrap();
+    fn test_template_try_from() {
+        let template = Template::<String>::from("{{ major }}.{{ minor }}.{{ patch }}");
         assert_eq!(template.content(), "{{ major }}.{{ minor }}.{{ patch }}");
     }
 
     #[test]
-    fn test_tera_template_render_basic() {
-        let template =
-            Template::<String>::new("{{ major }}.{{ minor }}.{{ patch }}".to_string()).unwrap();
+    fn test_template_render_basic() {
+        let template = Template::<String>::new("{{ major }}.{{ minor }}.{{ patch }}".to_string());
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
@@ -231,10 +221,9 @@ mod tests {
     }
 
     #[test]
-    fn test_tera_template_render_with_expression() {
+    fn test_template_render_with_expression() {
         let template =
-            Template::<String>::new("{{ major + 1 }}.{{ minor }}.{{ patch }}".to_string())
-                .unwrap();
+            Template::<String>::new("{{ major + 1 }}.{{ minor }}.{{ patch }}".to_string());
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
@@ -244,9 +233,8 @@ mod tests {
     }
 
     #[test]
-    fn test_tera_template_render_with_default() {
-        let template =
-            Template::<String>::new("{{ post | default(value=0) }}".to_string()).unwrap();
+    fn test_template_render_with_default() {
+        let template = Template::<String>::new("{{ post | default(value=0) }}".to_string());
         let zerv_fixture = ZervFixture::new().with_version(1, 0, 0);
         // post is None by default
         let zerv = zerv_fixture.zerv();
@@ -257,8 +245,8 @@ mod tests {
     }
 
     #[test]
-    fn test_tera_template_render_with_condition() {
-        let template = Template::new("{% if dirty %}{{ major }}.{{ minor }}.{{ patch }}-dirty{% else %}{{ major }}.{{ minor }}.{{ patch }}{% endif %}".to_string()).unwrap();
+    fn test_template_render_with_condition() {
+        let template: Template<String> = Template::new("{% if dirty %}{{ major }}.{{ minor }}.{{ patch }}-dirty{% else %}{{ major }}.{{ minor }}.{{ patch }}{% endif %}".to_string());
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3).with_vcs_data(
             Some(0),
             Some(true),
@@ -276,29 +264,29 @@ mod tests {
     }
 
     #[test]
-    fn test_tera_template_invalid_syntax() {
-        let template = Template::new("{{ major }".to_string()); // Missing closing brace
+    fn test_template_invalid_syntax() {
+        let template = Template::<String>::new_safe("{{ major }".to_string()); // Missing closing brace
         assert!(template.is_err());
     }
 
     #[test]
-    fn test_tera_template_resolve_compatibility() {
-        let template = Template::new("v{{ major }}.{{ minor }}".to_string()).unwrap();
+    fn test_template_resolve_compatibility() {
+        let template: Template<String> = Template::new("v{{ major }}.{{ minor }}".to_string());
         let zerv_fixture = ZervFixture::new().with_version(2, 5, 0);
         let zerv = zerv_fixture.zerv();
 
-        let result = template.resolve(zerv);
+        let result = template.resolve(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "v2.5");
+        assert_eq!(result.unwrap(), Some("v2.5".to_string()));
     }
 
-    // === PHASE 3: Core Tera Functionality Tests ===
-    // These tests demonstrate Tera's built-in advantages over Handlebars
+    // === Core Tera Functionality Tests ===
+    // These tests demonstrate Tera's built-in advantages
 
     #[test]
-    fn test_tera_builtin_math_operations() {
+    fn test_builtin_math_operations() {
         // Test all basic math operations
-        let template = Template::new("{{ major + minor + patch }}".to_string()).unwrap();
+        let template: Template<String> = Template::new("{{ major + minor + patch }}".to_string());
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
@@ -307,17 +295,17 @@ mod tests {
         assert_eq!(result.unwrap(), "6");
 
         // Test multiplication and division
-        let template = Template::new("{{ (major * 10) + patch }}".to_string()).unwrap();
+        let template: Template<String> = Template::new("{{ (major * 10) + patch }}".to_string());
         let result = template.render(zerv);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "13");
     }
 
     #[test]
-    fn test_tera_builtin_string_operations() {
+    fn test_builtin_string_operations() {
         // Test string concatenation with Tera's ~ operator
-        let template =
-            Template::new("v{{ major ~ '.' ~ minor ~ '.' ~ patch }}".to_string()).unwrap();
+        let template: Template<String> =
+            Template::new("v{{ major ~ '.' ~ minor ~ '.' ~ patch }}".to_string());
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
@@ -327,9 +315,9 @@ mod tests {
     }
 
     #[test]
-    fn test_tera_builtin_string_filters() {
+    fn test_builtin_string_filters() {
         // Test uppercase filter
-        let template = Template::new("{{ bumped_branch | upper }}".to_string()).unwrap();
+        let template: Template<String> = Template::new("{{ bumped_branch | upper }}".to_string());
         let zerv_fixture = ZervFixture::new()
             .with_version(1, 0, 0)
             .with_branch("main".to_string());
@@ -340,25 +328,26 @@ mod tests {
         assert_eq!(result.unwrap(), "MAIN");
 
         // Test lowercase filter
-        let template = Template::new("{{ bumped_branch | lower }}".to_string()).unwrap();
+        let template: Template<String> = Template::new("{{ bumped_branch | lower }}".to_string());
         let result = template.render(zerv);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "main");
 
         // Test capitalize filter
-        let template = Template::new("{{ bumped_branch | capitalize }}".to_string()).unwrap();
+        let template: Template<String> =
+            Template::new("{{ bumped_branch | capitalize }}".to_string());
         let result = template.render(zerv);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Main");
     }
 
     #[test]
-    fn test_era_builtin_default_values_comprehensive() {
+    fn test_builtin_default_values_comprehensive() {
         // Test default values for different field types
-        let template = Template::new(
+        let template: Template<String> = Template::new(
             "post={{ post | default(value=0) }}, dev={{ dev | default(value=0) }}, epoch={{ epoch | default(value=0) }}"
                 .to_string(),
-        ).unwrap();
+        );
         let zerv_fixture = ZervFixture::new().with_version(1, 0, 0);
         // All these fields are None by default
         let zerv = zerv_fixture.zerv();
@@ -369,13 +358,13 @@ mod tests {
     }
 
     #[test]
-    fn test_era_advanced_conditional_logic() {
+    fn test_advanced_conditional_logic() {
         // Test complex conditional with multiple conditions
         // Handle None distance case properly
-        let template = Template::new(
+        let template: Template<String> = Template::new(
             "{% if dirty %}{{ major }}.{{ minor }}.{{ patch }}-dirty{% elif distance and distance > 0 %}{{ major }}.{{ minor }}.{{ patch }}-{{ distance }}{% else %}{{ major }}.{{ minor }}.{{ patch }}{% endif %}"
                 .to_string(),
-        ).unwrap();
+        );
 
         // Test dirty condition
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3).with_vcs_data(
@@ -416,12 +405,12 @@ mod tests {
     }
 
     #[test]
-    fn test_era_logical_operations() {
+    fn test_logical_operations() {
         // Test logical AND/OR conditions - handle None values properly
-        let template = Template::new(
+        let template: Template<String> = Template::new(
             "{% if dirty and distance and distance > 0 %}dirty-with-distance{% elif dirty or (distance and distance > 0) %}dirty-or-distance{% else %}clean{% endif %}"
                 .to_string(),
-        ).unwrap();
+        );
 
         // Test both dirty and distance
         let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
@@ -481,12 +470,12 @@ mod tests {
     }
 
     #[test]
-    fn test_era_pre_release_context_access() {
+    fn test_pre_release_context_access() {
         // Test accessing nested pre_release context
-        let template = Template::new(
+        let template: Template<String> = Template::new(
             "{% if pre_release %}{{ major }}.{{ minor }}.{{ patch }}-{{ pre_release.label }}{% if pre_release.number %}.{{ pre_release.number }}{% endif %}{% else %}{{ major }}.{{ minor }}.{{ patch }}{% endif %}"
                 .to_string(),
-        ).unwrap();
+        );
 
         // Test with pre-release
         let zerv_fixture = ZervFixture::new()
@@ -506,12 +495,12 @@ mod tests {
     }
 
     #[test]
-    fn test_era_comparison_operations() {
+    fn test_comparison_operations() {
         // Test comparison operators - handle None distance properly
-        let template = Template::new(
+        let template: Template<String> = Template::new(
             "{% if major >= 1 %}stable{% else %}unstable{% endif %}-{% if distance and distance > 10 %}many-commits{% elif distance and distance > 0 %}some-commits{% else %}no-commits{% endif %}"
                 .to_string(),
-        ).unwrap();
+        );
 
         // Test with major >= 1 and distance > 10
         let zerv_fixture = ZervFixture::new().with_version(2, 0, 0).with_vcs_data(
@@ -563,4 +552,3 @@ mod tests {
         assert_eq!(result.unwrap(), "unstable-no-commits");
     }
 }
-*/

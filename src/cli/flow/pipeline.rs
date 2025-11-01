@@ -109,7 +109,7 @@ mod tests {
 
         let fixture_path = fixture.path().to_string_lossy();
         // Test template creation (rendering test disabled for now)
-        let _main_hash: Template<String> =
+        let _main_hash: Template<u32> =
             Template::new("{{ hash_int(value='main', length=5) }}".to_string());
 
         test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
@@ -121,7 +121,7 @@ mod tests {
         test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
 
         // Test template creation (rendering test disabled for now)
-        let _feature_1_hash: Template<String> =
+        let _feature_1_hash: Template<u32> =
             Template::new("{{ hash_int(value='feature-1', length=5) }}".to_string());
 
         fixture
