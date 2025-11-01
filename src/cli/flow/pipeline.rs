@@ -1,34 +1,22 @@
-use std::str::FromStr;
-
 use ron::from_str;
 
 use crate::cli::common::args::OutputConfig;
 use crate::cli::flow::args::FlowArgs;
 use crate::cli::utils::output_formatter::OutputFormatter;
-use crate::cli::utils::template::Template;
 use crate::cli::version::args::{
     BumpsConfig,
     VersionArgs,
 };
 use crate::cli::version::pipeline::run_version_pipeline;
 use crate::error::ZervError;
-use crate::utils::constants::pre_release_labels::ALPHA;
+use crate::version::zerv::core::Zerv;
 
-/// Main flow pipeline handler
-///
-/// This function orchestrates the flow version generation process:
-/// 1. Validate input arguments
-/// 2. Call version command pipeline with zerv output format
-/// 3. Parse RON output to Zerv object
-/// 4. Format and return results
 pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
     tracing::debug!("Starting flow pipeline with args: {:?}", args);
 
-    // Validate arguments first
     let mut args = args;
     args.validate()?;
 
-    // Create version args with flow-specific defaults
     let version_args = VersionArgs {
         input: args.input.clone(),
         output: OutputConfig {
@@ -39,20 +27,17 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
         main: Default::default(),
         overrides: Default::default(),
         bumps: BumpsConfig {
-            bump_pre_release_label: Some(ALPHA.to_string()),
-            bump_pre_release_num: Some(Some(Template::from_str("{{hash_int bumped_branch 5}}")?)),
+            bump_pre_release_label: args.bump_pre_release_label(),
+            bump_pre_release_num: args.bump_pre_release_num(),
             ..Default::default()
         },
     };
 
-    // Call version pipeline to get RON output
     let ron_output = run_version_pipeline(version_args)?;
 
-    // Parse RON output to Zerv object
-    let zerv_object: crate::version::zerv::core::Zerv = from_str(&ron_output)
+    let zerv_object: Zerv = from_str(&ron_output)
         .map_err(|e| ZervError::InvalidFormat(format!("Failed to parse version output: {}", e)))?;
 
-    // Format output using the same formatter as version command
     let output = OutputFormatter::format_output(
         &zerv_object,
         &args.output.output_format,
@@ -66,6 +51,7 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::utils::template::Template;
     use crate::test_info;
     use crate::test_utils::{
         GitRepoFixture,
