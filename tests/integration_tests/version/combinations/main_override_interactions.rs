@@ -233,7 +233,7 @@ mod schema_override_combinations {
             .with_standard_tier_1();
 
         let zerv_ron = base_fixture.build().to_string();
-        let today_date = chrono::Utc::now().format("%Y.%m.%d").to_string();
+        let today_date = chrono::Utc::now().format("%Y.%-m.%-d").to_string();
         let expected = format!("{}-5+feature.test.branch.5.abc123d", today_date);
 
         let output = TestCommand::run_with_stdin(
