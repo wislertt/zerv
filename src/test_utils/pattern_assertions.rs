@@ -1,3 +1,4 @@
+use chrono::Utc;
 use regex::{
     Regex,
     escape,
@@ -5,151 +6,173 @@ use regex::{
 
 use crate::error::ZervError;
 
-/// Parse a readable pattern with placeholders into a compiled regex
-///
-/// Supports:
-/// - {hex:length} -> [a-f0-9]{length}
-/// - {hex} -> [a-f0-9]+
-/// - {regex:pattern} -> pattern (direct regex insertion)
-/// - Non-placeholder characters are escaped only if they're regex-special
-/// - For literal braces: use {regex:\{pattern\}}
-fn parse_readable_pattern(pattern: &str) -> Result<Regex, ZervError> {
-    let result = parse_pattern_tokens(pattern)?;
-    let anchored = format!("^{}$", result);
-    Regex::new(&anchored)
-        .map_err(|e| ZervError::InvalidVersion(format!("Invalid regex pattern: {}", e)))
-}
+mod readable_regex {
+    use super::*;
 
-/// Parse pattern by processing tokens and building regex string
-fn parse_pattern_tokens(pattern: &str) -> Result<String, ZervError> {
-    let mut result = String::new();
-    let chars: Vec<char> = pattern.chars().collect();
-    let mut i = 0;
-
-    while i < chars.len() {
-        match process_next_token(&chars, &mut i) {
-            Ok(token) => result.push_str(&token),
-            Err(e) => return Err(e),
-        }
+    /// Parse a readable pattern with placeholders into a compiled regex
+    ///
+    /// Supports:
+    /// - {hex:length} -> [a-f0-9]{length}
+    /// - {hex} -> [a-f0-9]+
+    /// - {timestamp} -> \d+ (any digits)
+    /// - {timestamp:name} -> (?P<name>\d+) (named capture group, validates "name" is recent)
+    /// - {regex:pattern} -> pattern (direct regex insertion)
+    /// - Non-placeholder characters are escaped only if they're regex-special
+    /// - For literal braces: use {regex:\{pattern\}}
+    pub fn parse_readable_pattern(pattern: &str) -> Result<Regex, ZervError> {
+        let result = parse_pattern_tokens(pattern)?;
+        let anchored = format!("^{}$", result);
+        Regex::new(&anchored)
+            .map_err(|e| ZervError::InvalidVersion(format!("Invalid regex pattern: {}", e)))
     }
 
-    Ok(result)
-}
+    /// Parse pattern by processing tokens and building regex string
+    fn parse_pattern_tokens(pattern: &str) -> Result<String, ZervError> {
+        let mut result = String::new();
+        let chars: Vec<char> = pattern.chars().collect();
+        let mut i = 0;
 
-/// Process the next token in the pattern starting at position i
-/// Returns the processed token string and updates i to point to the next position
-fn process_next_token(chars: &[char], i: &mut usize) -> Result<String, ZervError> {
-    if chars[*i] == '{' {
-        process_single_brace(chars, i)
-    } else {
-        // Regular character - escape only regex-special characters
-        let char_str = chars[*i].to_string();
-        let result = if is_regex_special(&chars[*i]) {
-            escape(&char_str)
-        } else {
-            char_str
-        };
-        *i += 1;
+        while i < chars.len() {
+            match process_next_token(&chars, &mut i) {
+                Ok(token) => result.push_str(&token),
+                Err(e) => return Err(e),
+            }
+        }
+
         Ok(result)
     }
-}
 
-/// Check if a character is special in regex (needs escaping)
-fn is_regex_special(c: &char) -> bool {
-    matches!(
-        c,
-        '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '\\'
-    )
-}
-
-/// Process single braces {placeholder} -> regex pattern
-fn process_single_brace(chars: &[char], i: &mut usize) -> Result<String, ZervError> {
-    let end_pos = find_matching_single_brace(chars, *i + 1)?;
-    let placeholder: String = chars[*i + 1..end_pos].iter().collect();
-    let regex_pattern = process_placeholder(&placeholder)?;
-    *i = end_pos + 1; // Skip past }
-    Ok(regex_pattern)
-}
-
-/// Find the end position of matching single brace } starting from start_pos
-/// Handles escaped braces correctly by skipping escaped closing braces
-fn find_matching_single_brace(chars: &[char], start_pos: usize) -> Result<usize, ZervError> {
-    let mut j = start_pos;
-    while j < chars.len() {
-        if chars[j] == '}' {
-            // Check if this } is escaped (preceded by \)
-            if j > 0 && chars[j - 1] == '\\' {
-                // This is an escaped }, skip it and continue
-                j += 1;
-            } else {
-                // Found the matching closing brace
-                return Ok(j);
-            }
+    /// Process the next token in the pattern starting at position i
+    /// Returns the processed token string and updates i to point to the next position
+    fn process_next_token(chars: &[char], i: &mut usize) -> Result<String, ZervError> {
+        if chars[*i] == '{' {
+            process_single_brace(chars, i)
         } else {
-            j += 1;
+            // Regular character - escape only regex-special characters
+            let char_str = chars[*i].to_string();
+            let result = if is_regex_special(&chars[*i]) {
+                escape(&char_str)
+            } else {
+                char_str
+            };
+            *i += 1;
+            Ok(result)
         }
     }
 
-    Err(ZervError::InvalidVersion(
-        "Unclosed placeholder brace".to_string(),
-    ))
-}
-
-/// Process placeholder content and return corresponding regex pattern
-fn process_placeholder(placeholder: &str) -> Result<String, ZervError> {
-    if placeholder.starts_with("hex") {
-        process_hex_placeholder(placeholder)
-    } else if placeholder == "timestamp" {
-        Ok(r"\d+".to_string()) // Match any sequence of digits for timestamps
-    } else if let Some(regex_pattern) = placeholder.strip_prefix("regex:") {
-        Ok(regex_pattern.to_string())
-    } else if placeholder.is_empty() {
-        Ok("".to_string())
-    } else {
-        Err(ZervError::InvalidVersion(format!(
-            "Unknown placeholder: {{{}}}. Supported placeholders: {{hex}}, {{hex:number}}, {{timestamp}}, {{regex:pattern}}, {{}} for empty, and {{{{}}}} for literal braces",
-            placeholder
-        )))
+    /// Check if a character is special in regex (needs escaping)
+    fn is_regex_special(c: &char) -> bool {
+        matches!(
+            c,
+            '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '\\'
+        )
     }
-}
 
-/// Process hex placeholders: {hex:length} or {hex}
-fn process_hex_placeholder(placeholder: &str) -> Result<String, ZervError> {
-    if placeholder == "hex" {
-        Ok("[a-f0-9]+".to_string())
-    } else if let Some(length_str) = placeholder.strip_prefix("hex:") {
-        let length = parse_hex_length(length_str, placeholder)?;
-        Ok(format!("[a-f0-9]{{{}}}", length))
-    } else {
-        Err(ZervError::InvalidVersion(format!(
-            "Invalid hex placeholder format: {{{}}}. Expected: {{hex}} or {{hex:number}}",
-            placeholder
-        )))
+    /// Process single braces {placeholder} -> regex pattern
+    fn process_single_brace(chars: &[char], i: &mut usize) -> Result<String, ZervError> {
+        let end_pos = find_matching_single_brace(chars, *i + 1)?;
+        let placeholder: String = chars[*i + 1..end_pos].iter().collect();
+        let regex_pattern = process_placeholder(&placeholder)?;
+        *i = end_pos + 1; // Skip past }
+        Ok(regex_pattern)
     }
-}
 
-/// Parse and validate hex length from string
-fn parse_hex_length(length_str: &str, placeholder: &str) -> Result<usize, ZervError> {
-    match length_str.parse::<usize>() {
-        Ok(length) => {
-            if length > 0 {
-                Ok(length)
+    /// Find the end position of matching single brace } starting from start_pos
+    /// Handles escaped braces correctly by skipping escaped closing braces
+    fn find_matching_single_brace(chars: &[char], start_pos: usize) -> Result<usize, ZervError> {
+        let mut j = start_pos;
+        while j < chars.len() {
+            if chars[j] == '}' {
+                // Check if this } is escaped (preceded by \)
+                if j > 0 && chars[j - 1] == '\\' {
+                    // This is an escaped }, skip it and continue
+                    j += 1;
+                } else {
+                    // Found the matching closing brace
+                    return Ok(j);
+                }
             } else {
-                Err(ZervError::InvalidVersion(format!(
-                    "Hex length must be positive, got 0 in placeholder {{{}}}",
-                    placeholder
-                )))
+                j += 1;
             }
         }
-        Err(_) => Err(ZervError::InvalidVersion(format!(
-            "Invalid hex length in placeholder {{{}}}. Expected format: {{hex}} or {{hex:number}}",
-            placeholder
-        ))),
+
+        Err(ZervError::InvalidVersion(
+            "Unclosed placeholder brace".to_string(),
+        ))
+    }
+
+    /// Process placeholder content and return corresponding regex pattern
+    fn process_placeholder(placeholder: &str) -> Result<String, ZervError> {
+        if placeholder == "hex" || placeholder.starts_with("hex:") {
+            process_hex_placeholder(placeholder)
+        } else if placeholder == "timestamp" || placeholder.starts_with("timestamp:") {
+            process_timestamp_placeholder(placeholder)
+        } else if let Some(regex_pattern) = placeholder.strip_prefix("regex:") {
+            Ok(regex_pattern.to_string())
+        } else if placeholder.is_empty() {
+            Ok("".to_string())
+        } else {
+            Err(ZervError::InvalidVersion(format!(
+                "Unknown placeholder: {{{}}}. Supported placeholders: {{hex}}, {{hex:number}}, {{timestamp}}, {{regex:pattern}}, {{}} for empty, and {{{{}}}} for literal braces",
+                placeholder
+            )))
+        }
+    }
+
+    /// Process hex placeholders: {hex:length} or {hex}
+    fn process_hex_placeholder(placeholder: &str) -> Result<String, ZervError> {
+        if placeholder == "hex" {
+            Ok("[a-f0-9]+".to_string())
+        } else if let Some(length_str) = placeholder.strip_prefix("hex:") {
+            let length = parse_hex_length(length_str, placeholder)?;
+            Ok(format!("[a-f0-9]{{{}}}", length))
+        } else {
+            Err(ZervError::InvalidVersion(format!(
+                "Invalid hex placeholder format: {{{}}}. Expected: {{hex}} or {{hex:number}}",
+                placeholder
+            )))
+        }
+    }
+
+    /// Process timestamp placeholders: {timestamp:name} or {timestamp}
+    fn process_timestamp_placeholder(placeholder: &str) -> Result<String, ZervError> {
+        if placeholder == "timestamp" {
+            Ok(r"\d+".to_string()) // Match any sequence of digits for timestamps
+        } else if let Some(capture_name) = placeholder.strip_prefix("timestamp:") {
+            // Named capture group for timestamp validation
+            Ok(format!(r"(?P<{}>\d+)", capture_name))
+        } else {
+            Err(ZervError::InvalidVersion(format!(
+                "Invalid timestamp placeholder format: {{{}}}. Expected: {{timestamp}} or {{timestamp:name}}",
+                placeholder
+            )))
+        }
+    }
+
+    /// Parse and validate hex length from string
+    fn parse_hex_length(length_str: &str, placeholder: &str) -> Result<usize, ZervError> {
+        match length_str.parse::<usize>() {
+            Ok(length) => {
+                if length > 0 {
+                    Ok(length)
+                } else {
+                    Err(ZervError::InvalidVersion(format!(
+                        "Hex length must be positive, got 0 in placeholder {{{}}}",
+                        placeholder
+                    )))
+                }
+            }
+            Err(_) => Err(ZervError::InvalidVersion(format!(
+                "Invalid hex length in placeholder {{{}}}. Expected format: {{hex}} or {{hex:number}}",
+                placeholder
+            ))),
+        }
     }
 }
 
+/// Assert that actual version matches expected pattern with automatic timestamp validation
 pub fn assert_version_expectation(expectation: &str, actual: &str) {
-    let regex = parse_readable_pattern(expectation)
+    let regex = readable_regex::parse_readable_pattern(expectation)
         .unwrap_or_else(|e| panic!("Failed to parse pattern '{}': {}", expectation, e));
 
     assert!(
@@ -159,12 +182,34 @@ pub fn assert_version_expectation(expectation: &str, actual: &str) {
         actual,
         regex.as_str()
     );
+
+    // Check for "now" capture group and validate timestamp is recent
+    if let Some(caps) = regex.captures(actual)
+        && let Some(timestamp_match) = caps.name("now")
+    {
+        let timestamp: i64 = timestamp_match
+            .as_str()
+            .parse()
+            .unwrap_or_else(|_| panic!("Invalid timestamp: {}", timestamp_match.as_str()));
+
+        let current_time = Utc::now().timestamp();
+        let diff = (current_time - timestamp).abs();
+
+        assert!(
+            diff < 600, // 10 minutes in seconds
+            "Timestamp '{}' is not recent (current: {}, diff: {} seconds)",
+            timestamp,
+            current_time,
+            diff
+        );
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
 
+    use super::readable_regex::parse_readable_pattern;
     use super::*;
 
     #[rstest]
@@ -350,7 +395,7 @@ mod tests {
             ZervError::InvalidVersion(msg) => msg,
             _ => panic!("Expected InvalidVersion error"),
         };
-        assert!(error_msg.contains("Invalid hex placeholder format"));
+        assert!(error_msg.contains("Unknown placeholder"));
     }
 
     #[test]
@@ -382,5 +427,19 @@ mod tests {
         let regex = result.unwrap();
         assert!(regex.is_match("path\\to\\file-abc1234"));
         assert!(!regex.is_match("pathtofile-abc1234")); // missing backslashes
+    }
+
+    #[test]
+    fn test_timestamp_with_capture() {
+        let pattern = "dev.{timestamp:now}+build";
+        let result = parse_readable_pattern(pattern).unwrap();
+        assert_eq!(result.as_str(), r"^dev\.(?P<now>\d+)\+build$");
+    }
+
+    #[test]
+    fn test_timestamp_with_custom_capture_name() {
+        let pattern = "build.{timestamp:build_time}";
+        let result = parse_readable_pattern(pattern).unwrap();
+        assert_eq!(result.as_str(), r"^build\.(?P<build_time>\d+)$");
     }
 }

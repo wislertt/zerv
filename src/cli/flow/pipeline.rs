@@ -140,8 +140,8 @@ mod tests {
 
         test_flow_pipeline_with_fixture(
             &fixture_path,
-            "1.0.0-alpha.42954.post.0.dev.{timestamp}+feature.1.0.{hex:7}",
-            "1.0.0a42954.post0.dev{timestamp}+feature.1.0.{hex:7}",
+            "1.0.0-alpha.42954.post.0.dev.{timestamp:now}+feature.1.0.{hex:7}",
+            "1.0.0a42954.post0.dev{timestamp:now}+feature.1.0.{hex:7}",
         );
     }
 }
