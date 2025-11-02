@@ -2,5 +2,5 @@ mod context;
 mod functions;
 mod types;
 
-pub use context::TemplateContext;
+pub use context::ZervTemplateContext;
 pub use types::Template;

@@ -4,7 +4,7 @@ use crate::version::zerv::Zerv;
 
 /// Template context for rendering
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
-pub struct TemplateContext {
+pub struct ZervTemplateContext {
     // Core version fields
     pub major: Option<u64>,
     pub minor: Option<u64>,
@@ -46,7 +46,7 @@ pub struct PreReleaseContext {
     pub number: Option<u64>,
 }
 
-impl TemplateContext {
+impl ZervTemplateContext {
     pub fn from_zerv(zerv: &Zerv) -> Self {
         let vars = &zerv.vars;
         Self {
@@ -92,7 +92,7 @@ mod tests {
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
-        let context = TemplateContext::from_zerv(zerv);
+        let context = ZervTemplateContext::from_zerv(zerv);
 
         assert_eq!(context.major, Some(1));
         assert_eq!(context.minor, Some(2));
@@ -118,7 +118,7 @@ mod tests {
         );
         let zerv = zerv_fixture.zerv();
 
-        let context = TemplateContext::from_zerv(zerv);
+        let context = ZervTemplateContext::from_zerv(zerv);
 
         assert_eq!(context.distance, Some(5));
         assert_eq!(context.dirty, Some(true));
@@ -138,7 +138,7 @@ mod tests {
             .with_pre_release(crate::version::zerv::PreReleaseLabel::Alpha, Some(1));
         let zerv = zerv_fixture.zerv();
 
-        let context = TemplateContext::from_zerv(zerv);
+        let context = ZervTemplateContext::from_zerv(zerv);
 
         assert!(context.pre_release.is_some());
         let pre_release = context.pre_release.unwrap();
@@ -162,7 +162,7 @@ mod tests {
         let schema = ZervSchema::semver_default().unwrap();
         let zerv = Zerv::new(schema, vars).unwrap();
 
-        let context = TemplateContext::from_zerv(&zerv);
+        let context = ZervTemplateContext::from_zerv(&zerv);
 
         assert_eq!(context.custom["build"], "42");
         assert_eq!(context.custom["metadata"], "test");

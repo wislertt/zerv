@@ -2,16 +2,18 @@ use std::fmt::Display;
 use std::marker::PhantomData;
 use std::str::FromStr;
 
-use super::context::TemplateContext;
+use once_cell::sync::OnceCell;
+
+use super::context::ZervTemplateContext;
 use super::functions::register_functions;
 use crate::error::ZervError;
 use crate::version::Zerv;
 
-/// Template type using Tera engine
+/// Template type using Tera engine with efficient caching
 #[derive(Debug, Clone)]
 pub struct Template<T> {
     template: String,
-    tera: tera::Tera,
+    _cached_tera: OnceCell<tera::Tera>,
     _phantom: PhantomData<T>,
 }
 
@@ -26,111 +28,77 @@ where
     T: FromStr + Clone + Display,
     T::Err: Display,
 {
-    /// Create a new Template from a string template (unsafe but convenient)
+    /// Create a new template from string (pure storage, no validation yet)
     pub fn new(template: String) -> Self {
-        Self::new_safe(template).expect("Invalid template string")
-    }
-
-    /// Create a new Template from a string template with proper error handling
-    pub fn new_safe(template: String) -> Result<Self, ZervError> {
-        let mut tera = tera::Tera::default();
-
-        // Register custom functions
-        register_functions(&mut tera)?;
-
-        // Add the template to Tera instance
-        let template_name = "template";
-        tera.add_raw_template(template_name, &template)
-            .map_err(|e| {
-                ZervError::TemplateError(format!("Failed to parse template '{}': {}", template, e))
-            })?;
-
-        Ok(Self {
+        Self {
             template,
-            tera,
+            _cached_tera: OnceCell::new(),
             _phantom: PhantomData,
-        })
+        }
     }
 
-    /// Get the raw template string
-    pub fn content(&self) -> &str {
+    /// Get template content
+    pub fn as_str(&self) -> &str {
         &self.template
     }
 
-    /// Resolve template to final typed result
-    pub fn resolve(&self, zerv: Option<&Zerv>) -> Result<Option<T>, ZervError> {
-        let rendered = Self::render_template(&self.template, zerv)?;
+    /// Render template and parse to typed result
+    pub fn render(&self, zerv: Option<&Zerv>) -> Result<Option<T>, ZervError> {
+        let rendered = self.render_string(zerv)?;
 
+        // Handle empty/null results
         let trimmed = rendered.trim().to_lowercase();
         if trimmed.is_empty() || matches!(trimmed.as_str(), "none" | "null" | "nil") {
             return Ok(None);
         }
 
+        // Parse to target type
         let parsed = rendered
             .parse::<T>()
             .map_err(|e| ZervError::TemplateError(format!("Failed to parse '{rendered}': {e}")))?;
         Ok(Some(parsed))
     }
 
-    /// Render Tera template using optional Zerv object as context
-    fn render_template(template: &str, zerv: Option<&Zerv>) -> Result<String, ZervError> {
-        let mut tera = tera::Tera::default();
-
-        // Register custom functions
-        register_functions(&mut tera)?;
-
-        // Add the template to Tera instance
-        let template_name = "template";
-        tera.add_raw_template(template_name, template)
-            .map_err(|e| {
-                ZervError::TemplateError(format!("Failed to parse template '{}': {}", template, e))
-            })?;
-
-        // Create template context from Zerv object or empty context
-        let context = if let Some(z) = zerv {
-            let template_context = TemplateContext::from_zerv(z);
-            tera::Context::from_serialize(template_context)
-                .map_err(|e| ZervError::TemplateError(format!("Serialization error: {e}")))?
-        } else {
-            tera::Context::new()
-        };
-
-        let rendered = tera.render(template_name, &context).map_err(|e| {
-            ZervError::TemplateError(format!("Template render error '{}': {}", template, e))
-        })?;
-
-        // Strip leading/trailing whitespace and normalize internal whitespace
-        Ok(rendered.trim().to_string())
+    /// Internal method: get or create cached Tera instance
+    fn get_tera(&self) -> Result<&tera::Tera, ZervError> {
+        self._cached_tera.get_or_try_init(|| {
+            let mut tera = tera::Tera::default();
+            register_functions(&mut tera)?; // Register only once!
+            tera.add_raw_template("template", &self.template)
+                .map_err(|e| {
+                    ZervError::TemplateError(format!(
+                        "Failed to parse template '{}': {}",
+                        self.template, e
+                    ))
+                })?;
+            Ok(tera)
+        })
     }
 
-    /// Render the template with Zerv context
-    pub fn render(&self, zerv: &Zerv) -> Result<String, ZervError> {
-        let context = TemplateContext::from_zerv(zerv);
-        self.render_with_context(&context)
-    }
+    /// Internal method: render to string
+    fn render_string(&self, zerv: Option<&Zerv>) -> Result<String, ZervError> {
+        let tera = self.get_tera()?;
+        let context = self.create_context(zerv)?;
 
-    /// Render the template with custom context
-    pub fn render_with_context(&self, context: &TemplateContext) -> Result<String, ZervError> {
-        let template_name = "template";
-
-        self.tera
-            .render(
-                template_name,
-                &tera::Context::from_serialize(context).map_err(|e| {
-                    ZervError::TemplateError(format!("Failed to serialize context: {}", e))
-                })?,
-            )
+        tera.render("template", &context)
+            .map(|s| s.trim().to_string())
             .map_err(|e| {
                 ZervError::TemplateError(format!(
-                    "Failed to render template '{}': {}",
+                    "Template render error '{}': {}",
                     self.template, e
                 ))
             })
     }
 
-    /// Get the raw template string
-    pub fn as_str(&self) -> &str {
-        &self.template
+    /// Create template context from Zerv object
+    fn create_context(&self, zerv: Option<&Zerv>) -> Result<tera::Context, ZervError> {
+        if let Some(z) = zerv {
+            let template_context = ZervTemplateContext::from_zerv(z);
+            tera::Context::from_serialize(template_context)
+                .map_err(|e| ZervError::TemplateError(format!("Serialization error: {e}")))
+        } else {
+            Ok(tera::Context::new())
+        }
     }
 }
 
@@ -139,7 +107,7 @@ impl FromStr for Template<u32> {
     type Err = ZervError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::new_safe(s.to_string())
+        Ok(Self::new(s.to_string()))
     }
 }
 
@@ -177,7 +145,7 @@ impl FromStr for Template<String> {
     type Err = ZervError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::new_safe(s.to_string())
+        Ok(Self::new(s.to_string()))
     }
 }
 
@@ -191,7 +159,7 @@ mod tests {
     #[test]
     fn test_template_new() {
         let template = Template::<String>::new("{{ major }}.{{ minor }}.{{ patch }}".to_string());
-        assert_eq!(template.content(), "{{ major }}.{{ minor }}.{{ patch }}");
+        assert_eq!(template.as_str(), "{{ major }}.{{ minor }}.{{ patch }}");
     }
 
     #[test]
@@ -200,13 +168,13 @@ mod tests {
         assert!(template.is_ok());
 
         let template = template.unwrap();
-        assert_eq!(template.content(), "v{{ major }}.{{ minor }}");
+        assert_eq!(template.as_str(), "v{{ major }}.{{ minor }}");
     }
 
     #[test]
     fn test_template_try_from() {
         let template = Template::<String>::from("{{ major }}.{{ minor }}.{{ patch }}");
-        assert_eq!(template.content(), "{{ major }}.{{ minor }}.{{ patch }}");
+        assert_eq!(template.as_str(), "{{ major }}.{{ minor }}.{{ patch }}");
     }
 
     #[test]
@@ -215,9 +183,9 @@ mod tests {
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "1.2.3");
+        assert_eq!(result.unwrap(), Some("1.2.3".to_string()));
     }
 
     #[test]
@@ -227,9 +195,9 @@ mod tests {
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "2.2.3");
+        assert_eq!(result.unwrap(), Some("2.2.3".to_string()));
     }
 
     #[test]
@@ -239,9 +207,9 @@ mod tests {
         // post is None by default
         let zerv = zerv_fixture.zerv();
 
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "0"); // Uses default value
+        assert_eq!(result.unwrap(), Some("0".to_string())); // Uses default value
     }
 
     #[test]
@@ -258,24 +226,28 @@ mod tests {
         );
         let zerv = zerv_fixture.zerv();
 
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "1.2.3-dirty");
+        assert_eq!(result.unwrap(), Some("1.2.3-dirty".to_string()));
     }
 
     #[test]
     fn test_template_invalid_syntax() {
-        let template = Template::<String>::new_safe("{{ major }".to_string()); // Missing closing brace
-        assert!(template.is_err());
+        let template = Template::<String>::new("{{ major }".to_string()); // Missing closing brace
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0);
+        let zerv = zerv_fixture.zerv();
+
+        let result = template.render(Some(zerv));
+        assert!(result.is_err());
     }
 
     #[test]
-    fn test_template_resolve_compatibility() {
+    fn test_template_render_compatibility() {
         let template: Template<String> = Template::new("v{{ major }}.{{ minor }}".to_string());
         let zerv_fixture = ZervFixture::new().with_version(2, 5, 0);
         let zerv = zerv_fixture.zerv();
 
-        let result = template.resolve(Some(zerv));
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), Some("v2.5".to_string()));
     }
@@ -290,15 +262,15 @@ mod tests {
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "6");
+        assert_eq!(result.unwrap(), Some("6".to_string()));
 
         // Test multiplication and division
         let template: Template<String> = Template::new("{{ (major * 10) + patch }}".to_string());
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "13");
+        assert_eq!(result.unwrap(), Some("13".to_string()));
     }
 
     #[test]
@@ -309,9 +281,9 @@ mod tests {
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
 
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "v1.2.3");
+        assert_eq!(result.unwrap(), Some("v1.2.3".to_string()));
     }
 
     #[test]
@@ -323,22 +295,22 @@ mod tests {
             .with_branch("main".to_string());
         let zerv = zerv_fixture.zerv();
 
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "MAIN");
+        assert_eq!(result.unwrap(), Some("MAIN".to_string()));
 
         // Test lowercase filter
         let template: Template<String> = Template::new("{{ bumped_branch | lower }}".to_string());
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "main");
+        assert_eq!(result.unwrap(), Some("main".to_string()));
 
         // Test capitalize filter
         let template: Template<String> =
             Template::new("{{ bumped_branch | capitalize }}".to_string());
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "Main");
+        assert_eq!(result.unwrap(), Some("Main".to_string()));
     }
 
     #[test]
@@ -352,9 +324,9 @@ mod tests {
         // All these fields are None by default
         let zerv = zerv_fixture.zerv();
 
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "post=0, dev=0, epoch=0");
+        assert_eq!(result.unwrap(), Some("post=0, dev=0, epoch=0".to_string()));
     }
 
     #[test]
@@ -377,9 +349,9 @@ mod tests {
             None,
         );
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok(), "Dirty condition failed: {:?}", result);
-        assert_eq!(result.unwrap(), "1.2.3-dirty");
+        assert_eq!(result.unwrap(), Some("1.2.3-dirty".to_string()));
 
         // Test distance condition
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3).with_vcs_data(
@@ -392,16 +364,16 @@ mod tests {
             None,
         );
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok(), "Distance condition failed: {:?}", result);
-        assert_eq!(result.unwrap(), "1.2.3-5");
+        assert_eq!(result.unwrap(), Some("1.2.3-5".to_string()));
 
         // Test else condition
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok(), "Else condition failed: {:?}", result);
-        assert_eq!(result.unwrap(), "1.2.3");
+        assert_eq!(result.unwrap(), Some("1.2.3".to_string()));
     }
 
     #[test]
@@ -423,13 +395,13 @@ mod tests {
             None,
         );
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(
             result.is_ok(),
             "Both dirty and distance failed: {:?}",
             result
         );
-        assert_eq!(result.unwrap(), "dirty-with-distance");
+        assert_eq!(result.unwrap(), Some("dirty-with-distance".to_string()));
 
         // Test only dirty
         let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
@@ -442,9 +414,9 @@ mod tests {
             None,
         );
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok(), "Only dirty failed: {:?}", result);
-        assert_eq!(result.unwrap(), "dirty-or-distance");
+        assert_eq!(result.unwrap(), Some("dirty-or-distance".to_string()));
 
         // Test only distance
         let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
@@ -457,16 +429,16 @@ mod tests {
             None,
         );
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok(), "Only distance failed: {:?}", result);
-        assert_eq!(result.unwrap(), "dirty-or-distance");
+        assert_eq!(result.unwrap(), Some("dirty-or-distance".to_string()));
 
         // Test neither
         let zerv_fixture = ZervFixture::new().with_version(1, 0, 0);
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok(), "Neither failed: {:?}", result);
-        assert_eq!(result.unwrap(), "clean");
+        assert_eq!(result.unwrap(), Some("clean".to_string()));
     }
 
     #[test]
@@ -482,16 +454,16 @@ mod tests {
             .with_version(1, 2, 3)
             .with_pre_release(crate::version::zerv::PreReleaseLabel::Beta, Some(2));
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "1.2.3-beta.2");
+        assert_eq!(result.unwrap(), Some("1.2.3-beta.2".to_string()));
 
         // Test without pre-release
         let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "1.2.3");
+        assert_eq!(result.unwrap(), Some("1.2.3".to_string()));
     }
 
     #[test]
@@ -513,13 +485,13 @@ mod tests {
             None,
         );
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(
             result.is_ok(),
             "Major >=1 and distance >10 failed: {:?}",
             result
         );
-        assert_eq!(result.unwrap(), "stable-many-commits");
+        assert_eq!(result.unwrap(), Some("stable-many-commits".to_string()));
 
         // Test with major >= 1 and small distance
         let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
@@ -532,23 +504,23 @@ mod tests {
             None,
         );
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(
             result.is_ok(),
             "Major >=1 and small distance failed: {:?}",
             result
         );
-        assert_eq!(result.unwrap(), "stable-some-commits");
+        assert_eq!(result.unwrap(), Some("stable-some-commits".to_string()));
 
         // Test with major < 1 and no distance
         let zerv_fixture = ZervFixture::new().with_version(0, 1, 0);
         let zerv = zerv_fixture.zerv();
-        let result = template.render(zerv);
+        let result = template.render(Some(zerv));
         assert!(
             result.is_ok(),
             "Major <1 and no distance failed: {:?}",
             result
         );
-        assert_eq!(result.unwrap(), "unstable-no-commits");
+        assert_eq!(result.unwrap(), Some("unstable-no-commits".to_string()));
     }
 }

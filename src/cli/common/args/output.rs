@@ -91,7 +91,7 @@ mod tests {
         };
         assert!(config.output_template.is_some());
         if let Some(template) = &config.output_template {
-            assert_eq!(template.content(), template_str);
+            assert_eq!(template.as_str(), template_str);
         }
     }
 
@@ -164,7 +164,7 @@ mod tests {
         };
 
         if let Some(template) = &config.output_template {
-            assert_eq!(template.content(), template_str);
+            assert_eq!(template.as_str(), template_str);
         } else {
             panic!("Expected Template::new with the template string");
         }
@@ -180,7 +180,7 @@ mod tests {
         };
 
         if let Some(template) = &config.output_template {
-            assert_eq!(template.content(), complex_template);
+            assert_eq!(template.as_str(), complex_template);
         } else {
             panic!("Expected Template::new with complex template string");
         }

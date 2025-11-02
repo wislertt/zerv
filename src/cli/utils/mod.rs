@@ -6,5 +6,5 @@ pub use format_handler::InputFormatHandler;
 pub use output_formatter::OutputFormatter;
 pub use template::{
     Template,
-    TemplateContext,
+    ZervTemplateContext,
 };

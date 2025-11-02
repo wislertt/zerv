@@ -176,7 +176,7 @@ impl Validation {
     fn validate_bump_section(specs: &[Template<String>], arg_name: &str) -> Result<(), ZervError> {
         for template in specs {
             // For validation, we only check the string format, not template resolution
-            let spec = template.content();
+            let spec = template.as_str();
             if !Self::is_valid_bump_spec(spec) {
                 return Err(ZervError::InvalidArgument(format!(
                     "{arg_name} argument '{spec}' must be in format 'index[=value]'"

@@ -27,7 +27,7 @@ pub trait TemplateResolver {
         T::Err: Display,
     {
         match template {
-            Some(t) => t.resolve(Some(zerv)),
+            Some(t) => t.render(Some(zerv)),
             None => Ok(None),
         }
     }
@@ -42,7 +42,7 @@ pub trait TemplateResolver {
         T::Err: Display,
     {
         match template {
-            Some(Some(t)) => Ok(Some(t.resolve(Some(zerv))?)),
+            Some(Some(t)) => Ok(Some(t.render(Some(zerv))?)),
             Some(None) => Ok(Some(None)),
             None => Ok(None),
         }
@@ -57,7 +57,7 @@ pub trait TemplateResolver {
             .iter()
             .map(|template| {
                 template
-                    .resolve(Some(zerv))
+                    .render(Some(zerv))
                     .map(|opt| opt.unwrap_or_default())
             })
             .collect()
@@ -70,7 +70,7 @@ pub trait TemplateResolver {
     ) -> Result<Option<String>, ZervError> {
         match template {
             Some(t) => {
-                let resolved_opt = t.resolve(Some(zerv))?;
+                let resolved_opt = t.render(Some(zerv))?;
                 // If template resolved to None (empty string or None keywords), return None
                 let resolved = match resolved_opt {
                     Some(r) => r,
