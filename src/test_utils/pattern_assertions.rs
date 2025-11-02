@@ -99,13 +99,15 @@ fn find_matching_single_brace(chars: &[char], start_pos: usize) -> Result<usize,
 fn process_placeholder(placeholder: &str) -> Result<String, ZervError> {
     if placeholder.starts_with("hex") {
         process_hex_placeholder(placeholder)
+    } else if placeholder == "timestamp" {
+        Ok(r"\d+".to_string()) // Match any sequence of digits for timestamps
     } else if let Some(regex_pattern) = placeholder.strip_prefix("regex:") {
         Ok(regex_pattern.to_string())
     } else if placeholder.is_empty() {
         Ok("".to_string())
     } else {
         Err(ZervError::InvalidVersion(format!(
-            "Unknown placeholder: {{{}}}. Supported placeholders: {{hex}}, {{hex:number}}, {{regex:pattern}}, {{}} for empty, and {{{{}}}} for literal braces",
+            "Unknown placeholder: {{{}}}. Supported placeholders: {{hex}}, {{hex:number}}, {{timestamp}}, {{regex:pattern}}, {{}} for empty, and {{{{}}}} for literal braces",
             placeholder
         )))
     }

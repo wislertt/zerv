@@ -32,6 +32,7 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
             bump_pre_release_num: args.bump_pre_release_num(),
             bump_patch: args.bump_patch(),
             bump_post: args.bump_post(),
+            bump_dev: args.bump_dev(),
             ..Default::default()
         },
     };
@@ -139,8 +140,8 @@ mod tests {
 
         test_flow_pipeline_with_fixture(
             &fixture_path,
-            "1.0.0-alpha.42954.post.0+feature.1.0.{hex:7}",
-            "1.0.0a42954.post0+feature.1.0.{hex:7}",
+            "1.0.0-alpha.42954.post.0.dev.{timestamp}+feature.1.0.{hex:7}",
+            "1.0.0a42954.post0.dev{timestamp}+feature.1.0.{hex:7}",
         );
     }
 }

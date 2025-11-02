@@ -7,6 +7,7 @@ use crate::cli::common::args::{
 };
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
+use crate::utils::bool_resolution::BoolResolution;
 use crate::utils::constants::pre_release_labels::ALPHA;
 use crate::utils::constants::{
     post_modes,
@@ -39,6 +40,10 @@ PRE-RELEASE OPTIONS:
 POST MODE OPTIONS:
   --post-mode <MODE>        Post calculation mode: commit (default), tag
 
+DEV TIMESTAMP OPTIONS:
+  --dev-ts                  Include dev timestamp for dirty working directory
+  --no-dev-ts               Exclude dev timestamp from output
+
 EXAMPLES:
   # Basic flow version with automatic pre-release detection
   zerv flow
@@ -56,6 +61,10 @@ EXAMPLES:
   # Post mode control
   zerv flow --post-mode commit  # bump post by distance (default)
   zerv flow --post-mode tag     # bump post by 1
+
+  # Dev timestamp control
+  zerv flow --dev-ts            # include dev timestamp for dirty working directory
+  zerv flow --no-dev-ts         # exclude dev timestamp from output
 
   # Use in different directory
   zerv flow -C /path/to/repo"
@@ -97,6 +106,16 @@ pub struct FlowArgs {
     #[arg(long = "post-mode", value_parser = clap::builder::PossibleValuesParser::new(post_modes::VALID_MODES),
           default_value = post_modes::COMMIT, help = "Post calculation mode (commit, tag)")]
     pub post_mode: String,
+
+    /// Include dev timestamp for dirty working directory (auto-detect by default)
+    #[arg(long = "dev-ts", action = clap::ArgAction::SetTrue,
+          help = "Include dev timestamp for dirty working directory")]
+    pub dev_ts: bool,
+
+    /// Exclude dev timestamp from output
+    #[arg(long = "no-dev-ts", action = clap::ArgAction::SetTrue,
+          help = "Exclude dev timestamp from output")]
+    pub no_dev_ts: bool,
 }
 
 impl Default for FlowArgs {
@@ -109,6 +128,8 @@ impl Default for FlowArgs {
             hash_branch_len: 5,
             no_pre_release: false,
             post_mode: post_modes::COMMIT.to_string(),
+            dev_ts: true,
+            no_dev_ts: false,
         }
     }
 }
@@ -133,6 +154,13 @@ impl FlowArgs {
         self.validate_pre_release_num()?;
         self.validate_hash_branch_len()?;
         self.validate_post_mode()?;
+        self.validate_dev_ts()?;
+
+        // Resolve dev_ts flag in place after validation
+        if let Some(resolved) = BoolResolution::resolve_opposing_flags(self.dev_ts, self.no_dev_ts)
+        {
+            self.dev_ts = resolved;
+        }
 
         Ok(())
     }
@@ -176,6 +204,10 @@ impl FlowArgs {
             )));
         }
         Ok(())
+    }
+
+    fn validate_dev_ts(&self) -> Result<(), ZervError> {
+        BoolResolution::validate_opposing_flags(self.dev_ts, self.no_dev_ts, "dev-ts")
     }
 
     pub fn bump_pre_release_label(&self) -> Option<Template<String>> {
@@ -222,6 +254,16 @@ impl FlowArgs {
         let template = self.build_pre_release_bump_template(content);
         Some(Some(Template::new(template)))
     }
+
+    pub fn bump_dev(&self) -> Option<Option<Template<u32>>> {
+        if self.dev_ts {
+            let content = "{{ bumped_timestamp }}";
+            let template = self.build_pre_release_bump_template(content);
+            Some(Some(Template::new(template)))
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -247,12 +289,16 @@ mod tests {
             assert!(args.pre_release_num.is_none());
             assert!(!args.no_pre_release);
             assert_eq!(args.post_mode, post_modes::COMMIT);
+            assert!(args.dev_ts); // Default is true
+            assert!(!args.no_dev_ts);
         }
 
         #[test]
         fn test_flow_args_validation_success() {
             let mut args = FlowArgs::default();
             assert!(args.validate().is_ok());
+            assert!(args.dev_ts);
+            assert!(!args.no_dev_ts);
         }
     }
 
@@ -373,6 +419,63 @@ mod tests {
                 pre_release_label: label,
                 pre_release_num: num,
                 no_pre_release,
+                ..FlowArgs::default()
+            };
+            assert!(args.validate().is_ok());
+        }
+
+        #[test]
+        fn test_invalid_dev_ts_combination() {
+            let mut args = FlowArgs {
+                dev_ts: true,
+                no_dev_ts: true,
+                ..FlowArgs::default()
+            };
+            let result = args.validate();
+            assert!(result.is_err());
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("Cannot use --dev-ts with --no-dev-ts")
+            );
+        }
+
+        #[test]
+        fn test_dev_ts_resolution_after_validation() {
+            let mut args = FlowArgs {
+                dev_ts: true,
+                no_dev_ts: false,
+                ..FlowArgs::default()
+            };
+            args.validate().unwrap();
+            assert!(args.dev_ts); // Should remain true
+
+            let mut args = FlowArgs {
+                dev_ts: false,
+                no_dev_ts: true,
+                ..FlowArgs::default()
+            };
+            args.validate().unwrap();
+            assert!(!args.dev_ts); // Should remain false
+
+            let mut args = FlowArgs {
+                dev_ts: false,
+                no_dev_ts: false,
+                ..FlowArgs::default()
+            };
+            args.validate().unwrap();
+            assert!(!args.dev_ts); // Should remain false for auto-detect
+        }
+
+        #[rstest]
+        #[case(true, false)] // dev_ts only
+        #[case(false, true)] // no_dev_ts only
+        #[case(false, false)] // neither (auto-detect)
+        fn test_valid_dev_ts_combinations(#[case] dev_ts: bool, #[case] no_dev_ts: bool) {
+            let mut args = FlowArgs {
+                dev_ts,
+                no_dev_ts,
                 ..FlowArgs::default()
             };
             assert!(args.validate().is_ok());
@@ -609,6 +712,67 @@ mod tests {
 
             // This should panic because invalid post_mode should be caught by validation
             args.bump_post();
+        }
+    }
+
+    mod bump_dev {
+        use super::*;
+
+        #[test]
+        fn test_bump_dev_with_dev_ts_flag() {
+            let args = FlowArgs {
+                dev_ts: true,
+                no_dev_ts: false,
+                pre_release_label: Some("alpha".to_string()), // Need a pre-release label
+                ..FlowArgs::default()
+            };
+
+            let result = args.bump_dev();
+            assert!(result.is_some());
+            let template_result = result.unwrap();
+            assert!(template_result.is_some());
+            let template = template_result.unwrap();
+
+            let expected = args.build_pre_release_bump_template("{{ bumped_timestamp }}");
+            assert_eq!(template.as_str(), expected);
+        }
+
+        #[test]
+        fn test_bump_dev_with_no_dev_ts_flag() {
+            let args = FlowArgs {
+                dev_ts: false,
+                no_dev_ts: true,
+                ..FlowArgs::default()
+            };
+
+            let result = args.bump_dev();
+            assert!(result.is_none()); // Should return None to disable dev component
+        }
+
+        #[test]
+        fn test_bump_dev_with_auto_detect() {
+            let args = FlowArgs {
+                dev_ts: false,
+                no_dev_ts: false,
+                ..FlowArgs::default()
+            };
+
+            let result = args.bump_dev();
+            assert!(result.is_none()); // Should return None for auto-detect behavior
+        }
+
+        #[test]
+        fn test_bump_dev_with_invalid_state() {
+            let args = FlowArgs {
+                dev_ts: true,
+                no_dev_ts: true, // Invalid combination
+                ..FlowArgs::default()
+            };
+
+            // Even with invalid state, bump_dev should work based on current dev_ts value
+            // (validation would catch this before bump_dev is called in practice)
+            let result = args.bump_dev();
+            assert!(result.is_some()); // dev_ts is true, so should return timestamp template
         }
     }
 
