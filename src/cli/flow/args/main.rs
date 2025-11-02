@@ -187,7 +187,8 @@ impl FlowArgs {
 
     pub fn bump_post(&self) -> Option<Option<Template<u32>>> {
         // Template: existing post + distance, with proper None handling
-        let content = "{{ post | default(value=0) + distance }}";
+        // TODO: implement post mode
+        let content = "{{ distance }}";
         let template = self.build_pre_release_bump_template(content);
         Some(Some(Template::new(template)))
     }

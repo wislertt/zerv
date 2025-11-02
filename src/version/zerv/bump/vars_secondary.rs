@@ -19,9 +19,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             self.vars.post = Some(self.vars.post.unwrap_or(0) + increment as u64);
             self.reset_lower_precedence_components(&Precedence::Post)?;
         }
@@ -40,9 +38,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             self.vars.dev = Some(self.vars.dev.unwrap_or(0) + increment as u64);
             self.reset_lower_precedence_components(&Precedence::Dev)?;
         }
@@ -98,9 +94,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             if let Some(ref mut pre_release) = self.vars.pre_release {
                 pre_release.number = Some(pre_release.number.unwrap_or(0) + increment as u64);
                 self.reset_lower_precedence_components(&Precedence::PreReleaseNum)?;
@@ -128,9 +122,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             self.vars.epoch = Some(self.vars.epoch.unwrap_or(0) + increment as u64);
             self.reset_lower_precedence_components(&Precedence::Epoch)?;
         }
@@ -158,8 +150,8 @@ mod tests {
     #[case("1.0.0", Some(2), Some(1), "1.0.0-post.3")]
     // No operation tests
     #[case("1.2.3", None, None, "1.2.3")]
-    // Bump with 0 - should be no-op (no reset logic applied)
-    #[case("1.2.3", None, Some(0), "1.2.3")]
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
+    #[case("1.2.3", None, Some(0), "1.2.3-post.0")]
     fn test_process_post(
         #[case] starting_version: &str,
         #[case] override_value: Option<u32>,
@@ -185,8 +177,8 @@ mod tests {
     #[case("1.0.0", Some(1), Some(2), "1.0.0-dev.3")]
     // No operation tests
     #[case("1.2.3", None, None, "1.2.3")]
-    // Bump with 0 - should be no-op (no reset logic applied)
-    #[case("1.2.3", None, Some(0), "1.2.3")]
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
+    #[case("1.2.3", None, Some(0), "1.2.3-dev.0")]
     fn test_process_dev(
         #[case] starting_version: &str,
         #[case] override_value: Option<u32>,
@@ -212,8 +204,8 @@ mod tests {
     #[case("1.0.0", Some(1), Some(2), "0.0.0-epoch.3")]
     // No operation tests
     #[case("1.2.3", None, None, "1.2.3")]
-    // Bump with 0 - should be no-op (no reset logic applied)
-    #[case("1.2.3", None, Some(0), "1.2.3")]
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
+    #[case("1.2.3", None, Some(0), "0.0.0-epoch.0")]
     fn test_process_epoch(
         #[case] starting_version: &str,
         #[case] override_value: Option<u32>,
@@ -276,7 +268,7 @@ mod tests {
     #[case("1.0.0-alpha.1", Some(3), Some(2), "1.0.0-alpha.5")]
     // No operation tests
     #[case("1.2.3-alpha.1", None, None, "1.2.3-alpha.1")]
-    // Bump with 0 - should be no-op (no reset logic applied)
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
     #[case("1.2.3-alpha.1", None, Some(0), "1.2.3-alpha.1")]
     fn test_process_pre_release_num(
         #[case] starting_version: &str,
