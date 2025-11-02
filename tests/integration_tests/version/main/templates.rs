@@ -133,7 +133,7 @@ mod template_helpers_sanitize {
     #[case::pep440("Build-ID-0051", "pep440", "build.id.51")]
     fn test_sanitize_presets(#[case] input: &str, #[case] preset: &str, #[case] expected: &str) {
         let template = format!(
-            "{{{{ sanitize(value='bumped_branch', preset=\"{}\") }}}}",
+            "{{{{ sanitize(value=bumped_branch, preset=\"{}\") }}}}",
             preset
         );
         let fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
@@ -151,12 +151,12 @@ mod template_helpers_sanitize {
     #[rstest]
     #[case::custom_separator(
         "feature-branch",
-        "{{ sanitize(value='bumped_branch', separator=\"_\") }}",
+        "{{ sanitize(value=bumped_branch, separator=\"_\") }}",
         "feature_branch"
     )]
     #[case::max_length(
         "VeryLongBranchName",
-        "{{ sanitize(value='bumped_branch', max_length=10, lowercase=false) }}",
+        "{{ sanitize(value=bumped_branch, max_length=10, lowercase=false) }}",
         "VeryLongBr"
     )]
     fn test_sanitize_custom(#[case] input: &str, #[case] template: &str, #[case] expected: &str) {
@@ -177,9 +177,9 @@ mod template_helpers_hash {
     use super::*;
 
     #[rstest]
-    #[case::default("{{ hash(value='bumped_branch') }}", "c7dedb4")]
-    #[case::custom_length("{{ hash(value='bumped_branch', length=10) }}", "c7dedb4632")]
-    #[case::hash_int("{{ hash_int(value='bumped_branch') }}", "1440218")]
+    #[case::default("{{ hash(value=bumped_branch) }}", "c7dedb4")]
+    #[case::custom_length("{{ hash(value=bumped_branch, length=10) }}", "c7dedb4632")]
+    #[case::hash_int("{{ hash_int(value=bumped_branch) }}", "1440218")]
     fn test_hash(#[case] template: &str, #[case] expected: &str) {
         let fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
             None,
@@ -278,7 +278,7 @@ mod template_complex_scenarios {
     fn test_tier_3_pattern() {
         let template = concat!(
             "{{major}}.{{minor}}.{{patch}}.dev{{dev}}+",
-            "{{ sanitize(value='bumped_branch') }}.{{bumped_commit_hash_short}}"
+            "{{ sanitize(value=bumped_branch) }}.{{bumped_commit_hash_short}}"
         );
         let fixture = ZervFixture::new()
             .with_version(1, 0, 0)

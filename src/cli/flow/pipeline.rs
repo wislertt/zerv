@@ -139,8 +139,8 @@ mod tests {
 
         test_flow_pipeline_with_fixture(
             &fixture_path,
-            "1.0.0-alpha.11864+feature.1.0.{commit_hash_7}",
-            "1.0.0a11864+feature.1.0.{commit_hash_7}",
+            "1.0.0-alpha.42954+feature.1.0.{commit_hash_7}",
+            "1.0.0a42954+feature.1.0.{commit_hash_7}",
         );
     }
 }

@@ -66,7 +66,7 @@ pub struct FlowArgs {
     #[arg(
         long,
         value_parser = clap::value_parser!(u32),
-        help = "Pre-release number for flow versions (integer, default: {{ hash_int(value='bumped_branch', length=HASH_BRANCH_LEN) }})"
+        help = "Pre-release number for flow versions (integer, default: {{ hash_int(value=bumped_branch, length=HASH_BRANCH_LEN) }})"
     )]
     pub pre_release_num: Option<u32>,
 
@@ -168,7 +168,7 @@ impl FlowArgs {
                     num.to_string()
                 } else {
                     format!(
-                        "{{{{ hash_int(value='bumped_branch', length={}) }}}}",
+                        "{{{{ hash_int(value=bumped_branch, length={}) }}}}",
                         hash_len
                     )
                 };
@@ -451,10 +451,7 @@ mod tests {
             let template = result.unwrap().unwrap();
 
             // Generate expected template from input
-            let content = format!(
-                "{{{{ hash_int(value='bumped_branch', length={}) }}}}",
-                length
-            );
+            let content = format!("{{{{ hash_int(value=bumped_branch, length={}) }}}}", length);
             let expected = args.build_pre_release_bump_template(&content);
             assert_eq!(template.as_str(), expected);
         }
@@ -522,7 +519,7 @@ mod tests {
             } else {
                 let template = result.unwrap().unwrap();
                 let content = format!(
-                    "{{{{ hash_int(value='bumped_branch', length={}) }}}}",
+                    "{{{{ hash_int(value=bumped_branch, length={}) }}}}",
                     hash_len
                 );
                 let expected = args.build_pre_release_bump_template(&content);
