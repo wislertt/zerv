@@ -3,4 +3,8 @@ mod functions;
 mod types;
 
 pub use context::ZervTemplateContext;
-pub use types::Template;
+pub use types::{
+    Template,
+    TemplateExt,
+    TemplateExtGeneric,
+};

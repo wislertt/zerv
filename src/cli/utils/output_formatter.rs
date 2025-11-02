@@ -1,4 +1,7 @@
-use crate::cli::utils::template::Template;
+use crate::cli::utils::template::{
+    Template,
+    TemplateExt,
+};
 use crate::error::ZervError;
 use crate::utils::constants::formats;
 use crate::version::Zerv;
@@ -18,7 +21,7 @@ impl OutputFormatter {
     ) -> Result<String, ZervError> {
         // 1. Resolve template if provided, otherwise use standard format
         let mut output = if let Some(template) = output_template {
-            template.render(Some(zerv_object))?.unwrap_or_default()
+            template.render_string(Some(zerv_object))?
         } else {
             Self::format_base_output(zerv_object, output_format)?
         };

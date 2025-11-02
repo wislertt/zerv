@@ -102,6 +102,56 @@ where
     }
 }
 
+// Extension trait for common template operations on String templates
+pub trait TemplateExt {
+    /// Render template and return string, using default if None
+    fn render_string(&self, zerv: Option<&Zerv>) -> Result<String, ZervError>;
+
+    /// Render template and panic on render errors, but use default for None values
+    fn render_unwrap(&self, zerv: Option<&Zerv>) -> String;
+}
+
+impl TemplateExt for Template<String> {
+    fn render_string(&self, zerv: Option<&Zerv>) -> Result<String, ZervError> {
+        self.render(zerv).map(|opt| opt.unwrap_or_default())
+    }
+
+    fn render_unwrap(&self, zerv: Option<&Zerv>) -> String {
+        self.render(zerv)
+            .expect("Template render failed")
+            .unwrap_or_default() // Use default (empty string) for None instead of panicking
+    }
+}
+
+// Generic extension trait for non-String templates
+pub trait TemplateExtGeneric<T> {
+    /// Render template and return string, using default if None
+    fn render_string(&self, zerv: Option<&Zerv>) -> Result<String, ZervError>;
+
+    /// Render template and panic on render errors, but use default for None values
+    fn render_unwrap(&self, zerv: Option<&Zerv>) -> String;
+}
+
+impl<T> TemplateExtGeneric<T> for Template<T>
+where
+    T: FromStr + Clone + Display,
+    T::Err: Display,
+{
+    fn render_string(&self, zerv: Option<&Zerv>) -> Result<String, ZervError> {
+        match self.render(zerv)? {
+            Some(value) => Ok(value.to_string()),
+            None => Ok(String::new()), // Default for None is empty string
+        }
+    }
+
+    fn render_unwrap(&self, zerv: Option<&Zerv>) -> String {
+        match self.render(zerv).expect("Template render failed") {
+            Some(value) => value.to_string(),
+            None => String::new(), // Use default (empty string) for None
+        }
+    }
+}
+
 // Additional trait implementations for clap compatibility
 impl FromStr for Template<u32> {
     type Err = ZervError;
@@ -153,7 +203,11 @@ impl FromStr for Template<String> {
 // Comprehensive test coverage is provided by both unit and integration tests
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        TemplateExt,
+        TemplateExtGeneric,
+        *,
+    };
     use crate::test_utils::zerv::ZervFixture;
 
     #[test]
@@ -522,5 +576,90 @@ mod tests {
             result
         );
         assert_eq!(result.unwrap(), Some("unstable-no-commits".to_string()));
+    }
+
+    // === Template Extension Trait Tests ===
+
+    #[test]
+    fn test_render_string_with_valid_result() {
+        let template = Template::<String>::new("v{{ major }}.{{ minor }}".to_string());
+        let zerv_fixture = ZervFixture::new().with_version(2, 5, 0);
+        let zerv = zerv_fixture.zerv();
+
+        let result = template.render_string(Some(zerv));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "v2.5");
+    }
+
+    #[test]
+    fn test_render_string_with_none_result() {
+        let template = Template::<String>::new("{{ post }}".to_string());
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0);
+        let zerv = zerv_fixture.zerv();
+
+        let result = template.render_string(Some(zerv));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ""); // None becomes empty string with unwrap_or_default()
+    }
+
+    #[test]
+    fn test_render_string_with_no_zerv() {
+        let template = Template::<String>::new("static text".to_string());
+
+        let result = template.render_string(None);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "static text");
+    }
+
+    #[test]
+    fn test_render_unwrap_with_valid_result() {
+        let template = Template::<String>::new("{{ major }}.{{ minor }}.{{ patch }}".to_string());
+        let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
+        let zerv = zerv_fixture.zerv();
+
+        let result = TemplateExt::render_unwrap(&template, Some(zerv));
+        assert_eq!(result, "1.2.3");
+    }
+
+    #[test]
+    fn test_render_unwrap_with_none_result() {
+        let template = Template::<String>::new("{{ post }}".to_string());
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0);
+        let zerv = zerv_fixture.zerv();
+
+        let result = TemplateExt::render_unwrap(&template, Some(zerv));
+        assert_eq!(result, ""); // None becomes empty string with unwrap_or_default()
+    }
+
+    #[test]
+    fn test_render_unwrap_with_no_zerv() {
+        let template = Template::<String>::new("static text".to_string());
+
+        let result = TemplateExt::render_unwrap(&template, None);
+        assert_eq!(result, "static text");
+    }
+
+    #[test]
+    #[should_panic(expected = "Template render failed")]
+    fn test_render_unwrap_panics_on_invalid_template() {
+        let template = Template::<String>::new("{{ invalid syntax }".to_string());
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0);
+        let zerv = zerv_fixture.zerv();
+
+        TemplateExt::render_unwrap(&template, Some(zerv)); // Should panic
+    }
+
+    #[test]
+    fn test_extension_trait_with_numeric_template() {
+        let template = Template::<u32>::new("{{ major }}".to_string());
+        let zerv_fixture = ZervFixture::new().with_version(5, 0, 0);
+        let zerv = zerv_fixture.zerv();
+
+        let result = TemplateExtGeneric::render_string(&template, Some(zerv));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "5");
+
+        let result = TemplateExtGeneric::render_unwrap(&template, Some(zerv));
+        assert_eq!(result, "5");
     }
 }

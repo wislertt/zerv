@@ -56,7 +56,7 @@ mod tests {
     use super::*;
     use crate::cli::utils::template::{
         Template,
-        ZervTemplateContext,
+        TemplateExtGeneric,
     };
     use crate::test_info;
     use crate::test_utils::{
@@ -115,32 +115,8 @@ mod tests {
         // Test template creation (rendering test disabled for now)
         let _main_hash: Template<u32> =
             Template::new("{{ hash_int(value='main', length=5) }}".to_string());
-        let _empty_context = ZervTemplateContext {
-            major: None,
-            minor: None,
-            patch: None,
-            epoch: None,
-            post: None,
-            dev: None,
-            pre_release: None,
-            distance: None,
-            dirty: None,
-            bumped_branch: None,
-            bumped_commit_hash: None,
-            bumped_commit_hash_short: None,
-            bumped_timestamp: None,
-            last_branch: None,
-            last_commit_hash: None,
-            last_commit_hash_short: None,
-            last_timestamp: None,
-            custom: serde_json::Value::Null,
-            pep440: String::new(),
-            semver: String::new(),
-        };
-        let rendered_hash = _main_hash
-            .render(None)
-            .expect("Failed to render main hash template with empty context")
-            .expect("Hash template should not return None");
+
+        let rendered_hash = _main_hash.render_unwrap(None);
         test_info!("{}", rendered_hash);
 
         test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
@@ -154,10 +130,7 @@ mod tests {
         // Test template creation (rendering test disabled for now)
         let _feature_1_hash: Template<u32> =
             Template::new("{{ hash_int(value='feature-1', length=5) }}".to_string());
-        let rendered_feature_1_hash = _feature_1_hash
-            .render(None)
-            .expect("Failed to render feature-1 hash template with empty context")
-            .expect("Hash template should not return None");
+        let rendered_feature_1_hash = _feature_1_hash.render_unwrap(None);
         test_info!("{}", rendered_feature_1_hash);
 
         fixture

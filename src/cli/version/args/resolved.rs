@@ -10,7 +10,10 @@ use crate::cli::common::args::{
     InputConfig,
     OutputConfig,
 };
-use crate::cli::utils::template::Template;
+use crate::cli::utils::template::{
+    Template,
+    TemplateExt,
+};
 use crate::error::ZervError;
 use crate::utils::constants::pre_release_labels;
 use crate::version::Zerv;
@@ -55,11 +58,7 @@ pub trait TemplateResolver {
     ) -> Result<Vec<String>, ZervError> {
         templates
             .iter()
-            .map(|template| {
-                template
-                    .render(Some(zerv))
-                    .map(|opt| opt.unwrap_or_default())
-            })
+            .map(|template| template.render_string(Some(zerv)))
             .collect()
     }
 
