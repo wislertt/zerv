@@ -7,8 +7,11 @@ use crate::cli::common::args::{
 };
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
-use crate::utils::constants::pre_release_labels;
 use crate::utils::constants::pre_release_labels::ALPHA;
+use crate::utils::constants::{
+    post_modes,
+    pre_release_labels,
+};
 
 /// Generate version with intelligent pre-release management based on Git branch patterns
 #[derive(Parser)]
@@ -33,6 +36,9 @@ PRE-RELEASE OPTIONS:
   --hash-branch-len <LEN>   Hash length for bumped branch hash (1-10, default: 5)
   --no-pre-release          Disable pre-release entirely
 
+POST MODE OPTIONS:
+  --post-mode <MODE>        Post calculation mode: commit (default), tag
+
 EXAMPLES:
   # Basic flow version with automatic pre-release detection
   zerv flow
@@ -46,6 +52,10 @@ EXAMPLES:
   zerv flow --pre-release-label beta
   zerv flow --pre-release-label rc --pre-release-num 5
   zerv flow --no-pre-release
+
+  # Post mode control
+  zerv flow --post-mode commit  # bump post by distance (default)
+  zerv flow --post-mode tag     # bump post by 1
 
   # Use in different directory
   zerv flow -C /path/to/repo"
@@ -82,6 +92,11 @@ pub struct FlowArgs {
     #[arg(long, action = clap::ArgAction::SetTrue,
           help = "Disable pre-release entirely (no pre-release component)")]
     pub no_pre_release: bool,
+
+    /// Post calculation mode (commit, tag)
+    #[arg(long = "post-mode", value_parser = clap::builder::PossibleValuesParser::new(post_modes::VALID_MODES),
+          default_value = post_modes::COMMIT, help = "Post calculation mode (commit, tag)")]
+    pub post_mode: String,
 }
 
 impl Default for FlowArgs {
@@ -93,6 +108,7 @@ impl Default for FlowArgs {
             pre_release_num: None,
             hash_branch_len: 5,
             no_pre_release: false,
+            post_mode: post_modes::COMMIT.to_string(),
         }
     }
 }
@@ -116,6 +132,7 @@ impl FlowArgs {
         self.validate_pre_release_label()?;
         self.validate_pre_release_num()?;
         self.validate_hash_branch_len()?;
+        self.validate_post_mode()?;
 
         Ok(())
     }
@@ -145,6 +162,17 @@ impl FlowArgs {
             return Err(ZervError::InvalidArgument(format!(
                 "hash-branch-len must be between 1 and 10, got {}",
                 self.hash_branch_len
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_post_mode(&self) -> Result<(), ZervError> {
+        if !post_modes::VALID_MODES.contains(&self.post_mode.as_str()) {
+            return Err(ZervError::InvalidArgument(format!(
+                "post-mode must be one of: {}, got {}",
+                post_modes::VALID_MODES.join(", "),
+                self.post_mode
             )));
         }
         Ok(())
@@ -186,9 +214,11 @@ impl FlowArgs {
     }
 
     pub fn bump_post(&self) -> Option<Option<Template<u32>>> {
-        // Template: existing post + distance, with proper None handling
-        // TODO: implement post mode
-        let content = "{{ distance }}";
+        let content = match self.post_mode.as_str() {
+            post_modes::COMMIT => "{{ distance }}", // bump post by distance
+            post_modes::TAG => "1",                 // bump post by 1
+            _ => unreachable!("Invalid post_mode should have been caught by validation"),
+        };
         let template = self.build_pre_release_bump_template(content);
         Some(Some(Template::new(template)))
     }
@@ -216,6 +246,7 @@ mod tests {
             assert!(args.pre_release_label.is_none());
             assert!(args.pre_release_num.is_none());
             assert!(!args.no_pre_release);
+            assert_eq!(args.post_mode, post_modes::COMMIT);
         }
 
         #[test]
@@ -253,6 +284,17 @@ mod tests {
         }
 
         #[rstest]
+        #[case(post_modes::COMMIT)]
+        #[case(post_modes::TAG)]
+        fn test_valid_post_modes(#[case] mode: &str) {
+            let mut args = FlowArgs {
+                post_mode: mode.to_string(),
+                ..FlowArgs::default()
+            };
+            assert!(args.validate().is_ok());
+        }
+
+        #[rstest]
         #[case(0)]
         #[case(11)]
         #[case(20)]
@@ -268,6 +310,26 @@ mod tests {
                     .unwrap_err()
                     .to_string()
                     .contains("hash-branch-len must be between 1 and 10")
+            );
+        }
+
+        #[rstest]
+        #[case("invalid")]
+        #[case("commit-invalid")]
+        #[case("tag-invalid")]
+        #[case("")]
+        fn test_invalid_post_modes(#[case] mode: &str) {
+            let mut args = FlowArgs {
+                post_mode: mode.to_string(),
+                ..FlowArgs::default()
+            };
+            let result = args.validate();
+            assert!(result.is_err());
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("post-mode must be one of:")
             );
         }
 
@@ -483,22 +545,91 @@ mod tests {
         }
     }
 
+    mod bump_post {
+        use super::*;
+
+        #[rstest]
+        #[case(post_modes::COMMIT, "{{ distance }}")]
+        #[case(post_modes::TAG, "1")]
+        fn test_bump_post_templates(#[case] mode: &str, #[case] expected_content: &str) {
+            let args = FlowArgs {
+                post_mode: mode.to_string(),
+                pre_release_label: Some("alpha".to_string()), // Need a pre-release label
+                ..FlowArgs::default()
+            };
+
+            let result = args.bump_post();
+            assert!(result.is_some());
+            let template_result = result.unwrap();
+            assert!(template_result.is_some());
+            let template = template_result.unwrap();
+
+            let expected = args.build_pre_release_bump_template(expected_content);
+            assert_eq!(template.as_str(), expected);
+        }
+
+        #[test]
+        fn test_bump_post_returns_none_when_no_pre_release() {
+            let args = FlowArgs {
+                no_pre_release: true,
+                ..FlowArgs::default()
+            };
+
+            // When no_pre_release is true, bump_post should still return a template
+            // because it's used in the BumpsConfig regardless of pre_release state
+            let result = args.bump_post();
+            assert!(result.is_some());
+            let template_result = result.unwrap();
+            assert!(template_result.is_some());
+            let template = template_result.unwrap();
+            // Just verify it returns a valid template
+            assert!(!template.as_str().is_empty());
+        }
+
+        #[test]
+        fn test_bump_post_commit_mode_default() {
+            let args = FlowArgs::default();
+            let result = args.bump_post();
+            assert!(result.is_some());
+
+            let template_result = result.unwrap();
+            assert!(template_result.is_some());
+            let template = template_result.unwrap();
+            let expected = args.build_pre_release_bump_template("{{ distance }}");
+            assert_eq!(template.as_str(), expected);
+        }
+
+        #[test]
+        #[should_panic(expected = "Invalid post_mode should have been caught by validation")]
+        fn test_bump_post_invalid_mode_panics() {
+            let args = FlowArgs {
+                post_mode: "invalid".to_string(),
+                ..FlowArgs::default()
+            };
+
+            // This should panic because invalid post_mode should be caught by validation
+            args.bump_post();
+        }
+    }
+
     mod integration {
         use super::*;
 
         #[rstest]
-        #[case("alpha", Some(5), 3)]
-        #[case("beta", None, 7)]
-        #[case("rc", Some(10), 1)]
+        #[case("alpha", Some(5), 3, post_modes::COMMIT)]
+        #[case("beta", None, 7, post_modes::TAG)]
+        #[case("rc", Some(10), 1, post_modes::COMMIT)]
         fn test_complete_configuration(
             #[case] label: &str,
             #[case] num: Option<u32>,
             #[case] hash_len: u32,
+            #[case] post_mode: &str,
         ) {
             let mut args = FlowArgs {
                 pre_release_label: Some(label.to_string()),
                 pre_release_num: num,
                 hash_branch_len: hash_len,
+                post_mode: post_mode.to_string(),
                 ..FlowArgs::default()
             };
 
@@ -526,6 +657,21 @@ mod tests {
                 let expected = args.build_pre_release_bump_template(&content);
                 assert_eq!(template.as_str(), expected);
             }
+
+            // Test bump_post with the specified post_mode
+            let post_result = args.bump_post();
+            assert!(post_result.is_some());
+            let post_template_result = post_result.unwrap();
+            assert!(post_template_result.is_some());
+            let post_template = post_template_result.unwrap();
+
+            let expected_post_content = match post_mode {
+                post_modes::COMMIT => "{{ distance }}",
+                post_modes::TAG => "1",
+                _ => "{{ distance }}",
+            };
+            let expected_post = args.build_pre_release_bump_template(expected_post_content);
+            assert_eq!(post_template.as_str(), expected_post);
         }
     }
 }

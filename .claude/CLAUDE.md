@@ -23,6 +23,7 @@ Zerv is a dynamic versioning CLI tool written in Rust that generates versions fo
 8. ✅ **Check existing utilities** in `src/test_utils/` before creating new ones
 9. ✅ **Place `use` statements at top of file/module** - never inside functions
 10. ✅ **Use `mod` blocks for test organization** - not comment dividers
+11. ✅ **Use `make test` for testing** - never create ad-hoc Git repositories or manual test scripts
 
 **NEVER do these:**
 
@@ -35,6 +36,7 @@ Zerv is a dynamic versioning CLI tool written in Rust that generates versions fo
 7. ❌ Duplicate code instead of using existing utilities
 8. ❌ Place `use` statements inside functions (except rare naming conflict cases)
 9. ❌ Use comment dividers for test grouping (use `mod` blocks instead)
+10. ❌ Create manual test scripts or ad-hoc Git repositories for testing
 
 **📋 Run `/audit` to check and fix violations automatically**
 
