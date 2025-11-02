@@ -11,8 +11,8 @@ use crate::error::ZervError;
 /// - {hex:length} -> [a-f0-9]{length}
 /// - {hex} -> [a-f0-9]+
 /// - {regex:pattern} -> pattern (direct regex insertion)
-/// - {{ and }} for literal braces
-/// - All other parts are auto-escaped for exact matching
+/// - Non-placeholder characters are escaped only if they're regex-special
+/// - For literal braces: use {regex:\{pattern\}}
 fn parse_readable_pattern(pattern: &str) -> Result<Regex, ZervError> {
     let result = parse_pattern_tokens(pattern)?;
     let anchored = format!("^{}$", result);
@@ -39,46 +39,27 @@ fn parse_pattern_tokens(pattern: &str) -> Result<String, ZervError> {
 /// Process the next token in the pattern starting at position i
 /// Returns the processed token string and updates i to point to the next position
 fn process_next_token(chars: &[char], i: &mut usize) -> Result<String, ZervError> {
-    if *i + 1 < chars.len() && chars[*i] == '{' && chars[*i + 1] == '{' {
-        process_double_brace(chars, i)
-    } else if chars[*i] == '{' {
+    if chars[*i] == '{' {
         process_single_brace(chars, i)
     } else {
-        // Regular character - escape it for literal matching
-        let result = escape(&chars[*i].to_string());
+        // Regular character - escape only regex-special characters
+        let char_str = chars[*i].to_string();
+        let result = if is_regex_special(&chars[*i]) {
+            escape(&char_str)
+        } else {
+            char_str
+        };
         *i += 1;
         Ok(result)
     }
 }
 
-/// Process double braces {{content}} -> literal {content}
-fn process_double_brace(chars: &[char], i: &mut usize) -> Result<String, ZervError> {
-    let mut result = String::new();
-    result.push('{');
-    *i += 2; // Skip past {{
-
-    // Find the matching }}
-    let end_pos = find_matching_double_brace(chars, *i)?;
-    let literal_content: String = chars[*i..end_pos].iter().collect();
-    result.push_str(&escape(&literal_content));
-    result.push('}');
-    *i = end_pos + 2; // Skip past }}
-
-    Ok(result)
-}
-
-/// Find the end position of matching double braces }} starting from start_pos
-fn find_matching_double_brace(chars: &[char], start_pos: usize) -> Result<usize, ZervError> {
-    let mut j = start_pos;
-    while j < chars.len() {
-        if j + 1 < chars.len() && chars[j] == '}' && chars[j + 1] == '}' {
-            return Ok(j);
-        }
-        j += 1;
-    }
-    Err(ZervError::InvalidVersion(
-        "Unclosed double brace".to_string(),
-    ))
+/// Check if a character is special in regex (needs escaping)
+fn is_regex_special(c: &char) -> bool {
+    matches!(
+        c,
+        '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '\\'
+    )
 }
 
 /// Process single braces {placeholder} -> regex pattern
@@ -91,19 +72,27 @@ fn process_single_brace(chars: &[char], i: &mut usize) -> Result<String, ZervErr
 }
 
 /// Find the end position of matching single brace } starting from start_pos
+/// Handles escaped braces correctly by skipping escaped closing braces
 fn find_matching_single_brace(chars: &[char], start_pos: usize) -> Result<usize, ZervError> {
     let mut j = start_pos;
-    while j < chars.len() && chars[j] != '}' {
-        j += 1;
+    while j < chars.len() {
+        if chars[j] == '}' {
+            // Check if this } is escaped (preceded by \)
+            if j > 0 && chars[j - 1] == '\\' {
+                // This is an escaped }, skip it and continue
+                j += 1;
+            } else {
+                // Found the matching closing brace
+                return Ok(j);
+            }
+        } else {
+            j += 1;
+        }
     }
 
-    if j >= chars.len() {
-        Err(ZervError::InvalidVersion(
-            "Unclosed placeholder brace".to_string(),
-        ))
-    } else {
-        Ok(j)
-    }
+    Err(ZervError::InvalidVersion(
+        "Unclosed placeholder brace".to_string(),
+    ))
 }
 
 /// Process placeholder content and return corresponding regex pattern
@@ -196,10 +185,18 @@ mod tests {
         "1.0.0-alpha123+build.a1b2c3d"
     )]
     #[case("build-{regex:\\d+}-release", "build-123-release")]
-    // Special characters (auto-escaped)
+    // Special characters (non-regex special characters are not escaped)
     #[case("version-1.0.0+test.{hex:7}", "version-1.0.0+test.a1b2c3d")]
     #[case("build[1.0.0]{hex:7}", "build[1.0.0]abc1234")]
     #[case("file+name=1.0.0.{hex:7}", "file+name=1.0.0.d4738bb")]
+    // Literal braces using regex escaping
+    #[case("{regex:\\{release\\}}-{hex:7}", "{release}-deadbee")]
+    #[case("{regex:\\{1\\.0\\.0\\}-build}-{hex:12}", "{1.0.0}-build-cafedeadbeef")]
+    #[case(
+        "{regex:\\{\\{\\{\\{literal\\}\\}\\}\\}}-{hex:8}",
+        "{{{{literal}}}}-a1b2c3d4"
+    )]
+    #[case("{regex:path\\\\to\\\\file}-{hex:7}", "path\\to\\file-abc1234")]
     fn test_assert_version_expectation_function(#[case] expectation: &str, #[case] actual: &str) {
         assert_version_expectation(expectation, actual);
     }
@@ -352,5 +349,36 @@ mod tests {
             _ => panic!("Expected InvalidVersion error"),
         };
         assert!(error_msg.contains("Invalid hex placeholder format"));
+    }
+
+    #[test]
+    fn test_regex_escaping_for_literal_braces() {
+        // Test literal braces using regex escaping
+        let result = parse_readable_pattern("{regex:\\{release\\}}-{hex:7}");
+        assert!(result.is_ok());
+        let regex = result.unwrap();
+        assert!(regex.is_match("{release}-deadbee"));
+        assert!(!regex.is_match("release-deadbeef")); // missing literal braces
+
+        // Test multiple literal braces with regex
+        let result = parse_readable_pattern("{regex:\\{\\{\\{\\{literal\\}\\}\\}\\}}-{hex:8}");
+        assert!(result.is_ok());
+        let regex = result.unwrap();
+        assert!(regex.is_match("{{{{literal}}}}-a1b2c3d4"));
+        assert!(!regex.is_match("{{literal}}-a1b2c3d4")); // missing outer braces
+
+        // Test mix of literal and regex patterns (simplified to avoid escaping complexity)
+        let result = parse_readable_pattern("{regex:\\{branch\\}-[a-z]+\\d+}-{hex:12}");
+        assert!(result.is_ok());
+        let regex = result.unwrap();
+        assert!(regex.is_match("{branch}-alpha123-cafedeadbeef"));
+        assert!(!regex.is_match("branch-alpha123")); // missing literal braces
+
+        // Test literal backslash with regex
+        let result = parse_readable_pattern("{regex:path\\\\to\\\\file}-{hex:7}");
+        assert!(result.is_ok());
+        let regex = result.unwrap();
+        assert!(regex.is_match("path\\to\\file-abc1234"));
+        assert!(!regex.is_match("pathtofile-abc1234")); // missing backslashes
     }
 }
