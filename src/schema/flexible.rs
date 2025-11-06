@@ -130,11 +130,11 @@ pub enum VersionSchema {
 }
 
 impl VersionSchema {
-    /// Create a schema from the enum variant
-    pub fn create_schema(&self, vars: &ZervVars) -> ZervSchema {
+    /// Create a fixed schema (deterministic, no repository analysis)
+    /// Used by 18 fixed schema variants that don't need ZervVars
+    pub fn create_schema(&self) -> ZervSchema {
         match self {
-            // Standard Schema Family
-            VersionSchema::Standard => self.smart_standard_schema(vars),
+            // Standard Schema Family - Fixed Variants
             VersionSchema::StandardBase => self.standard_base_schema(false),
             VersionSchema::StandardBasePrerelease => self.standard_base_prerelease_schema(false),
             VersionSchema::StandardBasePrereleasePost => {
@@ -153,10 +153,8 @@ impl VersionSchema {
             VersionSchema::StandardBasePrereleasePostDevContext => {
                 self.standard_base_prerelease_post_dev_schema(true)
             }
-            VersionSchema::StandardContext => self.smart_standard_schema(vars).with_build_context(),
 
-            // CalVer Schema Family
-            VersionSchema::Calver => self.smart_calver_schema(vars),
+            // CalVer Schema Family - Fixed Variants
             VersionSchema::CalverBase => self.calver_base_schema(false),
             VersionSchema::CalverBasePrerelease => self.calver_base_prerelease_schema(false),
             VersionSchema::CalverBasePrereleasePost => {
@@ -173,7 +171,27 @@ impl VersionSchema {
             VersionSchema::CalverBasePrereleasePostDevContext => {
                 self.calver_base_prerelease_post_dev_schema(true)
             }
+
+            _ => panic!(
+                "Smart schemas with context (StandardContext, CalverContext) require create_schema_with_zerv()"
+            ),
+        }
+    }
+
+    /// Create a smart schema (analyzes repository state via ZervVars)
+    /// Used by 4 smart schemas that need repository analysis for auto-detection
+    pub fn create_schema_with_zerv(&self, vars: &ZervVars) -> ZervSchema {
+        match self {
+            // Standard Schema Family - Smart Variants
+            VersionSchema::Standard => self.smart_standard_schema(vars),
+            VersionSchema::StandardContext => self.smart_standard_schema(vars).with_build_context(),
+
+            // CalVer Schema Family - Smart Variants
+            VersionSchema::Calver => self.smart_calver_schema(vars),
             VersionSchema::CalverContext => self.smart_calver_schema(vars).with_build_context(),
+
+            // Fixed schemas - delegate to create_schema for convenience
+            fixed_schema => fixed_schema.create_schema(),
         }
     }
 
@@ -405,11 +423,11 @@ mod tests {
         let schema = VersionSchema::Standard;
 
         // Clean should use prerelease schema
-        let clean_schema = schema.create_schema(&clean_vars);
+        let clean_schema = schema.create_schema_with_zerv(&clean_vars);
         // Distance should use prerelease-post schema
-        let _distance_schema = schema.create_schema(&distance_vars);
+        let _distance_schema = schema.create_schema_with_zerv(&distance_vars);
         // Dirty should use prerelease-post-dev schema
-        let dirty_schema = schema.create_schema(&dirty_vars);
+        let dirty_schema = schema.create_schema_with_zerv(&dirty_vars);
 
         // These should have different components
         assert_ne!(clean_schema.extra_core(), dirty_schema.extra_core());
@@ -439,7 +457,7 @@ mod tests {
             let schema = schema_name.parse::<VersionSchema>();
             assert!(schema.is_ok(), "Failed to parse schema: {}", schema_name);
 
-            let zerv_schema = schema.unwrap().create_schema(&vars);
+            let zerv_schema = schema.unwrap().create_schema_with_zerv(&vars);
             assert!(
                 !zerv_schema.core().is_empty(),
                 "Schema {} should have core components",
@@ -472,7 +490,7 @@ mod tests {
             let schema = schema_name.parse::<VersionSchema>();
             assert!(schema.is_ok(), "Failed to parse schema: {}", schema_name);
 
-            let zerv_schema = schema.unwrap().create_schema(&vars);
+            let zerv_schema = schema.unwrap().create_schema_with_zerv(&vars);
             assert!(
                 !zerv_schema.core().is_empty(),
                 "Schema {} should have core components",
@@ -485,17 +503,15 @@ mod tests {
     fn test_context_vs_non_context_schemas() {
         use crate::schema::flexible::schema_names::*;
 
-        let vars = ZervVars::default();
-
         // Test that context schemas include build context
         let base_schema = STANDARD_BASE
             .parse::<VersionSchema>()
             .unwrap()
-            .create_schema(&vars);
+            .create_schema();
         let base_context_schema = STANDARD_BASE_CONTEXT
             .parse::<VersionSchema>()
             .unwrap()
-            .create_schema(&vars);
+            .create_schema();
 
         assert!(
             base_context_schema.build().len() > base_schema.build().len(),
@@ -506,11 +522,11 @@ mod tests {
         let calver_base_schema = CALVER_BASE
             .parse::<VersionSchema>()
             .unwrap()
-            .create_schema(&vars);
+            .create_schema();
         let calver_base_context_schema = CALVER_BASE_CONTEXT
             .parse::<VersionSchema>()
             .unwrap()
-            .create_schema(&vars);
+            .create_schema();
 
         assert!(
             calver_base_context_schema.build().len() > calver_base_schema.build().len(),

@@ -25,8 +25,9 @@ impl ZervSchemaFixture {
 
     /// Create standard tier 1 schema (major.minor.patch)
     pub fn standard_tier_1() -> Self {
+        use crate::schema::VersionSchema;
         Self {
-            schema: ZervSchema::zerv_standard_tier_1(),
+            schema: VersionSchema::StandardBasePrereleasePost.create_schema(),
         }
     }
 
