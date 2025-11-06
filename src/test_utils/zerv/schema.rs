@@ -27,14 +27,15 @@ impl ZervSchemaFixture {
     pub fn standard_tier_1() -> Self {
         use crate::schema::VersionSchema;
         Self {
-            schema: VersionSchema::StandardBasePrereleasePost.create_schema(),
+            schema: VersionSchema::StandardBasePrereleasePost.schema(),
         }
     }
 
     /// Create standard tier 2 schema (with build metadata)
     pub fn standard_tier_2() -> Self {
+        use crate::schema::VersionSchema;
         Self {
-            schema: ZervSchema::zerv_standard_tier_2(),
+            schema: VersionSchema::StandardBasePrereleasePostContext.schema(),
         }
     }
 

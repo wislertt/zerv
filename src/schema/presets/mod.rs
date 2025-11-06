@@ -113,7 +113,7 @@ pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {
             match name.parse::<VersionSchema>() {
                 Ok(schema) => {
                     tracing::debug!("Using flexible schema: {}", name);
-                    Some(schema.create_schema_with_zerv(vars))
+                    Some(schema.schema_with_zerv(vars))
                 }
                 Err(_) => {
                     tracing::warn!("Unknown preset schema name: {}", name);

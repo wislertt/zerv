@@ -234,8 +234,8 @@
 
 - Replace `ZervSchema::zerv_standard_tier_1()` with new equivalent:
     ```rust
-    use crate::schema::flexible::VersionSchema;
-    VersionSchema::StandardBasePrerelease.create_schema(&crate::version::zerv::ZervVars::default())
+    use crate::schema::VersionSchema;
+    VersionSchema::StandardBasePrereleasePost.schema()
     ```
 - ✅ Update associated test expectations if needed
 - ✅ **Verification**: Run `make test` to ensure all tests still pass
@@ -243,20 +243,24 @@
 - ✅ **Affected tests**: Any test using `ZervSchemaFixture::standard_tier_1()`
 - **Result**: All tests pass, implementation successful
 - **Note**: `zerv_standard_tier_1()` maps to `VersionSchema::StandardBasePrereleasePost` (not `StandardBasePrerelease`) because it includes `[Epoch, PreRelease, Post]` in extra_core
+- **API Improvement**: Methods renamed for elegance - `schema()` for fixed schemas, `schema_with_zerv(&vars)` for smart schemas
 
-#### Step 2: Replace `standard_tier_2()` Test Fixture (Very Low Risk)
+#### ✅ Step 2: Replace `standard_tier_2()` Test Fixture (Very Low Risk) - **COMPLETED**
 
 **Target**: `src/test_utils/zerv/schema.rs:36`
 **Actions**:
 
-- Replace `ZervSchema::zerv_standard_tier_2()` with new equivalent:
+- ✅ Replace `ZervSchema::zerv_standard_tier_2()` with new equivalent:
     ```rust
-    VersionSchema::StandardBasePrereleasePost.create_schema(&crate::version::zerv::ZervVars::default())
+    use crate::schema::VersionSchema;
+    VersionSchema::StandardBasePrereleasePostContext.schema()
     ```
-- Update associated test expectations if needed
-- **Verification**: Run `make test` to ensure all tests still pass
-- **Rollback**: Keep old method commented out for immediate rollback
-- **Affected tests**: Any test using `ZervSchemaFixture::standard_tier_2()`
+- ✅ Update associated test expectations if needed
+- ✅ **Verification**: Run `make test` to ensure all tests still pass
+- ✅ **Rollback**: Kept old method commented out during implementation
+- ✅ **Affected tests**: Any test using `ZervSchemaFixture::standard_tier_2()`
+- **Result**: All tests pass, implementation successful
+- **Note**: `zerv_standard_tier_2()` maps to `VersionSchema::StandardBasePrereleasePostContext` because it includes build context components `[BumpedBranch, Distance, BumpedCommitHashShort]`
 
 #### Step 3: Replace `standard_tier_3()` Test Fixture (Very Low Risk)
 
