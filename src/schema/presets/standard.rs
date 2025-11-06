@@ -1,13 +1,5 @@
-use super::{
-    determine_tier,
-    tier_1_core,
-    tier_1_extra_core,
-    tier_2_build,
-    tier_3_build,
-    tier_3_extra_core,
-};
+use super::determine_tier;
 use crate::schema::VersionSchema;
-use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::{
     ZervSchema,
     ZervVars,
@@ -21,24 +13,12 @@ impl ZervSchema {
 
     // Tier 2: Distance, clean - major.minor.patch.post<distance>+branch.<commit>
     pub fn zerv_standard_tier_2() -> Self {
-        Self::new_with_precedence(
-            tier_1_core(),
-            tier_1_extra_core(),
-            tier_2_build(),
-            PrecedenceOrder::default(),
-        )
-        .unwrap()
+        VersionSchema::StandardBasePrereleasePostContext.schema()
     }
 
     // Tier 3: Dirty - major.minor.patch.dev<timestamp>+branch.<distance>.<commit>
     pub fn zerv_standard_tier_3() -> Self {
-        Self::new_with_precedence(
-            tier_1_core(),
-            tier_3_extra_core(),
-            tier_3_build(),
-            PrecedenceOrder::default(),
-        )
-        .unwrap()
+        VersionSchema::StandardBasePrereleasePostDevContext.schema()
     }
 
     pub fn get_standard_schema(vars: &ZervVars) -> Self {

@@ -19,14 +19,6 @@ fn determine_tier(vars: &ZervVars) -> u8 {
     }
 }
 
-fn tier_1_core() -> Vec<Component> {
-    vec![
-        Component::Var(Var::Major),
-        Component::Var(Var::Minor),
-        Component::Var(Var::Patch),
-    ]
-}
-
 fn tier_1_extra_core() -> Vec<Component> {
     vec![
         Component::Var(Var::Epoch),
