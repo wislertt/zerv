@@ -32,43 +32,6 @@ pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {
             tracing::debug!("Using built-in zerv-calver schema (legacy)");
             Some(ZervSchema::get_calver_schema(vars))
         }
-        // Old tier-based schemas with deprecation warnings and mapping
-        "zerv_standard_tier_1" => {
-            tracing::warn!(
-                "Schema 'zerv_standard_tier_1' is deprecated. Use 'standard-base-prerelease' instead"
-            );
-            Some(ZervSchema::zerv_standard_tier_1())
-        }
-        "zerv_standard_tier_2" => {
-            tracing::warn!(
-                "Schema 'zerv_standard_tier_2' is deprecated. Use 'standard-base-prerelease-post' instead"
-            );
-            Some(ZervSchema::zerv_standard_tier_2())
-        }
-        "zerv_standard_tier_3" => {
-            tracing::warn!(
-                "Schema 'zerv_standard_tier_3' is deprecated. Use 'standard-base-prerelease-post-dev' instead"
-            );
-            Some(ZervSchema::zerv_standard_tier_3())
-        }
-        "zerv_calver_tier_1" => {
-            tracing::warn!(
-                "Schema 'zerv_calver_tier_1' is deprecated. Use 'calver-base-prerelease' instead"
-            );
-            Some(ZervSchema::zerv_calver_tier_1())
-        }
-        "zerv_calver_tier_2" => {
-            tracing::warn!(
-                "Schema 'zerv_calver_tier_2' is deprecated. Use 'calver-base-prerelease-post' instead"
-            );
-            Some(ZervSchema::zerv_calver_tier_2())
-        }
-        "zerv_calver_tier_3" => {
-            tracing::warn!(
-                "Schema 'zerv_calver_tier_3' is deprecated. Use 'calver-base-prerelease-post-dev' instead"
-            );
-            Some(ZervSchema::zerv_calver_tier_3())
-        }
         _ => {
             // Try to parse as new flexible schema
             match name.parse::<VersionSchema>() {
@@ -104,36 +67,6 @@ mod tests {
     #[rstest]
     #[case("zerv-standard", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(ZervSchema::zerv_standard_tier_1()))]
     #[case("zerv-calver", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(ZervSchema::zerv_calver_tier_1()))]
-    #[case(
-        "zerv_standard_tier_1",
-        ZervVars::default(),
-        Some(ZervSchema::zerv_standard_tier_1())
-    )]
-    #[case(
-        "zerv_standard_tier_2",
-        ZervVars::default(),
-        Some(ZervSchema::zerv_standard_tier_2())
-    )]
-    #[case(
-        "zerv_standard_tier_3",
-        ZervVars::default(),
-        Some(ZervSchema::zerv_standard_tier_3())
-    )]
-    #[case(
-        "zerv_calver_tier_1",
-        ZervVars::default(),
-        Some(ZervSchema::zerv_calver_tier_1())
-    )]
-    #[case(
-        "zerv_calver_tier_2",
-        ZervVars::default(),
-        Some(ZervSchema::zerv_calver_tier_2())
-    )]
-    #[case(
-        "zerv_calver_tier_3",
-        ZervVars::default(),
-        Some(ZervSchema::zerv_calver_tier_3())
-    )]
     #[case("unknown", ZervVars::default(), None)]
     fn test_get_preset_schema(
         #[case] name: &str,
