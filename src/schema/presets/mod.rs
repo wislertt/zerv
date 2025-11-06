@@ -3,8 +3,6 @@ mod standard;
 
 use crate::schema::VersionSchema;
 use crate::version::zerv::{
-    Component,
-    Var,
     ZervSchema,
     ZervVars,
 };
@@ -17,35 +15,6 @@ fn determine_tier(vars: &ZervVars) -> u8 {
     } else {
         1 // Tagged, clean
     }
-}
-
-fn tier_1_extra_core() -> Vec<Component> {
-    vec![
-        Component::Var(Var::Epoch),
-        Component::Var(Var::PreRelease),
-        Component::Var(Var::Post),
-    ]
-}
-
-fn tier_2_build() -> Vec<Component> {
-    vec![
-        Component::Var(Var::BumpedBranch),
-        Component::Var(Var::Distance),
-        Component::Var(Var::BumpedCommitHashShort),
-    ]
-}
-
-fn tier_3_extra_core() -> Vec<Component> {
-    vec![
-        Component::Var(Var::Epoch),
-        Component::Var(Var::PreRelease),
-        Component::Var(Var::Post),
-        Component::Var(Var::Dev),
-    ]
-}
-
-fn tier_3_build() -> Vec<Component> {
-    tier_2_build()
 }
 
 pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {

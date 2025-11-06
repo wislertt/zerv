@@ -1,15 +1,6 @@
-use super::{
-    determine_tier,
-    tier_1_extra_core,
-    tier_2_build,
-    tier_3_build,
-    tier_3_extra_core,
-};
-use crate::utils::constants::timestamp_patterns;
-use crate::version::zerv::bump::precedence::PrecedenceOrder;
+use super::determine_tier;
+use crate::schema::VersionSchema;
 use crate::version::zerv::{
-    Component,
-    Var,
     ZervSchema,
     ZervVars,
 };
@@ -17,50 +8,17 @@ use crate::version::zerv::{
 impl ZervSchema {
     // Tier 1: Tagged, clean - YYYY-MM-DD-PATCH
     pub fn zerv_calver_tier_1() -> Self {
-        Self::new_with_precedence(
-            vec![
-                Component::Var(Var::Timestamp(timestamp_patterns::YYYY.to_string())),
-                Component::Var(Var::Timestamp(timestamp_patterns::MM.to_string())),
-                Component::Var(Var::Timestamp(timestamp_patterns::DD.to_string())),
-                Component::Var(Var::Patch),
-            ],
-            tier_1_extra_core(),
-            vec![],
-            PrecedenceOrder::default(),
-        )
-        .unwrap()
+        VersionSchema::CalverBasePrerelease.schema()
     }
 
     // Tier 2: Distance, clean - YYYY-MM-DD-PATCH.post<distance>+branch.<commit>
     pub fn zerv_calver_tier_2() -> Self {
-        Self::new_with_precedence(
-            vec![
-                Component::Var(Var::Timestamp(timestamp_patterns::YYYY.to_string())),
-                Component::Var(Var::Timestamp(timestamp_patterns::MM.to_string())),
-                Component::Var(Var::Timestamp(timestamp_patterns::DD.to_string())),
-                Component::Var(Var::Patch),
-            ],
-            tier_1_extra_core(),
-            tier_2_build(),
-            PrecedenceOrder::default(),
-        )
-        .unwrap()
+        VersionSchema::CalverBasePrereleasePostContext.schema()
     }
 
     // Tier 3: Dirty - YYYY-MM-DD-PATCH.dev<timestamp>+branch.<distance>.<commit>
     pub fn zerv_calver_tier_3() -> Self {
-        Self::new_with_precedence(
-            vec![
-                Component::Var(Var::Timestamp(timestamp_patterns::YYYY.to_string())),
-                Component::Var(Var::Timestamp(timestamp_patterns::MM.to_string())),
-                Component::Var(Var::Timestamp(timestamp_patterns::DD.to_string())),
-                Component::Var(Var::Patch),
-            ],
-            tier_3_extra_core(),
-            tier_3_build(),
-            PrecedenceOrder::default(),
-        )
-        .unwrap()
+        VersionSchema::CalverBasePrereleasePostDevContext.schema()
     }
 
     pub fn get_calver_schema(vars: &ZervVars) -> Self {

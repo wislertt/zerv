@@ -308,44 +308,47 @@
 - **Result**: Zero breaking changes, internal migration successful
 - **Note**: `zerv_standard_tier_3()` maps to `VersionSchema::StandardBasePrereleasePostDevContext` because it includes dev components and build context
 
-#### Step 7: Migrate `zerv_calver_tier_1()` implementation to use new API (Very Low Risk)
+#### ✅ Step 7: Migrate `zerv_calver_tier_1()` implementation to use new API (Very Low Risk) - **COMPLETED**
 
 **Target**: `src/schema/presets/calver.rs:19`
 **Actions**:
 
-- Replace implementation to use new API internally:
+- ✅ Replace implementation to use new API internally:
     ```rust
     VersionSchema::CalverBasePrerelease.schema()
     ```
-- Keep function signature for backward compatibility
-- **Verification**: Run `make test` to ensure calver preset tests pass
-- **Rollback**: Function can be restored from git if needed
+- ✅ Keep function signature for backward compatibility
+- ✅ **Verification**: Run `make test` to ensure calver preset tests pass
+- ✅ **Rollback**: Function can be restored from git if needed
+- **Result**: Zero breaking changes, internal migration successful
 
-#### Step 8: Migrate `zerv_calver_tier_2()` implementation to use new API (Very Low Risk)
+#### ✅ Step 8: Migrate `zerv_calver_tier_2()` implementation to use new API (Very Low Risk) - **COMPLETED**
 
-**Target**: `src/schema/presets/calver.rs:35`
+**Target**: `src/schema/presets/calver.rs:25`
 **Actions**:
 
-- Replace implementation to use new API internally:
+- ✅ Replace implementation to use new API internally:
     ```rust
     VersionSchema::CalverBasePrereleasePost.schema()
     ```
-- Keep function signature for backward compatibility
-- **Verification**: Run `make test` to ensure calver preset tests pass
-- **Rollback**: Function can be restored from git if needed
+- ✅ Keep function signature for backward compatibility
+- ✅ **Verification**: Run `make test` to ensure calver preset tests pass
+- ✅ **Rollback**: Function can be restored from git if needed
+- **Result**: Zero breaking changes, internal migration successful
 
-#### Step 9: Migrate `zerv_calver_tier_3()` implementation to use new API (Very Low Risk)
+#### ✅ Step 9: Migrate `zerv_calver_tier_3()` implementation to use new API (Very Low Risk) - **COMPLETED**
 
-**Target**: `src/schema/presets/calver.rs:51`
+**Target**: `src/schema/presets/calver.rs:30`
 **Actions**:
 
-- Replace implementation to use new API internally:
+- ✅ Replace implementation to use new API internally:
     ```rust
     VersionSchema::CalverBasePrereleasePostDev.schema()
     ```
-- Keep function signature for backward compatibility
-- **Verification**: Run `make test` to ensure calver preset tests pass
-- **Rollback**: Function can be restored from git if needed
+- ✅ Keep function signature for backward compatibility
+- ✅ **Verification**: Run `make test` to ensure calver preset tests pass
+- ✅ **Rollback**: Function can be restored from git if needed
+- **Result**: Zero breaking changes, internal migration successful
 
 #### Step 10: Replace remaining test fixtures (Very Low Risk)
 
@@ -446,7 +449,7 @@
 
 ### 📊 Current Progress Summary
 
-**✅ Completed (6 steps):**
+**✅ Completed (9 steps):**
 
 - **Step 1**: Migrated `zerv_standard_tier_1()` implementation
 - **Step 2**: Updated `standard_tier_2()` test fixture
@@ -454,10 +457,12 @@
 - **Step 4**: Updated `standard_tier_1()` test fixture
 - **Step 5**: Migrated `zerv_standard_tier_2()` implementation
 - **Step 6**: Migrated `zerv_standard_tier_3()` implementation
+- **Step 7**: Migrated `zerv_calver_tier_1()` implementation
+- **Step 8**: Migrated `zerv_calver_tier_2()` implementation
+- **Step 9**: Migrated `zerv_calver_tier_3()` implementation
 
-**🔄 Next Steps (12 remaining):**
+**🔄 Next Steps (9 remaining):**
 
-- **Steps 7-9**: Migrate CalVer implementations (`zerv_calver_tier_1/2/3`)
 - **Step 10**: Update remaining test fixtures
 - **Steps 11-18**: Update tests, logic, remove mappings, cleanup
 
