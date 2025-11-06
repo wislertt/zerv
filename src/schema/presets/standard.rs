@@ -6,6 +6,7 @@ use super::{
     tier_3_build,
     tier_3_extra_core,
 };
+use crate::schema::VersionSchema;
 use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::{
     ZervSchema,
@@ -15,13 +16,7 @@ use crate::version::zerv::{
 impl ZervSchema {
     // Tier 1: Tagged, clean - major.minor.patch
     pub fn zerv_standard_tier_1() -> Self {
-        Self::new_with_precedence(
-            tier_1_core(),
-            tier_1_extra_core(),
-            vec![],
-            PrecedenceOrder::default(),
-        )
-        .unwrap()
+        VersionSchema::StandardBasePrereleasePost.schema()
     }
 
     // Tier 2: Distance, clean - major.minor.patch.post<distance>+branch.<commit>

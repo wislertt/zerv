@@ -223,16 +223,50 @@
 - **Implementation functions**: `src/schema/presets/standard.rs` and `src/schema/presets/calver.rs` (6 functions)
 - **Preset mapping**: `src/schema/presets/mod.rs` (6 usages in tests + 6 usages in mapping)
 
-### 📋 Step-by-Step Removal Plan
+### 📋 Step-by-Step Removal Plan (Reordered for Priority)
 
 **IMPORTANT**: Each step must pass `make test` before proceeding to the next step.
 
-#### ✅ Step 1: Replace `standard_tier_1()` Test Fixture (Very Low Risk) - **COMPLETED**
+**NEW APPROACH**: Prioritize migrating core implementation functions first, then update tests/fixtures.
+
+#### ✅ Step 1: Migrate `zerv_standard_tier_1()` to use new API (Very Low Risk) - **COMPLETED**
+
+**Target**: `src/schema/presets/standard.rs:17`
+**Actions**:
+
+- ✅ Replace implementation to use new API internally
+- ✅ Keep function signature for backward compatibility
+- ✅ **Implementation**: `VersionSchema::StandardBasePrereleasePost.schema()`
+- ✅ **Verification**: Run `make test` to ensure standard preset tests pass
+- ✅ **Rollback**: Function can be restored from git if needed
+- **Result**: Zero breaking changes, internal migration successful
+- **Note**: Smoother transition - function uses new API internally while preserving interface
+
+#### ✅ Step 2: Migrate `zerv_standard_tier_2()` to use new API (Very Low Risk) - **COMPLETED**
+
+**Target**: `src/test_utils/zerv/schema.rs:36` (Test fixture updated, implementation still pending)
+**Actions**:
+
+- ✅ Update test fixture to use new API: `VersionSchema::StandardBasePrereleasePostContext.schema()`
+- ✅ **Verification**: All tests pass
+- 🔄 **Next**: Update implementation function in `src/schema/presets/standard.rs:23`
+- **Note**: `zerv_standard_tier_2()` maps to `VersionSchema::StandardBasePrereleasePostContext` because it includes build context components
+
+#### ✅ Step 3: API Design Improvement (Very Low Risk) - **COMPLETED**
+
+**Actions**:
+
+- ✅ Renamed `create_schema()` to `schema()` for elegance
+- ✅ Renamed `create_schema_with_zerv()` to `schema_with_zerv()` for consistency
+- ✅ Updated all usages throughout codebase
+- ✅ **Result**: Clean, elegant API design
+
+#### ✅ Step 4: Replace `standard_tier_1()` Test Fixture (Very Low Risk) - **COMPLETED**
 
 **Target**: `src/test_utils/zerv/schema.rs:27`
 **Actions**:
 
-- Replace `ZervSchema::zerv_standard_tier_1()` with new equivalent:
+- ✅ Replace `ZervSchema::zerv_standard_tier_1()` with new equivalent:
     ```rust
     use crate::schema::VersionSchema;
     VersionSchema::StandardBasePrereleasePost.schema()
@@ -243,117 +277,95 @@
 - ✅ **Affected tests**: Any test using `ZervSchemaFixture::standard_tier_1()`
 - **Result**: All tests pass, implementation successful
 - **Note**: `zerv_standard_tier_1()` maps to `VersionSchema::StandardBasePrereleasePost` (not `StandardBasePrerelease`) because it includes `[Epoch, PreRelease, Post]` in extra_core
-- **API Improvement**: Methods renamed for elegance - `schema()` for fixed schemas, `schema_with_zerv(&vars)` for smart schemas
 
-#### ✅ Step 2: Replace `standard_tier_2()` Test Fixture (Very Low Risk) - **COMPLETED**
+#### Step 5: Migrate `zerv_standard_tier_2()` implementation to use new API (Very Low Risk)
 
-**Target**: `src/test_utils/zerv/schema.rs:36`
+**Target**: `src/schema/presets/standard.rs:23`
 **Actions**:
 
-- ✅ Replace `ZervSchema::zerv_standard_tier_2()` with new equivalent:
+- Replace implementation to use new API internally:
     ```rust
-    use crate::schema::VersionSchema;
     VersionSchema::StandardBasePrereleasePostContext.schema()
     ```
-- ✅ Update associated test expectations if needed
-- ✅ **Verification**: Run `make test` to ensure all tests still pass
-- ✅ **Rollback**: Kept old method commented out during implementation
-- ✅ **Affected tests**: Any test using `ZervSchemaFixture::standard_tier_2()`
-- **Result**: All tests pass, implementation successful
-- **Note**: `zerv_standard_tier_2()` maps to `VersionSchema::StandardBasePrereleasePostContext` because it includes build context components `[BumpedBranch, Distance, BumpedCommitHashShort]`
+- Keep function signature for backward compatibility
+- **Verification**: Run `make test` to ensure standard preset tests pass
+- **Rollback**: Function can be restored from git if needed
 
-#### Step 3: Replace `standard_tier_3()` Test Fixture (Very Low Risk)
+#### Step 6: Migrate `zerv_standard_tier_3()` implementation to use new API (Very Low Risk)
 
-**Target**: `src/test_utils/zerv/schema.rs:43`
+**Target**: `src/schema/presets/standard.rs:39`
 **Actions**:
 
-- Replace `ZervSchema::zerv_standard_tier_3()` with new equivalent:
+- Replace implementation to use new API internally:
     ```rust
-    VersionSchema::StandardBasePrereleasePostDev.create_schema(&crate::version::zerv::ZervVars::default())
+    VersionSchema::StandardBasePrereleasePostDevContext.schema()
     ```
-- Update associated test expectations if needed
-- **Verification**: Run `make test` to ensure all tests still pass
-- **Rollback**: Keep old method commented out for immediate rollback
-- **Affected tests**: Any test using `ZervSchemaFixture::standard_tier_3()`
+- Keep function signature for backward compatibility
+- **Verification**: Run `make test` to ensure standard preset tests pass
+- **Rollback**: Function can be restored from git if needed
 
-#### Step 4: Replace `calver_tier_1()` Test Fixture (Very Low Risk)
+#### Step 7: Migrate `zerv_calver_tier_1()` implementation to use new API (Very Low Risk)
 
-**Target**: `src/test_utils/zerv/schema.rs:50`
+**Target**: `src/schema/presets/calver.rs:19`
 **Actions**:
 
-- Replace `ZervSchema::zerv_calver_tier_1()` with new equivalent:
+- Replace implementation to use new API internally:
     ```rust
-    VersionSchema::CalverBasePrerelease.create_schema(&crate::version::zerv::ZervVars::default())
+    VersionSchema::CalverBasePrerelease.schema()
     ```
-- Update associated test expectations if needed
-- **Verification**: Run `make test` to ensure all tests still pass
-- **Rollback**: Keep old method commented out for immediate rollback
-- **Affected tests**: Any test using `ZervSchemaFixture::calver_tier_1()`
+- Keep function signature for backward compatibility
+- **Verification**: Run `make test` to ensure calver preset tests pass
+- **Rollback**: Function can be restored from git if needed
 
-#### Step 5: Replace `calver_tier_2()` Test Fixture (Very Low Risk)
+#### Step 8: Migrate `zerv_calver_tier_2()` implementation to use new API (Very Low Risk)
 
-**Target**: `src/test_utils/zerv/schema.rs:57`
+**Target**: `src/schema/presets/calver.rs:35`
 **Actions**:
 
-- Replace `ZervSchema::zerv_calver_tier_2()` with new equivalent:
+- Replace implementation to use new API internally:
     ```rust
-    VersionSchema::CalverBasePrereleasePost.create_schema(&crate::version::zerv::ZervVars::default())
+    VersionSchema::CalverBasePrereleasePost.schema()
     ```
-- Update associated test expectations if needed
-- **Verification**: Run `make test` to ensure all tests still pass
-- **Rollback**: Keep old method commented out for immediate rollback
-- **Affected tests**: Any test using `ZervSchemaFixture::calver_tier_2()`
+- Keep function signature for backward compatibility
+- **Verification**: Run `make test` to ensure calver preset tests pass
+- **Rollback**: Function can be restored from git if needed
 
-#### Step 6: Replace `calver_tier_3()` Test Fixture (Very Low Risk)
+#### Step 9: Migrate `zerv_calver_tier_3()` implementation to use new API (Very Low Risk)
 
-**Target**: `src/test_utils/zerv/schema.rs:64`
+**Target**: `src/schema/presets/calver.rs:51`
 **Actions**:
 
-- Replace `ZervSchema::zerv_calver_tier_3()` with new equivalent:
+- Replace implementation to use new API internally:
     ```rust
-    VersionSchema::CalverBasePrereleasePostDev.create_schema(&crate::version::zerv::ZervVars::default())
+    VersionSchema::CalverBasePrereleasePostDev.schema()
     ```
-- Update associated test expectations if needed
-- **Verification**: Run `make test` to ensure all tests still pass
-- **Rollback**: Keep old method commented out for immediate rollback
-- **Affected tests**: Any test using `ZervSchemaFixture::calver_tier_3()`
+- Keep function signature for backward compatibility
+- **Verification**: Run `make test` to ensure calver preset tests pass
+- **Rollback**: Function can be restored from git if needed
 
-#### Step 7: Replace `new()` Test Fixture (Very Low Risk)
+#### Step 10: Replace remaining test fixtures (Very Low Risk)
 
-**Target**: `src/test_utils/zerv/schema.rs:17`
+**Target**: `src/test_utils/zerv/schema.rs`
 **Actions**:
 
-- Replace `ZervSchema::zerv_standard_tier_1()` with new equivalent:
-    ```rust
-    VersionSchema::StandardBasePrerelease.create_schema(&crate::version::zerv::ZervVars::default())
-    ```
+- Update `standard_tier_3()` fixture: `VersionSchema::StandardBasePrereleasePostDevContext.schema()`
+- Update `calver_tier_1()` fixture: `VersionSchema::CalverBasePrerelease.schema()`
+- Update `calver_tier_2()` fixture: `VersionSchema::CalverBasePrereleasePost.schema()`
+- Update `calver_tier_3()` fixture: `VersionSchema::CalverBasePrereleasePostDev.schema()`
 - **Verification**: Run `make test` to ensure all tests still pass
-- **Rollback**: Keep old method commented out for immediate rollback
-- **Affected tests**: Any test using `ZervSchemaFixture::new()`
+- **Rollback**: Keep old methods commented out for immediate rollback
 
-#### Step 8: Update First CLI Test (Low Risk)
+#### Step 11: Update CLI Tests (Low Risk)
 
-**Target**: `src/cli/version/zerv_draft.rs:162`
+**Target**: `src/cli/version/zerv_draft.rs:162,174`
 **Actions**:
 
-- Replace `ZervSchema::zerv_standard_tier_1()` assertion with new equivalent schema
-- Update test expectation to match new schema structure
+- Replace `ZervSchema::zerv_standard_tier_1()` assertions with new equivalent schema
+- Update test expectations to match new schema structure
 - **Verification**: Run `make test` to ensure CLI tests pass
-- **Rollback**: Keep old assertion commented out for this step only
-- **Affected tests**: Test on line 162
+- **Rollback**: Keep old assertions commented out for this step only
 
-#### Step 9: Update Second CLI Test (Low Risk)
-
-**Target**: `src/cli/version/zerv_draft.rs:174`
-**Actions**:
-
-- Replace `ZervSchema::zerv_standard_tier_1()` assertion with new equivalent schema
-- Update test expectation to match new schema structure
-- **Verification**: Run `make test` to ensure CLI tests pass
-- **Rollback**: Keep old assertion commented out for this step only
-- **Affected tests**: Test on line 174
-
-#### Step 10: Update Schema Core Test (Low Risk)
+#### Step 12: Update Schema Core Test (Low Risk)
 
 **Target**: `src/version/zerv/schema/core.rs:329`
 **Actions**:
@@ -362,61 +374,8 @@
 - Update any related test expectations
 - **Verification**: Run `make test` to ensure schema core tests pass
 - **Rollback**: Keep old test case commented out for this step only
-- **Affected tests**: Schema core tests using standard_tier_1 case
 
-#### Step 11: Update Standard Preset Test Cases (Medium Risk)
-
-**Target**: `src/schema/presets/mod.rs:144-159` (standard test cases)
-**Actions**:
-
-- Replace old schema references in standard test cases
-- Update test case names to reflect new schema names
-- Update expected results to use new schema creation methods
-- **Verification**: Run `make test` to ensure preset tests pass
-- **Rollback**: Keep old test cases commented out for this step only
-
-#### Step 12: Update CalVer Preset Test Cases (Medium Risk)
-
-**Target**: `src/schema/presets/mod.rs:162-174` (calver test cases)
-**Actions**:
-
-- Replace old schema references in calver test cases
-- Update test case names to reflect new schema names
-- Update expected results to use new schema creation methods
-- **Verification**: Run `make test` to ensure preset tests pass
-- **Rollback**: Keep old test cases commented out for this step only
-
-#### Step 13: Remove `zerv_standard_tier_1()` Function (Medium Risk)
-
-**Target**: `src/schema/presets/standard.rs:17`
-**Actions**:
-
-- Remove `zerv_standard_tier_1()` function completely
-- Update any internal references if they exist
-- **Verification**: Run `make test` to ensure standard preset tests pass
-- **Rollback**: Function can be restored from git if needed
-
-#### Step 14: Remove `zerv_standard_tier_2()` Function (Medium Risk)
-
-**Target**: `src/schema/presets/standard.rs:28`
-**Actions**:
-
-- Remove `zerv_standard_tier_2()` function completely
-- Update any internal references if they exist
-- **Verification**: Run `make test` to ensure standard preset tests pass
-- **Rollback**: Function can be restored from git if needed
-
-#### Step 15: Remove `zerv_standard_tier_3()` Function (Medium Risk)
-
-**Target**: `src/schema/presets/standard.rs:39`
-**Actions**:
-
-- Remove `zerv_standard_tier_3()` function completely
-- Update any internal references if they exist
-- **Verification**: Run `make test` to ensure standard preset tests pass
-- **Rollback**: Function can be restored from git if needed
-
-#### Step 16: Update Standard Schema Logic (Medium Risk)
+#### Step 13: Update Standard Schema Logic (Low Risk)
 
 **Target**: `src/schema/presets/standard.rs:52-70`
 **Actions**:
@@ -427,37 +386,7 @@
 - **Verification**: Run `make test` to ensure standard preset tests pass
 - **Rollback**: Logic can be restored from git if needed
 
-#### Step 17: Remove `zerv_calver_tier_1()` Function (Medium Risk)
-
-**Target**: `src/schema/presets/calver.rs:19`
-**Actions**:
-
-- Remove `zerv_calver_tier_1()` function completely
-- Update any internal references if they exist
-- **Verification**: Run `make test` to ensure calver preset tests pass
-- **Rollback**: Function can be restored from git if needed
-
-#### Step 18: Remove `zerv_calver_tier_2()` Function (Medium Risk)
-
-**Target**: `src/schema/presets/calver.rs:35`
-**Actions**:
-
-- Remove `zerv_calver_tier_2()` function completely
-- Update any internal references if they exist
-- **Verification**: Run `make test` to ensure calver preset tests pass
-- **Rollback**: Function can be restored from git if needed
-
-#### Step 19: Remove `zerv_calver_tier_3()` Function (Medium Risk)
-
-**Target**: `src/schema/presets/calver.rs:51`
-**Actions**:
-
-- Remove `zerv_calver_tier_3()` function completely
-- Update any internal references if they exist
-- **Verification**: Run `make test` to ensure calver preset tests pass
-- **Rollback**: Function can be restored from git if needed
-
-#### Step 20: Update CalVer Schema Logic (Medium Risk)
+#### Step 14: Update CalVer Schema Logic (Low Risk)
 
 **Target**: `src/schema/presets/calver.rs:69-87`
 **Actions**:
@@ -468,7 +397,7 @@
 - **Verification**: Run `make test` to ensure calver preset tests pass
 - **Rollback**: Logic can be restored from git if needed
 
-#### Step 21: Remove Standard Preset Mapping (High Risk)
+#### Step 15: Remove Standard Preset Mapping (Medium Risk)
 
 **Target**: `src/schema/presets/mod.rs:75-91`
 **Actions**:
@@ -478,7 +407,7 @@
 - **Verification**: Run `make test` to ensure all tests pass
 - **Rollback**: Mapping can be restored from git if needed
 
-#### Step 22: Remove CalVer Preset Mapping (High Risk)
+#### Step 16: Remove CalVer Preset Mapping (Medium Risk)
 
 **Target**: `src/schema/presets/mod.rs:93-109`
 **Actions**:
@@ -488,7 +417,7 @@
 - **Verification**: Run `make test` to ensure all tests pass
 - **Rollback**: Mapping can be restored from git if needed
 
-#### Step 23: Update Error Messages (High Risk)
+#### Step 17: Update Error Messages (Medium Risk)
 
 **Target**: Various error handling locations
 **Actions**:
@@ -499,7 +428,7 @@
 - **Verification**: Run `make test` to ensure all tests pass
 - **Final verification**: Test that old schema names now produce proper error messages
 
-#### Step 24: Final Cleanup (Low Risk)
+#### Step 18: Final Cleanup (Low Risk)
 
 **Targets**: Multiple files
 **Actions**:
@@ -510,6 +439,25 @@
 - Final integration test with all 20 new schema variants
 - **Verification**: Full test suite passes
 - **Rollback**: Not needed after successful completion
+
+### 📊 Current Progress Summary
+
+**✅ Completed (4 steps):**
+
+- **Step 1**: Migrated `zerv_standard_tier_1()` implementation
+- **Step 2**: Updated `standard_tier_2()` test fixture
+- **Step 3**: Improved API design (`schema()`/`schema_with_zerv()`)
+- **Step 4**: Updated `standard_tier_1()` test fixture
+
+**🔄 Next Steps (14 remaining):**
+
+- **Step 5**: Migrate `zerv_standard_tier_2()` implementation
+- **Step 6**: Migrate `zerv_standard_tier_3()` implementation
+- **Steps 7-9**: Migrate CalVer implementations (`zerv_calver_tier_1/2/3`)
+- **Step 10**: Update remaining test fixtures
+- **Steps 11-18**: Update tests, logic, remove mappings, cleanup
+
+**Strategy Change**: Now prioritizing core implementation migrations first, then updating dependent tests and logic.
 
 ### 🔍 Testing Strategy for Each Step
 
@@ -529,76 +477,34 @@
 #### Rollback Strategy
 
 - Each step keeps commented-out old code for immediate rollback
-- Git branches for each major step (steps 5, 6, 7, 8)
+- Git branches for each major step
 - Test suite serves as regression safety net
 
 ### 📊 Risk Assessment
 
-**Very Low Risk Steps (1-7)**: Individual test fixture methods
+**Very Low Risk Steps (1-4)**: Core implementation migrations
 
-- Impact limited to single test fixture method
+- Internal API changes only
+- Zero breaking changes
+- Easy rollback through git
+
+**Low Risk Steps (5-10)**: Test fixtures and updates
+
+- Impact limited to test code
 - Easy rollback through commented code
-- No production code changes
 
-**Low Risk Steps (8-12)**: Individual test cases
-
-- Impact limited to specific test assertions
-- Easy rollback through commented code
-- No production code changes
-
-**Medium Risk Steps (13-20)**: Individual function removal and logic updates
+**Medium Risk Steps (11-14)**: Logic updates and mapping removal
 
 - Affects internal schema creation
 - Still isolated from public API
 - Rollback through git
 
-**High Risk Steps (21-23)**: Public API changes
+**High Risk Steps (15-16)**: Public API changes
 
 - Affects external schema name resolution
 - Error handling changes
 - Requires careful testing
 
-**Low Risk Step (24)**: Final cleanup
+**Low Risk Step (17)**: Final cleanup
 
 - Impact minimal after all previous steps complete
-
-### ✅ Success Criteria
-
-1. **All tests pass**: `make test` succeeds completely
-2. **Old schemas error**: Using old schema names produces clear error messages
-3. **New schemas work**: All 20 new schema variants function correctly
-4. **No regressions**: Existing functionality preserved
-5. **Code quality**: `make fmt` and `make clippy` pass
-6. **Documentation updated**: No references to old schemas remain
-
-## Remaining Work Items
-
-### High Priority
-
-- 🔄 **Execute Step-by-Step Removal Plan** as outlined above
-- 🔄 **Complete integration testing** with real repositories for all 20 schema variants
-- 🔄 **Performance testing** with large repositories to ensure minimal impact
-- 🔄 **Real-world compatibility testing** with existing CI/CD scripts
-
-### Medium Priority
-
-- 📋 **Add comprehensive end-to-end tests** for complex schema interactions
-- 📋 **Test edge cases** across different VCS states and repository conditions
-
-### Low Priority
-
-- 📋 **Optimize performance** if bottlenecks discovered during testing
-- 📋 **Consider additional schema variants** based on user feedback
-
-## Future Considerations
-
-- Additional schema variants if needed
-- Performance optimization for large repositories
-- Timeline for old schema removal (based on user feedback)
-- Foundation for future `zerv flow` command implementation
-
----
-
-**Dependencies**: None
-**Estimated Effort**: Medium-High
-**Risk Level**: Medium (schema system changes require careful backward compatibility handling)
