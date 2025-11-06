@@ -461,12 +461,162 @@
 - **Step 8**: Migrated `zerv_calver_tier_2()` implementation
 - **Step 9**: Migrated `zerv_calver_tier_3()` implementation
 
-**🔄 Next Steps (9 remaining):**
+**🔄 Next Steps (10 remaining):**
 
 - **Step 10**: Update remaining test fixtures
-- **Steps 11-18**: Update tests, logic, remove mappings, cleanup
+- **Step 11**: **NEW** - Update tests to match smart schema behavior (breaking change)
+- **Steps 12-19**: Update tests, logic, remove mappings, cleanup
 
 **Strategy Change**: Now prioritizing core implementation migrations first, then updating dependent tests and logic.
+
+---
+
+### 🎯 Step 11: Update Tests to Match Smart Schema Behavior (Breaking Change) - **PLANNED**
+
+**Goal**: Replace tier-based logic in `get_standard_schema()` and `get_calver_schema()` with smart schema logic and update all dependent tests to match the new behavior.
+
+**Context**: The smart schema system provides more intelligent component inclusion based on repository state, but differs from the old tier-based system. This is a deliberate improvement that will change version output behavior.
+
+**Breaking Change Impact**:
+
+- Version strings will be different for some repository states
+- Tests expecting old tier behavior need to be updated
+- This is an improvement in behavior, not a regression
+
+#### 📋 Implementation Plan
+
+**Step 11.1: Update Standard Schema Logic (Medium Risk)**
+**Target**: `src/schema/presets/standard.rs:23-31`
+
+**Actions**:
+
+- Replace `get_standard_schema()` implementation with smart schema:
+    ```rust
+    pub fn get_standard_schema(vars: &ZervVars) -> Self {
+        VersionSchema::StandardContext.schema_with_zerv(vars)
+    }
+    ```
+- Remove `determine_tier` import (no longer needed)
+- **Expected Changes**:
+    - Clean tagged versions: `StandardBasePrerelease` (instead of `StandardBasePrereleasePost`)
+    - Distance versions: `StandardBasePrereleasePostContext` (with build context)
+    - Dirty versions: `StandardBasePrereleasePostDevContext` (with build context)
+
+**Step 11.2: Update CalVer Schema Logic (Medium Risk)**
+**Target**: `src/schema/presets/calver.rs:24-31`
+
+**Actions**:
+
+- Replace `get_calver_schema()` implementation with smart schema:
+    ```rust
+    pub fn get_calver_schema(vars: &ZervVars) -> Self {
+        VersionSchema::CalverContext.schema_with_zerv(vars)
+    }
+    ```
+- Remove `determine_tier` import (no longer needed)
+- **Expected Changes**:
+    - Clean tagged versions: `CalverBasePrerelease` (instead of `CalverBasePrerelease`)
+    - Distance versions: `CalverBasePrereleasePostContext` (with build context)
+    - Dirty versions: `CalverBasePrereleasePostDevContext` (with build context)
+
+**Step 11.3: Update Standard Schema Tests (Medium Risk)**
+**Target**: `src/schema/presets/standard.rs:36-49`
+
+**Actions**:
+
+- Update test expectations to match smart schema behavior
+- Update expected schemas in `#[case]` attributes
+- **Key Changes**:
+    - Tier 1 case: Expect `StandardBasePrerelease` + build context
+    - Tier 2 case: Expect `StandardBasePrereleasePost` + build context
+    - Tier 3 case: Expect `StandardBasePrereleasePostDev` + build context
+
+**Step 11.4: Update CalVer Schema Tests (Medium Risk)**
+**Target**: `src/schema/presets/calver.rs:36-58`
+
+**Actions**:
+
+- Update test expectations to match smart schema behavior
+- Update expected schemas in `#[case]` attributes
+- **Key Changes**:
+    - Tier 1 case: Expect `CalverBasePrerelease` + build context
+    - Tier 2 case: Expect `CalverBasePrereleasePost` + build context
+    - Tier 3 case: Expect `CalverBasePrereleasePostDev` + build context
+
+**Step 11.5: Update Integration Tests (Medium Risk)**
+**Target**: `src/schema/presets/mod.rs:85-114`
+
+**Actions**:
+
+- Update test cases that use `get_standard_schema()` and `get_calver_schema()`
+- Update expected schema outputs in preset mapping tests
+- Ensure deprecation mapping tests still pass with new behavior
+
+**Step 11.6: Remove Unused Helper Functions (Low Risk)**
+**Target**: `src/schema/presets/mod.rs:10-20`
+
+**Actions**:
+
+- Remove `determine_tier()` function (no longer used)
+- Clean up any remaining tier-related imports if not needed
+- **Note**: Already removed helper functions in previous linting cleanup
+
+#### 🔍 Testing Strategy
+
+**Pre-Implementation Baseline**:
+
+- Document current version string outputs for different repository states
+- Run full test suite and record results
+
+**Step-by-Step Verification**:
+
+- After each sub-step, run `make test` to verify progress
+- Focus on schema-specific tests first, then integration tests
+- Manually verify version string outputs make sense
+
+**Final Verification**:
+
+- Full test suite passes
+- Version strings are more intelligent (minimal components for clean state)
+- Build context is included appropriately based on repository state
+- Backward compatibility maintained for deprecated schema names
+
+#### 🎯 Expected Benefits
+
+1. **More Intelligent Versioning**: Versions only include components when meaningful
+2. **Consistent Smart Behavior**: Both standard and calver use same intelligent logic
+3. **Better Build Context**: Context is included based on actual repository state
+4. **Simplified Implementation**: No more manual tier determination logic
+
+#### ⚠️ Breaking Change Documentation
+
+**What Changes**:
+
+- Clean tagged versions will be shorter (no unnecessary Post component)
+- Build context inclusion becomes more intelligent
+- Version strings become more semantic and less rigid
+
+**Migration Guidance**:
+
+- Users should update scripts expecting exact version strings
+- New behavior is more intuitive and follows semantic versioning principles
+- Deprecated schema names still work but produce new smart behavior
+
+**Rollback Strategy**:
+
+- Keep backup of tier-based logic in comments during implementation
+- Git branches for each major sub-step
+- Test suite serves as safety net
+
+#### 📊 Success Criteria
+
+1. ✅ All schema preset tests pass with new expectations
+2. ✅ Integration tests adapt to new smart schema behavior
+3. ✅ Version strings are more intelligent and semantic
+4. ✅ Build context inclusion works correctly
+5. ✅ Backward compatibility maintained for deprecated names
+6. ✅ Full test suite passes
+7. ✅ Manual verification confirms improved version output
 
 ### 🔍 Testing Strategy for Each Step
 
