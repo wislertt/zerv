@@ -76,6 +76,7 @@ mod components {
 pub mod schema_names {
     // Standard Schema Family
     pub const STANDARD: &str = "standard";
+    pub const STANDARD_NO_CONTEXT: &str = "standard-no-context";
     pub const STANDARD_BASE: &str = "standard-base";
     pub const STANDARD_BASE_PRERELEASE: &str = "standard-base-prerelease";
     pub const STANDARD_BASE_PRERELEASE_POST: &str = "standard-base-prerelease-post";
@@ -89,6 +90,7 @@ pub mod schema_names {
 
     // CalVer Schema Family
     pub const CALVER: &str = "calver";
+    pub const CALVER_NO_CONTEXT: &str = "calver-no-context";
     pub const CALVER_BASE: &str = "calver-base";
     pub const CALVER_BASE_PRERELEASE: &str = "calver-base-prerelease";
     pub const CALVER_BASE_PRERELEASE_POST: &str = "calver-base-prerelease-post";
@@ -106,6 +108,7 @@ pub mod schema_names {
 pub enum VersionSchema {
     // Standard Schema Family (SemVer)
     Standard,
+    StandardNoContext,
     StandardBase,
     StandardBasePrerelease,
     StandardBasePrereleasePost,
@@ -118,6 +121,7 @@ pub enum VersionSchema {
 
     // CalVer Schema Family
     Calver,
+    CalverNoContext,
     CalverBase,
     CalverBasePrerelease,
     CalverBasePrereleasePost,
@@ -179,16 +183,34 @@ impl VersionSchema {
     }
 
     /// Create a smart schema (analyzes repository state via ZervVars)
-    /// Used by 4 smart schemas that need repository analysis for auto-detection
+    /// Used by 6 smart schemas that need repository analysis for auto-detection
     pub fn schema_with_zerv(&self, vars: &ZervVars) -> ZervSchema {
         match self {
             // Standard Schema Family - Smart Variants
-            VersionSchema::Standard => self.smart_standard_schema(vars),
-            VersionSchema::StandardContext => self.smart_standard_schema(vars).with_build_context(),
+            VersionSchema::Standard => {
+                let schema = self.smart_standard_schema(vars);
+                // Add context only for dirty or distance cases (smart context)
+                if vars.dirty.unwrap_or(false) || vars.distance.unwrap_or(0) > 0 {
+                    schema.with_build_context()
+                } else {
+                    schema
+                }
+            }
+            VersionSchema::StandardNoContext => self.smart_standard_schema(vars), // Never includes context
+            VersionSchema::StandardContext => self.smart_standard_schema(vars).with_build_context(), // Always includes context
 
             // CalVer Schema Family - Smart Variants
-            VersionSchema::Calver => self.smart_calver_schema(vars),
-            VersionSchema::CalverContext => self.smart_calver_schema(vars).with_build_context(),
+            VersionSchema::Calver => {
+                let schema = self.smart_calver_schema(vars);
+                // Add context only for dirty or distance cases (smart context)
+                if vars.dirty.unwrap_or(false) || vars.distance.unwrap_or(0) > 0 {
+                    schema.with_build_context()
+                } else {
+                    schema
+                }
+            }
+            VersionSchema::CalverNoContext => self.smart_calver_schema(vars), // Never includes context
+            VersionSchema::CalverContext => self.smart_calver_schema(vars).with_build_context(), // Always includes context
 
             // Fixed schemas - delegate to schema for convenience
             fixed_schema => fixed_schema.schema(),
@@ -198,21 +220,39 @@ impl VersionSchema {
     // Helper methods for creating specific schema configurations
     fn smart_standard_schema(&self, vars: &ZervVars) -> ZervSchema {
         if vars.dirty.unwrap_or(false) {
+            // Dirty => standard_base_prerelease_post_dev_schema (context added later if needed)
             self.standard_base_prerelease_post_dev_schema(false)
         } else if vars.distance.unwrap_or(0) > 0 {
+            // Distance => standard_base_prerelease_post_schema (context added later if needed)
             self.standard_base_prerelease_post_schema(false)
-        } else {
+        } else if vars.pre_release.is_some() && vars.post.is_some() {
+            // Clean tagged with prerelease and post => standard_base_prerelease_post_schema without context
+            self.standard_base_prerelease_post_schema(false)
+        } else if vars.pre_release.is_some() {
+            // Clean tagged with prerelease only => standard_base_prerelease_schema without context
             self.standard_base_prerelease_schema(false)
+        } else {
+            // Clean tagged (base only) => standard_base_schema without context
+            self.standard_base_schema(false)
         }
     }
 
     fn smart_calver_schema(&self, vars: &ZervVars) -> ZervSchema {
         if vars.dirty.unwrap_or(false) {
+            // Dirty => calver_base_prerelease_post_dev_schema (context added later if needed)
             self.calver_base_prerelease_post_dev_schema(false)
         } else if vars.distance.unwrap_or(0) > 0 {
+            // Distance => calver_base_prerelease_post_schema (context added later if needed)
             self.calver_base_prerelease_post_schema(false)
-        } else {
+        } else if vars.pre_release.is_some() && vars.post.is_some() {
+            // Clean tagged with prerelease and post => calver_base_prerelease_post_schema without context
+            self.calver_base_prerelease_post_schema(false)
+        } else if vars.pre_release.is_some() {
+            // Clean tagged with prerelease only => calver_base_prerelease_schema without context
             self.calver_base_prerelease_schema(false)
+        } else {
+            // Clean tagged (base only) => calver_base_schema without context
+            self.calver_base_schema(false)
         }
     }
 
@@ -306,6 +346,7 @@ impl FromStr for VersionSchema {
         match s {
             // Standard Schema Family
             STANDARD => Ok(VersionSchema::Standard),
+            STANDARD_NO_CONTEXT => Ok(VersionSchema::StandardNoContext),
             STANDARD_BASE => Ok(VersionSchema::StandardBase),
             STANDARD_BASE_PRERELEASE => Ok(VersionSchema::StandardBasePrerelease),
             STANDARD_BASE_PRERELEASE_POST => Ok(VersionSchema::StandardBasePrereleasePost),
@@ -322,6 +363,7 @@ impl FromStr for VersionSchema {
 
             // CalVer Schema Family
             CALVER => Ok(VersionSchema::Calver),
+            CALVER_NO_CONTEXT => Ok(VersionSchema::CalverNoContext),
             CALVER_BASE => Ok(VersionSchema::CalverBase),
             CALVER_BASE_PRERELEASE => Ok(VersionSchema::CalverBasePrerelease),
             CALVER_BASE_PRERELEASE_POST => Ok(VersionSchema::CalverBasePrereleasePost),
