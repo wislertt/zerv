@@ -1,4 +1,3 @@
-use super::determine_tier;
 use crate::schema::VersionSchema;
 use crate::version::zerv::{
     ZervSchema,
@@ -22,13 +21,7 @@ impl ZervSchema {
     }
 
     pub fn get_standard_schema(vars: &ZervVars) -> Self {
-        let tier = determine_tier(vars);
-        match tier {
-            1 => Self::zerv_standard_tier_1(),
-            2 => Self::zerv_standard_tier_2(),
-            3 => Self::zerv_standard_tier_3(),
-            _ => unreachable!("Invalid tier"),
-        }
+        VersionSchema::Standard.schema_with_zerv(vars)
     }
 }
 
@@ -37,12 +30,19 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
+    use crate::schema::{
+        SchemaContextExt,
+        VersionSchema,
+    };
     use crate::version::zerv::ZervVars;
 
     #[rstest]
-    #[case(ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, ZervSchema::zerv_standard_tier_1())]
-    #[case(ZervVars { dirty: Some(false), distance: Some(5), ..Default::default() }, ZervSchema::zerv_standard_tier_2())]
-    #[case(ZervVars { dirty: Some(true), distance: Some(0), ..Default::default() }, ZervSchema::zerv_standard_tier_3())]
+    // Clean tagged (base only) -> StandardBase with smart context (no context for clean)
+    #[case(ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, VersionSchema::StandardBase.schema())]
+    // Distance -> StandardBasePrereleasePost with smart context (context added for distance)
+    #[case(ZervVars { dirty: Some(false), distance: Some(5), ..Default::default() }, VersionSchema::StandardBasePrereleasePost.schema().with_build_context())]
+    // Dirty -> StandardBasePrereleasePostDev with smart context (context added for dirty)
+    #[case(ZervVars { dirty: Some(true), distance: Some(0), ..Default::default() }, VersionSchema::StandardBasePrereleasePostDev.schema().with_build_context())]
     fn test_get_standard_schema(#[case] vars: ZervVars, #[case] expected_schema: ZervSchema) {
         let schema = ZervSchema::get_standard_schema(&vars);
         assert_eq!(schema, expected_schema);

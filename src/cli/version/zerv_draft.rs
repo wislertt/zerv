@@ -146,6 +146,7 @@ mod tests {
 
     #[test]
     fn test_create_zerv_version_with_preset_schema() {
+        use crate::schema::VersionSchema;
         let vars = ZervVars {
             major: Some(1),
             minor: Some(2),
@@ -159,7 +160,7 @@ mod tests {
         let draft = ZervDraft::new(vars.clone(), None);
         let args = VersionArgs::default();
         let zerv = draft.create_zerv_version(&args).unwrap();
-        assert_eq!(zerv.schema, ZervSchema::zerv_standard_tier_1());
+        assert_eq!(zerv.schema, VersionSchema::StandardBase.schema());
 
         // Test with explicit schema
         let draft = ZervDraft::new(vars, None);
@@ -171,7 +172,7 @@ mod tests {
             ..Default::default()
         };
         let zerv = draft.create_zerv_version(&args).unwrap();
-        assert_eq!(zerv.schema, ZervSchema::zerv_standard_tier_1());
+        assert_eq!(zerv.schema, VersionSchema::StandardBase.schema());
     }
 
     #[test]

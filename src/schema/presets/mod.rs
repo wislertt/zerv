@@ -7,16 +7,6 @@ use crate::version::zerv::{
     ZervVars,
 };
 
-fn determine_tier(vars: &ZervVars) -> u8 {
-    if vars.dirty.unwrap_or(false) {
-        3 // Dirty
-    } else if vars.distance.unwrap_or(0) > 0 {
-        2 // Distance, clean
-    } else {
-        1 // Tagged, clean
-    }
-}
-
 pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {
     tracing::debug!("Loading preset schema: {}", name);
 
@@ -56,17 +46,8 @@ mod tests {
     use crate::version::zerv::ZervVars;
 
     #[rstest]
-    #[case(ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, 1)]
-    #[case(ZervVars { dirty: Some(false), distance: Some(5), ..Default::default() }, 2)]
-    #[case(ZervVars { dirty: Some(true), distance: Some(0), ..Default::default() }, 3)]
-    #[case(ZervVars { dirty: Some(true), distance: Some(10), ..Default::default() }, 3)]
-    fn test_tier_determination(#[case] vars: ZervVars, #[case] expected_tier: u8) {
-        assert_eq!(determine_tier(&vars), expected_tier);
-    }
-
-    #[rstest]
-    #[case("zerv-standard", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(ZervSchema::zerv_standard_tier_1()))]
-    #[case("zerv-calver", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(ZervSchema::zerv_calver_tier_1()))]
+    #[case("zerv-standard", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(VersionSchema::StandardBase.schema()))]
+    #[case("zerv-calver", ZervVars { dirty: Some(false), distance: Some(0), ..Default::default() }, Some(VersionSchema::CalverBase.schema()))]
     #[case("unknown", ZervVars::default(), None)]
     fn test_get_preset_schema(
         #[case] name: &str,

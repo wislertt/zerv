@@ -384,7 +384,7 @@ impl FromStr for VersionSchema {
 }
 
 /// Extension trait for ZervSchema to add context support
-trait SchemaContextExt {
+pub trait SchemaContextExt {
     fn with_build_context(self) -> Self;
 }
 
