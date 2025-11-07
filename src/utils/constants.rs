@@ -146,9 +146,3 @@ pub const SUPPORTED_FORMAT_NAMES: &[&str] = &[
     format_names::SEMVER,
     format_names::ZERV,
 ];
-
-// Schema names
-pub mod schema_names {
-    pub const ZERV_STANDARD: &str = "zerv-standard";
-    pub const ZERV_CALVER: &str = "zerv-calver";
-}

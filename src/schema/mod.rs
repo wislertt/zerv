@@ -4,6 +4,7 @@ mod presets;
 pub use flexible::{
     SchemaContextExt,
     VersionSchema,
+    schema_names,
 };
 pub use presets::get_preset_schema;
 

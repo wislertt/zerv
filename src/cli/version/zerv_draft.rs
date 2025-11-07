@@ -6,6 +6,7 @@ use crate::error::ZervError;
 use crate::schema::{
     get_preset_schema,
     parse_ron_schema,
+    schema_names,
 };
 use crate::version::zerv::{
     Zerv,
@@ -72,7 +73,7 @@ impl ZervDraft {
                 if let Some(existing_schema) = existing_schema {
                     Ok(existing_schema)
                 } else {
-                    Ok(get_preset_schema("zerv-standard", vars).unwrap())
+                    Ok(get_preset_schema(schema_names::STANDARD, vars).unwrap())
                 }
             }
         }
@@ -166,7 +167,7 @@ mod tests {
         let draft = ZervDraft::new(vars, None);
         let args = VersionArgs {
             main: MainConfig {
-                schema: Some("zerv-standard".to_string()),
+                schema: Some(schema_names::STANDARD.to_string()),
                 ..Default::default()
             },
             ..Default::default()
@@ -210,7 +211,7 @@ mod tests {
         let draft = ZervDraft::new(vars, None);
         let args = VersionArgs {
             main: MainConfig {
-                schema: Some("zerv-standard".to_string()),
+                schema: Some(schema_names::STANDARD.to_string()),
                 schema_ron: Some(ron_schema.to_string()),
             },
             ..Default::default()
@@ -285,7 +286,7 @@ mod tests {
         let draft = ZervDraft::new(vars, None);
         let args = VersionArgs {
             main: MainConfig {
-                schema: Some("zerv-standard".to_string()),
+                schema: Some(schema_names::STANDARD.to_string()),
                 ..Default::default()
             },
             ..Default::default()
@@ -318,7 +319,7 @@ mod tests {
         let draft = ZervDraft::new(vars, None);
         let args = VersionArgs {
             main: MainConfig {
-                schema: Some("zerv-standard".to_string()),
+                schema: Some(schema_names::STANDARD.to_string()),
                 ..Default::default()
             },
             ..Default::default()
