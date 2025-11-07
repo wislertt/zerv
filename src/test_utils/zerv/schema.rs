@@ -19,53 +19,16 @@ impl ZervSchemaFixture {
         }
     }
 
+    /// Create a fixture from any VersionSchema preset
+    pub fn from_preset(schema: VersionSchema) -> Self {
+        Self {
+            schema: schema.schema(),
+        }
+    }
+
     /// Build and return the final ZervSchema
     pub fn build(self) -> ZervSchema {
         self.schema
-    }
-
-    /// Create standard tier 1 schema (major.minor.patch)
-    pub fn standard_tier_1() -> Self {
-        use crate::schema::VersionSchema;
-        Self {
-            schema: VersionSchema::StandardBasePrereleasePost.schema(),
-        }
-    }
-
-    /// Create standard tier 2 schema (with build metadata)
-    pub fn standard_tier_2() -> Self {
-        use crate::schema::VersionSchema;
-        Self {
-            schema: VersionSchema::StandardBasePrereleasePostContext.schema(),
-        }
-    }
-
-    /// Create standard tier 3 schema (with dev components)
-    pub fn standard_tier_3() -> Self {
-        Self {
-            schema: VersionSchema::StandardBasePrereleasePostDevContext.schema(),
-        }
-    }
-
-    /// Create calver tier 1 schema
-    pub fn calver_tier_1() -> Self {
-        Self {
-            schema: VersionSchema::CalverBasePrerelease.schema(),
-        }
-    }
-
-    /// Create calver tier 2 schema
-    pub fn calver_tier_2() -> Self {
-        Self {
-            schema: VersionSchema::CalverBasePrereleasePostContext.schema(),
-        }
-    }
-
-    /// Create calver tier 3 schema
-    pub fn calver_tier_3() -> Self {
-        Self {
-            schema: VersionSchema::CalverBasePrereleasePostDevContext.schema(),
-        }
     }
 
     pub fn empty() -> Self {
@@ -168,9 +131,14 @@ mod tests {
 
     #[test]
     fn test_preset_constructors() {
-        let tier1 = ZervSchemaFixture::standard_tier_1().build();
-        let tier2 = ZervSchemaFixture::standard_tier_2().build();
-        let tier3 = ZervSchemaFixture::standard_tier_3().build();
+        let tier1 =
+            ZervSchemaFixture::from_preset(VersionSchema::StandardBasePrereleasePost).build();
+        let tier2 =
+            ZervSchemaFixture::from_preset(VersionSchema::StandardBasePrereleasePostContext)
+                .build();
+        let tier3 =
+            ZervSchemaFixture::from_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+                .build();
 
         // All should have core components
         assert_eq!(tier1.core().len(), 3);
