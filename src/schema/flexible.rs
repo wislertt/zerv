@@ -127,7 +127,6 @@ pub enum VersionSchema {
 }
 
 impl VersionSchema {
-    /// Create a fixed schema (deterministic, no repository analysis)
     pub fn schema(&self) -> ZervSchema {
         match self {
             VersionSchema::StandardBase => self.standard_base_schema(false),
@@ -173,36 +172,21 @@ impl VersionSchema {
         }
     }
 
-    /// Create a smart schema (analyzes repository state via ZervVars)
     pub fn schema_with_zerv(&self, vars: &ZervVars) -> ZervSchema {
         match self {
             VersionSchema::Standard => {
-                let mut schema = self.smart_standard_schema(vars);
-                if vars.dirty.unwrap_or(false) || vars.distance.unwrap_or(0) > 0 {
-                    let _ = schema.set_build(components::build_context());
-                }
-                schema
+                self.with_smart_build_context(self.smart_standard_schema(vars), vars)
             }
             VersionSchema::StandardNoContext => self.smart_standard_schema(vars),
             VersionSchema::StandardContext => {
-                let mut schema = self.smart_standard_schema(vars);
-                let _ = schema.set_build(components::build_context());
-                schema
+                self.with_build_context(self.smart_standard_schema(vars))
             }
 
             VersionSchema::Calver => {
-                let mut schema = self.smart_calver_schema(vars);
-                if vars.dirty.unwrap_or(false) || vars.distance.unwrap_or(0) > 0 {
-                    let _ = schema.set_build(components::build_context());
-                }
-                schema
+                self.with_smart_build_context(self.smart_calver_schema(vars), vars)
             }
             VersionSchema::CalverNoContext => self.smart_calver_schema(vars),
-            VersionSchema::CalverContext => {
-                let mut schema = self.smart_calver_schema(vars);
-                let _ = schema.set_build(components::build_context());
-                schema
-            }
+            VersionSchema::CalverContext => self.with_build_context(self.smart_calver_schema(vars)),
 
             fixed_schema => fixed_schema.schema(),
         }
@@ -314,6 +298,20 @@ impl VersionSchema {
             Default::default(),
         )
         .unwrap()
+    }
+
+    fn with_build_context(&self, schema: ZervSchema) -> ZervSchema {
+        let mut result = schema;
+        result.set_build(components::build_context()).unwrap();
+        result
+    }
+
+    fn with_smart_build_context(&self, schema: ZervSchema, vars: &ZervVars) -> ZervSchema {
+        if vars.dirty.unwrap_or(false) || vars.distance.unwrap_or(0) > 0 {
+            self.with_build_context(schema)
+        } else {
+            schema
+        }
     }
 }
 
