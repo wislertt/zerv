@@ -471,11 +471,11 @@
 
 ---
 
-### 🎯 Step 11: Update Tests to Match Smart Schema Behavior (Breaking Change) - **PLANNED**
+### 🎯 Step 11: Implement Smart Schema Logic in Enum Variants (Breaking Change) - **PLANNED**
 
-**Goal**: Replace tier-based logic in `get_standard_schema()` and `get_calver_schema()` with smart schema logic and update all dependent tests to match the new behavior.
+**Goal**: Implement intelligent schema selection logic directly in `VersionSchema::Standard` and `VersionSchema::StandardContext` enum variants, then update dependent tests to match the new behavior.
 
-**Context**: The smart schema system provides more intelligent component inclusion based on repository state, but differs from the old tier-based system. This is a deliberate improvement that will change version output behavior.
+**Context**: The smart schema system provides more intelligent component inclusion based on repository state, replacing the old tier-based system with a more semantic approach. This is a deliberate improvement that will change version output behavior.
 
 **Breaking Change Impact**:
 
@@ -483,65 +483,187 @@
 - Tests expecting old tier behavior need to be updated
 - This is an improvement in behavior, not a regression
 
+#### 📋 Smart Schema Logic Implementation
+
+**Standard Schema Decision Tree:**
+
+```rust
+// For VersionSchema::Standard and VersionSchema::StandardContext
+match repository_state {
+    Dirty => StandardBasePrereleasePostDev (± context based on variant)
+    HasDistance => StandardBasePrereleasePost (± context based on variant)
+    CleanTagged { prerelease: Some(_), post: Some(_) } => StandardBasePrereleasePost (no context)
+    CleanTagged { prerelease: Some(_), post: None } => StandardBasePrerelease (no context)
+    CleanTagged { prerelease: None, post: None } => StandardBase (no context)
+}
+```
+
+**Context Control:**
+
+- `Standard` → smart context inclusion (context only for dirty/distance states, no context for clean tagged)
+- `StandardContext` → always include build context (same if-else logic but always with context)
+- `StandardNoContext` → never include context (same if-else logic but always without context)
+- Apply same three-variant pattern to `CalVer` family (`CalVer`, `CalVerContext`, `CalVerNoContext`)
+
 #### 📋 Implementation Plan
 
-**Step 11.1: Update Standard Schema Logic (Medium Risk)**
-**Target**: `src/schema/presets/standard.rs:23-31`
+**Step 11.1: Implement Smart Standard Schema Logic (Medium Risk)**
+**Target**: `src/schema/flexible.rs:134-155` (Standard variant format_version method)
 
 **Actions**:
 
-- Replace `get_standard_schema()` implementation with smart schema:
+- The existing `schema_with_zerv` method already handles the context logic correctly:
+
     ```rust
-    pub fn get_standard_schema(vars: &ZervVars) -> Self {
-        VersionSchema::StandardContext.schema_with_zerv(vars)
+    // Current implementation already handles this properly
+    VersionSchema::Standard => self.smart_standard_schema(vars),
+    VersionSchema::StandardContext => self.smart_standard_schema(vars).with_build_context(),
+    ```
+
+    - No need to duplicate the if-else logic here since it's already in the helper methods
+    - Just need to update the helper methods with improved logic
+
+- Update existing `smart_standard_schema` method to implement improved logic:
+    ```rust
+    fn smart_standard_schema(&self, vars: &ZervVars) -> ZervSchema {
+        if vars.dirty.unwrap_or(false) {
+            self.standard_base_prerelease_post_dev_schema(false)  // Will get context added later if needed
+        } else if vars.distance.unwrap_or(0) > 0 {
+            self.standard_base_prerelease_post_schema(false)      // Will get context added later if needed
+        } else if vars.get_pre_release_label().is_some() && vars.get_post_distance().is_some() {
+            self.standard_base_prerelease_post_schema(false)      // Clean tag with prerelease + post
+        } else if vars.get_pre_release_label().is_some() {
+            self.standard_base_prerelease_schema(false)          // Clean tag with prerelease only
+        } else {
+            self.standard_base_schema(false)                     // Clean tag (base only)
+        }
     }
     ```
-- Remove `determine_tier` import (no longer needed)
+- Add `StandardNoContext` variant that uses smart schema without context:
+    ```rust
+    VersionSchema::StandardNoContext => self.smart_standard_schema(vars),  // No context added
+    ```
+- Update `StandardContext` variant to always add context:
+    ```rust
+    VersionSchema::StandardContext => self.smart_standard_schema(vars).with_build_context(),
+    ```
+- Update `Standard` variant to add context only for dirty/distance (smart context):
+    ```rust
+    VersionSchema::Standard => {
+        let schema = self.smart_standard_schema(vars);
+        // Add context only for dirty or distance cases
+        if vars.dirty.unwrap_or(false) || vars.distance.unwrap_or(0) > 0 {
+            schema.with_build_context()
+        } else {
+            schema
+        }
+    }
+    ```
 - **Expected Changes**:
-    - Clean tagged versions: `StandardBasePrerelease` (instead of `StandardBasePrereleasePost`)
-    - Distance versions: `StandardBasePrereleasePostContext` (with build context)
-    - Dirty versions: `StandardBasePrereleasePostDevContext` (with build context)
+    - More semantic version strings based on repository state
+    - Intelligent component inclusion instead of rigid tier system
+    - Reduced code duplication through helper methods
 
-**Step 11.2: Update CalVer Schema Logic (Medium Risk)**
-**Target**: `src/schema/presets/calver.rs:24-31`
+**Step 11.2: Implement Smart CalVer Schema Logic (Medium Risk)**
+**Target**: `src/schema/flexible.rs:156-178` (CalVer variant format_version method)
 
 **Actions**:
 
-- Replace `get_calver_schema()` implementation with smart schema:
+- Replace current `CalVer` variant logic with intelligent selection (smart context):
     ```rust
-    pub fn get_calver_schema(vars: &ZervVars) -> Self {
-        VersionSchema::CalverContext.schema_with_zerv(vars)
+    VersionSchema::Calver => {
+        if vars.is_dirty() {
+            CalverBasePrereleasePostDevContext.schema()     // WITH context
+        } else if vars.get_distance() > 0 {
+            CalverBasePrereleasePostContext.schema()       // WITH context
+        } else if vars.get_pre_release_label().is_some() && vars.get_post_distance().is_some() {
+            CalverBasePrereleasePost.schema()              // NO context
+        } else if vars.get_pre_release_label().is_some() {
+            CalverBasePrerelease.schema()                  // NO context
+        } else {
+            CalverBase.schema()                            // NO context
+        }
     }
     ```
-- Remove `determine_tier` import (no longer needed)
+- Update `CalverContext` variant to use same logic + ALWAYS include context:
+    ```rust
+    VersionSchema::CalverContext => {
+        if vars.is_dirty() {
+            CalverBasePrereleasePostDevContext.schema()     // WITH context
+        } else if vars.get_distance() > 0 {
+            CalverBasePrereleasePostContext.schema()       // WITH context
+        } else if vars.get_pre_release_label().is_some() && vars.get_post_distance().is_some() {
+            CalverBasePrereleasePostContext.schema()       // WITH context
+        } else if vars.get_pre_release_label().is_some() {
+            CalverBasePrereleaseContext.schema()           // WITH context
+        } else {
+            CalverBaseContext.schema()                     // WITH context
+        }
+    }
+    ```
+- Update existing `smart_calver_schema` method to implement improved logic:
+    ```rust
+    fn smart_calver_schema(&self, vars: &ZervVars) -> ZervSchema {
+        if vars.dirty.unwrap_or(false) {
+            self.calver_base_prerelease_post_dev_schema(false)  // Will get context added later if needed
+        } else if vars.distance.unwrap_or(0) > 0 {
+            self.calver_base_prerelease_post_schema(false)      // Will get context added later if needed
+        } else if vars.get_pre_release_label().is_some() && vars.get_post_distance().is_some() {
+            self.calver_base_prerelease_post_schema(false)      // Clean tag with prerelease + post
+        } else if vars.get_pre_release_label().is_some() {
+            self.calver_base_prerelease_schema(false)          // Clean tag with prerelease only
+        } else {
+            self.calver_base_schema(false)                     // Clean tag (base only)
+        }
+    }
+    ```
+- Add `CalverNoContext` variant that uses smart schema without context:
+    ```rust
+    VersionSchema::CalverNoContext => self.smart_calver_schema(vars),  // No context added
+    ```
+- Update `CalverContext` variant to always add context:
+    ```rust
+    VersionSchema::CalverContext => self.smart_calver_schema(vars).with_build_context(),
+    ```
+- Update `Calver` variant to add context only for dirty/distance (smart context):
+    ```rust
+    VersionSchema::Calver => {
+        let schema = self.smart_calver_schema(vars);
+        // Add context only for dirty or distance cases
+        if vars.dirty.unwrap_or(false) || vars.distance.unwrap_or(0) > 0 {
+            schema.with_build_context()
+        } else {
+            schema
+        }
+    }
+    ```
 - **Expected Changes**:
-    - Clean tagged versions: `CalverBasePrerelease` (instead of `CalverBasePrerelease`)
-    - Distance versions: `CalverBasePrereleasePostContext` (with build context)
+    - More semantic CalVer version strings based on repository state
+    - Same intelligent component inclusion as Standard family
     - Dirty versions: `CalverBasePrereleasePostDevContext` (with build context)
 
-**Step 11.3: Update Standard Schema Tests (Medium Risk)**
-**Target**: `src/schema/presets/standard.rs:36-49`
+**Step 11.3: Update Smart Schema Tests (Medium Risk)**
+**Target**: `src/schema/flexible.rs:349-520` (existing smart schema tests)
 
 **Actions**:
 
-- Update test expectations to match smart schema behavior
-- Update expected schemas in `#[case]` attributes
-- **Key Changes**:
-    - Tier 1 case: Expect `StandardBasePrerelease` + build context
-    - Tier 2 case: Expect `StandardBasePrereleasePost` + build context
-    - Tier 3 case: Expect `StandardBasePrereleasePostDev` + build context
+- Add comprehensive tests for the new smart logic in `Standard` and `StandardContext` variants
+- Test all repository states: dirty, distance, clean tagged with various components
+- Verify context inclusion/exclusion works correctly:
+    - `Standard` variant: context only when repository state warrants it
+    - `StandardContext` variant: context always included
+- Add similar tests for `CalVer` and `CalVerContext` variants
+- Update existing test cases that expect old smart detection behavior
 
-**Step 11.4: Update CalVer Schema Tests (Medium Risk)**
-**Target**: `src/schema/presets/calver.rs:36-58`
+**Step 11.4: Update Preset Integration Tests (Low Risk)**
+**Target**: `src/schema/presets/standard.rs:36-49` and `src/schema/presets/calver.rs:36-58`
 
 **Actions**:
 
-- Update test expectations to match smart schema behavior
-- Update expected schemas in `#[case]` attributes
-- **Key Changes**:
-    - Tier 1 case: Expect `CalverBasePrerelease` + build context
-    - Tier 2 case: Expect `CalverBasePrereleasePost` + build context
-    - Tier 3 case: Expect `CalverBasePrereleasePostDev` + build context
+- Update test expectations to reflect new smart schema behavior
+- Since presets will now use the smart enum variants, update expectations accordingly
+- Test that `get_standard_schema()` and `get_calver_schema()` produce appropriate smart schemas
+- Verify old tier-based test cases are updated to match new semantic behavior
 
 **Step 11.5: Update Integration Tests (Medium Risk)**
 **Target**: `src/schema/presets/mod.rs:85-114`
