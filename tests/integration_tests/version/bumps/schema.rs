@@ -8,6 +8,7 @@ use rstest::{
     fixture,
     rstest,
 };
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 use zerv::utils::constants::formats::SEMVER;
 use zerv::utils::constants::sources::STDIN;
@@ -21,7 +22,7 @@ fn standard_schema_fixture() -> ZervFixture {
     ZervFixture::new()
         .with_version(1, 2, 3)
         .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-        .with_standard_tier_1()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePost)
 }
 
 /// Zerv fixture with calver schema for bump tests
@@ -30,7 +31,7 @@ fn calver_schema_fixture() -> ZervFixture {
     ZervFixture::new()
         .with_version(2023, 12, 25)
         .with_pre_release(PreReleaseLabel::Beta, Some(2))
-        .with_calver_tier_1()
+        .with_schema_preset(ZervSchemaPreset::CalverBasePrereleasePost)
 }
 
 /// Zerv fixture with VCS components for build bump tests
@@ -40,7 +41,7 @@ fn schema_with_vcs_fixture() -> ZervFixture {
         .with_version(1, 2, 3)
         .with_pre_release(PreReleaseLabel::Alpha, Some(1))
         .with_distance(5)
-        .with_standard_tier_2()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostContext)
 }
 
 mod core_bump {
@@ -125,7 +126,7 @@ mod extra_core_bump {
     fn test_bump_extra_core_with_empty_epoch() {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
-            .with_standard_tier_1();
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease);
         let input = fixture.build().to_string();
         let args = format!(
             "version --source {} --bump-extra-core 0=2 --output-format {}",
@@ -160,7 +161,7 @@ mod build_bump {
     fn test_bump_build_string_component() {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_build(zerv::version::zerv::components::Component::Str(
                 "alpha".to_string(),
             ));
@@ -179,7 +180,7 @@ mod build_bump {
     fn test_bump_build_uint_component() {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_build(zerv::version::zerv::components::Component::UInt(10));
         let input = fixture.build().to_string();
         let args = format!(
@@ -239,7 +240,7 @@ mod schema_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Rc, Some(1))
-            .with_standard_tier_1();
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease);
         let input = fixture.build().to_string();
         let args = format!(
             "version --source {} --bump-core 1=8 --output-format {}",

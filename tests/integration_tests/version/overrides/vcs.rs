@@ -2,6 +2,7 @@ use rstest::{
     fixture,
     rstest,
 };
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 
 use crate::util::TestCommand;
@@ -140,7 +141,10 @@ mod distance_override {
 
     #[rstest]
     fn test_distance_override_affects_tier(clean_fixture: ZervFixture) {
-        let zerv_ron = clean_fixture.with_standard_tier_3().build().to_string();
+        let zerv_ron = clean_fixture
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
+            .build()
+            .to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --distance 5 --output-format pep440",
@@ -258,7 +262,7 @@ mod clean_override {
     fn test_clean_forces_tier_1(clean_fixture: ZervFixture) {
         let zerv_ron = clean_fixture
             .with_version(2, 0, 0)
-            .with_standard_tier_2()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostContext)
             .with_vcs_data(Some(10), Some(false), None, None, None, None, None)
             .build()
             .to_string();
@@ -443,7 +447,10 @@ mod vcs_overrides_combined {
     #[rstest]
     #[ignore]
     fn test_tag_version_and_distance(clean_fixture: ZervFixture) {
-        let zerv_ron = clean_fixture.with_standard_tier_3().build().to_string();
+        let zerv_ron = clean_fixture
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
+            .build()
+            .to_string();
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --tag-version 2.0.0 \
@@ -591,7 +598,7 @@ mod vcs_override_edge_cases {
     fn test_multiple_overrides_preserve_original_tier(clean_fixture: ZervFixture) {
         let zerv_ron = clean_fixture
             .with_version(2024, 12, 1)
-            .with_calver_tier_2()
+            .with_schema_preset(ZervSchemaPreset::CalverBasePrereleasePostContext)
             .with_vcs_data(
                 Some(1),
                 Some(false),

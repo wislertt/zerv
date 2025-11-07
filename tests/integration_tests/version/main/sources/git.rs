@@ -1,3 +1,4 @@
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::{
     GitRepoFixture,
     TestDir,
@@ -48,7 +49,7 @@ fn test_git_source_comprehensive() {
     // Build expected Zerv object with VCS data
     let expected = ZervFixture::new()
         .with_version(1, 2, 3)
-        .with_standard_tier_3()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
         .with_vcs_data(
             Some(0),
             Some(true),

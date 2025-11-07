@@ -8,6 +8,7 @@ use rstest::{
     fixture,
     rstest,
 };
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 use zerv::version::PreReleaseLabel;
 
@@ -23,7 +24,7 @@ fn base_fixture() -> ZervFixture {
         .with_dirty(true)
         .with_branch("feature/test-branch".to_string())
         .with_commit_hash("abc123def456".to_string())
-        .with_standard_tier_1()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePost)
 }
 
 /// Clean fixture without VCS data for clean override + bump tests
@@ -31,7 +32,7 @@ fn base_fixture() -> ZervFixture {
 fn clean_fixture() -> ZervFixture {
     ZervFixture::new()
         .with_version(1, 5, 2)
-        .with_standard_tier_1()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePost)
 }
 
 /// CalVer fixture for schema-based override + bump tests
@@ -43,7 +44,7 @@ fn calver_fixture() -> ZervFixture {
         .with_dirty(false)
         .with_branch("release".to_string())
         .with_commit_hash("xyz789abc123".to_string())
-        .with_calver_tier_1()
+        .with_schema_preset(ZervSchemaPreset::CalverBasePrereleasePost)
 }
 
 mod component_override_bump_combinations {
@@ -282,7 +283,7 @@ mod schema_override_bump_combinations {
     fn test_schema_override_bump_with_calver_schema(calver_fixture: ZervFixture) {
         let zerv_ron = calver_fixture.build().to_string();
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --schema zerv-calver --extra-core 0=1 --bump-extra-core 0=1",
+            "version --source stdin --schema calver --extra-core 0=1 --bump-extra-core 0=1",
             zerv_ron,
         );
         assert!(output.contains("2"));

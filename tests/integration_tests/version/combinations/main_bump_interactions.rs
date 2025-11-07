@@ -152,7 +152,7 @@ mod schema_bump_combinations {
     fn test_standard_schema_with_bump_major(vcs_fixture: ZervFixture) {
         let zerv_ron = vcs_fixture.build().to_string();
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --schema zerv-standard --bump-major --output-format semver",
+            "version --source stdin --schema standard --bump-major --output-format semver",
             zerv_ron,
         );
         assert_eq!(output, "3.0.0+feature.test.branch.5.abc123d");
@@ -162,7 +162,7 @@ mod schema_bump_combinations {
     fn test_calver_schema_with_bump_major(calver_fixture: ZervFixture) {
         let zerv_ron = calver_fixture.build().to_string();
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --schema zerv-calver --bump-major --output-format semver",
+            "version --source stdin --schema calver --bump-major --output-format semver",
             zerv_ron,
         );
         assert_eq!(output, "0.0.0+release.3.xyz789a");
@@ -174,7 +174,7 @@ mod schema_bump_combinations {
 
         // Test schema with component bump - bump core component 0 (major) by 2
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --schema zerv-standard --bump-core 0=2 --output-format semver",
+            "version --source stdin --schema standard --bump-core 0=2 --output-format semver",
             zerv_ron,
         );
         assert_eq!(output, "4.0.0+feature.test.branch.5.abc123d");
@@ -186,7 +186,7 @@ mod schema_bump_combinations {
 
         // Test schema with multiple bump operations
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --schema zerv-standard --bump-major --bump-minor --output-format semver",
+            "version --source stdin --schema standard --bump-major --bump-minor --output-format semver",
             zerv_ron,
         );
         assert_eq!(output, "3.1.0+feature.test.branch.5.abc123d");

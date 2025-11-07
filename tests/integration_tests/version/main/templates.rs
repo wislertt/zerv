@@ -1,4 +1,5 @@
 use rstest::rstest;
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 use zerv::version::PreReleaseLabel;
 
@@ -374,11 +375,13 @@ mod template_with_schema {
     fn test_template_overrides_schema() {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
-            .with_standard_tier_1();
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease);
         let zerv_ron = fixture.build().to_string();
 
         let output = TestCommand::new()
-            .args_from_str("version --source stdin --schema zerv-standard --output-template '{{major}}.{{minor}}'")
+            .args_from_str(
+                "version --source stdin --schema standard --output-template '{{major}}.{{minor}}'",
+            )
             .stdin(zerv_ron)
             .assert_success();
 

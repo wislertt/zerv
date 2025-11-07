@@ -11,6 +11,7 @@ use rstest::{
     fixture,
     rstest,
 };
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 use zerv::utils::constants::formats::SEMVER;
 use zerv::utils::constants::sources::STDIN;
@@ -25,7 +26,7 @@ fn combination_fixture() -> ZervFixture {
     ZervFixture::new()
         .with_version(1, 2, 3)
         .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-        .with_standard_tier_1()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
 }
 
 /// Complete fixture with all components for complex combinations
@@ -108,7 +109,8 @@ mod primary_secondary_combinations {
         #[case] expected: &str,
     ) {
         // Use tier 2 schema (doesn't include Dev component)
-        let fixture = combination_fixture.with_standard_tier_2();
+        let fixture = combination_fixture
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostContext);
 
         let input = fixture.build().to_string();
         let args = format!(
@@ -131,7 +133,7 @@ mod primary_schema_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_extra_core(Component::UInt(0))
             .with_extra_core(Component::UInt(0))
             .with_build(Component::UInt(0));
@@ -179,7 +181,7 @@ mod primary_schema_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_extra_core(Component::UInt(0))
             .with_extra_core(Component::UInt(0))
             .with_build(Component::UInt(0))
@@ -222,7 +224,7 @@ mod secondary_schema_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_extra_core(Component::UInt(0))
             .with_extra_core(Component::UInt(0))
             .with_build(Component::UInt(0));
@@ -246,7 +248,7 @@ mod secondary_schema_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_extra_core(Component::UInt(0))
             .with_build(Component::UInt(0));
 
@@ -278,7 +280,7 @@ mod secondary_schema_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_extra_core(Component::UInt(0))
             .with_extra_core(Component::UInt(0))
             .with_build(Component::UInt(0))
@@ -301,7 +303,7 @@ mod secondary_schema_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_build(Component::UInt(1));
 
         let input = fixture.build().to_string();
@@ -325,7 +327,7 @@ mod all_category_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_extra_core(Component::UInt(0))
             .with_build(Component::UInt(0));
 
@@ -346,7 +348,7 @@ mod all_category_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_extra_core(Component::UInt(0))
             .with_extra_core(Component::UInt(0))
             .with_build(Component::UInt(0))
@@ -369,7 +371,7 @@ mod all_category_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_extra_core(Component::UInt(0))
             .with_build(Component::UInt(0))
             .with_distance(5)
@@ -392,7 +394,7 @@ mod all_category_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_extra_core(Component::UInt(0))
             .with_build(Component::UInt(0))
             .with_distance(5)
@@ -438,7 +440,7 @@ mod context_with_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .with_distance(5)
             .with_dirty(true);
 
@@ -501,7 +503,7 @@ mod context_with_combinations {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
-            .with_standard_tier_1();
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease);
 
         let input = fixture.build().to_string();
         let args = format!(
