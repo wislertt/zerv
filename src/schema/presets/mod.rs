@@ -1,6 +1,3 @@
-mod calver;
-mod standard;
-
 use crate::schema::VersionSchema;
 use crate::version::zerv::{
     ZervSchema,
@@ -15,12 +12,12 @@ pub fn get_preset_schema(name: &str, vars: &ZervVars) -> Option<ZervSchema> {
         "zerv-standard" => {
             tracing::warn!("Schema 'zerv-standard' is deprecated. Use 'standard' instead");
             tracing::debug!("Using built-in zerv-standard schema (legacy)");
-            Some(ZervSchema::get_standard_schema(vars))
+            Some(VersionSchema::Standard.schema_with_zerv(vars))
         }
         "zerv-calver" => {
             tracing::warn!("Schema 'zerv-calver' is deprecated. Use 'calver' instead");
             tracing::debug!("Using built-in zerv-calver schema (legacy)");
-            Some(ZervSchema::get_calver_schema(vars))
+            Some(VersionSchema::Calver.schema_with_zerv(vars))
         }
         _ => {
             // Try to parse as new flexible schema
