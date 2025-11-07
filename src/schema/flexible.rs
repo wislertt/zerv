@@ -9,7 +9,6 @@ use crate::version::zerv::{
     ZervVars,
 };
 
-// Component vector definitions to reduce duplication
 mod components {
     use super::*;
 
@@ -72,9 +71,7 @@ mod components {
     }
 }
 
-// Schema name constants for reuse in help text, documentation, and tests
 pub mod schema_names {
-    // Standard Schema Family
     pub const STANDARD: &str = "standard";
     pub const STANDARD_NO_CONTEXT: &str = "standard-no-context";
     pub const STANDARD_BASE: &str = "standard-base";
@@ -88,7 +85,6 @@ pub mod schema_names {
         "standard-base-prerelease-post-dev-context";
     pub const STANDARD_CONTEXT: &str = "standard-context";
 
-    // CalVer Schema Family
     pub const CALVER: &str = "calver";
     pub const CALVER_NO_CONTEXT: &str = "calver-no-context";
     pub const CALVER_BASE: &str = "calver-base";
@@ -103,10 +99,8 @@ pub mod schema_names {
     pub const CALVER_CONTEXT: &str = "calver-context";
 }
 
-/// Flexible schema variants for fine-grained version control
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VersionSchema {
-    // Standard Schema Family (SemVer)
     Standard,
     StandardNoContext,
     StandardBase,
@@ -119,7 +113,6 @@ pub enum VersionSchema {
     StandardBasePrereleasePostDevContext,
     StandardContext,
 
-    // CalVer Schema Family
     Calver,
     CalverNoContext,
     CalverBase,
@@ -135,10 +128,8 @@ pub enum VersionSchema {
 
 impl VersionSchema {
     /// Create a fixed schema (deterministic, no repository analysis)
-    /// Used by 18 fixed schema variants that don't need ZervVars
     pub fn schema(&self) -> ZervSchema {
         match self {
-            // Standard Schema Family - Fixed Variants
             VersionSchema::StandardBase => self.standard_base_schema(false),
             VersionSchema::StandardBasePrerelease => self.standard_base_prerelease_schema(false),
             VersionSchema::StandardBasePrereleasePost => {
@@ -183,75 +174,64 @@ impl VersionSchema {
     }
 
     /// Create a smart schema (analyzes repository state via ZervVars)
-    /// Used by 6 smart schemas that need repository analysis for auto-detection
     pub fn schema_with_zerv(&self, vars: &ZervVars) -> ZervSchema {
         match self {
-            // Standard Schema Family - Smart Variants
             VersionSchema::Standard => {
-                let schema = self.smart_standard_schema(vars);
-                // Add context only for dirty or distance cases (smart context)
+                let mut schema = self.smart_standard_schema(vars);
                 if vars.dirty.unwrap_or(false) || vars.distance.unwrap_or(0) > 0 {
-                    schema.with_build_context()
-                } else {
-                    schema
+                    let _ = schema.set_build(components::build_context());
                 }
+                schema
             }
-            VersionSchema::StandardNoContext => self.smart_standard_schema(vars), // Never includes context
-            VersionSchema::StandardContext => self.smart_standard_schema(vars).with_build_context(), // Always includes context
+            VersionSchema::StandardNoContext => self.smart_standard_schema(vars),
+            VersionSchema::StandardContext => {
+                let mut schema = self.smart_standard_schema(vars);
+                let _ = schema.set_build(components::build_context());
+                schema
+            }
 
-            // CalVer Schema Family - Smart Variants
             VersionSchema::Calver => {
-                let schema = self.smart_calver_schema(vars);
-                // Add context only for dirty or distance cases (smart context)
+                let mut schema = self.smart_calver_schema(vars);
                 if vars.dirty.unwrap_or(false) || vars.distance.unwrap_or(0) > 0 {
-                    schema.with_build_context()
-                } else {
-                    schema
+                    let _ = schema.set_build(components::build_context());
                 }
+                schema
             }
-            VersionSchema::CalverNoContext => self.smart_calver_schema(vars), // Never includes context
-            VersionSchema::CalverContext => self.smart_calver_schema(vars).with_build_context(), // Always includes context
+            VersionSchema::CalverNoContext => self.smart_calver_schema(vars),
+            VersionSchema::CalverContext => {
+                let mut schema = self.smart_calver_schema(vars);
+                let _ = schema.set_build(components::build_context());
+                schema
+            }
 
-            // Fixed schemas - delegate to schema for convenience
             fixed_schema => fixed_schema.schema(),
         }
     }
 
-    // Helper methods for creating specific schema configurations
     fn smart_standard_schema(&self, vars: &ZervVars) -> ZervSchema {
         if vars.dirty.unwrap_or(false) {
-            // Dirty => standard_base_prerelease_post_dev_schema (context added later if needed)
             self.standard_base_prerelease_post_dev_schema(false)
-        } else if vars.distance.unwrap_or(0) > 0 {
-            // Distance => standard_base_prerelease_post_schema (context added later if needed)
-            self.standard_base_prerelease_post_schema(false)
-        } else if vars.pre_release.is_some() && vars.post.is_some() {
-            // Clean tagged with prerelease and post => standard_base_prerelease_post_schema without context
+        } else if vars.distance.unwrap_or(0) > 0
+            || (vars.pre_release.is_some() && vars.post.is_some())
+        {
             self.standard_base_prerelease_post_schema(false)
         } else if vars.pre_release.is_some() {
-            // Clean tagged with prerelease only => standard_base_prerelease_schema without context
             self.standard_base_prerelease_schema(false)
         } else {
-            // Clean tagged (base only) => standard_base_schema without context
             self.standard_base_schema(false)
         }
     }
 
     fn smart_calver_schema(&self, vars: &ZervVars) -> ZervSchema {
         if vars.dirty.unwrap_or(false) {
-            // Dirty => calver_base_prerelease_post_dev_schema (context added later if needed)
             self.calver_base_prerelease_post_dev_schema(false)
-        } else if vars.distance.unwrap_or(0) > 0 {
-            // Distance => calver_base_prerelease_post_schema (context added later if needed)
-            self.calver_base_prerelease_post_schema(false)
-        } else if vars.pre_release.is_some() && vars.post.is_some() {
-            // Clean tagged with prerelease and post => calver_base_prerelease_post_schema without context
+        } else if vars.distance.unwrap_or(0) > 0
+            || (vars.pre_release.is_some() && vars.post.is_some())
+        {
             self.calver_base_prerelease_post_schema(false)
         } else if vars.pre_release.is_some() {
-            // Clean tagged with prerelease only => calver_base_prerelease_schema without context
             self.calver_base_prerelease_schema(false)
         } else {
-            // Clean tagged (base only) => calver_base_schema without context
             self.calver_base_schema(false)
         }
     }
@@ -361,7 +341,6 @@ impl FromStr for VersionSchema {
             }
             STANDARD_CONTEXT => Ok(VersionSchema::StandardContext),
 
-            // CalVer Schema Family
             CALVER => Ok(VersionSchema::Calver),
             CALVER_NO_CONTEXT => Ok(VersionSchema::CalverNoContext),
             CALVER_BASE => Ok(VersionSchema::CalverBase),
@@ -383,29 +362,6 @@ impl FromStr for VersionSchema {
     }
 }
 
-/// Extension trait for ZervSchema to add context support
-pub trait SchemaContextExt {
-    fn with_build_context(self) -> Self;
-}
-
-impl SchemaContextExt for ZervSchema {
-    fn with_build_context(self) -> Self {
-        // If build context is already present, return as-is
-        if !self.build().is_empty() {
-            return self;
-        }
-
-        // Create new schema with build context
-        ZervSchema::new_with_precedence(
-            self.core().clone(),
-            self.extra_core().clone(),
-            components::build_context(),
-            self.precedence_order().clone(),
-        )
-        .unwrap()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -415,7 +371,6 @@ mod tests {
     fn test_version_schema_parsing() {
         use crate::schema::flexible::schema_names::*;
 
-        // Standard schemas
         assert_eq!(
             STANDARD.parse::<VersionSchema>().unwrap(),
             VersionSchema::Standard
@@ -429,7 +384,6 @@ mod tests {
             VersionSchema::StandardBasePrerelease
         );
 
-        // CalVer schemas
         assert_eq!(
             CALVER.parse::<VersionSchema>().unwrap(),
             VersionSchema::Calver
@@ -464,14 +418,10 @@ mod tests {
 
         let schema = VersionSchema::Standard;
 
-        // Clean should use prerelease schema
         let clean_schema = schema.schema_with_zerv(&clean_vars);
-        // Distance should use prerelease-post schema
         let _distance_schema = schema.schema_with_zerv(&distance_vars);
-        // Dirty should use prerelease-post-dev schema
         let dirty_schema = schema.schema_with_zerv(&dirty_vars);
 
-        // These should have different components
         assert_ne!(clean_schema.extra_core(), dirty_schema.extra_core());
     }
 
@@ -481,7 +431,6 @@ mod tests {
 
         let vars = ZervVars::default();
 
-        // Test all standard schema variants parse correctly
         let schemas = [
             STANDARD,
             STANDARD_BASE,
@@ -514,7 +463,6 @@ mod tests {
 
         let vars = ZervVars::default();
 
-        // Test all calver schema variants parse correctly
         let schemas = [
             CALVER,
             CALVER_BASE,
@@ -545,7 +493,6 @@ mod tests {
     fn test_context_vs_non_context_schemas() {
         use crate::schema::flexible::schema_names::*;
 
-        // Test that context schemas include build context
         let base_schema = STANDARD_BASE.parse::<VersionSchema>().unwrap().schema();
         let base_context_schema = STANDARD_BASE_CONTEXT
             .parse::<VersionSchema>()
@@ -557,7 +504,6 @@ mod tests {
             "Context schema should have more build components than base schema"
         );
 
-        // Test same for calver
         let calver_base_schema = CALVER_BASE.parse::<VersionSchema>().unwrap().schema();
         let calver_base_context_schema = CALVER_BASE_CONTEXT
             .parse::<VersionSchema>()

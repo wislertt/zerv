@@ -1,7 +1,6 @@
 mod flexible;
 
 pub use flexible::{
-    SchemaContextExt,
     VersionSchema,
     schema_names,
 };
