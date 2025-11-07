@@ -1,6 +1,7 @@
 use clap::Parser;
 
 use super::super::*;
+use crate::cli::utils::template::Template;
 
 #[test]
 fn test_overrides_config_defaults() {
@@ -63,7 +64,10 @@ fn test_overrides_config_with_values() {
     assert_eq!(config.major, Some(2.into()));
     assert_eq!(config.minor, Some(1.into()));
     assert_eq!(config.patch, Some(0.into()));
-    assert_eq!(config.pre_release_label, Some("alpha".to_string()));
+    assert_eq!(
+        config.pre_release_label,
+        Some(Template::new("alpha".to_string()))
+    );
     assert_eq!(config.pre_release_num, Some(1.into()));
 }
 

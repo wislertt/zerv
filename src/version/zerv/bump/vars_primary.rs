@@ -14,9 +14,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             self.vars.major = Some(self.vars.major.unwrap_or(0) + increment as u64);
             self.reset_lower_precedence_components(&Precedence::Major)?;
         }
@@ -35,9 +33,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             self.vars.minor = Some(self.vars.minor.unwrap_or(0) + increment as u64);
             self.reset_lower_precedence_components(&Precedence::Minor)?;
         }
@@ -56,9 +52,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             self.vars.patch = Some(self.vars.patch.unwrap_or(0) + increment as u64);
             self.reset_lower_precedence_components(&Precedence::Patch)?;
         }
@@ -71,6 +65,7 @@ impl Zerv {
 mod tests {
     use rstest::*;
 
+    use crate::schema::ZervSchemaPreset;
     use crate::test_utils::zerv::ZervFixture;
     use crate::version::semver::SemVer;
 
@@ -90,8 +85,9 @@ mod tests {
     #[case("2.5.3", Some(0), Some(3), "3.0.0")]
     // No operation tests
     #[case("1.2.3", None, None, "1.2.3")]
-    // Bump with 0 - should be no-op (no reset logic applied)
-    #[case("1.2.3", None, Some(0), "1.2.3")]
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
+    #[case("1.2.3-alpha.1", None, Some(0), "1.0.0")]
+    #[case("1.2.3", None, Some(0), "1.0.0")]
     #[case("1.0.0+build.123", None, Some(1), "2.0.0")]
     #[case("1.5.2-rc.1+build.456", None, Some(1), "2.0.0")]
     fn test_process_major(
@@ -101,7 +97,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_standard_tier_3()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_major(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -124,8 +120,9 @@ mod tests {
     #[case("2.5.3", Some(0), Some(4), "2.4.0")]
     // No operation tests
     #[case("1.2.3", None, None, "1.2.3")]
-    // Bump with 0 - should be no-op (no reset logic applied)
-    #[case("1.2.3", None, Some(0), "1.2.3")]
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
+    #[case("1.2.3-alpha.1", None, Some(0), "1.2.0")]
+    #[case("1.2.3", None, Some(0), "1.2.0")]
     fn test_process_minor(
         #[case] starting_version: &str,
         #[case] override_value: Option<u32>,
@@ -133,7 +130,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_standard_tier_3()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_minor(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -156,7 +153,8 @@ mod tests {
     #[case("2.5.3", Some(0), Some(6), "2.5.6")]
     // No operation tests
     #[case("1.2.3", None, None, "1.2.3")]
-    // Bump with 0 - should be no-op (no reset logic applied)
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
+    #[case("1.2.3-alpha.1", None, Some(0), "1.2.3")]
     #[case("1.2.3", None, Some(0), "1.2.3")]
     fn test_process_patch(
         #[case] starting_version: &str,
@@ -165,7 +163,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_standard_tier_3()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_patch(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();

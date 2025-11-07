@@ -116,7 +116,7 @@ mod bump_context {
     ) {
         let zerv_ron = context_bump_fixture.build().to_string();
         let output = TestCommand::run_with_stdin(
-            r#"version --source stdin --bump-major --output-template "{{major}}.{{minor}}.{{patch}}{{#if prerelease}}-{{pre_release_label}}.{{pre_release_num}}{{/if}}{{#if distance}}+d{{distance}}{{/if}}{{#if dirty}}.dirty{{/if}}""#,
+            r#"version --source stdin --bump-major --output-template "{{major}}.{{minor}}.{{patch}}{% if prerelease %}-{{pre_release_label}}.{{pre_release_num}}{% endif %}{% if distance %}+d{{distance}}{% endif %}{% if dirty %}.dirty{% endif %}""#,
             zerv_ron,
         );
 
@@ -172,7 +172,7 @@ mod no_bump_context {
     ) {
         let zerv_ron = context_bump_fixture.build().to_string();
         let output = TestCommand::run_with_stdin(
-            r#"version --source stdin --bump-major --no-bump-context --output-template "{{major}}.{{minor}}.{{patch}}{{#if prerelease}}-{{pre_release_label}}.{{pre_release_num}}{{/if}}{{#if distance}}+d{{distance}}{{/if}}{{#if dirty}}.dirty{{/if}}""#,
+            r#"version --source stdin --bump-major --no-bump-context --output-template "{{major}}.{{minor}}.{{patch}}{% if prerelease %}-{{pre_release_label}}.{{pre_release_num}}{% endif %}{% if distance %}+d{{distance}}{% endif %}{% if dirty %}.dirty{% endif %}""#,
             zerv_ron,
         );
 

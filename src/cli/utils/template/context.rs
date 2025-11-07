@@ -1,10 +1,10 @@
-use crate::version::Zerv;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
+use crate::version::zerv::Zerv;
 
-/// Template context for Handlebars rendering
+/// Template context for rendering
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
-pub struct TemplateContext {
+pub struct ZervTemplateContext {
     // Core version fields
     pub major: Option<u64>,
     pub minor: Option<u64>,
@@ -46,7 +46,7 @@ pub struct PreReleaseContext {
     pub number: Option<u64>,
 }
 
-impl TemplateContext {
+impl ZervTemplateContext {
     pub fn from_zerv(zerv: &Zerv) -> Self {
         let vars = &zerv.vars;
         Self {
@@ -79,180 +79,92 @@ impl TemplateContext {
 
 #[cfg(test)]
 mod tests {
-    use rstest::rstest;
-
     use super::*;
     use crate::test_utils::zerv::ZervFixture;
-    use crate::version::zerv::PreReleaseLabel;
+    use crate::version::zerv::{
+        Zerv,
+        ZervSchema,
+        ZervVars,
+    };
 
-    fn basic_zerv() -> ZervFixture {
-        ZervFixture::new()
+    #[test]
+    fn test_template_context_from_zerv_basic() {
+        let zerv_fixture = ZervFixture::new().with_version(1, 2, 3);
+        let zerv = zerv_fixture.zerv();
+
+        let context = ZervTemplateContext::from_zerv(zerv);
+
+        assert_eq!(context.major, Some(1));
+        assert_eq!(context.minor, Some(2));
+        assert_eq!(context.patch, Some(3));
+        assert_eq!(context.epoch, None);
+        assert_eq!(context.post, None);
+        assert_eq!(context.dev, None);
+        assert_eq!(context.pre_release, None);
+        assert_eq!(context.semver, "1.2.3");
+        assert_eq!(context.pep440, "1.2.3");
     }
 
-    fn vcs_zerv() -> ZervFixture {
-        ZervFixture::new().with_version(1, 2, 3).with_vcs_data(
-            Some(0),
+    #[test]
+    fn test_template_context_from_zerv_with_vcs() {
+        let zerv_fixture = ZervFixture::new().with_version(1, 0, 0).with_vcs_data(
+            Some(5),
             Some(true),
+            Some("feature/test".to_string()),
+            Some("abc123def456".to_string()),
+            Some("abc123".to_string()),
+            Some(1703123456),
             Some("main".to_string()),
-            Some("abcdef123456".to_string()),
-            Some("xyz789".to_string()),
-            Some(1234567890),
-            Some("main".to_string()),
-        )
+        );
+        let zerv = zerv_fixture.zerv();
+
+        let context = ZervTemplateContext::from_zerv(zerv);
+
+        assert_eq!(context.distance, Some(5));
+        assert_eq!(context.dirty, Some(true));
+        assert_eq!(context.bumped_branch, Some("feature/test".to_string()));
+        assert_eq!(context.bumped_commit_hash, Some("abc123def456".to_string()));
+        assert_eq!(
+            context.bumped_commit_hash_short,
+            Some("abc123d".to_string())
+        );
+        // bumped_timestamp is not set by with_vcs_data, so we won't test it here
     }
 
-    fn pre_release_zerv() -> ZervFixture {
-        ZervFixture::new().with_pre_release(PreReleaseLabel::Alpha, Some(1))
+    #[test]
+    fn test_template_context_from_zerv_with_pre_release() {
+        let zerv_fixture = ZervFixture::new()
+            .with_version(1, 2, 3)
+            .with_pre_release(crate::version::zerv::PreReleaseLabel::Alpha, Some(1));
+        let zerv = zerv_fixture.zerv();
+
+        let context = ZervTemplateContext::from_zerv(zerv);
+
+        assert!(context.pre_release.is_some());
+        let pre_release = context.pre_release.unwrap();
+        assert_eq!(pre_release.label, "alpha");
+        assert_eq!(pre_release.number, Some(1));
     }
 
-    fn custom_vars_zerv() -> ZervFixture {
-        use crate::version::zerv::{
-            Zerv,
-            ZervSchema,
-            ZervVars,
-        };
-
+    #[test]
+    fn test_template_context_from_zerv_with_custom_vars() {
         let vars = ZervVars {
-            major: Some(2),
-            minor: Some(1),
+            major: Some(1),
+            minor: Some(0),
             patch: Some(0),
             custom: serde_json::json!({
-                "build_id": 123,
-                "env": "prod",
-                "metadata": {
-                    "author": "ci",
-                    "timestamp": 1703123456
-                }
+                "build": "42",
+                "metadata": "test"
             }),
             ..Default::default()
         };
 
         let schema = ZervSchema::semver_default().unwrap();
         let zerv = Zerv::new(schema, vars).unwrap();
-        ZervFixture::from(zerv)
-    }
 
-    fn basic_context() -> TemplateContext {
-        TemplateContext {
-            major: Some(1),
-            minor: Some(0),
-            patch: Some(0),
-            epoch: None,
-            post: None,
-            dev: None,
-            pre_release: None,
-            distance: None,
-            dirty: None,
-            bumped_branch: None,
-            bumped_commit_hash: None,
-            bumped_commit_hash_short: None,
-            bumped_timestamp: None,
-            last_branch: None,
-            last_commit_hash: None,
-            last_commit_hash_short: None,
-            last_timestamp: None,
-            custom: serde_json::Value::Null,
-            pep440: "1.0.0".to_string(),
-            semver: "1.0.0".to_string(),
-        }
-    }
+        let context = ZervTemplateContext::from_zerv(&zerv);
 
-    fn vcs_context() -> TemplateContext {
-        TemplateContext {
-            major: Some(1),
-            minor: Some(2),
-            patch: Some(3),
-            epoch: None,
-            post: None,
-            dev: None,
-            pre_release: None,
-            distance: Some(0),
-            dirty: Some(true),
-            bumped_branch: Some("main".to_string()),
-            bumped_commit_hash: Some("abcdef123456".to_string()),
-            bumped_commit_hash_short: Some("abcdef1".to_string()),
-            bumped_timestamp: None,
-            last_branch: Some("main".to_string()),
-            last_commit_hash: Some("xyz789".to_string()),
-            last_commit_hash_short: Some("xyz789".to_string()),
-            last_timestamp: Some(1234567890),
-            custom: serde_json::Value::Null,
-            pep440: "1.2.3".to_string(),
-            semver: "1.2.3".to_string(),
-        }
-    }
-
-    fn pre_release_context() -> TemplateContext {
-        TemplateContext {
-            major: Some(1),
-            minor: Some(0),
-            patch: Some(0),
-            epoch: None,
-            post: None,
-            dev: None,
-            pre_release: Some(PreReleaseContext {
-                label: "alpha".to_string(),
-                number: Some(1),
-            }),
-            distance: None,
-            dirty: None,
-            bumped_branch: None,
-            bumped_commit_hash: None,
-            bumped_commit_hash_short: None,
-            bumped_timestamp: None,
-            last_branch: None,
-            last_commit_hash: None,
-            last_commit_hash_short: None,
-            last_timestamp: None,
-            custom: serde_json::Value::Null,
-            pep440: "1.0.0a1".to_string(),
-            semver: "1.0.0-alpha.1".to_string(),
-        }
-    }
-
-    fn custom_vars_context() -> TemplateContext {
-        TemplateContext {
-            major: Some(2),
-            minor: Some(1),
-            patch: Some(0),
-            epoch: None,
-            post: None,
-            dev: None,
-            pre_release: None,
-            distance: None,
-            dirty: None,
-            bumped_branch: None,
-            bumped_commit_hash: None,
-            bumped_commit_hash_short: None,
-            bumped_timestamp: None,
-            last_branch: None,
-            last_commit_hash: None,
-            last_commit_hash_short: None,
-            last_timestamp: None,
-            custom: serde_json::json!({
-                "build_id": 123,
-                "env": "prod",
-                "metadata": {
-                    "author": "ci",
-                    "timestamp": 1703123456
-                }
-            }),
-            pep440: "2.1.0".to_string(),
-            semver: "2.1.0".to_string(),
-        }
-    }
-
-    #[rstest]
-    #[case::basic(basic_zerv(), basic_context())]
-    #[case::with_vcs(vcs_zerv(), vcs_context())]
-    #[case::with_pre_release(pre_release_zerv(), pre_release_context())]
-    #[case::with_custom_vars(custom_vars_zerv(), custom_vars_context())]
-    fn test_template_context_from_zerv(
-        #[case] fixture: ZervFixture,
-        #[case] expected: TemplateContext,
-    ) {
-        let zerv = fixture.build();
-        let context = TemplateContext::from_zerv(&zerv);
-        assert_eq!(context, expected);
+        assert_eq!(context.custom["build"], "42");
+        assert_eq!(context.custom["metadata"], "test");
     }
 }

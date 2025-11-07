@@ -58,6 +58,21 @@ impl GitRepoFixture {
         Ok(fixture)
     }
 
+    /// Checkout to an existing or new branch
+    pub fn checkout_branch(&self, branch: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.git_impl
+            .create_branch(&self.test_dir, branch)
+            .map_err(|e| format!("Failed to checkout branch '{}': {e}", branch))?;
+        Ok(())
+    }
+
+    /// Make the working directory dirty with uncommitted changes
+    pub fn make_dirty(&self) -> Result<(), Box<dyn std::error::Error>> {
+        self.test_dir
+            .create_file("dirty_file.txt", "dirty content")?;
+        Ok(())
+    }
+
     /// Create a repository with dirty working directory (Tier 3: major.minor.patch.dev<timestamp>+branch.<commit>)
     pub fn dirty(tag: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let fixture = Self::tagged(tag)?;
@@ -84,6 +99,51 @@ mod tests {
 
     use super::*;
     use crate::test_utils::should_run_docker_tests;
+
+    #[test]
+    #[serial(fixture_methods)]
+    fn test_checkout_branch() {
+        if !should_run_docker_tests() {
+            return;
+        }
+
+        let fixture = GitRepoFixture::tagged("v1.0.0").expect("Failed to create fixture with tag");
+
+        // Checkout a new branch
+        fixture
+            .checkout_branch("feature-test")
+            .expect("Failed to checkout feature-test branch");
+
+        // Verify branch was created
+        let current_branch = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["branch", "--show-current"])
+            .expect("Failed to get current branch");
+        assert_eq!(current_branch.trim(), "feature-test");
+    }
+
+    #[test]
+    #[serial(fixture_methods)]
+    fn test_make_dirty() {
+        if !should_run_docker_tests() {
+            return;
+        }
+
+        let fixture = GitRepoFixture::tagged("v1.0.0").expect("Failed to create fixture with tag");
+
+        // Make the working directory dirty
+        fixture.make_dirty().expect("Failed to make fixture dirty");
+
+        // Verify the dirty file exists
+        assert!(fixture.path().join("dirty_file.txt").exists());
+
+        // Verify git status shows uncommitted changes
+        let status = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["status", "--porcelain"])
+            .expect("Failed to get git status");
+        assert!(status.contains("dirty_file.txt"));
+    }
 
     static SHARED_V1_FIXTURE: Mutex<Option<(std::path::PathBuf, tempfile::TempDir)>> =
         Mutex::new(None);

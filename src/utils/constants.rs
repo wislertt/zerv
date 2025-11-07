@@ -112,17 +112,26 @@ pub mod sources {
     pub const STDIN: &str = "stdin";
 }
 
+// Post distance calculation modes
+pub mod post_modes {
+    pub const TAG: &str = "tag";
+    pub const COMMIT: &str = "commit";
+
+    /// Used for validation of post-mode argument
+    pub const VALID_MODES: &[&str] = &[TAG, COMMIT];
+}
+
 // Format names
 pub mod formats {
     pub const AUTO: &str = "auto";
     pub const SEMVER: &str = "semver";
     pub const PEP440: &str = "pep440";
     pub const ZERV: &str = "zerv";
-}
 
-// Format arrays for CLI validation
-pub const SUPPORTED_FORMATS_ARRAY: [&str; 3] = [formats::SEMVER, formats::PEP440, formats::ZERV];
-pub const SUPPORTED_FORMATS: &[&str] = &SUPPORTED_FORMATS_ARRAY;
+    /// Format arrays for CLI validation
+    pub const SUPPORTED_FORMATS_ARRAY: [&str; 3] = [SEMVER, PEP440, ZERV];
+    pub const SUPPORTED_FORMATS: &[&str] = &SUPPORTED_FORMATS_ARRAY;
+}
 
 // Format display names
 pub mod format_names {
@@ -137,9 +146,3 @@ pub const SUPPORTED_FORMAT_NAMES: &[&str] = &[
     format_names::SEMVER,
     format_names::ZERV,
 ];
-
-// Schema names
-pub mod schema_names {
-    pub const ZERV_STANDARD: &str = "zerv-standard";
-    pub const ZERV_CALVER: &str = "zerv-calver";
-}

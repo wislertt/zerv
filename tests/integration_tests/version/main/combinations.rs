@@ -1,4 +1,5 @@
 use rstest::rstest;
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::{
     ZervFixture,
     ZervSchemaFixture,
@@ -11,25 +12,25 @@ mod schema_format {
     use super::*;
 
     #[rstest]
-    #[case::standard_semver("zerv-standard", "semver", "1.2.3")]
-    #[case::standard_pep440("zerv-standard", "pep440", "1.2.3")]
-    #[case::calver_semver("zerv-calver", "semver", "21.0.0")]
-    #[case::calver_pep440("zerv-calver", "pep440", "21")]
+    #[case::standard_semver("standard", "semver", "1.2.3")]
+    #[case::standard_pep440("standard", "pep440", "1.2.3")]
+    #[case::calver_semver("calver", "semver", "21.0.0")]
+    #[case::calver_pep440("calver", "pep440", "21")]
     fn test_preset_schema_with_output_format(
         #[case] schema: &str,
         #[case] format: &str,
         #[case] expected: &str,
     ) {
-        let zerv_ron = if schema == "zerv-calver" {
+        let zerv_ron = if schema == "calver" {
             ZervFixture::new()
                 .with_version(2025, 10, 21)
-                .with_calver_tier_1()
+                .with_schema_preset(ZervSchemaPreset::CalverBasePrerelease)
                 .build()
                 .to_string()
         } else {
             ZervFixture::new()
                 .with_version(1, 2, 3)
-                .with_standard_tier_1()
+                .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
                 .build()
                 .to_string()
         };
@@ -71,23 +72,23 @@ mod schema_template {
     use super::*;
 
     #[rstest]
-    #[case::standard("zerv-standard", "v{{major}}.{{minor}}.{{patch}}", "v1.2.3")]
-    #[case::calver("zerv-calver", "{{major}}-{{minor}}-{{patch}}", "2025-10-21")]
+    #[case::standard("standard", "v{{major}}.{{minor}}.{{patch}}", "v1.2.3")]
+    #[case::calver("calver", "{{major}}-{{minor}}-{{patch}}", "2025-10-21")]
     fn test_preset_schema_with_template(
         #[case] schema: &str,
         #[case] template: &str,
         #[case] expected: &str,
     ) {
-        let zerv_ron = if schema == "zerv-calver" {
+        let zerv_ron = if schema == "calver" {
             ZervFixture::new()
                 .with_version(2025, 10, 21)
-                .with_calver_tier_1()
+                .with_schema_preset(ZervSchemaPreset::CalverBasePrerelease)
                 .build()
                 .to_string()
         } else {
             ZervFixture::new()
                 .with_version(1, 2, 3)
-                .with_standard_tier_1()
+                .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
                 .build()
                 .to_string()
         };
@@ -126,7 +127,7 @@ mod schema_template {
         let cmd = format!(
             concat!(
                 "version --source stdin --schema-ron '{}' --output-template ",
-                r#""{{{{epoch}}}}:{{{{semver}}}}-{{{{sanitize bumped_branch}}}}""#
+                r#""{{{{epoch}}}}:{{{{semver}}}}-{{{{ sanitize(value=bumped_branch) }}}}""#
             ),
             schema_ron
         );
@@ -216,7 +217,7 @@ mod template_helpers {
             .to_string();
 
         let result = TestCommand::run_with_stdin(
-            r#"version --source stdin --output-template "{{semver}}-{{sanitize bumped_branch}}""#,
+            r#"version --source stdin --output-template "{{semver}}-{{ sanitize(value=bumped_branch) }}""#,
             zerv_ron,
         );
 
@@ -252,12 +253,12 @@ mod multi_option {
     fn test_schema_format_prefix_together() {
         let zerv_ron = ZervFixture::new()
             .with_version(1, 0, 0)
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
             .build()
             .to_string();
 
         let result = TestCommand::run_with_stdin(
-            "version --source stdin --schema zerv-standard --output-format semver --output-prefix v",
+            "version --source stdin --schema standard --output-format semver --output-prefix v",
             zerv_ron,
         );
 

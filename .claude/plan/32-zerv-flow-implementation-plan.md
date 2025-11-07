@@ -56,16 +56,37 @@ This document defines the planned `zerv flow` subcommand, an opinionated automat
 
 **Clean branches**: `main`, `master` → No pre-release (clean releases)
 
-**Post-release resolution when branching**:
+**Post-release resolution logic**:
 
-- Reset to `.post.1` when pre-release label INCREASES (alpha → beta → rc)
-- Continue post count when pre-release label STAYS SAME OR DECREASES (alpha → alpha, beta → beta, beta → alpha)
-- Starting from clean release: Continue with `.post.1` (previous post count was 0)
-- Examples:
-    - `1.0.2-beta.1.post.56` → `1.0.2-rc.1.post.1` (beta→rc, reset)
-    - `1.0.2-beta.1.post.57` → `1.0.2-alpha.12345.post.58` (beta→alpha, continue)
-    - `1.0.2-alpha.12345.post.3` → `1.0.2-alpha.54321.post.4` (alpha→alpha, continue)
-    - `1.0.2` → `1.0.2-alpha.98765.post.1` (clean→alpha, continue from post 0)
+- **Configurable post representation** with two options:
+    - **Tag Distance**: Count commits from last tag
+    - **Commit Distance**: Count commits from branch creation point
+- **Default**: Tag Distance (most common use case)
+- **`post.0`**: Exactly on reference point (no commits since)
+- **`post.N`**: N commits since reference point
+- **Consistent across all branch types** (alpha, beta, rc, etc.)
+
+**Examples**:
+
+**Tag Distance (release branches):**
+
+```
+main: v1.0.0 (tag)
+└── release/1 (created) → create tag v1.0.1-rc.1.post.1
+    └── 1 commit → 1.0.1-rc.1.post.1.dev.1729924622  (same post, dev timestamp)
+    └── 2 commits → 1.0.1-rc.1.post.1.dev.1729924623  (same post, dev timestamp)
+    └── create tag → 1.0.1-rc.1.post.2  (new tag increments post)
+    └── more commits → 1.0.1-rc.1.post.2.dev.1729924624  (new post, dev timestamp)
+```
+
+**Commit Distance (develop branch):**
+
+```
+main: v1.0.0 (tag)
+└── develop (created from v1.0.0) → commit 1.0.1-beta.1.post.1  (1 commits since branch creation)
+    └── 5 commits later → 1.0.1-beta.1.post.6  (6 commits since branch creation)
+    └── 1 more commit → 1.0.1-beta.1.post.7  (7 commits since branch creation)
+```
 
 ## Examples
 
@@ -188,7 +209,7 @@ gitGraph
     commit id: "1.0.1-alpha.54321.post.1"
 
     checkout main
-    merge hotfix/critical id: "1.0.1" tag: "hotfix released"
+    merge hotfix/critical id: "1.0.1" tag: "tagged"
 
     checkout develop
     merge main id: "1.0.2-beta.1.post.3" tag: "update main"
@@ -196,11 +217,12 @@ gitGraph
 
     branch release/1 order: 2
     checkout release/1
-    commit id: "1.0.2-rc.1.post.1"
-    commit id: "1.0.2-rc.1.post.2"
+    commit id: "1.0.2-rc.1.post.1" tag: "tagged"
+    commit id: "1.0.2-rc.1.post.2" tag: "tagged"
+    commit id: "1.0.2-rc.1.post.2.dev.1729924622"
 
     checkout main
-    merge release/1 id: "1.1.0" tag: "released"
+    merge release/1 id: "1.1.0" tag: "tagged"
 
     checkout develop
     merge main id: "1.1.1-beta.1.post.1" tag: "update main"

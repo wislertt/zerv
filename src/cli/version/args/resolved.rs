@@ -3,20 +3,103 @@ use std::str::FromStr;
 
 use super::{
     BumpsConfig,
-    MainConfig,
     OverridesConfig,
     VersionArgs,
 };
-use crate::cli::utils::template::Template;
+use crate::cli::common::args::{
+    InputConfig,
+    OutputConfig,
+};
+use crate::cli::utils::template::{
+    Template,
+    TemplateExt,
+};
 use crate::error::ZervError;
+use crate::utils::constants::pre_release_labels;
 use crate::version::Zerv;
+
+/// Shared trait for template resolution operations
+pub trait TemplateResolver {
+    /// Resolve a template wrapped in Option to a value
+    fn resolve_option_template<T>(
+        template: &Option<Template<T>>,
+        zerv: &Zerv,
+    ) -> Result<Option<T>, ZervError>
+    where
+        T: FromStr + Clone + Display,
+        T::Err: Display,
+    {
+        match template {
+            Some(t) => t.render(Some(zerv)),
+            None => Ok(None),
+        }
+    }
+
+    /// Resolve a template wrapped in double Option to a nested Option value
+    fn resolve_double_option_template<T>(
+        template: &Option<Option<Template<T>>>,
+        zerv: &Zerv,
+    ) -> Result<Option<Option<T>>, ZervError>
+    where
+        T: FromStr + Clone + Display,
+        T::Err: Display,
+    {
+        match template {
+            Some(Some(t)) => Ok(Some(t.render(Some(zerv))?)),
+            Some(None) => Ok(Some(None)),
+            None => Ok(None),
+        }
+    }
+
+    /// Resolve a slice of string templates to a vector of strings
+    fn resolve_template_strings(
+        templates: &[Template<String>],
+        zerv: &Zerv,
+    ) -> Result<Vec<String>, ZervError> {
+        templates
+            .iter()
+            .map(|template| template.render_string(Some(zerv)))
+            .collect()
+    }
+
+    /// Resolve pre-release label template with validation
+    fn resolve_pre_release_label(
+        template: &Option<Template<String>>,
+        zerv: &Zerv,
+    ) -> Result<Option<String>, ZervError> {
+        match template {
+            Some(t) => {
+                let resolved_opt = t.render(Some(zerv))?;
+                // If template resolved to None (empty string or None keywords), return None
+                let resolved = match resolved_opt {
+                    Some(r) => r,
+                    None => return Ok(None),
+                };
+
+                // Strict validation: ensure resolved value is a valid pre-release label
+                if !pre_release_labels::VALID_LABELS.contains(&resolved.as_str()) {
+                    return Err(ZervError::TemplateError(format!(
+                        "Template resolved to invalid pre-release label '{}'. Must be one of: {} or None keywords: {}",
+                        resolved,
+                        pre_release_labels::VALID_LABELS.join(", "),
+                        "none, null, nil"
+                    )));
+                }
+
+                Ok(Some(resolved))
+            }
+            None => Ok(None),
+        }
+    }
+}
 
 /// Resolved version of VersionArgs with templates rendered
 #[derive(Debug, Clone)]
 pub struct ResolvedArgs {
     pub overrides: ResolvedOverrides,
     pub bumps: ResolvedBumps,
-    pub main: MainConfig, // Keep entire MainConfig for simplicity
+    pub input: InputConfig,   // Reusable input config
+    pub output: OutputConfig, // Reusable output config
 }
 
 /// Resolved overrides with all templates rendered to values
@@ -49,6 +132,8 @@ pub struct ResolvedOverrides {
     pub build: Vec<String>,
 }
 
+impl TemplateResolver for ResolvedOverrides {}
+
 /// Resolved bumps with all templates rendered to values
 #[derive(Debug, Clone, Default)]
 pub struct ResolvedBumps {
@@ -72,6 +157,8 @@ pub struct ResolvedBumps {
     pub no_bump_context: bool,
 }
 
+impl TemplateResolver for ResolvedBumps {}
+
 impl ResolvedArgs {
     /// Resolve all templates in VersionArgs using Zerv snapshot
     pub fn resolve(args: &VersionArgs, zerv: &Zerv) -> Result<Self, ZervError> {
@@ -81,7 +168,8 @@ impl ResolvedArgs {
         Ok(ResolvedArgs {
             overrides,
             bumps,
-            main: args.main.clone(),
+            input: args.input.clone(),
+            output: args.output.clone(),
         })
     }
 }
@@ -100,14 +188,14 @@ impl ResolvedOverrides {
             bumped_timestamp: overrides.bumped_timestamp,
 
             // Version component overrides (resolve templates)
-            major: Self::resolve_template(&overrides.major, zerv)?,
-            minor: Self::resolve_template(&overrides.minor, zerv)?,
-            patch: Self::resolve_template(&overrides.patch, zerv)?,
-            epoch: Self::resolve_template(&overrides.epoch, zerv)?,
-            post: Self::resolve_template(&overrides.post, zerv)?,
-            dev: Self::resolve_template(&overrides.dev, zerv)?,
-            pre_release_label: overrides.pre_release_label.clone(),
-            pre_release_num: Self::resolve_template(&overrides.pre_release_num, zerv)?,
+            major: Self::resolve_option_template(&overrides.major, zerv)?,
+            minor: Self::resolve_option_template(&overrides.minor, zerv)?,
+            patch: Self::resolve_option_template(&overrides.patch, zerv)?,
+            epoch: Self::resolve_option_template(&overrides.epoch, zerv)?,
+            post: Self::resolve_option_template(&overrides.post, zerv)?,
+            dev: Self::resolve_option_template(&overrides.dev, zerv)?,
+            pre_release_label: Self::resolve_pre_release_label(&overrides.pre_release_label, zerv)?,
+            pre_release_num: Self::resolve_option_template(&overrides.pre_release_num, zerv)?,
             custom: overrides.custom.clone(),
 
             // Schema component overrides (resolve templates)
@@ -117,31 +205,8 @@ impl ResolvedOverrides {
         })
     }
 
-    fn resolve_template<T>(
-        template: &Option<Template<T>>,
-        zerv: &Zerv,
-    ) -> Result<Option<T>, ZervError>
-    where
-        T: FromStr + Clone,
-        T::Err: Display,
-    {
-        match template {
-            Some(t) => Ok(Some(t.resolve(zerv)?)),
-            None => Ok(None),
-        }
-    }
-
-    fn resolve_template_strings(
-        templates: &[Template<String>],
-        zerv: &Zerv,
-    ) -> Result<Vec<String>, ZervError> {
-        templates
-            .iter()
-            .map(|template| template.resolve(zerv))
-            .collect()
-    }
-
     /// Get the dirty override state (None = use VCS, Some(bool) = override)
+    // TODO: this is duplicated
     pub fn dirty_override(&self) -> Option<bool> {
         match (self.dirty, self.no_dirty) {
             (true, false) => Some(true),    // --dirty
@@ -156,14 +221,20 @@ impl ResolvedBumps {
     fn resolve(bumps: &BumpsConfig, zerv: &Zerv) -> Result<Self, ZervError> {
         Ok(ResolvedBumps {
             // Field-based bumps (resolve templates)
-            bump_major: Self::resolve_bump(&bumps.bump_major, zerv)?,
-            bump_minor: Self::resolve_bump(&bumps.bump_minor, zerv)?,
-            bump_patch: Self::resolve_bump(&bumps.bump_patch, zerv)?,
-            bump_post: Self::resolve_bump(&bumps.bump_post, zerv)?,
-            bump_dev: Self::resolve_bump(&bumps.bump_dev, zerv)?,
-            bump_pre_release_num: Self::resolve_bump(&bumps.bump_pre_release_num, zerv)?,
-            bump_epoch: Self::resolve_bump(&bumps.bump_epoch, zerv)?,
-            bump_pre_release_label: bumps.bump_pre_release_label.clone(),
+            bump_major: Self::resolve_double_option_template(&bumps.bump_major, zerv)?,
+            bump_minor: Self::resolve_double_option_template(&bumps.bump_minor, zerv)?,
+            bump_patch: Self::resolve_double_option_template(&bumps.bump_patch, zerv)?,
+            bump_post: Self::resolve_double_option_template(&bumps.bump_post, zerv)?,
+            bump_dev: Self::resolve_double_option_template(&bumps.bump_dev, zerv)?,
+            bump_pre_release_num: Self::resolve_double_option_template(
+                &bumps.bump_pre_release_num,
+                zerv,
+            )?,
+            bump_epoch: Self::resolve_double_option_template(&bumps.bump_epoch, zerv)?,
+            bump_pre_release_label: Self::resolve_pre_release_label(
+                &bumps.bump_pre_release_label,
+                zerv,
+            )?,
 
             // Schema-based bumps (resolve templates)
             bump_core: Self::resolve_template_strings(&bumps.bump_core, zerv)?,
@@ -174,26 +245,5 @@ impl ResolvedBumps {
             bump_context: bumps.bump_context,
             no_bump_context: bumps.no_bump_context,
         })
-    }
-
-    fn resolve_bump(
-        bump: &Option<Option<Template<u32>>>,
-        zerv: &Zerv,
-    ) -> Result<Option<Option<u32>>, ZervError> {
-        match bump {
-            Some(Some(template)) => Ok(Some(Some(template.resolve(zerv)?))),
-            Some(None) => Ok(Some(None)),
-            None => Ok(None),
-        }
-    }
-
-    fn resolve_template_strings(
-        templates: &[Template<String>],
-        zerv: &Zerv,
-    ) -> Result<Vec<String>, ZervError> {
-        templates
-            .iter()
-            .map(|template| template.resolve(zerv))
-            .collect()
     }
 }

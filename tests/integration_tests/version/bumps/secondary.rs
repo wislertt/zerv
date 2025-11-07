@@ -357,7 +357,7 @@ mod secondary_combinations {
     }
 
     #[rstest]
-    #[case("3!0.0.0", "2", "0")]
+    #[case("3!0.0.0a0", "2", "0")]
     fn test_secondary_bumps_with_custom_values(
         full_secondary_fixture: ZervFixture,
         #[case] expected: &str,

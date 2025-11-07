@@ -1,3 +1,4 @@
+use crate::schema::ZervSchemaPreset;
 use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::{
     Component,
@@ -11,58 +12,23 @@ pub struct ZervSchemaFixture {
 }
 
 impl ZervSchemaFixture {
-    /// Create a new fixture with standard tier 1 schema (major.minor.patch)
+    /// Create a new fixture with standard base schema (major.minor.patch)
     pub fn new() -> Self {
         Self {
-            schema: ZervSchema::zerv_standard_tier_1(),
+            schema: ZervSchemaPreset::StandardBasePrereleasePost.schema(),
+        }
+    }
+
+    /// Create a fixture from any ZervSchemaPreset preset
+    pub fn from_preset(schema: ZervSchemaPreset) -> Self {
+        Self {
+            schema: schema.schema(),
         }
     }
 
     /// Build and return the final ZervSchema
     pub fn build(self) -> ZervSchema {
         self.schema
-    }
-
-    /// Create standard tier 1 schema (major.minor.patch)
-    pub fn standard_tier_1() -> Self {
-        Self {
-            schema: ZervSchema::zerv_standard_tier_1(),
-        }
-    }
-
-    /// Create standard tier 2 schema (with build metadata)
-    pub fn standard_tier_2() -> Self {
-        Self {
-            schema: ZervSchema::zerv_standard_tier_2(),
-        }
-    }
-
-    /// Create standard tier 3 schema (with dev components)
-    pub fn standard_tier_3() -> Self {
-        Self {
-            schema: ZervSchema::zerv_standard_tier_3(),
-        }
-    }
-
-    /// Create calver tier 1 schema
-    pub fn calver_tier_1() -> Self {
-        Self {
-            schema: ZervSchema::zerv_calver_tier_1(),
-        }
-    }
-
-    /// Create calver tier 2 schema
-    pub fn calver_tier_2() -> Self {
-        Self {
-            schema: ZervSchema::zerv_calver_tier_2(),
-        }
-    }
-
-    /// Create calver tier 3 schema
-    pub fn calver_tier_3() -> Self {
-        Self {
-            schema: ZervSchema::zerv_calver_tier_3(),
-        }
     }
 
     pub fn empty() -> Self {
@@ -165,9 +131,14 @@ mod tests {
 
     #[test]
     fn test_preset_constructors() {
-        let tier1 = ZervSchemaFixture::standard_tier_1().build();
-        let tier2 = ZervSchemaFixture::standard_tier_2().build();
-        let tier3 = ZervSchemaFixture::standard_tier_3().build();
+        let tier1 =
+            ZervSchemaFixture::from_preset(ZervSchemaPreset::StandardBasePrereleasePost).build();
+        let tier2 =
+            ZervSchemaFixture::from_preset(ZervSchemaPreset::StandardBasePrereleasePostContext)
+                .build();
+        let tier3 =
+            ZervSchemaFixture::from_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
+                .build();
 
         // All should have core components
         assert_eq!(tier1.core().len(), 3);

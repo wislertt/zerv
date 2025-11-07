@@ -10,9 +10,9 @@ update:
 	cargo update
 
 lint:
-	cargo check
+	cargo +nightly check --tests
 	cargo +nightly fmt -- --check || (cargo +nightly fmt && exit 1)
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo +nightly clippy --all-targets --all-features -- -D warnings
 	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
 _test:

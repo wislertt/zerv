@@ -1,4 +1,5 @@
 use rstest::rstest;
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 use zerv::version::PreReleaseLabel;
 
@@ -113,7 +114,7 @@ mod output_format_extended {
     ) {
         let mut fixture = ZervFixture::new()
             .with_version(1, 0, 0)
-            .with_standard_tier_3();
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext);
 
         if let Some(e) = epoch {
             fixture = fixture.with_epoch(e);

@@ -2,6 +2,7 @@ use rstest::{
     fixture,
     rstest,
 };
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 
 use crate::util::TestCommand;
@@ -19,7 +20,7 @@ fn base_fixture() -> ZervFixture {
             None,
             None,
         )
-        .with_standard_tier_1()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePost)
 }
 
 #[fixture]
@@ -35,7 +36,7 @@ fn vcs_fixture() -> ZervFixture {
             None,
             None,
         )
-        .with_standard_tier_1()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePost)
 }
 
 mod primary_secondary_combinations {

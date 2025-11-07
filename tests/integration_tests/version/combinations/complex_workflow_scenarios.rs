@@ -4,6 +4,7 @@
 //! configuration modules in complex ways, simulating real-world CI/CD workflows.
 
 use rstest::*;
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 
 use crate::util::TestCommand;
@@ -25,7 +26,7 @@ mod complex_cicd_workflows {
                 None,
                 None,
             )
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
     }
 
     #[rstest]
@@ -43,7 +44,7 @@ mod complex_cicd_workflows {
         assert_eq!(result2, "1.5.4");
 
         // Test 3: Release workflow with template and multiple modules
-        let args3 = "version --source stdin --schema zerv-standard --tag-version v2.1.0 --distance 3 --dirty --bump-major --output-template 'release-{{major}}.{{minor}}.{{patch}}+{{distance}}.{{dirty}}'";
+        let args3 = "version --source stdin --schema standard --tag-version v2.1.0 --distance 3 --dirty --bump-major --output-template 'release-{{major}}.{{minor}}.{{patch}}+{{distance}}.{{dirty}}'";
         let result3 = TestCommand::run_with_stdin(args3, zerv_ron.clone());
         assert_eq!(result3, "release-3.0.0+3.true");
     }
@@ -68,7 +69,7 @@ mod complex_cicd_workflows {
         let zerv_ron = base_release_fixture.build().to_string();
         let args = concat!(
             "version --source stdin --input-format semver ",
-            "--schema zerv-calver --major 2023 --minor 12 --bump-patch ",
+            "--schema calver --major 2023 --minor 12 --bump-patch ",
             "--output-template 'release-{{major}}.{{minor}}.{{patch}}'"
         );
 
@@ -95,7 +96,7 @@ mod complex_template_scenarios {
                 None,
                 None,
             )
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
     }
 
     #[rstest]
@@ -114,7 +115,7 @@ mod complex_template_scenarios {
 
         // Test 2: Schema-based template with custom variables
         let args2 = concat!(
-            "version --source stdin --schema zerv-standard ",
+            "version --source stdin --schema standard ",
             "--tag-version v2.1.0 --bump-major ",
             "--custom '{\"pipeline\":\"release\",\"stage\":\"deploy\"}' ",
             "--output-template '{{custom.pipeline}}-{{custom.stage}}-v{{major}}.{{minor}}.{{patch}}'"
@@ -130,7 +131,7 @@ mod complex_template_scenarios {
             "version --source stdin ",
             "--major 1 --bump-minor ",
             "--custom '{\"component\":\"api-service\",\"version_prefix\":\"v\"}' ",
-            "--output-template '{{custom.version_prefix}}{{major}}.{{minor}}.{{patch}}-{{sanitize custom.component \".\"}}-{{hash bumped_commit_hash 6}}'"
+            "--output-template '{{ custom.version_prefix }}{{major}}.{{minor}}.{{patch}}-{{ sanitize(value=custom.component, separator=\".\") }}-{{ hash(value=bumped_commit_hash, length=6) }}'"
         );
 
         let result = TestCommand::run_with_stdin(args, zerv_ron.clone());
@@ -141,7 +142,7 @@ mod complex_template_scenarios {
     #[rstest]
     fn test_template_error_handling_missing_custom_variables(complex_data_fixture: ZervFixture) {
         let zerv_ron = complex_data_fixture.build().to_string();
-        let args = "version --source stdin --major 1 --output-template '{{major}}.{{minor}}.{{patch}}-{{missing_var}}'";
+        let args = "version --source stdin --major 1 --output-template '{{major}}.{{minor}}.{{patch}}-{{ missing_var | default(value=\"\") }}'";
 
         let result = TestCommand::run_with_stdin(args, zerv_ron.clone());
 
@@ -167,7 +168,7 @@ mod error_validation_scenarios {
                 None,
                 None,
             )
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
     }
 
     #[rstest]
@@ -214,7 +215,7 @@ mod performance_edge_cases {
                 None,
                 None,
             )
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
     }
 
     #[rstest]
@@ -225,7 +226,7 @@ mod performance_edge_cases {
         // Using concat! instead of format! to avoid template escaping issues
         let large_data = "x".repeat(50); // Smaller to avoid issues
         let args = format!(
-            "version --source stdin --schema zerv-standard --major 1 --minor 2 --patch 3 --bump-major --custom '{{\"large_data\":\"{}\"}}' --output-format semver",
+            "version --source stdin --schema standard --major 1 --minor 2 --patch 3 --bump-major --custom '{{\"large_data\":\"{}\"}}' --output-format semver",
             large_data
         );
 
@@ -272,7 +273,7 @@ mod deployment_scenarios {
                 None,
                 None,
             )
-            .with_standard_tier_1()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
     }
 
     #[rstest]
@@ -294,7 +295,7 @@ mod deployment_scenarios {
     fn test_kubernetes_deployment_versioning(deployment_fixture: ZervFixture) {
         let zerv_ron = deployment_fixture.build().to_string();
         let args = concat!(
-            "version --source stdin --schema zerv-standard ",
+            "version --source stdin --schema standard ",
             "--tag-version v1.2.0 --distance 3 --bump-minor ",
             "--custom '{\"region\":\"us-west-2\"}' ",
             "--output-template 'app-v{{major}}.{{minor}}.{{patch}}-{{custom.region}}-{{distance}}'"

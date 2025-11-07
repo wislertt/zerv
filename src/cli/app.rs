@@ -3,6 +3,7 @@ use std::io::Write;
 use clap::Parser;
 
 use crate::cli::check::run_check_command;
+use crate::cli::flow::run_flow_pipeline;
 use crate::cli::llm_help::display_llm_help;
 use crate::cli::parser::{
     Cli,
@@ -29,6 +30,10 @@ pub fn run_with_args<W: Write>(
     match cli.command {
         Some(Commands::Version(version_args)) => {
             let output = run_version_pipeline(*version_args)?;
+            writeln!(writer, "{output}")?;
+        }
+        Some(Commands::Flow(flow_args)) => {
+            let output = run_flow_pipeline(*flow_args)?;
             writeln!(writer, "{output}")?;
         }
         Some(Commands::Check(check_args)) => {

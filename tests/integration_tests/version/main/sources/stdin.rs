@@ -1,4 +1,5 @@
 use rstest::rstest;
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 use zerv::version::{
     PreReleaseLabel,
@@ -78,11 +79,12 @@ fn test_stdin_pep440_features(
 }
 
 #[rstest]
-#[case::standard_tier_1(ZervFixture::new().with_standard_tier_1().with_version(3, 1, 4))]
-#[case::standard_tier_2(ZervFixture::new().with_standard_tier_2().with_version(2, 0, 0))]
-#[case::standard_tier_3(ZervFixture::new().with_standard_tier_3().with_version(1, 5, 2))]
-#[case::calver_tier_1(ZervFixture::new().with_calver_tier_1().with_version(2024, 12, 1))]
-#[case::calver_tier_2(ZervFixture::new().with_calver_tier_2().with_version(2024, 1, 0))]
+#[case::standard_tier_1(ZervFixture::new().with_schema_preset(ZervSchemaPreset::StandardBasePrerelease).with_version(3, 1, 4))]
+#[case::standard_tier_2(ZervFixture::new().with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostContext).with_version(2, 0, 0))]
+#[case::standard_tier_3(ZervFixture::new().with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext).with_version(1, 5, 2))]
+#[case::calver_tier_1(ZervFixture::new().with_schema_preset(ZervSchemaPreset::CalverBasePrerelease).with_version(2024, 12, 1))]
+#[case::calver_tier_2(ZervFixture::new().with_schema_preset(ZervSchemaPreset::CalverBasePrereleasePostContext).with_version(2024, 1, 0))]
+#[case::calver_tier_3(ZervFixture::new().with_schema_preset(ZervSchemaPreset::CalverBasePrereleasePostDevContext).with_version(2023, 8, 15))]
 fn test_stdin_zerv_roundtrip(#[case] fixture: ZervFixture) {
     let original_zerv = fixture.build();
 

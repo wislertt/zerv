@@ -1,9 +1,10 @@
 mod context;
-mod helpers;
+mod functions;
 mod types;
 
-pub use context::{
-    PreReleaseContext,
-    TemplateContext,
+pub use context::ZervTemplateContext;
+pub use types::{
+    Template,
+    TemplateExt,
+    TemplateExtGeneric,
 };
-pub use types::Template;

@@ -26,7 +26,7 @@ impl VersionArgsFixture {
 
     /// Set source
     pub fn with_source(mut self, source: &str) -> Self {
-        self.args.main.source = source.to_string();
+        self.args.input.source = source.to_string();
         self
     }
 
@@ -44,31 +44,31 @@ impl VersionArgsFixture {
 
     /// Set input format
     pub fn with_input_format(mut self, format: &str) -> Self {
-        self.args.main.input_format = format.to_string();
+        self.args.input.input_format = format.to_string();
         self
     }
 
     /// Set output format
     pub fn with_output_format(mut self, format: &str) -> Self {
-        self.args.main.output_format = format.to_string();
+        self.args.output.output_format = format.to_string();
         self
     }
 
     /// Set directory
     pub fn with_directory(mut self, directory: &str) -> Self {
-        self.args.main.directory = Some(directory.to_string());
+        self.args.input.directory = Some(directory.to_string());
         self
     }
 
     /// Set output template
     pub fn with_output_template(mut self, template: &str) -> Self {
-        self.args.main.output_template = Some(Template::Value(template.to_string()));
+        self.args.output.output_template = Some(Template::new(template.to_string()));
         self
     }
 
     /// Set output prefix
     pub fn with_output_prefix(mut self, prefix: &str) -> Self {
-        self.args.main.output_prefix = Some(prefix.to_string());
+        self.args.output.output_prefix = Some(prefix.to_string());
         self
     }
 
@@ -120,19 +120,20 @@ impl VersionArgsFixture {
 
     /// Set post value
     pub fn with_post(mut self, post: u32) -> Self {
-        self.args.overrides.post = Some(Template::Value(post));
+        self.args.overrides.post = Some(Template::new(post.to_string()));
         self
     }
 
     /// Set dev value
     pub fn with_dev(mut self, dev: u32) -> Self {
-        self.args.overrides.dev = Some(Template::Value(dev));
+        self.args.overrides.dev = Some(Template::new(dev.to_string()));
         self
     }
 
     /// Set pre-release label
     pub fn with_pre_release_label(mut self, label: &str) -> Self {
-        self.args.overrides.pre_release_label = Some(label.to_string());
+        use crate::cli::utils::template::Template;
+        self.args.overrides.pre_release_label = Some(Template::new(label.to_string()));
         self
     }
 
@@ -218,7 +219,8 @@ impl VersionArgsFixture {
 
     /// Set bump pre-release label
     pub fn with_bump_pre_release_label(mut self, label: &str) -> Self {
-        self.args.bumps.bump_pre_release_label = Some(label.to_string());
+        use crate::cli::utils::template::Template;
+        self.args.bumps.bump_pre_release_label = Some(Template::new(label.to_string()));
         self
     }
 
@@ -316,7 +318,8 @@ impl VersionArgsFixture {
                 OverrideType::Post(post) => self.args.overrides.post = Some(post.into()),
                 OverrideType::Dev(dev) => self.args.overrides.dev = Some(dev.into()),
                 OverrideType::PreReleaseLabel(label) => {
-                    self.args.overrides.pre_release_label = Some(label)
+                    use crate::cli::utils::template::Template;
+                    self.args.overrides.pre_release_label = Some(Template::new(label))
                 }
                 OverrideType::PreReleaseNum(num) => {
                     self.args.overrides.pre_release_num = Some(num.into())
@@ -348,9 +351,9 @@ mod tests {
         let fixture = VersionArgsFixture::new();
         let args = fixture.build();
 
-        assert_eq!(args.main.source, sources::GIT);
-        assert_eq!(args.main.input_format, formats::AUTO);
-        assert_eq!(args.main.output_format, formats::SEMVER);
+        assert_eq!(args.input.source, sources::GIT);
+        assert_eq!(args.input.input_format, formats::AUTO);
+        assert_eq!(args.output.output_format, formats::SEMVER);
         assert_eq!(args.overrides.tag_version, None);
         assert_eq!(args.main.schema, None);
         assert!(!args.overrides.dirty);
@@ -368,10 +371,10 @@ mod tests {
             .build();
 
         assert_eq!(args.overrides.tag_version, Some("2.0.0".to_string()));
-        assert_eq!(args.main.source, "custom");
+        assert_eq!(args.input.source, "custom");
         assert_eq!(args.main.schema, Some("test-schema".to_string()));
-        assert_eq!(args.main.output_format, formats::PEP440);
-        assert_eq!(args.main.directory, Some("/test/dir".to_string()));
+        assert_eq!(args.output.output_format, formats::PEP440);
+        assert_eq!(args.input.directory, Some("/test/dir".to_string()));
     }
 
     #[test]
@@ -451,7 +454,7 @@ mod tests {
         assert_eq!(args.overrides.distance, Some(15));
         assert!(args.overrides.dirty);
         assert_eq!(args.overrides.bumped_branch, Some("main".to_string()));
-        assert_eq!(args.main.output_format, formats::PEP440);
+        assert_eq!(args.output.output_format, formats::PEP440);
     }
 
     #[test]
@@ -463,9 +466,9 @@ mod tests {
         let args2 = fixture2.build();
 
         // Both should create identical default configurations
-        assert_eq!(args1.main.source, args2.main.source);
-        assert_eq!(args1.main.input_format, args2.main.input_format);
-        assert_eq!(args1.main.output_format, args2.main.output_format);
+        assert_eq!(args1.input.source, args2.input.source);
+        assert_eq!(args1.input.input_format, args2.input.input_format);
+        assert_eq!(args1.output.output_format, args2.output.output_format);
         assert_eq!(args1.overrides.dirty, args2.overrides.dirty);
     }
 
@@ -488,8 +491,8 @@ mod tests {
             .with_output_template("v{{major}}.{{minor}}.{{patch}}")
             .build();
         assert_eq!(
-            args.main.output_template,
-            Some(crate::cli::utils::template::Template::Value(
+            args.output.output_template,
+            Some(crate::cli::utils::template::Template::new(
                 "v{{major}}.{{minor}}.{{patch}}".to_string()
             ))
         );
@@ -500,7 +503,7 @@ mod tests {
         let args = VersionArgsFixture::new()
             .with_output_prefix("release-")
             .build();
-        assert_eq!(args.main.output_prefix, Some("release-".to_string()));
+        assert_eq!(args.output.output_prefix, Some("release-".to_string()));
     }
 
     #[test]
@@ -555,12 +558,12 @@ mod tests {
         // Verify all settings were applied
         assert_eq!(args.main.schema_ron, Some("test-schema".to_string()));
         assert_eq!(
-            args.main.output_template,
-            Some(crate::cli::utils::template::Template::Value(
+            args.output.output_template,
+            Some(crate::cli::utils::template::Template::new(
                 "{{version}}".to_string()
             ))
         );
-        assert_eq!(args.main.output_prefix, Some("v".to_string()));
+        assert_eq!(args.output.output_prefix, Some("v".to_string()));
         assert!(args.overrides.no_dirty);
         assert!(args.overrides.clean);
         assert_eq!(

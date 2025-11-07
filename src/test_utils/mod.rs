@@ -1,6 +1,8 @@
 pub mod dir;
 pub mod git;
+pub mod logging;
 pub mod output;
+pub mod pattern_assertions;
 pub mod types;
 pub mod vcs_fixtures;
 pub mod version_args;
@@ -14,6 +16,7 @@ pub use git::{
     NativeGit,
 };
 pub use output::TestOutput;
+pub use pattern_assertions::assert_version_expectation;
 pub use types::{
     BumpType,
     OverrideType,

@@ -1,5 +1,6 @@
 use super::ZervFixture;
 use super::zerv_common::ZervCommon;
+use crate::schema::ZervSchemaPreset;
 use crate::version::zerv::{
     Component,
     PreReleaseLabel,
@@ -734,15 +735,21 @@ pub mod from {
     }
 
     pub fn v1_0_0_dev1() -> ZervFixture {
-        v1_0_0().with_standard_tier_3().with_dev(1)
+        v1_0_0()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
+            .with_dev(1)
     }
 
     pub fn v1_0_0_dev0() -> ZervFixture {
-        v1_0_0().with_standard_tier_3().with_dev(0)
+        v1_0_0()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
+            .with_dev(0)
     }
 
     pub fn v1_0_0_dev10() -> ZervFixture {
-        v1_0_0().with_standard_tier_3().with_dev(10)
+        v1_0_0()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
+            .with_dev(10)
     }
 
     // Post + dev combinations

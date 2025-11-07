@@ -7,6 +7,7 @@ use rstest::{
     fixture,
     rstest,
 };
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 
 use crate::util::TestCommand;
@@ -24,7 +25,7 @@ fn base_fixture() -> ZervFixture {
             None,
             None,
         )
-        .with_standard_tier_1()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease)
 }
 
 #[fixture]
@@ -40,7 +41,7 @@ fn calver_fixture() -> ZervFixture {
             None,
             None,
         )
-        .with_calver_tier_1()
+        .with_schema_preset(ZervSchemaPreset::CalverBasePrerelease)
 }
 
 mod stdin_override_combinations {
@@ -194,7 +195,7 @@ mod schema_override_combinations {
 
     #[rstest]
     #[case::standard_schema_with_major_override(
-        "--schema zerv-standard",
+        "--schema standard",
         "--major",
         "5",
         "5.1.0+feature.test.branch.5.abc123d"
@@ -230,14 +231,14 @@ mod schema_override_combinations {
                 None,
                 None,
             )
-            .with_standard_tier_1();
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease);
 
         let zerv_ron = base_fixture.build().to_string();
-        let today_date = chrono::Utc::now().format("%Y.%m.%d").to_string();
+        let today_date = chrono::Utc::now().format("%Y.%-m.%-d").to_string();
         let expected = format!("{}-5+feature.test.branch.5.abc123d", today_date);
 
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --schema zerv-calver --patch 5 --output-format semver",
+            "version --source stdin --schema calver --patch 5 --output-format semver",
             zerv_ron,
         );
         assert_eq!(output, expected);
@@ -250,7 +251,7 @@ mod schema_override_combinations {
 
         // This should override core component 0 (major) to 3
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --schema zerv-standard --core 0=3 --output-format semver",
+            "version --source stdin --schema standard --core 0=3 --output-format semver",
             zerv_ron,
         );
         assert_eq!(output, "3.1.0+feature.test.branch.5.abc123d");
@@ -299,7 +300,7 @@ mod template_override_combinations {
 
         // Test sanitize helper with overridden values
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --bumped-branch 'feature/test' --output-template '{{sanitize bumped_branch preset=\"dotted\"}}'",
+            "version --source stdin --bumped-branch 'feature/test' --output-template '{{ sanitize(value=bumped_branch, preset=\"dotted\") }}'",
             zerv_ron,
         );
         assert_eq!(output, "feature.test");
@@ -311,7 +312,7 @@ mod template_override_combinations {
 
         // Test hash helper with overridden branch name
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --bumped-branch 'feature/very-long-branch-name-for-testing' --output-template '{{hash bumped_branch}}'",
+            "version --source stdin --bumped-branch 'feature/very-long-branch-name-for-testing' --output-template '{{ hash(value=bumped_branch) }}'",
             zerv_ron,
         );
 
@@ -375,7 +376,7 @@ mod error_scenarios {
 
         // Test template with invalid custom variable reference - this succeeds but outputs empty string
         let output = TestCommand::run_with_stdin(
-            "version --source stdin --custom '{}' --output-template '{{custom.nonexistent}}'",
+            "version --source stdin --custom '{}' --output-template '{{ custom.nonexistent | default(value=\"\") }}'",
             zerv_ron,
         );
         assert_eq!(output, ""); // Missing custom variables render as empty strings

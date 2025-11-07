@@ -149,7 +149,7 @@ impl DockerGit {
         };
 
         if let Some(id) = container_id {
-            let _ = Command::new("docker").args(["rm", "-f", &id]).output(); // Ignore errors during cleanup
+            let _ = Command::new("docker").args(["rm", "-fv", &id]).output(); // Ignore errors during cleanup
         }
 
         Ok(())

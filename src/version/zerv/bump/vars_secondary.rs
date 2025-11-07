@@ -19,9 +19,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             self.vars.post = Some(self.vars.post.unwrap_or(0) + increment as u64);
             self.reset_lower_precedence_components(&Precedence::Post)?;
         }
@@ -40,9 +38,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             self.vars.dev = Some(self.vars.dev.unwrap_or(0) + increment as u64);
             self.reset_lower_precedence_components(&Precedence::Dev)?;
         }
@@ -98,9 +94,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             if let Some(ref mut pre_release) = self.vars.pre_release {
                 pre_release.number = Some(pre_release.number.unwrap_or(0) + increment as u64);
                 self.reset_lower_precedence_components(&Precedence::PreReleaseNum)?;
@@ -128,9 +122,7 @@ impl Zerv {
         }
 
         // 2. Bump + Reset step (atomic operation)
-        if let Some(increment) = bump_value
-            && increment > 0
-        {
+        if let Some(increment) = bump_value {
             self.vars.epoch = Some(self.vars.epoch.unwrap_or(0) + increment as u64);
             self.reset_lower_precedence_components(&Precedence::Epoch)?;
         }
@@ -143,6 +135,7 @@ impl Zerv {
 mod tests {
     use rstest::*;
 
+    use crate::schema::ZervSchemaPreset;
     use crate::test_utils::VersionArgsFixture;
     use crate::test_utils::zerv::ZervFixture;
     use crate::version::semver::SemVer;
@@ -158,8 +151,8 @@ mod tests {
     #[case("1.0.0", Some(2), Some(1), "1.0.0-post.3")]
     // No operation tests
     #[case("1.2.3", None, None, "1.2.3")]
-    // Bump with 0 - should be no-op (no reset logic applied)
-    #[case("1.2.3", None, Some(0), "1.2.3")]
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
+    #[case("1.2.3", None, Some(0), "1.2.3-post.0")]
     fn test_process_post(
         #[case] starting_version: &str,
         #[case] override_value: Option<u32>,
@@ -167,7 +160,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_standard_tier_2()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostContext)
             .build();
         zerv.process_post(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -185,8 +178,8 @@ mod tests {
     #[case("1.0.0", Some(1), Some(2), "1.0.0-dev.3")]
     // No operation tests
     #[case("1.2.3", None, None, "1.2.3")]
-    // Bump with 0 - should be no-op (no reset logic applied)
-    #[case("1.2.3", None, Some(0), "1.2.3")]
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
+    #[case("1.2.3", None, Some(0), "1.2.3-dev.0")]
     fn test_process_dev(
         #[case] starting_version: &str,
         #[case] override_value: Option<u32>,
@@ -194,7 +187,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_standard_tier_3()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_dev(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -212,8 +205,8 @@ mod tests {
     #[case("1.0.0", Some(1), Some(2), "0.0.0-epoch.3")]
     // No operation tests
     #[case("1.2.3", None, None, "1.2.3")]
-    // Bump with 0 - should be no-op (no reset logic applied)
-    #[case("1.2.3", None, Some(0), "1.2.3")]
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
+    #[case("1.2.3", None, Some(0), "0.0.0-epoch.0")]
     fn test_process_epoch(
         #[case] starting_version: &str,
         #[case] override_value: Option<u32>,
@@ -221,7 +214,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_standard_tier_3()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_epoch(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -246,7 +239,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_standard_tier_3()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         let mut args_fixture = VersionArgsFixture::new();
         if let Some(label) = override_label {
@@ -276,7 +269,7 @@ mod tests {
     #[case("1.0.0-alpha.1", Some(3), Some(2), "1.0.0-alpha.5")]
     // No operation tests
     #[case("1.2.3-alpha.1", None, None, "1.2.3-alpha.1")]
-    // Bump with 0 - should be no-op (no reset logic applied)
+    // Bump with 0 - should apply reset logic (adds 0 but resets lower components)
     #[case("1.2.3-alpha.1", None, Some(0), "1.2.3-alpha.1")]
     fn test_process_pre_release_num(
         #[case] starting_version: &str,
@@ -285,7 +278,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_standard_tier_3()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_pre_release_num(override_value, bump_increment)
             .unwrap();
@@ -295,20 +288,24 @@ mod tests {
 
     #[test]
     fn test_bump_pre_release_label_invalid() {
-        let mut zerv = ZervFixture::from_semver_str("1.0.0").build();
         let args = VersionArgsFixture::new()
             .with_bump_pre_release_label("invalid")
             .build();
         let dummy_zerv = crate::test_utils::zerv::ZervFixture::new().build();
-        let resolved_args =
-            crate::cli::version::args::ResolvedArgs::resolve(&args, &dummy_zerv).unwrap();
-        let result = zerv.process_pre_release_label(&resolved_args);
-        assert!(result.is_err());
+
+        // Template validation now catches invalid pre-release labels at resolution stage
+        let resolved_result = crate::cli::version::args::ResolvedArgs::resolve(&args, &dummy_zerv);
+        assert!(resolved_result.is_err());
         assert!(
-            result
+            resolved_result
                 .unwrap_err()
                 .to_string()
-                .contains("Invalid pre-release label")
+                .contains("Template resolved to invalid pre-release label")
         );
+
+        // If we were to continue processing (which we won't because resolution failed),
+        // the processing would also fail
+        // let result = zerv.process_pre_release_label(&resolved_args);
+        // assert!(result.is_err());
     }
 }

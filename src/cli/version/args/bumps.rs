@@ -1,7 +1,6 @@
 use clap::Parser;
 
 use crate::cli::utils::template::Template;
-use crate::utils::constants::pre_release_labels;
 
 /// Bump configuration for field-based and schema-based version bumping
 #[derive(Parser, Default, Debug)]
@@ -37,10 +36,12 @@ pub struct BumpsConfig {
     #[arg(long, help = "Add to epoch number (default: 1)")]
     pub bump_epoch: Option<Option<Template<u32>>>,
 
-    /// Bump pre-release label (alpha, beta, rc) and reset number to 0
-    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(pre_release_labels::VALID_LABELS),
-          help = "Bump pre-release label (alpha, beta, rc) and reset number to 0")]
-    pub bump_pre_release_label: Option<String>,
+    /// Bump pre-release label (alpha, beta, rc, none, null) and reset number to 0
+    #[arg(
+        long,
+        help = "Bump pre-release label (alpha, beta, rc, none, null) and reset number to 0. Supports templates like '{{{{#if (eq bumped_branch \"release\")}}}}rc{{{{else}}alpha{{{{/if}}}}'"
+    )]
+    pub bump_pre_release_label: Option<Template<String>>,
 
     // ============================================================================
     // SCHEMA-BASED BUMP OPTIONS

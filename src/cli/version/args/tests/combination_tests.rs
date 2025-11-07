@@ -1,6 +1,7 @@
 use clap::Parser;
 
 use super::super::*;
+use crate::cli::utils::template::Template;
 use crate::test_utils::VersionArgsFixture;
 use crate::utils::constants::{
     formats,
@@ -10,11 +11,11 @@ use crate::utils::constants::{
 #[test]
 fn test_version_args_defaults() {
     let args = VersionArgs::try_parse_from(["version"]).unwrap();
-    assert_eq!(args.main.source, sources::GIT);
+    assert_eq!(args.input.source, sources::GIT);
     assert!(args.main.schema.is_none());
     assert!(args.main.schema_ron.is_none());
-    assert_eq!(args.main.input_format, formats::AUTO);
-    assert_eq!(args.main.output_format, formats::SEMVER);
+    assert_eq!(args.input.input_format, formats::AUTO);
+    assert_eq!(args.output.output_format, formats::SEMVER);
 
     // VCS override options should be None/false by default
     assert!(args.overrides.tag_version.is_none());
@@ -52,8 +53,8 @@ fn test_version_args_defaults() {
     assert!(!args.bumps.no_bump_context);
 
     // Output options should be None by default
-    assert!(args.main.output_template.is_none());
-    assert!(args.main.output_prefix.is_none());
+    assert!(args.output.output_template.is_none());
+    assert!(args.output.output_prefix.is_none());
 }
 
 #[test]
@@ -89,8 +90,8 @@ fn test_version_args_with_overrides() {
         args.overrides.bumped_commit_hash,
         Some("abc123".to_string())
     );
-    assert_eq!(args.main.input_format, formats::SEMVER);
-    assert_eq!(args.main.output_prefix, Some("version:".to_string()));
+    assert_eq!(args.input.input_format, formats::SEMVER);
+    assert_eq!(args.output.output_prefix, Some("version:".to_string()));
 }
 
 #[test]
@@ -279,8 +280,8 @@ fn test_context_control_all_scenarios() {
 #[test]
 fn test_version_args_fixture() {
     let args = VersionArgsFixture::new().build();
-    assert_eq!(args.main.source, sources::GIT);
-    assert_eq!(args.main.output_format, formats::SEMVER);
+    assert_eq!(args.input.source, sources::GIT);
+    assert_eq!(args.output.output_format, formats::SEMVER);
 
     let args_with_overrides = VersionArgsFixture::new()
         .with_tag_version("v2.0.0")
@@ -333,7 +334,10 @@ fn test_validate_pre_release_flags_no_conflict() {
     let mut args = VersionArgsFixture::new()
         .with_pre_release_label("alpha")
         .build();
-    assert_eq!(args.overrides.pre_release_label, Some("alpha".to_string()));
+    assert_eq!(
+        args.overrides.pre_release_label,
+        Some(Template::new("alpha".to_string()))
+    );
     assert_eq!(args.bumps.bump_pre_release_label, None);
     assert!(args.validate().is_ok());
 
@@ -341,6 +345,9 @@ fn test_validate_pre_release_flags_no_conflict() {
         .with_bump_pre_release_label("beta")
         .build();
     assert_eq!(args.overrides.pre_release_label, None);
-    assert_eq!(args.bumps.bump_pre_release_label, Some("beta".to_string()));
+    assert_eq!(
+        args.bumps.bump_pre_release_label,
+        Some(Template::new("beta".to_string()))
+    );
     assert!(args.validate().is_ok());
 }

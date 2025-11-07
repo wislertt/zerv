@@ -4,6 +4,7 @@ use super::{
     ZervSchemaFixture,
     ZervVarsFixture,
 };
+use crate::schema::ZervSchemaPreset;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
 use crate::version::zerv::{
@@ -145,39 +146,9 @@ impl ZervFixture {
         self
     }
 
-    /// Use standard tier 1 schema (major.minor.patch) - chainable
-    pub fn with_standard_tier_1(mut self) -> Self {
-        self.zerv.schema = ZervSchemaFixture::standard_tier_1().build();
-        self
-    }
-
-    /// Use standard tier 2 schema (with build metadata) - chainable
-    pub fn with_standard_tier_2(mut self) -> Self {
-        self.zerv.schema = ZervSchemaFixture::standard_tier_2().build();
-        self
-    }
-
-    /// Use standard tier 3 schema (with dev components) - chainable
-    pub fn with_standard_tier_3(mut self) -> Self {
-        self.zerv.schema = ZervSchemaFixture::standard_tier_3().build();
-        self
-    }
-
-    /// Use calver tier 1 schema - chainable
-    pub fn with_calver_tier_1(mut self) -> Self {
-        self.zerv.schema = ZervSchemaFixture::calver_tier_1().build();
-        self
-    }
-
-    /// Use calver tier 2 schema - chainable
-    pub fn with_calver_tier_2(mut self) -> Self {
-        self.zerv.schema = ZervSchemaFixture::calver_tier_2().build();
-        self
-    }
-
-    /// Use calver tier 3 schema - chainable
-    pub fn with_calver_tier_3(mut self) -> Self {
-        self.zerv.schema = ZervSchemaFixture::calver_tier_3().build();
+    /// Use schema preset - chainable
+    pub fn with_schema_preset(mut self, schema: ZervSchemaPreset) -> Self {
+        self.zerv.schema = ZervSchemaFixture::from_preset(schema).build();
         self
     }
 
@@ -314,9 +285,15 @@ mod tests {
 
     #[test]
     fn test_schema_presets() {
-        let tier1 = ZervFixture::new().with_standard_tier_1().build();
-        let tier2 = ZervFixture::new().with_standard_tier_2().build();
-        let tier3 = ZervFixture::new().with_standard_tier_3().build();
+        let tier1 = ZervFixture::new()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePost)
+            .build();
+        let tier2 = ZervFixture::new()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostContext)
+            .build();
+        let tier3 = ZervFixture::new()
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
+            .build();
 
         // All should have core components
         assert_eq!(tier1.schema.core().len(), 3);

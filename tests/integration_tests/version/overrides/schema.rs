@@ -2,6 +2,7 @@ use rstest::{
     fixture,
     rstest,
 };
+use zerv::schema::ZervSchemaPreset;
 use zerv::test_utils::ZervFixture;
 
 use crate::util::TestCommand;
@@ -11,7 +12,7 @@ fn standard_tier1_fixture() -> ZervFixture {
     ZervFixture::new()
         .with_version(1, 2, 3)
         .with_vcs_data(Some(5), Some(true), None, None, None, None, None)
-        .with_standard_tier_1()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePost)
 }
 
 #[fixture]
@@ -27,7 +28,7 @@ fn standard_tier2_fixture() -> ZervFixture {
             None,
             None,
         )
-        .with_standard_tier_2()
+        .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostContext)
 }
 
 mod core_overrides {
@@ -80,7 +81,7 @@ mod core_overrides {
     fn test_core_override_with_output_format_zerv() {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
-            .with_standard_tier_1();
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease);
         let zerv_ron = fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
@@ -159,7 +160,7 @@ mod extra_core_overrides {
     fn test_extra_core_override_with_zerv_format() {
         let fixture = ZervFixture::new()
             .with_version(1, 2, 3)
-            .with_standard_tier_1();
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrerelease);
         let zerv_ron = fixture.build().to_string();
 
         let output = TestCommand::run_with_stdin(
