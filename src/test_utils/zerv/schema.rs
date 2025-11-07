@@ -50,21 +50,21 @@ impl ZervSchemaFixture {
     /// Create calver tier 1 schema
     pub fn calver_tier_1() -> Self {
         Self {
-            schema: ZervSchema::zerv_calver_tier_1(),
+            schema: VersionSchema::CalverBasePrerelease.schema(),
         }
     }
 
     /// Create calver tier 2 schema
     pub fn calver_tier_2() -> Self {
         Self {
-            schema: ZervSchema::zerv_calver_tier_2(),
+            schema: VersionSchema::CalverBasePrereleasePostContext.schema(),
         }
     }
 
     /// Create calver tier 3 schema
     pub fn calver_tier_3() -> Self {
         Self {
-            schema: ZervSchema::zerv_calver_tier_3(),
+            schema: VersionSchema::CalverBasePrereleasePostDevContext.schema(),
         }
     }
 

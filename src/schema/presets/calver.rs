@@ -5,21 +5,6 @@ use crate::version::zerv::{
 };
 
 impl ZervSchema {
-    // Tier 1: Tagged, clean - YYYY-MM-DD-PATCH
-    pub fn zerv_calver_tier_1() -> Self {
-        VersionSchema::CalverBasePrerelease.schema()
-    }
-
-    // Tier 2: Distance, clean - YYYY-MM-DD-PATCH.post<distance>+branch.<commit>
-    pub fn zerv_calver_tier_2() -> Self {
-        VersionSchema::CalverBasePrereleasePostContext.schema()
-    }
-
-    // Tier 3: Dirty - YYYY-MM-DD-PATCH.dev<timestamp>+branch.<distance>.<commit>
-    pub fn zerv_calver_tier_3() -> Self {
-        VersionSchema::CalverBasePrereleasePostDevContext.schema()
-    }
-
     pub fn get_calver_schema(vars: &ZervVars) -> Self {
         VersionSchema::Calver.schema_with_zerv(vars)
     }

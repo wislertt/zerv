@@ -113,10 +113,15 @@ Since the smart schema system is complete and all tests use the new system, we c
 #### Step 2: Remove CalVer Tier Methods
 
 **Target**: `src/schema/presets/calver.rs`
+**Status**: ✅ **COMPLETE**
 **Actions:**
 
-- Remove `zerv_calver_tier_1()`, `zerv_calver_tier_2()`, `zerv_calver_tier_3()` methods
-- Update any direct usage in tests to use new schema variants
+- ✅ Remove `zerv_calver_tier_1()`, `zerv_calver_tier_2()`, `zerv_calver_tier_3()` methods
+- ✅ Update test fixtures to use new schema variants:
+    - `calver_tier_1()` → `VersionSchema::CalverBasePrerelease.schema()`
+    - `calver_tier_2()` → `VersionSchema::CalverBasePrereleasePostContext.schema()`
+    - `calver_tier_3()` → `VersionSchema::CalverBasePrereleasePostDevContext.schema()`
+- ✅ All 2261 tests passing
 
 #### Step 3: Update Test Fixtures
 
