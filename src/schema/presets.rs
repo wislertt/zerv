@@ -1,16 +1,17 @@
 use std::str::FromStr;
 
 use crate::error::ZervError;
-use crate::utils::constants::timestamp_patterns;
 use crate::version::zerv::{
-    Component,
-    Var,
     ZervSchema,
     ZervVars,
 };
 
 mod schema_preset_components {
-    use super::*;
+    use crate::utils::constants::timestamp_patterns;
+    use crate::version::zerv::{
+        Component,
+        Var,
+    };
 
     pub fn standard_core() -> Vec<Component> {
         vec![
@@ -325,43 +326,61 @@ impl FromStr for ZervSchemaPreset {
     type Err = ZervError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use crate::schema::presets::schema_preset_names::*;
-
         match s {
             // Standard Schema Family
-            STANDARD => Ok(ZervSchemaPreset::Standard),
-            STANDARD_NO_CONTEXT => Ok(ZervSchemaPreset::StandardNoContext),
-            STANDARD_BASE => Ok(ZervSchemaPreset::StandardBase),
-            STANDARD_BASE_PRERELEASE => Ok(ZervSchemaPreset::StandardBasePrerelease),
-            STANDARD_BASE_PRERELEASE_POST => Ok(ZervSchemaPreset::StandardBasePrereleasePost),
-            STANDARD_BASE_PRERELEASE_POST_DEV => {
+            self::schema_preset_names::STANDARD => Ok(ZervSchemaPreset::Standard),
+            self::schema_preset_names::STANDARD_NO_CONTEXT => {
+                Ok(ZervSchemaPreset::StandardNoContext)
+            }
+            self::schema_preset_names::STANDARD_BASE => Ok(ZervSchemaPreset::StandardBase),
+            self::schema_preset_names::STANDARD_BASE_PRERELEASE => {
+                Ok(ZervSchemaPreset::StandardBasePrerelease)
+            }
+            self::schema_preset_names::STANDARD_BASE_PRERELEASE_POST => {
+                Ok(ZervSchemaPreset::StandardBasePrereleasePost)
+            }
+            self::schema_preset_names::STANDARD_BASE_PRERELEASE_POST_DEV => {
                 Ok(ZervSchemaPreset::StandardBasePrereleasePostDev)
             }
-            STANDARD_BASE_CONTEXT => Ok(ZervSchemaPreset::StandardBaseContext),
-            STANDARD_BASE_PRERELEASE_CONTEXT => Ok(ZervSchemaPreset::StandardBasePrereleaseContext),
-            STANDARD_BASE_PRERELEASE_POST_CONTEXT => {
+            self::schema_preset_names::STANDARD_BASE_CONTEXT => {
+                Ok(ZervSchemaPreset::StandardBaseContext)
+            }
+            self::schema_preset_names::STANDARD_BASE_PRERELEASE_CONTEXT => {
+                Ok(ZervSchemaPreset::StandardBasePrereleaseContext)
+            }
+            self::schema_preset_names::STANDARD_BASE_PRERELEASE_POST_CONTEXT => {
                 Ok(ZervSchemaPreset::StandardBasePrereleasePostContext)
             }
-            STANDARD_BASE_PRERELEASE_POST_DEV_CONTEXT => {
+            self::schema_preset_names::STANDARD_BASE_PRERELEASE_POST_DEV_CONTEXT => {
                 Ok(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             }
-            STANDARD_CONTEXT => Ok(ZervSchemaPreset::StandardContext),
+            self::schema_preset_names::STANDARD_CONTEXT => Ok(ZervSchemaPreset::StandardContext),
 
-            CALVER => Ok(ZervSchemaPreset::Calver),
-            CALVER_NO_CONTEXT => Ok(ZervSchemaPreset::CalverNoContext),
-            CALVER_BASE => Ok(ZervSchemaPreset::CalverBase),
-            CALVER_BASE_PRERELEASE => Ok(ZervSchemaPreset::CalverBasePrerelease),
-            CALVER_BASE_PRERELEASE_POST => Ok(ZervSchemaPreset::CalverBasePrereleasePost),
-            CALVER_BASE_PRERELEASE_POST_DEV => Ok(ZervSchemaPreset::CalverBasePrereleasePostDev),
-            CALVER_BASE_CONTEXT => Ok(ZervSchemaPreset::CalverBaseContext),
-            CALVER_BASE_PRERELEASE_CONTEXT => Ok(ZervSchemaPreset::CalverBasePrereleaseContext),
-            CALVER_BASE_PRERELEASE_POST_CONTEXT => {
+            self::schema_preset_names::CALVER => Ok(ZervSchemaPreset::Calver),
+            self::schema_preset_names::CALVER_NO_CONTEXT => Ok(ZervSchemaPreset::CalverNoContext),
+            self::schema_preset_names::CALVER_BASE => Ok(ZervSchemaPreset::CalverBase),
+            self::schema_preset_names::CALVER_BASE_PRERELEASE => {
+                Ok(ZervSchemaPreset::CalverBasePrerelease)
+            }
+            self::schema_preset_names::CALVER_BASE_PRERELEASE_POST => {
+                Ok(ZervSchemaPreset::CalverBasePrereleasePost)
+            }
+            self::schema_preset_names::CALVER_BASE_PRERELEASE_POST_DEV => {
+                Ok(ZervSchemaPreset::CalverBasePrereleasePostDev)
+            }
+            self::schema_preset_names::CALVER_BASE_CONTEXT => {
+                Ok(ZervSchemaPreset::CalverBaseContext)
+            }
+            self::schema_preset_names::CALVER_BASE_PRERELEASE_CONTEXT => {
+                Ok(ZervSchemaPreset::CalverBasePrereleaseContext)
+            }
+            self::schema_preset_names::CALVER_BASE_PRERELEASE_POST_CONTEXT => {
                 Ok(ZervSchemaPreset::CalverBasePrereleasePostContext)
             }
-            CALVER_BASE_PRERELEASE_POST_DEV_CONTEXT => {
+            self::schema_preset_names::CALVER_BASE_PRERELEASE_POST_DEV_CONTEXT => {
                 Ok(ZervSchemaPreset::CalverBasePrereleasePostDevContext)
             }
-            CALVER_CONTEXT => Ok(ZervSchemaPreset::CalverContext),
+            self::schema_preset_names::CALVER_CONTEXT => Ok(ZervSchemaPreset::CalverContext),
 
             _ => Err(ZervError::UnknownSchema(s.to_string())),
         }
@@ -370,13 +389,12 @@ impl FromStr for ZervSchemaPreset {
 
 #[cfg(test)]
 mod tests {
+    use super::schema_preset_names::*;
     use super::*;
     use crate::version::zerv::ZervVars;
 
     #[test]
     fn test_version_schema_parsing() {
-        use crate::schema::presets::schema_preset_names::*;
-
         assert_eq!(
             STANDARD.parse::<ZervSchemaPreset>().unwrap(),
             ZervSchemaPreset::Standard
@@ -435,8 +453,6 @@ mod tests {
 
     #[test]
     fn test_all_standard_schema_variants() {
-        use crate::schema::presets::schema_preset_names::*;
-
         let vars = ZervVars::default();
 
         let schemas = [
@@ -467,8 +483,6 @@ mod tests {
 
     #[test]
     fn test_all_calver_schema_variants() {
-        use crate::schema::presets::schema_preset_names::*;
-
         let vars = ZervVars::default();
 
         let schemas = [
@@ -499,8 +513,6 @@ mod tests {
 
     #[test]
     fn test_context_vs_non_context_schemas() {
-        use crate::schema::presets::schema_preset_names::*;
-
         let base_schema = STANDARD_BASE.parse::<ZervSchemaPreset>().unwrap().schema();
         let base_context_schema = STANDARD_BASE_CONTEXT
             .parse::<ZervSchemaPreset>()
