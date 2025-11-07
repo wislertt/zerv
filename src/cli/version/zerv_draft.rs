@@ -4,9 +4,8 @@ use crate::cli::version::args::{
 };
 use crate::error::ZervError;
 use crate::schema::{
-    get_preset_schema,
+    VersionSchema,
     parse_ron_schema,
-    schema_names,
 };
 use crate::version::zerv::{
     Zerv,
@@ -56,13 +55,10 @@ impl ZervDraft {
             (None, Some(ron_str)) => parse_ron_schema(ron_str),
 
             // Built-in schema
-            (Some(name), None) => {
-                if let Some(schema) = get_preset_schema(name, vars) {
-                    Ok(schema)
-                } else {
-                    Err(ZervError::UnknownSchema(name.to_string()))
-                }
-            }
+            (Some(name), None) => match name.parse::<VersionSchema>() {
+                Ok(schema) => Ok(schema.schema_with_zerv(vars)),
+                Err(_) => Err(ZervError::UnknownSchema(name.to_string())),
+            },
 
             // Error cases
             (Some(_), Some(_)) => Err(ZervError::ConflictingSchemas(
@@ -73,7 +69,7 @@ impl ZervDraft {
                 if let Some(existing_schema) = existing_schema {
                     Ok(existing_schema)
                 } else {
-                    Ok(get_preset_schema(schema_names::STANDARD, vars).unwrap())
+                    Ok(VersionSchema::Standard.schema_with_zerv(vars))
                 }
             }
         }
@@ -98,6 +94,7 @@ mod tests {
         OverridesConfig,
         VersionArgs,
     };
+    use crate::schema::schema_names;
     use crate::version::zerv::bump::precedence::PrecedenceOrder;
     use crate::version::zerv::{
         Component,
