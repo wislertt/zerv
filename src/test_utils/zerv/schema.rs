@@ -1,3 +1,4 @@
+use crate::schema::VersionSchema;
 use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::{
     Component,
@@ -11,10 +12,10 @@ pub struct ZervSchemaFixture {
 }
 
 impl ZervSchemaFixture {
-    /// Create a new fixture with standard tier 1 schema (major.minor.patch)
+    /// Create a new fixture with standard base schema (major.minor.patch)
     pub fn new() -> Self {
         Self {
-            schema: ZervSchema::zerv_standard_tier_1(),
+            schema: VersionSchema::StandardBasePrereleasePost.schema(),
         }
     }
 
@@ -42,7 +43,7 @@ impl ZervSchemaFixture {
     /// Create standard tier 3 schema (with dev components)
     pub fn standard_tier_3() -> Self {
         Self {
-            schema: ZervSchema::zerv_standard_tier_3(),
+            schema: VersionSchema::StandardBasePrereleasePostDevContext.schema(),
         }
     }
 
