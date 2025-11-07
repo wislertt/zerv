@@ -69,7 +69,7 @@ impl Zerv {
 mod tests {
     use rstest::*;
 
-    use crate::schema::VersionSchema;
+    use crate::schema::ZervSchemaPreset;
     use crate::test_utils::types::{
         BumpType,
         OverrideType,
@@ -98,7 +98,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         let args = VersionArgsFixture::new().with_bump_specs(bumps).build();
 
@@ -130,7 +130,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         let args = VersionArgsFixture::new()
             .with_bump_specs(bumps)
@@ -164,7 +164,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         let args = VersionArgsFixture::new()
             .with_override_specs(overrides)
@@ -225,7 +225,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)  // Schema: [major, minor, patch]
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)  // Schema: [major, minor, patch]
             .build();
 
         let args = VersionArgsFixture::new().with_bump_specs(bumps).build();

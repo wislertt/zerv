@@ -9,7 +9,7 @@ use crate::version::zerv::{
     ZervVars,
 };
 
-mod components {
+mod schema_preset_components {
     use super::*;
 
     pub fn standard_core() -> Vec<Component> {
@@ -71,7 +71,7 @@ mod components {
     }
 }
 
-pub mod schema_names {
+pub mod schema_preset_names {
     pub const STANDARD: &str = "standard";
     pub const STANDARD_NO_CONTEXT: &str = "standard-no-context";
     pub const STANDARD_BASE: &str = "standard-base";
@@ -100,7 +100,7 @@ pub mod schema_names {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum VersionSchema {
+pub enum ZervSchemaPreset {
     Standard,
     StandardNoContext,
     StandardBase,
@@ -126,43 +126,45 @@ pub enum VersionSchema {
     CalverContext,
 }
 
-impl VersionSchema {
+impl ZervSchemaPreset {
     pub fn schema(&self) -> ZervSchema {
         match self {
-            VersionSchema::StandardBase => self.standard_base_schema(false),
-            VersionSchema::StandardBasePrerelease => self.standard_base_prerelease_schema(false),
-            VersionSchema::StandardBasePrereleasePost => {
+            ZervSchemaPreset::StandardBase => self.standard_base_schema(false),
+            ZervSchemaPreset::StandardBasePrerelease => self.standard_base_prerelease_schema(false),
+            ZervSchemaPreset::StandardBasePrereleasePost => {
                 self.standard_base_prerelease_post_schema(false)
             }
-            VersionSchema::StandardBasePrereleasePostDev => {
+            ZervSchemaPreset::StandardBasePrereleasePostDev => {
                 self.standard_base_prerelease_post_dev_schema(false)
             }
-            VersionSchema::StandardBaseContext => self.standard_base_schema(true),
-            VersionSchema::StandardBasePrereleaseContext => {
+            ZervSchemaPreset::StandardBaseContext => self.standard_base_schema(true),
+            ZervSchemaPreset::StandardBasePrereleaseContext => {
                 self.standard_base_prerelease_schema(true)
             }
-            VersionSchema::StandardBasePrereleasePostContext => {
+            ZervSchemaPreset::StandardBasePrereleasePostContext => {
                 self.standard_base_prerelease_post_schema(true)
             }
-            VersionSchema::StandardBasePrereleasePostDevContext => {
+            ZervSchemaPreset::StandardBasePrereleasePostDevContext => {
                 self.standard_base_prerelease_post_dev_schema(true)
             }
 
             // CalVer Schema Family - Fixed Variants
-            VersionSchema::CalverBase => self.calver_base_schema(false),
-            VersionSchema::CalverBasePrerelease => self.calver_base_prerelease_schema(false),
-            VersionSchema::CalverBasePrereleasePost => {
+            ZervSchemaPreset::CalverBase => self.calver_base_schema(false),
+            ZervSchemaPreset::CalverBasePrerelease => self.calver_base_prerelease_schema(false),
+            ZervSchemaPreset::CalverBasePrereleasePost => {
                 self.calver_base_prerelease_post_schema(false)
             }
-            VersionSchema::CalverBasePrereleasePostDev => {
+            ZervSchemaPreset::CalverBasePrereleasePostDev => {
                 self.calver_base_prerelease_post_dev_schema(false)
             }
-            VersionSchema::CalverBaseContext => self.calver_base_schema(true),
-            VersionSchema::CalverBasePrereleaseContext => self.calver_base_prerelease_schema(true),
-            VersionSchema::CalverBasePrereleasePostContext => {
+            ZervSchemaPreset::CalverBaseContext => self.calver_base_schema(true),
+            ZervSchemaPreset::CalverBasePrereleaseContext => {
+                self.calver_base_prerelease_schema(true)
+            }
+            ZervSchemaPreset::CalverBasePrereleasePostContext => {
                 self.calver_base_prerelease_post_schema(true)
             }
-            VersionSchema::CalverBasePrereleasePostDevContext => {
+            ZervSchemaPreset::CalverBasePrereleasePostDevContext => {
                 self.calver_base_prerelease_post_dev_schema(true)
             }
 
@@ -174,19 +176,21 @@ impl VersionSchema {
 
     pub fn schema_with_zerv(&self, vars: &ZervVars) -> ZervSchema {
         match self {
-            VersionSchema::Standard => {
+            ZervSchemaPreset::Standard => {
                 self.with_smart_build_context(self.smart_standard_schema(vars), vars)
             }
-            VersionSchema::StandardNoContext => self.smart_standard_schema(vars),
-            VersionSchema::StandardContext => {
+            ZervSchemaPreset::StandardNoContext => self.smart_standard_schema(vars),
+            ZervSchemaPreset::StandardContext => {
                 self.with_build_context(self.smart_standard_schema(vars))
             }
 
-            VersionSchema::Calver => {
+            ZervSchemaPreset::Calver => {
                 self.with_smart_build_context(self.smart_calver_schema(vars), vars)
             }
-            VersionSchema::CalverNoContext => self.smart_calver_schema(vars),
-            VersionSchema::CalverContext => self.with_build_context(self.smart_calver_schema(vars)),
+            ZervSchemaPreset::CalverNoContext => self.smart_calver_schema(vars),
+            ZervSchemaPreset::CalverContext => {
+                self.with_build_context(self.smart_calver_schema(vars))
+            }
 
             fixed_schema => fixed_schema.schema(),
         }
@@ -222,9 +226,9 @@ impl VersionSchema {
 
     fn standard_base_schema(&self, with_context: bool) -> ZervSchema {
         ZervSchema::new_with_precedence(
-            components::standard_core(),
-            components::epoch_extra_core(),
-            components::build_if_enabled(with_context),
+            schema_preset_components::standard_core(),
+            schema_preset_components::epoch_extra_core(),
+            schema_preset_components::build_if_enabled(with_context),
             Default::default(),
         )
         .unwrap()
@@ -232,9 +236,9 @@ impl VersionSchema {
 
     fn standard_base_prerelease_schema(&self, with_context: bool) -> ZervSchema {
         ZervSchema::new_with_precedence(
-            components::standard_core(),
-            components::prerelease_core(),
-            components::build_if_enabled(with_context),
+            schema_preset_components::standard_core(),
+            schema_preset_components::prerelease_core(),
+            schema_preset_components::build_if_enabled(with_context),
             Default::default(),
         )
         .unwrap()
@@ -242,9 +246,9 @@ impl VersionSchema {
 
     fn standard_base_prerelease_post_schema(&self, with_context: bool) -> ZervSchema {
         ZervSchema::new_with_precedence(
-            components::standard_core(),
-            components::prerelease_post_core(),
-            components::build_if_enabled(with_context),
+            schema_preset_components::standard_core(),
+            schema_preset_components::prerelease_post_core(),
+            schema_preset_components::build_if_enabled(with_context),
             Default::default(),
         )
         .unwrap()
@@ -252,9 +256,9 @@ impl VersionSchema {
 
     fn standard_base_prerelease_post_dev_schema(&self, with_context: bool) -> ZervSchema {
         ZervSchema::new_with_precedence(
-            components::standard_core(),
-            components::prerelease_post_dev_core(),
-            components::build_if_enabled(with_context),
+            schema_preset_components::standard_core(),
+            schema_preset_components::prerelease_post_dev_core(),
+            schema_preset_components::build_if_enabled(with_context),
             Default::default(),
         )
         .unwrap()
@@ -262,9 +266,9 @@ impl VersionSchema {
 
     fn calver_base_schema(&self, with_context: bool) -> ZervSchema {
         ZervSchema::new_with_precedence(
-            components::calver_core(),
-            components::epoch_extra_core(),
-            components::build_if_enabled(with_context),
+            schema_preset_components::calver_core(),
+            schema_preset_components::epoch_extra_core(),
+            schema_preset_components::build_if_enabled(with_context),
             Default::default(),
         )
         .unwrap()
@@ -272,9 +276,9 @@ impl VersionSchema {
 
     fn calver_base_prerelease_schema(&self, with_context: bool) -> ZervSchema {
         ZervSchema::new_with_precedence(
-            components::calver_core(),
-            components::prerelease_core(),
-            components::build_if_enabled(with_context),
+            schema_preset_components::calver_core(),
+            schema_preset_components::prerelease_core(),
+            schema_preset_components::build_if_enabled(with_context),
             Default::default(),
         )
         .unwrap()
@@ -282,9 +286,9 @@ impl VersionSchema {
 
     fn calver_base_prerelease_post_schema(&self, with_context: bool) -> ZervSchema {
         ZervSchema::new_with_precedence(
-            components::calver_core(),
-            components::prerelease_post_core(),
-            components::build_if_enabled(with_context),
+            schema_preset_components::calver_core(),
+            schema_preset_components::prerelease_post_core(),
+            schema_preset_components::build_if_enabled(with_context),
             Default::default(),
         )
         .unwrap()
@@ -292,9 +296,9 @@ impl VersionSchema {
 
     fn calver_base_prerelease_post_dev_schema(&self, with_context: bool) -> ZervSchema {
         ZervSchema::new_with_precedence(
-            components::calver_core(),
-            components::prerelease_post_dev_core(),
-            components::build_if_enabled(with_context),
+            schema_preset_components::calver_core(),
+            schema_preset_components::prerelease_post_dev_core(),
+            schema_preset_components::build_if_enabled(with_context),
             Default::default(),
         )
         .unwrap()
@@ -302,7 +306,9 @@ impl VersionSchema {
 
     fn with_build_context(&self, schema: ZervSchema) -> ZervSchema {
         let mut result = schema;
-        result.set_build(components::build_context()).unwrap();
+        result
+            .set_build(schema_preset_components::build_context())
+            .unwrap();
         result
     }
 
@@ -315,45 +321,47 @@ impl VersionSchema {
     }
 }
 
-impl FromStr for VersionSchema {
+impl FromStr for ZervSchemaPreset {
     type Err = ZervError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use crate::schema::flexible::schema_names::*;
+        use crate::schema::presets::schema_preset_names::*;
 
         match s {
             // Standard Schema Family
-            STANDARD => Ok(VersionSchema::Standard),
-            STANDARD_NO_CONTEXT => Ok(VersionSchema::StandardNoContext),
-            STANDARD_BASE => Ok(VersionSchema::StandardBase),
-            STANDARD_BASE_PRERELEASE => Ok(VersionSchema::StandardBasePrerelease),
-            STANDARD_BASE_PRERELEASE_POST => Ok(VersionSchema::StandardBasePrereleasePost),
-            STANDARD_BASE_PRERELEASE_POST_DEV => Ok(VersionSchema::StandardBasePrereleasePostDev),
-            STANDARD_BASE_CONTEXT => Ok(VersionSchema::StandardBaseContext),
-            STANDARD_BASE_PRERELEASE_CONTEXT => Ok(VersionSchema::StandardBasePrereleaseContext),
+            STANDARD => Ok(ZervSchemaPreset::Standard),
+            STANDARD_NO_CONTEXT => Ok(ZervSchemaPreset::StandardNoContext),
+            STANDARD_BASE => Ok(ZervSchemaPreset::StandardBase),
+            STANDARD_BASE_PRERELEASE => Ok(ZervSchemaPreset::StandardBasePrerelease),
+            STANDARD_BASE_PRERELEASE_POST => Ok(ZervSchemaPreset::StandardBasePrereleasePost),
+            STANDARD_BASE_PRERELEASE_POST_DEV => {
+                Ok(ZervSchemaPreset::StandardBasePrereleasePostDev)
+            }
+            STANDARD_BASE_CONTEXT => Ok(ZervSchemaPreset::StandardBaseContext),
+            STANDARD_BASE_PRERELEASE_CONTEXT => Ok(ZervSchemaPreset::StandardBasePrereleaseContext),
             STANDARD_BASE_PRERELEASE_POST_CONTEXT => {
-                Ok(VersionSchema::StandardBasePrereleasePostContext)
+                Ok(ZervSchemaPreset::StandardBasePrereleasePostContext)
             }
             STANDARD_BASE_PRERELEASE_POST_DEV_CONTEXT => {
-                Ok(VersionSchema::StandardBasePrereleasePostDevContext)
+                Ok(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             }
-            STANDARD_CONTEXT => Ok(VersionSchema::StandardContext),
+            STANDARD_CONTEXT => Ok(ZervSchemaPreset::StandardContext),
 
-            CALVER => Ok(VersionSchema::Calver),
-            CALVER_NO_CONTEXT => Ok(VersionSchema::CalverNoContext),
-            CALVER_BASE => Ok(VersionSchema::CalverBase),
-            CALVER_BASE_PRERELEASE => Ok(VersionSchema::CalverBasePrerelease),
-            CALVER_BASE_PRERELEASE_POST => Ok(VersionSchema::CalverBasePrereleasePost),
-            CALVER_BASE_PRERELEASE_POST_DEV => Ok(VersionSchema::CalverBasePrereleasePostDev),
-            CALVER_BASE_CONTEXT => Ok(VersionSchema::CalverBaseContext),
-            CALVER_BASE_PRERELEASE_CONTEXT => Ok(VersionSchema::CalverBasePrereleaseContext),
+            CALVER => Ok(ZervSchemaPreset::Calver),
+            CALVER_NO_CONTEXT => Ok(ZervSchemaPreset::CalverNoContext),
+            CALVER_BASE => Ok(ZervSchemaPreset::CalverBase),
+            CALVER_BASE_PRERELEASE => Ok(ZervSchemaPreset::CalverBasePrerelease),
+            CALVER_BASE_PRERELEASE_POST => Ok(ZervSchemaPreset::CalverBasePrereleasePost),
+            CALVER_BASE_PRERELEASE_POST_DEV => Ok(ZervSchemaPreset::CalverBasePrereleasePostDev),
+            CALVER_BASE_CONTEXT => Ok(ZervSchemaPreset::CalverBaseContext),
+            CALVER_BASE_PRERELEASE_CONTEXT => Ok(ZervSchemaPreset::CalverBasePrereleaseContext),
             CALVER_BASE_PRERELEASE_POST_CONTEXT => {
-                Ok(VersionSchema::CalverBasePrereleasePostContext)
+                Ok(ZervSchemaPreset::CalverBasePrereleasePostContext)
             }
             CALVER_BASE_PRERELEASE_POST_DEV_CONTEXT => {
-                Ok(VersionSchema::CalverBasePrereleasePostDevContext)
+                Ok(ZervSchemaPreset::CalverBasePrereleasePostDevContext)
             }
-            CALVER_CONTEXT => Ok(VersionSchema::CalverContext),
+            CALVER_CONTEXT => Ok(ZervSchemaPreset::CalverContext),
 
             _ => Err(ZervError::UnknownSchema(s.to_string())),
         }
@@ -367,32 +375,34 @@ mod tests {
 
     #[test]
     fn test_version_schema_parsing() {
-        use crate::schema::flexible::schema_names::*;
+        use crate::schema::presets::schema_preset_names::*;
 
         assert_eq!(
-            STANDARD.parse::<VersionSchema>().unwrap(),
-            VersionSchema::Standard
+            STANDARD.parse::<ZervSchemaPreset>().unwrap(),
+            ZervSchemaPreset::Standard
         );
         assert_eq!(
-            STANDARD_BASE.parse::<VersionSchema>().unwrap(),
-            VersionSchema::StandardBase
+            STANDARD_BASE.parse::<ZervSchemaPreset>().unwrap(),
+            ZervSchemaPreset::StandardBase
         );
         assert_eq!(
-            STANDARD_BASE_PRERELEASE.parse::<VersionSchema>().unwrap(),
-            VersionSchema::StandardBasePrerelease
+            STANDARD_BASE_PRERELEASE
+                .parse::<ZervSchemaPreset>()
+                .unwrap(),
+            ZervSchemaPreset::StandardBasePrerelease
         );
 
         assert_eq!(
-            CALVER.parse::<VersionSchema>().unwrap(),
-            VersionSchema::Calver
+            CALVER.parse::<ZervSchemaPreset>().unwrap(),
+            ZervSchemaPreset::Calver
         );
         assert_eq!(
-            CALVER_BASE.parse::<VersionSchema>().unwrap(),
-            VersionSchema::CalverBase
+            CALVER_BASE.parse::<ZervSchemaPreset>().unwrap(),
+            ZervSchemaPreset::CalverBase
         );
         assert_eq!(
-            CALVER_BASE_PRERELEASE.parse::<VersionSchema>().unwrap(),
-            VersionSchema::CalverBasePrerelease
+            CALVER_BASE_PRERELEASE.parse::<ZervSchemaPreset>().unwrap(),
+            ZervSchemaPreset::CalverBasePrerelease
         );
     }
 
@@ -414,7 +424,7 @@ mod tests {
             ..Default::default()
         };
 
-        let schema = VersionSchema::Standard;
+        let schema = ZervSchemaPreset::Standard;
 
         let clean_schema = schema.schema_with_zerv(&clean_vars);
         let _distance_schema = schema.schema_with_zerv(&distance_vars);
@@ -425,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_all_standard_schema_variants() {
-        use crate::schema::flexible::schema_names::*;
+        use crate::schema::presets::schema_preset_names::*;
 
         let vars = ZervVars::default();
 
@@ -443,7 +453,7 @@ mod tests {
         ];
 
         for schema_name in schemas.iter() {
-            let schema = schema_name.parse::<VersionSchema>();
+            let schema = schema_name.parse::<ZervSchemaPreset>();
             assert!(schema.is_ok(), "Failed to parse schema: {}", schema_name);
 
             let zerv_schema = schema.unwrap().schema_with_zerv(&vars);
@@ -457,7 +467,7 @@ mod tests {
 
     #[test]
     fn test_all_calver_schema_variants() {
-        use crate::schema::flexible::schema_names::*;
+        use crate::schema::presets::schema_preset_names::*;
 
         let vars = ZervVars::default();
 
@@ -475,7 +485,7 @@ mod tests {
         ];
 
         for schema_name in schemas.iter() {
-            let schema = schema_name.parse::<VersionSchema>();
+            let schema = schema_name.parse::<ZervSchemaPreset>();
             assert!(schema.is_ok(), "Failed to parse schema: {}", schema_name);
 
             let zerv_schema = schema.unwrap().schema_with_zerv(&vars);
@@ -489,11 +499,11 @@ mod tests {
 
     #[test]
     fn test_context_vs_non_context_schemas() {
-        use crate::schema::flexible::schema_names::*;
+        use crate::schema::presets::schema_preset_names::*;
 
-        let base_schema = STANDARD_BASE.parse::<VersionSchema>().unwrap().schema();
+        let base_schema = STANDARD_BASE.parse::<ZervSchemaPreset>().unwrap().schema();
         let base_context_schema = STANDARD_BASE_CONTEXT
-            .parse::<VersionSchema>()
+            .parse::<ZervSchemaPreset>()
             .unwrap()
             .schema();
 
@@ -502,9 +512,9 @@ mod tests {
             "Context schema should have more build components than base schema"
         );
 
-        let calver_base_schema = CALVER_BASE.parse::<VersionSchema>().unwrap().schema();
+        let calver_base_schema = CALVER_BASE.parse::<ZervSchemaPreset>().unwrap().schema();
         let calver_base_context_schema = CALVER_BASE_CONTEXT
-            .parse::<VersionSchema>()
+            .parse::<ZervSchemaPreset>()
             .unwrap()
             .schema();
 

@@ -65,7 +65,7 @@ impl Zerv {
 mod tests {
     use rstest::*;
 
-    use crate::schema::VersionSchema;
+    use crate::schema::ZervSchemaPreset;
     use crate::test_utils::zerv::ZervFixture;
     use crate::version::semver::SemVer;
 
@@ -97,7 +97,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_major(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -130,7 +130,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_minor(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -163,7 +163,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_patch(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();

@@ -1,6 +1,6 @@
 use super::zerv::ZervFixture;
 use super::zerv_common::ZervCommon;
-use crate::schema::VersionSchema;
+use crate::schema::ZervSchemaPreset;
 use crate::version::zerv::{
     Component,
     PreReleaseLabel,
@@ -90,12 +90,12 @@ pub mod from {
 
     // PEP440-specific fixtures only
     pub fn v1_0_0_tier3() -> ZervFixture {
-        v1_0_0().with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+        v1_0_0().with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
     }
 
     pub fn v1_2_3_dev1() -> ZervFixture {
         v1_2_3()
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .with_dev(1)
     }
 
@@ -212,7 +212,7 @@ pub mod from {
 
     pub fn v1_2_3_e2_a1_post1_dev1_local() -> ZervFixture {
         v1_2_3()
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .with_epoch(2)
             .with_pre_release(PreReleaseLabel::Alpha, Some(1))
             .with_post(1)

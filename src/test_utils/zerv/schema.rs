@@ -1,4 +1,4 @@
-use crate::schema::VersionSchema;
+use crate::schema::ZervSchemaPreset;
 use crate::version::zerv::bump::precedence::PrecedenceOrder;
 use crate::version::zerv::{
     Component,
@@ -15,12 +15,12 @@ impl ZervSchemaFixture {
     /// Create a new fixture with standard base schema (major.minor.patch)
     pub fn new() -> Self {
         Self {
-            schema: VersionSchema::StandardBasePrereleasePost.schema(),
+            schema: ZervSchemaPreset::StandardBasePrereleasePost.schema(),
         }
     }
 
-    /// Create a fixture from any VersionSchema preset
-    pub fn from_preset(schema: VersionSchema) -> Self {
+    /// Create a fixture from any ZervSchemaPreset preset
+    pub fn from_preset(schema: ZervSchemaPreset) -> Self {
         Self {
             schema: schema.schema(),
         }
@@ -132,12 +132,12 @@ mod tests {
     #[test]
     fn test_preset_constructors() {
         let tier1 =
-            ZervSchemaFixture::from_preset(VersionSchema::StandardBasePrereleasePost).build();
+            ZervSchemaFixture::from_preset(ZervSchemaPreset::StandardBasePrereleasePost).build();
         let tier2 =
-            ZervSchemaFixture::from_preset(VersionSchema::StandardBasePrereleasePostContext)
+            ZervSchemaFixture::from_preset(ZervSchemaPreset::StandardBasePrereleasePostContext)
                 .build();
         let tier3 =
-            ZervSchemaFixture::from_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            ZervSchemaFixture::from_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
                 .build();
 
         // All should have core components

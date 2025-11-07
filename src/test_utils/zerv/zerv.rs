@@ -4,7 +4,7 @@ use super::{
     ZervSchemaFixture,
     ZervVarsFixture,
 };
-use crate::schema::VersionSchema;
+use crate::schema::ZervSchemaPreset;
 use crate::version::pep440::PEP440;
 use crate::version::semver::SemVer;
 use crate::version::zerv::{
@@ -147,7 +147,7 @@ impl ZervFixture {
     }
 
     /// Use schema preset - chainable
-    pub fn with_schema_preset(mut self, schema: VersionSchema) -> Self {
+    pub fn with_schema_preset(mut self, schema: ZervSchemaPreset) -> Self {
         self.zerv.schema = ZervSchemaFixture::from_preset(schema).build();
         self
     }
@@ -286,13 +286,13 @@ mod tests {
     #[test]
     fn test_schema_presets() {
         let tier1 = ZervFixture::new()
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePost)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePost)
             .build();
         let tier2 = ZervFixture::new()
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostContext)
             .build();
         let tier3 = ZervFixture::new()
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
 
         // All should have core components

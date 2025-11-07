@@ -135,7 +135,7 @@ impl Zerv {
 mod tests {
     use rstest::*;
 
-    use crate::schema::VersionSchema;
+    use crate::schema::ZervSchemaPreset;
     use crate::test_utils::VersionArgsFixture;
     use crate::test_utils::zerv::ZervFixture;
     use crate::version::semver::SemVer;
@@ -160,7 +160,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostContext)
             .build();
         zerv.process_post(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -187,7 +187,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_dev(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -214,7 +214,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_epoch(override_value, bump_increment).unwrap();
         let result_version: SemVer = zerv.into();
@@ -239,7 +239,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         let mut args_fixture = VersionArgsFixture::new();
         if let Some(label) = override_label {
@@ -278,7 +278,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(VersionSchema::StandardBasePrereleasePostDevContext)
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)
             .build();
         zerv.process_pre_release_num(override_value, bump_increment)
             .unwrap();

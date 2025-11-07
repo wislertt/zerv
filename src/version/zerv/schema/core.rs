@@ -203,7 +203,7 @@ mod tests {
         Var,
     };
     use super::ZervSchema;
-    use crate::schema::VersionSchema;
+    use crate::schema::ZervSchemaPreset;
 
     // Test constructors
     #[rstest]
@@ -327,7 +327,7 @@ mod tests {
             vec![],
         ).expect("Failed to create schema")
     )]
-    #[case::standard_tier_1(VersionSchema::StandardBasePrereleasePost.schema())]
+    #[case::standard_tier_1(ZervSchemaPreset::StandardBasePrereleasePost.schema())]
     fn test_to_string_roundtrip(#[case] original: ZervSchema) {
         let ron_string = original.to_string();
         let reconstructed: ZervSchema =
