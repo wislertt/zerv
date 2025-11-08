@@ -57,130 +57,20 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::cli::utils::template::{
-        Template,
-        TemplateExtGeneric,
+    use crate::cli::flow::test_utils::{
+        FlowTestScenario,
+        SchemaTestCase,
+        create_all_standard_schema_test_cases,
+        expect_branch_hash,
+        test_flow_pipeline_with_fixture,
+        test_flow_pipeline_with_schema_test_cases,
     };
     use crate::test_info;
     use crate::test_utils::{
         GitRepoFixture,
         should_run_docker_tests,
     };
-
-    mod test_utils {
-        use super::*;
-        use crate::test_utils::assert_version_expectation;
-
-        // Test case structure for better readability and type safety
-        #[derive(Debug)]
-        pub struct SchemaTestCase {
-            pub name: &'static str,
-            pub semver_expectation: String,
-            pub pep440_expectation: String,
-        }
-
-        pub fn test_flow_pipeline_with_fixture(
-            fixture_path: &str,
-            semver_expectation: &str,
-            pep440_expectation: &str,
-        ) {
-            test_flow_pipeline_with_fixture_and_schema_opt(
-                fixture_path,
-                None,
-                semver_expectation,
-                pep440_expectation,
-            )
-        }
-
-        pub fn test_flow_pipeline_with_fixture_and_schema(
-            fixture_path: &str,
-            schema: &str,
-            semver_expectation: &str,
-            pep440_expectation: &str,
-        ) {
-            test_flow_pipeline_with_fixture_and_schema_opt(
-                fixture_path,
-                Some(schema),
-                semver_expectation,
-                pep440_expectation,
-            )
-        }
-
-        pub fn test_flow_pipeline_with_fixture_and_schema_opt(
-            fixture_path: &str,
-            schema: Option<&str>,
-            semver_expectation: &str,
-            pep440_expectation: &str,
-        ) {
-            let test_cases = vec![
-                ("semver", semver_expectation),
-                ("pep440", pep440_expectation),
-            ];
-
-            for (format_name, expectation) in test_cases {
-                let mut args = FlowArgs::default();
-                args.input.directory = Some(fixture_path.to_string());
-                args.output.output_format = format_name.to_string();
-
-                // Set schema if provided
-                if let Some(schema_value) = schema {
-                    args.schema = Some(schema_value.to_string());
-                }
-
-                let result = run_flow_pipeline(args);
-                let schema_desc = match schema {
-                    Some(s) => format!(" and {} schema", s),
-                    None => String::new(),
-                };
-
-                assert!(
-                    result.is_ok(),
-                    "Flow pipeline should succeed with {} format{} at {}: {}",
-                    format_name,
-                    schema_desc,
-                    fixture_path,
-                    result.unwrap_err()
-                );
-
-                let output = result.unwrap();
-                assert!(
-                    !output.is_empty(),
-                    "Flow pipeline should produce output for {} format{}",
-                    format_name,
-                    schema_desc
-                );
-
-                assert_version_expectation(expectation, &output);
-
-                let log_msg = match schema {
-                    Some(s) => format!("{} with {} schema", format_name, s),
-                    None => format_name.to_string(),
-                };
-                test_info!("Flow pipeline output ({}): {}", log_msg, output);
-            }
-        }
-
-        pub fn test_flow_pipeline_with_schema_test_cases(
-            fixture_path: &str,
-            schema_test_cases: Vec<SchemaTestCase>,
-        ) {
-            for test_case in schema_test_cases {
-                test_flow_pipeline_with_fixture_and_schema(
-                    fixture_path,
-                    test_case.name,
-                    &test_case.semver_expectation,
-                    &test_case.pep440_expectation,
-                );
-            }
-        }
-    }
-
-    use test_utils::{
-        SchemaTestCase,
-        test_flow_pipeline_with_fixture,
-        test_flow_pipeline_with_schema_test_cases,
-    };
+    use crate::version::zerv::PreReleaseLabel;
 
     #[test]
     fn test_trunk_based_development_flow() {
@@ -202,10 +92,7 @@ mod tests {
 
         test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
 
-        let branch_feature_1_hash =
-            Template::<u32>::new("{{ hash_int(value='feature-1', length=5) }}".to_string())
-                .render_unwrap(None);
-        assert_eq!(branch_feature_1_hash, "42954");
+        let branch_feature_1_hash = expect_branch_hash("feature-1", 5, "42954");
 
         fixture
             .make_dirty()
@@ -272,5 +159,47 @@ mod tests {
             },
         ];
         test_flow_pipeline_with_schema_test_cases(&fixture_path, schema_test_cases);
+    }
+
+    #[test]
+    fn test_trunk_based_development_flow_builder() {
+        test_info!("Starting trunk-based development flow test (builder pattern)");
+        if !should_run_docker_tests() {
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
+        }
+
+        // Initial setup - main branch state
+        let scenario = FlowTestScenario::new()
+            .expect("Failed to create test scenario")
+            .expect_version("1.0.0", "1.0.0");
+
+        // Create feature branch and verify version expectations
+        let scenario = scenario
+            .create_branch("feature-1")
+            .expect_version("1.0.0", "1.0.0");
+
+        // Make working directory dirty and test schema variants
+        let branch_feature_1_hash = expect_branch_hash("feature-1", 5, "42954");
+
+        scenario
+            .make_dirty()
+            .expect_version(
+                &format!(
+                    "1.0.0-alpha.{}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+                &format!(
+                    "1.0.0a{}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+            )
+            .expect_schema_variants(create_all_standard_schema_test_cases(
+                "1.0.0",
+                PreReleaseLabel::Alpha,
+                &branch_feature_1_hash.to_string(),
+                0,
+                "feature.1",
+                0,
+            ));
     }
 }
