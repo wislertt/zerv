@@ -123,7 +123,7 @@ impl FlowTestScenario {
 }
 
 /// Creates comprehensive test cases for ALL standard-related schema constants
-pub fn create_all_standard_schema_test_cases(
+pub fn create_full_schema_test_cases(
     base_version: &str,
     pre_release_label: PreReleaseLabel,
     pre_release_num: &str,
@@ -294,6 +294,57 @@ pub fn create_all_standard_schema_test_cases(
             ),
         },
     ]
+}
+
+pub fn create_base_schema_test_cases(
+    base_version: &str,
+    sanitized_branch_name: &str,
+) -> Vec<SchemaTestCase> {
+    let distance = 0;
+    let mut test_cases = Vec::new();
+
+    let no_context_schemas = vec![
+        STANDARD,
+        STANDARD_BASE,
+        STANDARD_BASE_PRERELEASE,
+        STANDARD_BASE_PRERELEASE_POST,
+        STANDARD_BASE_PRERELEASE_POST_DEV,
+        STANDARD_NO_CONTEXT,
+    ];
+
+    let context_schemas = vec![
+        STANDARD_BASE_CONTEXT,
+        STANDARD_BASE_PRERELEASE_CONTEXT,
+        STANDARD_BASE_PRERELEASE_POST_CONTEXT,
+        STANDARD_BASE_PRERELEASE_POST_DEV_CONTEXT,
+        STANDARD_CONTEXT,
+    ];
+
+    // Test no context schemas with base version only
+    for schema_name in &no_context_schemas {
+        test_cases.push(SchemaTestCase {
+            name: schema_name,
+            semver_expectation: base_version.to_string(),
+            pep440_expectation: base_version.to_string(),
+        });
+    }
+
+    // Test context schemas with context
+    for schema_name in &context_schemas {
+        test_cases.push(SchemaTestCase {
+            name: schema_name,
+            semver_expectation: format!(
+                "{}+{}.{}.{{hex:7}}",
+                base_version, sanitized_branch_name, distance
+            ),
+            pep440_expectation: format!(
+                "{}+{}.{}.{{hex:7}}",
+                base_version, sanitized_branch_name, distance
+            ),
+        });
+    }
+
+    test_cases
 }
 
 // Existing test utility functions (moved from pipeline.rs)

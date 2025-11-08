@@ -61,7 +61,8 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
 mod tests {
     use crate::cli::flow::test_utils::{
         FlowTestScenario,
-        create_all_standard_schema_test_cases,
+        create_base_schema_test_cases,
+        create_full_schema_test_cases,
         expect_branch_hash,
     };
     use crate::test_info;
@@ -79,13 +80,15 @@ mod tests {
         let scenario = FlowTestScenario::new()
             .expect("Failed to create test scenario")
             .create_tag("v1.0.0")
-            .expect_version("1.0.0", "1.0.0");
+            .expect_version("1.0.0", "1.0.0")
+            .expect_schema_variants(create_base_schema_test_cases("1.0.0", "main"));
 
         test_info!("Scenario 2: Create feature branch and verify version expectations");
         let scenario = scenario
             .create_branch("feature-1")
             .checkout("feature-1")
-            .expect_version("1.0.0", "1.0.0");
+            .expect_version("1.0.0", "1.0.0")
+            .expect_schema_variants(create_base_schema_test_cases("1.0.0", "feature.1"));
 
         let branch_feature_1_hash = expect_branch_hash("feature-1", 5, "42954");
 
@@ -102,7 +105,7 @@ mod tests {
                     branch_feature_1_hash
                 ),
             )
-            .expect_schema_variants(create_all_standard_schema_test_cases(
+            .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
                 PreReleaseLabel::Alpha,
                 &branch_feature_1_hash.to_string(),
@@ -127,7 +130,7 @@ mod tests {
                     branch_feature_1_hash
                 ),
             )
-            .expect_schema_variants(create_all_standard_schema_test_cases(
+            .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
                 PreReleaseLabel::Alpha,
                 &branch_feature_1_hash.to_string(),

@@ -126,6 +126,7 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 - **Environment variables**: `ZERV_TEST_NATIVE_GIT`, `ZERV_TEST_DOCKER`
 - **Git operations**: Always use `get_git_impl()`
 - **Docker tests**: Always use `should_run_docker_tests()` gating
+- **CRITICAL**: For Git-related tests, **ALWAYS use `ZERV_TEST_DOCKER=true`** - never `false`
 - **Integration tests**: Prefer `TestCommand::run_with_stdin()` (90% of cases)
 
 **For detailed testing patterns:**
