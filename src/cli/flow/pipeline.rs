@@ -5,6 +5,7 @@ use crate::cli::flow::args::FlowArgs;
 use crate::cli::utils::output_formatter::OutputFormatter;
 use crate::cli::version::args::{
     BumpsConfig,
+    MainConfig,
     VersionArgs,
 };
 use crate::cli::version::pipeline::run_version_pipeline;
@@ -24,9 +25,11 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
             output_template: None,
             output_prefix: None,
         },
-        main: Default::default(),
+        main: MainConfig {
+            schema: args.schema.clone(),
+            schema_ron: None,
+        },
         overrides: Default::default(),
-        // bumps: Default::default(),
         bumps: BumpsConfig {
             bump_pre_release_label: args.bump_pre_release_label(),
             bump_pre_release_num: args.bump_pre_release_num(),

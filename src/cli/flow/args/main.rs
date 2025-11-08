@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use clap::Parser;
 
 use crate::cli::common::args::{
@@ -7,7 +9,7 @@ use crate::cli::common::args::{
 };
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
-use crate::utils::bool_resolution::BoolResolution;
+use crate::schema::ZervSchemaPreset;
 use crate::utils::constants::pre_release_labels::ALPHA;
 use crate::utils::constants::{
     post_modes,
@@ -35,17 +37,15 @@ PRE-RELEASE OPTIONS:
   --pre-release-label <LBL> Pre-release label: alpha (default), beta, rc
   --pre-release-num <NUM>   Pre-release number: integer (default: {{hash_int bumped_branch HASH_BRANCH_LEN}})
   --hash-branch-len <LEN>   Hash length for bumped branch hash (1-10, default: 5)
-  --no-pre-release          Disable pre-release entirely
 
 POST MODE OPTIONS:
   --post-mode <MODE>        Post calculation mode: commit (default), tag
 
-DEV TIMESTAMP OPTIONS:
-  --dev-ts                  Include dev timestamp for dirty working directory
-  --no-dev-ts               Exclude dev timestamp from output
+SCHEMA OPTIONS:
+  --schema <SCHEMA>         Schema variant for output components [default: standard] [possible values: standard, standard-no-context, standard-context, standard-base, standard-base-prerelease, standard-base-prerelease-post, standard-base-prerelease-post-dev]
 
 EXAMPLES:
-  # Basic flow version with automatic pre-release detection
+  # Basic flow version with automatic pre-release detection (smart schema)
   zerv flow
 
   # Different output formats
@@ -56,15 +56,17 @@ EXAMPLES:
   # Pre-release control
   zerv flow --pre-release-label beta
   zerv flow --pre-release-label rc --pre-release-num 5
-  zerv flow --no-pre-release
 
   # Post mode control
   zerv flow --post-mode commit  # bump post by distance (default)
   zerv flow --post-mode tag     # bump post by 1
 
-  # Dev timestamp control
-  zerv flow --dev-ts            # include dev timestamp for dirty working directory
-  zerv flow --no-dev-ts         # exclude dev timestamp from output
+  # Schema control (replaces --dev-ts, --no-dev-ts, --no-pre-release flags)
+  zerv flow --schema standard              # smart context (default)
+  zerv flow --schema standard-no-context   # never include context
+  zerv flow --schema standard-context      # always include context
+  zerv flow --schema standard-base         # base version only
+  zerv flow --schema standard-base-prerelease-post  # prerelease + post only
 
   # Use in different directory
   zerv flow -C /path/to/repo"
@@ -97,25 +99,17 @@ pub struct FlowArgs {
     )]
     pub hash_branch_len: u32,
 
-    /// Disable pre-release entirely (no pre-release component)
-    #[arg(long, action = clap::ArgAction::SetTrue,
-          help = "Disable pre-release entirely (no pre-release component)")]
-    pub no_pre_release: bool,
-
     /// Post calculation mode (commit, tag)
     #[arg(long = "post-mode", value_parser = clap::builder::PossibleValuesParser::new(post_modes::VALID_MODES),
           default_value = post_modes::COMMIT, help = "Post calculation mode (commit, tag)")]
     pub post_mode: String,
 
-    /// Include dev timestamp for dirty working directory (auto-detect by default)
-    #[arg(long = "dev-ts", action = clap::ArgAction::SetTrue,
-          help = "Include dev timestamp for dirty working directory")]
-    pub dev_ts: bool,
-
-    /// Exclude dev timestamp from output
-    #[arg(long = "no-dev-ts", action = clap::ArgAction::SetTrue,
-          help = "Exclude dev timestamp from output")]
-    pub no_dev_ts: bool,
+    /// Schema variant for output components [default: standard]
+    #[arg(
+        long,
+        help = "Schema variant for output components [default: standard] [possible values: standard, standard-no-context, standard-context, standard-base, standard-base-prerelease, standard-base-prerelease-post, standard-base-prerelease-post-dev]"
+    )]
+    pub schema: Option<String>,
 }
 
 impl Default for FlowArgs {
@@ -126,10 +120,8 @@ impl Default for FlowArgs {
             pre_release_label: None,
             pre_release_num: None,
             hash_branch_len: 5,
-            no_pre_release: false,
             post_mode: post_modes::COMMIT.to_string(),
-            dev_ts: true,
-            no_dev_ts: false,
+            schema: None,
         }
     }
 }
@@ -154,34 +146,20 @@ impl FlowArgs {
         self.validate_pre_release_num()?;
         self.validate_hash_branch_len()?;
         self.validate_post_mode()?;
-        self.validate_dev_ts()?;
-
-        // Resolve dev_ts flag in place after validation
-        if let Some(resolved) = BoolResolution::resolve_opposing_flags(self.dev_ts, self.no_dev_ts)
-        {
-            self.dev_ts = resolved;
-        }
+        self.validate_schema()?;
 
         Ok(())
     }
 
     fn validate_pre_release_label(&mut self) -> Result<(), ZervError> {
-        if self.no_pre_release && self.pre_release_label.is_some() {
-            return Err(ZervError::InvalidArgument(
-                "Cannot use --pre-release-label with --no-pre-release".to_string(),
-            ));
-        } else if !self.no_pre_release && self.pre_release_label.is_none() {
+        if self.pre_release_label.is_none() {
             self.pre_release_label = Some(ALPHA.to_string());
         }
         Ok(())
     }
 
     fn validate_pre_release_num(&self) -> Result<(), ZervError> {
-        if self.no_pre_release && self.pre_release_num.is_some() {
-            return Err(ZervError::InvalidArgument(
-                "Cannot use --pre-release-num with --no-pre-release".to_string(),
-            ));
-        }
+        // No longer need to check for no_pre_release conflicts
         Ok(())
     }
 
@@ -206,8 +184,25 @@ impl FlowArgs {
         Ok(())
     }
 
-    fn validate_dev_ts(&self) -> Result<(), ZervError> {
-        BoolResolution::validate_opposing_flags(self.dev_ts, self.no_dev_ts, "dev-ts")
+    fn validate_schema(&self) -> Result<(), ZervError> {
+        if let Some(schema_name) = &self.schema {
+            // First, validate it's a known schema
+            let _parsed = ZervSchemaPreset::from_str(schema_name).map_err(|_| {
+                ZervError::InvalidArgument(format!("Unknown schema variant: '{}'", schema_name))
+            })?;
+
+            // Restrict to standard schemas only (check prefix)
+            if schema_name.starts_with("standard") {
+                Ok(())
+            } else {
+                Err(ZervError::InvalidArgument(format!(
+                    "zerv flow only supports standard schema variants, got: '{}'",
+                    schema_name
+                )))
+            }
+        } else {
+            Ok(())
+        }
     }
 
     pub fn bump_pre_release_label(&self) -> Option<Template<String>> {
@@ -218,25 +213,23 @@ impl FlowArgs {
     }
 
     pub fn bump_pre_release_num(&self) -> Option<Option<Template<u32>>> {
-        if self.no_pre_release || self.pre_release_label.is_none() {
+        if self.pre_release_label.is_none() {
             None
         } else {
-            {
-                let hash_len = self.hash_branch_len.to_string();
+            let hash_len = self.hash_branch_len.to_string();
 
-                let pre_release_num_content = if let Some(num) = self.pre_release_num {
-                    num.to_string()
-                } else {
-                    format!(
-                        "{{{{ hash_int(value=bumped_branch, length={}) }}}}",
-                        hash_len
-                    )
-                };
+            let pre_release_num_content = if let Some(num) = self.pre_release_num {
+                num.to_string()
+            } else {
+                format!(
+                    "{{{{ hash_int(value=bumped_branch, length={}) }}}}",
+                    hash_len
+                )
+            };
 
-                let template = self.build_pre_release_bump_template(&pre_release_num_content);
+            let template = self.build_pre_release_bump_template(&pre_release_num_content);
 
-                Some(Some(Template::new(template)))
-            }
+            Some(Some(Template::new(template)))
         }
     }
 
@@ -256,13 +249,9 @@ impl FlowArgs {
     }
 
     pub fn bump_dev(&self) -> Option<Option<Template<u32>>> {
-        if self.dev_ts {
-            let content = "{{ bumped_timestamp }}";
-            let template = self.build_pre_release_bump_template(content);
-            Some(Some(Template::new(template)))
-        } else {
-            None
-        }
+        let content = "{{ bumped_timestamp }}";
+        let template = self.build_pre_release_bump_template(content);
+        Some(Some(Template::new(template)))
     }
 }
 
@@ -287,18 +276,15 @@ mod tests {
             assert_eq!(args.hash_branch_len, 5);
             assert!(args.pre_release_label.is_none());
             assert!(args.pre_release_num.is_none());
-            assert!(!args.no_pre_release);
             assert_eq!(args.post_mode, post_modes::COMMIT);
-            assert!(args.dev_ts); // Default is true
-            assert!(!args.no_dev_ts);
+            assert!(args.schema.is_none()); // Default is None (will use standard schema)
         }
 
         #[test]
         fn test_flow_args_validation_success() {
             let mut args = FlowArgs::default();
             assert!(args.validate().is_ok());
-            assert!(args.dev_ts);
-            assert!(!args.no_dev_ts);
+            assert!(args.schema.is_none()); // Should remain None after validation
         }
     }
 
@@ -380,102 +366,14 @@ mod tests {
         }
 
         #[rstest]
-        #[case(Some("beta".to_string()), None, true, "Cannot use --pre-release-label with --no-pre-release")] // label + no_pre_release
-        #[case(
-            None,
-            Some(5),
-            true,
-            "Cannot use --pre-release-num with --no-pre-release"
-        )] // num + no_pre_release
-        #[case(Some("rc".to_string()), Some(10), true, "Cannot use --pre-release-label with --no-pre-release")] // both + no_pre_release (first error)
-        fn test_no_pre_release_conflicts(
-            #[case] label: Option<String>,
-            #[case] num: Option<u32>,
-            #[case] no_pre_release: bool,
-            #[case] expected_error: &str,
-        ) {
+        #[case(Some("beta".to_string()), Some(5))]
+        #[case(None, None)]
+        #[case(Some("rc".to_string()), None)]
+        #[case(None, Some(10))]
+        fn test_valid_combinations(#[case] label: Option<String>, #[case] num: Option<u32>) {
             let mut args = FlowArgs {
                 pre_release_label: label,
                 pre_release_num: num,
-                no_pre_release,
-                ..FlowArgs::default()
-            };
-            let result = args.validate();
-            assert!(result.is_err());
-            assert!(result.unwrap_err().to_string().contains(expected_error));
-        }
-
-        #[rstest]
-        #[case(Some("beta".to_string()), Some(5), false)]
-        #[case(None, None, true)]
-        #[case(Some("rc".to_string()), None, false)]
-        #[case(None, Some(10), false)]
-        fn test_valid_combinations(
-            #[case] label: Option<String>,
-            #[case] num: Option<u32>,
-            #[case] no_pre_release: bool,
-        ) {
-            let mut args = FlowArgs {
-                pre_release_label: label,
-                pre_release_num: num,
-                no_pre_release,
-                ..FlowArgs::default()
-            };
-            assert!(args.validate().is_ok());
-        }
-
-        #[test]
-        fn test_invalid_dev_ts_combination() {
-            let mut args = FlowArgs {
-                dev_ts: true,
-                no_dev_ts: true,
-                ..FlowArgs::default()
-            };
-            let result = args.validate();
-            assert!(result.is_err());
-            assert!(
-                result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("Cannot use --dev-ts with --no-dev-ts")
-            );
-        }
-
-        #[test]
-        fn test_dev_ts_resolution_after_validation() {
-            let mut args = FlowArgs {
-                dev_ts: true,
-                no_dev_ts: false,
-                ..FlowArgs::default()
-            };
-            args.validate().unwrap();
-            assert!(args.dev_ts); // Should remain true
-
-            let mut args = FlowArgs {
-                dev_ts: false,
-                no_dev_ts: true,
-                ..FlowArgs::default()
-            };
-            args.validate().unwrap();
-            assert!(!args.dev_ts); // Should remain false
-
-            let mut args = FlowArgs {
-                dev_ts: false,
-                no_dev_ts: false,
-                ..FlowArgs::default()
-            };
-            args.validate().unwrap();
-            assert!(!args.dev_ts); // Should remain false for auto-detect
-        }
-
-        #[rstest]
-        #[case(true, false)] // dev_ts only
-        #[case(false, true)] // no_dev_ts only
-        #[case(false, false)] // neither (auto-detect)
-        fn test_valid_dev_ts_combinations(#[case] dev_ts: bool, #[case] no_dev_ts: bool) {
-            let mut args = FlowArgs {
-                dev_ts,
-                no_dev_ts,
                 ..FlowArgs::default()
             };
             assert!(args.validate().is_ok());
@@ -530,34 +428,6 @@ mod tests {
             let expected = args.build_pre_release_bump_template(label);
             assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
         }
-
-        #[test]
-        fn test_default_alpha_when_no_pre_release_false_and_label_none() {
-            // Test the specific case: no_pre_release=false AND pre_release_label=None => returns alpha
-            let mut args = FlowArgs {
-                no_pre_release: false,
-                pre_release_label: None,
-                ..FlowArgs::default()
-            };
-            // Before validation, pre_release_label should be None
-            assert_eq!(args.pre_release_label, None);
-
-            args.validate().unwrap(); // This sets the default pre_release_label
-
-            // After validation, pre_release_label should be set to "alpha"
-            assert_eq!(args.pre_release_label, Some("alpha".to_string()));
-            let expected = args.build_pre_release_bump_template("alpha");
-            assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
-        }
-
-        #[test]
-        fn test_disabled_returns_none() {
-            let args = FlowArgs {
-                no_pre_release: true,
-                ..FlowArgs::default()
-            };
-            assert_eq!(args.bump_pre_release_label(), None);
-        }
     }
 
     mod bump_pre_release_num {
@@ -591,15 +461,6 @@ mod tests {
             // Generate expected template using the helper function
             let expected = args.build_pre_release_bump_template(&num.to_string());
             assert_eq!(template.as_str(), expected);
-        }
-
-        #[test]
-        fn test_disabled_returns_none() {
-            let args = FlowArgs {
-                no_pre_release: true,
-                ..FlowArgs::default()
-            };
-            assert_eq!(args.bump_pre_release_num(), None);
         }
 
         #[rstest]
@@ -672,24 +533,6 @@ mod tests {
         }
 
         #[test]
-        fn test_bump_post_returns_none_when_no_pre_release() {
-            let args = FlowArgs {
-                no_pre_release: true,
-                ..FlowArgs::default()
-            };
-
-            // When no_pre_release is true, bump_post should still return a template
-            // because it's used in the BumpsConfig regardless of pre_release state
-            let result = args.bump_post();
-            assert!(result.is_some());
-            let template_result = result.unwrap();
-            assert!(template_result.is_some());
-            let template = template_result.unwrap();
-            // Just verify it returns a valid template
-            assert!(!template.as_str().is_empty());
-        }
-
-        #[test]
         fn test_bump_post_commit_mode_default() {
             let args = FlowArgs::default();
             let result = args.bump_post();
@@ -719,14 +562,8 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_bump_dev_with_dev_ts_flag() {
-            let args = FlowArgs {
-                dev_ts: true,
-                no_dev_ts: false,
-                pre_release_label: Some("alpha".to_string()), // Need a pre-release label
-                ..FlowArgs::default()
-            };
-
+        fn test_bump_dev_always_returns_template() {
+            let args = FlowArgs::default();
             let result = args.bump_dev();
             assert!(result.is_some());
             let template_result = result.unwrap();
@@ -736,43 +573,77 @@ mod tests {
             let expected = args.build_pre_release_bump_template("{{ bumped_timestamp }}");
             assert_eq!(template.as_str(), expected);
         }
+    }
 
-        #[test]
-        fn test_bump_dev_with_no_dev_ts_flag() {
-            let args = FlowArgs {
-                dev_ts: false,
-                no_dev_ts: true,
+    mod schema_validation {
+        use super::*;
+
+        #[rstest]
+        #[case("standard")]
+        #[case("standard-no-context")]
+        #[case("standard-context")]
+        #[case("standard-base")]
+        #[case("standard-base-prerelease")]
+        #[case("standard-base-prerelease-post")]
+        #[case("standard-base-prerelease-post-dev")]
+        #[case("standard-base-context")]
+        #[case("standard-base-prerelease-context")]
+        #[case("standard-base-prerelease-post-context")]
+        #[case("standard-base-prerelease-post-dev-context")]
+        fn test_valid_standard_schemas(#[case] schema: &str) {
+            let mut args = FlowArgs {
+                schema: Some(schema.to_string()),
                 ..FlowArgs::default()
             };
+            assert!(args.validate().is_ok());
+        }
 
-            let result = args.bump_dev();
-            assert!(result.is_none()); // Should return None to disable dev component
+        #[rstest]
+        #[case("calver")]
+        #[case("calver-base")]
+        #[case("calver-context")]
+        #[case("calver-no-context")]
+        #[case("calver-base-prerelease")]
+        #[case("invalid-schema")]
+        #[case("unknown")]
+        #[case("")]
+        fn test_invalid_schemas(#[case] schema: &str) {
+            let mut args = FlowArgs {
+                schema: Some(schema.to_string()),
+                ..FlowArgs::default()
+            };
+            let result = args.validate();
+            assert!(result.is_err());
+            let error_msg = result.unwrap_err().to_string();
+
+            // Both error types are valid - unknown schemas or non-standard schemas
+            assert!(
+                error_msg.contains("Unknown schema variant")
+                    || error_msg.contains("zerv flow only supports standard schema variants")
+            );
         }
 
         #[test]
-        fn test_bump_dev_with_auto_detect() {
-            let args = FlowArgs {
-                dev_ts: false,
-                no_dev_ts: false,
-                ..FlowArgs::default()
-            };
+        fn test_no_schema_defaults_to_none() {
+            let args = FlowArgs::default();
+            assert!(args.schema.is_none());
 
-            let result = args.bump_dev();
-            assert!(result.is_none()); // Should return None for auto-detect behavior
+            let mut args = args;
+            assert!(args.validate().is_ok());
+            assert!(args.schema.is_none()); // Should remain None
         }
 
         #[test]
-        fn test_bump_dev_with_invalid_state() {
-            let args = FlowArgs {
-                dev_ts: true,
-                no_dev_ts: true, // Invalid combination
+        fn test_schema_validation_with_pre_release_overrides() {
+            let mut args = FlowArgs {
+                schema: Some("standard-base".to_string()),
+                pre_release_label: Some("beta".to_string()),
+                pre_release_num: Some(42),
                 ..FlowArgs::default()
             };
 
-            // Even with invalid state, bump_dev should work based on current dev_ts value
-            // (validation would catch this before bump_dev is called in practice)
-            let result = args.bump_dev();
-            assert!(result.is_some()); // dev_ts is true, so should return timestamp template
+            // Should validate successfully - schema and manual overrides can coexist
+            assert!(args.validate().is_ok());
         }
     }
 
