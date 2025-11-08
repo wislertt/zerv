@@ -120,6 +120,15 @@ impl FlowTestScenario {
         self.fixture.make_dirty().expect("Failed to make dirty");
         self
     }
+
+    pub fn merge_branch(self, branch_name: &str) -> Self {
+        test_info!("Merging branch: {}", branch_name);
+        self.fixture
+            .git_impl
+            .merge_branch(&self.fixture.test_dir, branch_name)
+            .unwrap_or_else(|e| panic!("Failed to merge branch '{}': {}", branch_name, e));
+        self
+    }
 }
 
 /// Creates comprehensive test cases for ALL standard-related schema constants

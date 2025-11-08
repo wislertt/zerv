@@ -61,4 +61,10 @@ pub trait GitOperations {
         self.execute_git(test_dir, &["checkout", branch_name])?;
         Ok(())
     }
+
+    /// Merge a branch into the current branch
+    fn merge_branch(&self, test_dir: &TestDir, branch_name: &str) -> io::Result<()> {
+        self.execute_git(test_dir, &["merge", branch_name])?;
+        Ok(())
+    }
 }

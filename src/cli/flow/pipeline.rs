@@ -118,7 +118,7 @@ mod tests {
         test_info!(
             "Scenario 4: Make commit and test version expectations with post=1 and distance=1"
         );
-        scenario
+        let scenario = scenario
             .commit()
             .expect_version(
                 &format!(
@@ -139,5 +139,13 @@ mod tests {
                 "feature.1",
                 1,
             ));
+
+        test_info!("Scenario 5: Merge feature-1 to main and create tag v1.0.1");
+        scenario
+            .checkout("main")
+            .merge_branch("feature-1")
+            .create_tag("v1.0.1")
+            .expect_version("1.0.1", "1.0.1")
+            .expect_schema_variants(create_base_schema_test_cases("1.0.1", "main"));
     }
 }

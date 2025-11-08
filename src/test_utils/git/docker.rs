@@ -884,4 +884,73 @@ mod tests {
                 .contains("Git commands need --entrypoint")
         );
     }
+
+    #[test]
+    fn test_docker_git_merge_branch() {
+        if !should_run_docker_tests() {
+            return;
+        }
+
+        let (dir, docker_git) = setup_repo_with_commit();
+
+        // Create initial state: main branch with v1.0.0 tag
+        docker_git
+            .create_tag(&dir, "v1.0.0")
+            .expect("Should create initial tag");
+
+        // Create feature branch
+        docker_git
+            .create_branch(&dir, "feature/test-branch")
+            .expect("Should create feature branch");
+
+        // Checkout feature branch
+        docker_git
+            .checkout_branch(&dir, "feature/test-branch")
+            .expect("Should checkout feature branch");
+
+        // Add a commit on feature branch
+        dir.create_file("feature.txt", "new feature content")
+            .unwrap();
+        docker_git
+            .create_commit(&dir, "Add new feature")
+            .expect("Should create commit on feature branch");
+
+        // Return to main branch
+        docker_git
+            .checkout_branch(&dir, "main")
+            .expect("Should checkout main branch");
+
+        // Merge feature branch into main
+        docker_git
+            .merge_branch(&dir, "feature/test-branch")
+            .expect("Should merge feature branch into main");
+
+        // Verify merge was successful
+        let log_output = docker_git
+            .execute_git(&dir, &["log", "--oneline", "-2"])
+            .expect("Should get commit log");
+
+        assert!(
+            log_output.contains("Add new feature"),
+            "Log should contain feature branch commit: {}",
+            log_output
+        );
+
+        // Verify file from feature branch exists on main
+        assert!(
+            dir.path().join("feature.txt").exists(),
+            "Feature file should exist after merge"
+        );
+
+        // Verify we're still on main branch
+        let current_branch = docker_git
+            .execute_git(&dir, &["branch", "--show-current"])
+            .expect("Should get current branch");
+
+        assert_eq!(
+            current_branch.trim(),
+            "main",
+            "Should still be on main branch after merge"
+        );
+    }
 }
