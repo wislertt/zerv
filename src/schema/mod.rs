@@ -1,8 +1,8 @@
+mod components;
+mod names;
 mod presets;
 
-pub use presets::{
-    ZervSchemaPreset,
-    schema_preset_names,
-};
+pub use names::schema_preset_names;
+pub use presets::ZervSchemaPreset;
 
 pub use crate::version::zerv::schema::parse_ron_schema;
