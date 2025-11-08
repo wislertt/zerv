@@ -128,11 +128,10 @@ mod tests {
 
         test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
 
-        // Test template creation (rendering test disabled for now)
-        let _feature_1_hash: Template<u32> =
-            Template::new("{{ hash_int(value='feature-1', length=5) }}".to_string());
-        let rendered_feature_1_hash = _feature_1_hash.render_unwrap(None);
-        test_info!("{}", rendered_feature_1_hash);
+        let branch_feature_1_hash =
+            Template::<u32>::new("{{ hash_int(value='feature-1', length=5) }}".to_string())
+                .render_unwrap(None);
+        assert_eq!(branch_feature_1_hash, "42954");
 
         fixture
             .make_dirty()
@@ -140,8 +139,12 @@ mod tests {
 
         test_flow_pipeline_with_fixture(
             &fixture_path,
-            "1.0.0-alpha.42954.post.0.dev.{timestamp:now}+feature.1.0.{hex:7}",
-            "1.0.0a42954.post0.dev{timestamp:now}+feature.1.0.{hex:7}",
+            &format!(
+                "1.0.0-alpha.{branch_feature_1_hash}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}"
+            ),
+            &format!(
+                "1.0.0a{branch_feature_1_hash}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}"
+            ),
         );
     }
 }
