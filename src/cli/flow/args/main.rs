@@ -128,7 +128,7 @@ impl Default for FlowArgs {
 
 impl FlowArgs {
     pub fn build_patch_bump_template(&self, content: &str) -> String {
-        let if_part = "{% if pre_release and (dirty or distance) %}";
+        let if_part = "{% if not pre_release and (dirty or distance) %}";
         let else_part = "{% else %}None{% endif %}";
         if_part.to_string() + content + else_part
     }

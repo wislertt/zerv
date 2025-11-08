@@ -73,11 +73,13 @@ mod tests {
             return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
 
+        test_info!("Scenario 1: Initial setup - main branch state with v1.0.0 tag");
         let scenario = FlowTestScenario::new()
             .expect("Failed to create test scenario")
             .create_tag("v1.0.0")
             .expect_version("1.0.0", "1.0.0");
 
+        test_info!("Scenario 2: Create feature branch and verify version expectations");
         let scenario = scenario
             .create_branch("feature-1")
             .checkout("feature-1")
@@ -85,25 +87,40 @@ mod tests {
 
         let branch_feature_1_hash = expect_branch_hash("feature-1", 5, "42954");
 
-        scenario
+        test_info!("Scenario 3: Make working directory dirty and test all schema variants");
+        let scenario = scenario
             .make_dirty()
             .expect_version(
                 &format!(
-                    "1.0.0-alpha.{}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}",
+                    "1.0.1-alpha.{}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}",
                     branch_feature_1_hash
                 ),
                 &format!(
-                    "1.0.0a{}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}",
+                    "1.0.1a{}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}",
                     branch_feature_1_hash
                 ),
             )
             .expect_schema_variants(create_all_standard_schema_test_cases(
-                "1.0.0",
+                "1.0.1",
                 PreReleaseLabel::Alpha,
                 &branch_feature_1_hash.to_string(),
                 0,
                 "feature.1",
                 0,
             ));
+
+        test_info!(
+            "Scenario 4: Make commit and test version expectations with post=1 and distance=1"
+        );
+        scenario.commit().expect_version(
+            &format!(
+                "1.0.1-alpha.{}.post.1+feature.1.1.{{hex:7}}",
+                branch_feature_1_hash
+            ),
+            &format!(
+                "1.0.1a{}.post1+feature.1.1.{{hex:7}}",
+                branch_feature_1_hash
+            ),
+        );
     }
 }

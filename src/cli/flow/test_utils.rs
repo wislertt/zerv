@@ -7,13 +7,16 @@ use crate::cli::utils::template::{
     TemplateExtGeneric,
 };
 use crate::schema::schema_preset_names::*;
-use crate::test_info;
 use crate::test_utils::{
     GitRepoFixture,
     assert_version_expectation,
 };
 use crate::version::pep440::utils::pre_release_label_to_pep440_string;
 use crate::version::zerv::PreReleaseLabel;
+use crate::{
+    test_debug,
+    test_info,
+};
 
 /// Generates a branch hash and asserts it matches the expected value
 pub fn expect_branch_hash(branch_name: &str, length: usize, expected_hash: &str) -> String {
@@ -100,8 +103,15 @@ impl FlowTestScenario {
 
     pub fn commit(self) -> Self {
         test_info!("Making commit");
-        // Note: GitRepoFixture doesn't have commit_empty method
-        // This would need to be implemented or use the Git operations trait
+        // Add a file and create a commit
+        self.fixture
+            .test_dir
+            .create_file("test_commit.txt", "test commit content")
+            .unwrap_or_else(|e| panic!("Failed to create file for commit: {}", e));
+        self.fixture
+            .git_impl
+            .create_commit(&self.fixture.test_dir, "Test commit")
+            .unwrap_or_else(|e| panic!("Failed to create commit: {}", e));
         self
     }
 
@@ -318,7 +328,7 @@ pub fn test_flow_pipeline_with_fixture_and_schema_opt(
             Some(s) => format!("{} with {} schema", format_name, s),
             None => format_name.to_string(),
         };
-        test_info!("Flow pipeline output ({}): {}", log_msg, output);
+        test_debug!("Flow pipeline output ({}): {}", log_msg, output);
     }
 }
 
