@@ -103,10 +103,22 @@ impl FlowTestScenario {
 
     pub fn commit(self) -> Self {
         test_info!("Making commit");
-        // Add a file and create a commit
+        // Create a unique file with timestamp to ensure it's always a new change
+        use std::time::{
+            SystemTime,
+            UNIX_EPOCH,
+        };
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs();
+
+        let filename = format!("commit_file_{}.txt", timestamp);
+        let content = format!("Test commit content at timestamp {}", timestamp);
+
         self.fixture
             .test_dir
-            .create_file("test_commit.txt", "test commit content")
+            .create_file(&filename, &content)
             .unwrap_or_else(|e| panic!("Failed to create file for commit: {}", e));
         self.fixture
             .git_impl

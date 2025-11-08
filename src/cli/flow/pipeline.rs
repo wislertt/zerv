@@ -76,49 +76,72 @@ mod tests {
             return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
 
-        test_info!("Scenario 1: Initial setup - main branch state with v1.0.0 tag");
+        test_info!("Initial setup: main branch state with v1.0.0 tag");
         let scenario = FlowTestScenario::new()
             .expect("Failed to create test scenario")
             .create_tag("v1.0.0")
             .expect_version("1.0.0", "1.0.0")
             .expect_schema_variants(create_base_schema_test_cases("1.0.0", "main"));
 
-        test_info!("Scenario 2: Create feature branch and verify version expectations");
+        test_info!("Create parallel feature branches: feature-1 and feature-2");
         let scenario = scenario
             .create_branch("feature-1")
-            .checkout("feature-1")
-            .expect_version("1.0.0", "1.0.0")
-            .expect_schema_variants(create_base_schema_test_cases("1.0.0", "feature.1"));
+            .create_branch("feature-2");
 
-        let branch_feature_1_hash = expect_branch_hash("feature-1", 5, "42954");
+        // Capture actual hash values first, then validate against mermaid expectations
+        let branch_feature_2_hash = expect_branch_hash("feature-2", 5, "68031"); // Update with actual
+        let branch_feature_1_hash = expect_branch_hash("feature-1", 5, "42954"); // Update with actual
 
-        test_info!("Scenario 3: Make working directory dirty and test all schema variants");
+        test_info!("feature-2: Start development with dirty state");
         let scenario = scenario
+            .checkout("feature-2")
             .make_dirty()
             .expect_version(
                 &format!(
-                    "1.0.1-alpha.{}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}",
-                    branch_feature_1_hash
+                    "1.0.1-alpha.{}.post.0.dev.{{timestamp:now}}+feature.2.0.{{hex:7}}",
+                    branch_feature_2_hash
                 ),
                 &format!(
-                    "1.0.1a{}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}",
-                    branch_feature_1_hash
+                    "1.0.1a{}.post0.dev{{timestamp:now}}+feature.2.0.{{hex:7}}",
+                    branch_feature_2_hash
                 ),
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
                 PreReleaseLabel::Alpha,
-                &branch_feature_1_hash.to_string(),
+                &branch_feature_2_hash.to_string(),
                 0,
                 Some("{timestamp:now}"),
-                "feature.1",
+                "feature.2",
                 0,
             ));
 
-        test_info!(
-            "Scenario 4: Make commit and test version expectations with post=1 and distance=1"
-        );
+        test_info!("feature-2: Create first commit");
         let scenario = scenario
+            .commit()
+            .expect_version(
+                &format!(
+                    "1.0.1-alpha.{}.post.1+feature.2.1.{{hex:7}}",
+                    branch_feature_2_hash
+                ),
+                &format!(
+                    "1.0.1a{}.post1+feature.2.1.{{hex:7}}",
+                    branch_feature_2_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.1",
+                PreReleaseLabel::Alpha,
+                &branch_feature_2_hash.to_string(),
+                1,
+                None,
+                "feature.2",
+                1,
+            ));
+
+        test_info!("feature-1: Create first commit");
+        let scenario = scenario
+            .checkout("feature-1")
             .commit()
             .expect_version(
                 &format!(
@@ -140,12 +163,82 @@ mod tests {
                 1,
             ));
 
-        test_info!("Scenario 5: Merge feature-1 to main and create tag v1.0.1");
-        scenario
+        test_info!("feature-1: Create second commit");
+        let scenario = scenario
+            .commit()
+            .expect_version(
+                &format!(
+                    "1.0.1-alpha.{}.post.2+feature.1.2.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+                &format!(
+                    "1.0.1a{}.post2+feature.1.2.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.1",
+                PreReleaseLabel::Alpha,
+                &branch_feature_1_hash.to_string(),
+                2,
+                None,
+                "feature.1",
+                2,
+            ));
+
+        test_info!("feature-1: Merge to main and release v1.0.1");
+        let scenario = scenario
             .checkout("main")
             .merge_branch("feature-1")
             .create_tag("v1.0.1")
             .expect_version("1.0.1", "1.0.1")
             .expect_schema_variants(create_base_schema_test_cases("1.0.1", "main"));
+
+        test_info!("feature-2: Sync with main to get feature-1 changes");
+        let scenario = scenario
+            .checkout("feature-2")
+            .merge_branch("main")
+            .expect_version(
+                &format!(
+                    "1.0.2-alpha.{}.post.2+feature.2.2.{{hex:7}}",
+                    branch_feature_2_hash
+                ),
+                &format!(
+                    "1.0.2a{}.post2+feature.2.2.{{hex:7}}",
+                    branch_feature_2_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Alpha,
+                &branch_feature_2_hash.to_string(),
+                2,
+                None,
+                "feature.2",
+                2,
+            ));
+
+        test_info!("feature-2: Continue development with one more commit");
+        scenario
+            .commit()
+            .expect_version(
+                &format!(
+                    "1.0.2-alpha.{}.post.3+feature.2.3.{{hex:7}}",
+                    branch_feature_2_hash
+                ),
+                &format!(
+                    "1.0.2a{}.post3+feature.2.3.{{hex:7}}",
+                    branch_feature_2_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Alpha,
+                &branch_feature_2_hash.to_string(),
+                3,
+                None,
+                "feature.2",
+                3,
+            ));
     }
 }
