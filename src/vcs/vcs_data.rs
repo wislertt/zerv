@@ -6,6 +6,8 @@ pub struct VcsData {
     pub distance: u32,
     /// Current commit hash (full)
     pub commit_hash: String,
+    /// Commit hash prefix (e.g., "g" for Git following git describe convention)
+    pub commit_hash_prefix: String,
     /// Current branch name
     pub current_branch: Option<String>,
     /// Commit timestamp (Unix timestamp)

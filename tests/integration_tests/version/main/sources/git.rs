@@ -37,12 +37,13 @@ fn test_git_source_comprehensive() {
     );
     if let Some(ref hash) = parsed_zerv.vars.bumped_commit_hash {
         assert!(
-            hash.len() >= 7 && hash.len() <= 40,
-            "Commit hash should be 7-40 chars"
+            hash.len() >= 8 && hash.len() <= 41,
+            "Commit hash should be 8-41 chars (including g prefix)"
         );
+        assert_eq!(&hash[..1], "g", "Commit hash should start with 'g' prefix");
         assert!(
-            hash.chars().all(|c| c.is_ascii_hexdigit()),
-            "Commit hash should be hex"
+            hash[1..].chars().all(|c| c.is_ascii_hexdigit()),
+            "Commit hash suffix should be hex"
         );
     }
 

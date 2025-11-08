@@ -198,7 +198,7 @@ mod schema_override_combinations {
         "--schema standard",
         "--major",
         "5",
-        "5.1.0+feature.test.branch.5.abc123d"
+        "5.1.0+feature.test.branch.5.abc123de"
     )]
     fn test_schema_preset_with_component_overrides(
         base_fixture: ZervFixture,
@@ -235,7 +235,7 @@ mod schema_override_combinations {
 
         let zerv_ron = base_fixture.build().to_string();
         let today_date = chrono::Utc::now().format("%Y.%-m.%-d").to_string();
-        let expected = format!("{}-5+feature.test.branch.5.abc123d", today_date);
+        let expected = format!("{}-5+feature.test.branch.5.abc123de", today_date);
 
         let output = TestCommand::run_with_stdin(
             "version --source stdin --schema calver --patch 5 --output-format semver",
@@ -254,7 +254,7 @@ mod schema_override_combinations {
             "version --source stdin --schema standard --core 0=3 --output-format semver",
             zerv_ron,
         );
-        assert_eq!(output, "3.1.0+feature.test.branch.5.abc123d");
+        assert_eq!(output, "3.1.0+feature.test.branch.5.abc123de");
     }
 }
 

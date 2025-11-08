@@ -203,40 +203,40 @@ pub fn create_full_schema_test_cases(
         SchemaTestCase {
             name: STANDARD_BASE_CONTEXT,
             semver_expectation: format!(
-                "{}+{}.{}.{{hex:7}}",
+                "{}+{}.{}.g{{hex:7}}",
                 base_version, sanitized_branch_name, distance
             ),
             pep440_expectation: format!(
-                "{}+{}.{}.{{hex:7}}",
+                "{}+{}.{}.g{{hex:7}}",
                 base_version, sanitized_branch_name, distance
             ),
         },
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE_CONTEXT,
             semver_expectation: format!(
-                "{}-{}.{}+{}.{}.{{hex:7}}",
+                "{}-{}.{}+{}.{}.g{{hex:7}}",
                 base_version, semver_label, pre_release_num, sanitized_branch_name, distance
             ),
             pep440_expectation: format!(
-                "{}{}{}+{}.{}.{{hex:7}}",
+                "{}{}{}+{}.{}.g{{hex:7}}",
                 base_version, pep440_label, pre_release_num, sanitized_branch_name, distance
             ),
         },
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE_POST_CONTEXT,
             semver_expectation: format!(
-                "{}-{}.{}.post.{}+{}.{}.{{hex:7}}",
+                "{}-{}.{}.post.{}+{}.{}.g{{hex:7}}",
                 base_version, semver_label, pre_release_num, post, sanitized_branch_name, distance
             ),
             pep440_expectation: format!(
-                "{}{}{}.post{}+{}.{}.{{hex:7}}",
+                "{}{}{}.post{}+{}.{}.g{{hex:7}}",
                 base_version, pep440_label, pre_release_num, post, sanitized_branch_name, distance
             ),
         },
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE_POST_DEV_CONTEXT,
             semver_expectation: format!(
-                "{}-{}.{}.post.{}{}+{}.{}.{{hex:7}}",
+                "{}-{}.{}.post.{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 semver_label,
                 pre_release_num,
@@ -246,7 +246,7 @@ pub fn create_full_schema_test_cases(
                 distance
             ),
             pep440_expectation: format!(
-                "{}{}{}.post{}{}+{}.{}.{{hex:7}}",
+                "{}{}{}.post{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 pep440_label,
                 pre_release_num,
@@ -271,7 +271,7 @@ pub fn create_full_schema_test_cases(
         SchemaTestCase {
             name: STANDARD_CONTEXT,
             semver_expectation: format!(
-                "{}-{}.{}.post.{}{}+{}.{}.{{hex:7}}",
+                "{}-{}.{}.post.{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 semver_label,
                 pre_release_num,
@@ -281,7 +281,7 @@ pub fn create_full_schema_test_cases(
                 distance
             ),
             pep440_expectation: format!(
-                "{}{}{}.post{}{}+{}.{}.{{hex:7}}",
+                "{}{}{}.post{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 pep440_label,
                 pre_release_num,
@@ -294,7 +294,7 @@ pub fn create_full_schema_test_cases(
         SchemaTestCase {
             name: STANDARD,
             semver_expectation: format!(
-                "{}-{}.{}.post.{}{}+{}.{}.{{hex:7}}",
+                "{}-{}.{}.post.{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 semver_label,
                 pre_release_num,
@@ -304,7 +304,7 @@ pub fn create_full_schema_test_cases(
                 distance
             ),
             pep440_expectation: format!(
-                "{}{}{}.post{}{}+{}.{}.{{hex:7}}",
+                "{}{}{}.post{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 pep440_label,
                 pre_release_num,
@@ -355,11 +355,11 @@ pub fn create_base_schema_test_cases(
         test_cases.push(SchemaTestCase {
             name: schema_name,
             semver_expectation: format!(
-                "{}+{}.{}.{{hex:7}}",
+                "{}+{}.{}.g{{hex:7}}",
                 base_version, sanitized_branch_name, distance
             ),
             pep440_expectation: format!(
-                "{}+{}.{}.{{hex:7}}",
+                "{}+{}.{}.g{{hex:7}}",
                 base_version, sanitized_branch_name, distance
             ),
         });

@@ -222,6 +222,7 @@ impl Vcs for GitVcs {
 
         let mut data = VcsData {
             commit_hash: self.get_commit_hash()?,
+            commit_hash_prefix: "g".to_string(), // Git prefix following git describe convention
             commit_timestamp: self.get_commit_timestamp()?,
             is_dirty: self.is_dirty()?,
             current_branch: self.get_current_branch().unwrap_or(None),

@@ -25,7 +25,12 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
     vars.distance = Some(vcs_data.distance as u64);
     vars.bumped_branch = vcs_data.current_branch;
     vars.dirty = Some(vcs_data.is_dirty);
-    vars.bumped_commit_hash = Some(vcs_data.commit_hash);
+    vars.bumped_commit_hash = Some(format!(
+        "{}{}",
+        vcs_data.commit_hash_prefix, vcs_data.commit_hash
+    ));
+    // TODO: implement last_commit_hash
+    // vars.last_commit_hash = vcs_data.tag_commit_hash
     vars.bumped_timestamp = Some(vcs_data.commit_timestamp as u64);
     vars.last_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
 

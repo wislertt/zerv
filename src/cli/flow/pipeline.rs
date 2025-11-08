@@ -98,11 +98,11 @@ mod tests {
             .make_dirty()
             .expect_version(
                 &format!(
-                    "1.0.1-alpha.{}.post.0.dev.{{timestamp:now}}+feature.2.0.{{hex:7}}",
+                    "1.0.1-alpha.{}.post.0.dev.{{timestamp:now}}+feature.2.0.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
                 &format!(
-                    "1.0.1a{}.post0.dev{{timestamp:now}}+feature.2.0.{{hex:7}}",
+                    "1.0.1a{}.post0.dev{{timestamp:now}}+feature.2.0.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
             )
@@ -121,11 +121,11 @@ mod tests {
             .commit()
             .expect_version(
                 &format!(
-                    "1.0.1-alpha.{}.post.1+feature.2.1.{{hex:7}}",
+                    "1.0.1-alpha.{}.post.1+feature.2.1.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
                 &format!(
-                    "1.0.1a{}.post1+feature.2.1.{{hex:7}}",
+                    "1.0.1a{}.post1+feature.2.1.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
             )
@@ -145,11 +145,11 @@ mod tests {
             .commit()
             .expect_version(
                 &format!(
-                    "1.0.1-alpha.{}.post.1+feature.1.1.{{hex:7}}",
+                    "1.0.1-alpha.{}.post.1+feature.1.1.g{{hex:7}}",
                     branch_feature_1_hash
                 ),
                 &format!(
-                    "1.0.1a{}.post1+feature.1.1.{{hex:7}}",
+                    "1.0.1a{}.post1+feature.1.1.g{{hex:7}}",
                     branch_feature_1_hash
                 ),
             )
@@ -168,11 +168,11 @@ mod tests {
             .commit()
             .expect_version(
                 &format!(
-                    "1.0.1-alpha.{}.post.2+feature.1.2.{{hex:7}}",
+                    "1.0.1-alpha.{}.post.2+feature.1.2.g{{hex:7}}",
                     branch_feature_1_hash
                 ),
                 &format!(
-                    "1.0.1a{}.post2+feature.1.2.{{hex:7}}",
+                    "1.0.1a{}.post2+feature.1.2.g{{hex:7}}",
                     branch_feature_1_hash
                 ),
             )
@@ -194,17 +194,18 @@ mod tests {
             .expect_version("1.0.1", "1.0.1")
             .expect_schema_variants(create_base_schema_test_cases("1.0.1", "main"));
 
+        // TODO: debug this. distance should be 1. current is 2
         test_info!("feature-2: Sync with main to get feature-1 changes");
         let scenario = scenario
             .checkout("feature-2")
             .merge_branch("main")
             .expect_version(
                 &format!(
-                    "1.0.2-alpha.{}.post.2+feature.2.2.{{hex:7}}",
+                    "1.0.2-alpha.{}.post.2+feature.2.2.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
                 &format!(
-                    "1.0.2a{}.post2+feature.2.2.{{hex:7}}",
+                    "1.0.2a{}.post2+feature.2.2.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
             )
@@ -223,11 +224,11 @@ mod tests {
             .commit()
             .expect_version(
                 &format!(
-                    "1.0.2-alpha.{}.post.3+feature.2.3.{{hex:7}}",
+                    "1.0.2-alpha.{}.post.3+feature.2.3.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
                 &format!(
-                    "1.0.2a{}.post3+feature.2.3.{{hex:7}}",
+                    "1.0.2a{}.post3+feature.2.3.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
             )
