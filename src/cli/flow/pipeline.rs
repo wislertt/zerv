@@ -65,45 +65,122 @@ mod tests {
     use crate::test_info;
     use crate::test_utils::{
         GitRepoFixture,
-        assert_version_expectation,
         should_run_docker_tests,
     };
 
-    fn test_flow_pipeline_with_fixture(
-        fixture_path: &str,
-        semver_expectation: &str,
-        pep440_expectation: &str,
-    ) {
-        let test_cases = vec![
-            ("semver", semver_expectation),
-            ("pep440", pep440_expectation),
-        ];
+    mod test_utils {
+        use super::*;
+        use crate::test_utils::assert_version_expectation;
 
-        for (format_name, expectation) in test_cases {
-            let mut args = FlowArgs::default();
-            args.input.directory = Some(fixture_path.to_string());
-            args.output.output_format = format_name.to_string();
+        // Test case structure for better readability and type safety
+        #[derive(Debug)]
+        pub struct SchemaTestCase {
+            pub name: &'static str,
+            pub semver_expectation: String,
+            pub pep440_expectation: String,
+        }
 
-            let result = run_flow_pipeline(args);
-            assert!(
-                result.is_ok(),
-                "Flow pipeline should succeed with {} format at {}: {}",
-                format_name,
+        pub fn test_flow_pipeline_with_fixture(
+            fixture_path: &str,
+            semver_expectation: &str,
+            pep440_expectation: &str,
+        ) {
+            test_flow_pipeline_with_fixture_and_schema_opt(
                 fixture_path,
-                result.unwrap_err()
-            );
-            let output = result.unwrap();
-            assert!(
-                !output.is_empty(),
-                "Flow pipeline should produce output for {} format",
-                format_name
-            );
+                None,
+                semver_expectation,
+                pep440_expectation,
+            )
+        }
 
-            assert_version_expectation(expectation, &output);
+        pub fn test_flow_pipeline_with_fixture_and_schema(
+            fixture_path: &str,
+            schema: &str,
+            semver_expectation: &str,
+            pep440_expectation: &str,
+        ) {
+            test_flow_pipeline_with_fixture_and_schema_opt(
+                fixture_path,
+                Some(schema),
+                semver_expectation,
+                pep440_expectation,
+            )
+        }
 
-            test_info!("Flow pipeline output ({}): {}", format_name, output);
+        pub fn test_flow_pipeline_with_fixture_and_schema_opt(
+            fixture_path: &str,
+            schema: Option<&str>,
+            semver_expectation: &str,
+            pep440_expectation: &str,
+        ) {
+            let test_cases = vec![
+                ("semver", semver_expectation),
+                ("pep440", pep440_expectation),
+            ];
+
+            for (format_name, expectation) in test_cases {
+                let mut args = FlowArgs::default();
+                args.input.directory = Some(fixture_path.to_string());
+                args.output.output_format = format_name.to_string();
+
+                // Set schema if provided
+                if let Some(schema_value) = schema {
+                    args.schema = Some(schema_value.to_string());
+                }
+
+                let result = run_flow_pipeline(args);
+                let schema_desc = match schema {
+                    Some(s) => format!(" and {} schema", s),
+                    None => String::new(),
+                };
+
+                assert!(
+                    result.is_ok(),
+                    "Flow pipeline should succeed with {} format{} at {}: {}",
+                    format_name,
+                    schema_desc,
+                    fixture_path,
+                    result.unwrap_err()
+                );
+
+                let output = result.unwrap();
+                assert!(
+                    !output.is_empty(),
+                    "Flow pipeline should produce output for {} format{}",
+                    format_name,
+                    schema_desc
+                );
+
+                assert_version_expectation(expectation, &output);
+
+                let log_msg = match schema {
+                    Some(s) => format!("{} with {} schema", format_name, s),
+                    None => format_name.to_string(),
+                };
+                test_info!("Flow pipeline output ({}): {}", log_msg, output);
+            }
+        }
+
+        pub fn test_flow_pipeline_with_schema_test_cases(
+            fixture_path: &str,
+            schema_test_cases: Vec<SchemaTestCase>,
+        ) {
+            for test_case in schema_test_cases {
+                test_flow_pipeline_with_fixture_and_schema(
+                    fixture_path,
+                    test_case.name,
+                    &test_case.semver_expectation,
+                    &test_case.pep440_expectation,
+                );
+            }
         }
     }
+
+    use test_utils::{
+        SchemaTestCase,
+        test_flow_pipeline_with_fixture,
+        test_flow_pipeline_with_schema_test_cases,
+    };
 
     #[test]
     fn test_trunk_based_development_flow() {
@@ -116,12 +193,6 @@ mod tests {
             GitRepoFixture::tagged("v1.0.0").expect("Failed to create git fixture with tag");
 
         let fixture_path = fixture.path().to_string_lossy();
-        // Test template creation (rendering test disabled for now)
-        let _main_hash: Template<u32> =
-            Template::new("{{ hash_int(value='main', length=5) }}".to_string());
-
-        let rendered_hash = _main_hash.render_unwrap(None);
-        test_info!("{}", rendered_hash);
 
         test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
 
@@ -149,5 +220,57 @@ mod tests {
                 "1.0.0a{branch_feature_1_hash}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}"
             ),
         );
+
+        let schema_test_cases = vec![
+            SchemaTestCase {
+                name: "standard-base",
+                semver_expectation: "1.0.0".to_string(),
+                pep440_expectation: "1.0.0".to_string(),
+            },
+            SchemaTestCase {
+                name: "standard-base-prerelease",
+                semver_expectation: format!("1.0.0-alpha.{}", branch_feature_1_hash),
+                pep440_expectation: format!("1.0.0a{}", branch_feature_1_hash),
+            },
+            SchemaTestCase {
+                name: "standard-base-prerelease-post",
+                semver_expectation: format!("1.0.0-alpha.{}.post.0", branch_feature_1_hash),
+                pep440_expectation: format!("1.0.0a{}.post0", branch_feature_1_hash),
+            },
+            SchemaTestCase {
+                name: "standard-no-context",
+                semver_expectation: format!(
+                    "1.0.0-alpha.{}.post.0.dev.{{timestamp:now}}",
+                    branch_feature_1_hash
+                ),
+                pep440_expectation: format!(
+                    "1.0.0a{}.post0.dev{{timestamp:now}}",
+                    branch_feature_1_hash
+                ),
+            },
+            SchemaTestCase {
+                name: "standard-context",
+                semver_expectation: format!(
+                    "1.0.0-alpha.{}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+                pep440_expectation: format!(
+                    "1.0.0a{}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+            },
+            SchemaTestCase {
+                name: "standard",
+                semver_expectation: format!(
+                    "1.0.0-alpha.{}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+                pep440_expectation: format!(
+                    "1.0.0a{}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+            },
+        ];
+        test_flow_pipeline_with_schema_test_cases(&fixture_path, schema_test_cases);
     }
 }
