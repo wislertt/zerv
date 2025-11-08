@@ -249,8 +249,10 @@ impl FlowArgs {
     }
 
     pub fn bump_dev(&self) -> Option<Option<Template<u32>>> {
+        let if_part = "{% if dirty %}";
         let content = "{{ bumped_timestamp }}";
-        let template = self.build_pre_release_bump_template(content);
+        let else_part = "{% else %}None{% endif %}";
+        let template = format!("{}{}{}", if_part, content, else_part);
         Some(Some(Template::new(template)))
     }
 }
@@ -408,14 +410,13 @@ mod tests {
     mod bump_pre_release_label {
         use super::*;
 
-        // #[test]
-        // TODO: after resolve terra issue
-        // fn test_default_returns_alpha() {
-        //     let mut args = FlowArgs::default();
-        //     args.validate().unwrap(); // This sets the default pre_release_label
-        //     let expected = args.build_patch_bump_template("alpha");
-        //     assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
-        // }
+        #[test]
+        fn test_default_returns_alpha() {
+            let mut args = FlowArgs::default();
+            args.validate().unwrap(); // This sets the default pre_release_label
+            let expected = args.build_pre_release_bump_template("alpha");
+            assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
+        }
 
         #[rstest]
         #[case("beta")]
@@ -570,8 +571,10 @@ mod tests {
             assert!(template_result.is_some());
             let template = template_result.unwrap();
 
-            let expected = args.build_pre_release_bump_template("{{ bumped_timestamp }}");
-            assert_eq!(template.as_str(), expected);
+            assert_eq!(
+                template.as_str(),
+                "{% if dirty %}{{ bumped_timestamp }}{% else %}None{% endif %}"
+            );
         }
     }
 

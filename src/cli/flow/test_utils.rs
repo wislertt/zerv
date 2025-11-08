@@ -128,11 +128,21 @@ pub fn create_all_standard_schema_test_cases(
     pre_release_label: PreReleaseLabel,
     pre_release_num: &str,
     post: u32,
+    dev: Option<&str>,
     sanitized_branch_name: &str,
     distance: u32,
 ) -> Vec<SchemaTestCase> {
     let semver_label = pre_release_label.label_str();
     let pep440_label = pre_release_label_to_pep440_string(&pre_release_label);
+
+    let semver_dev = match dev {
+        Some(dev_str) => format!(".dev.{}", dev_str),
+        None => String::new(),
+    };
+    let pep440_dev = match dev {
+        Some(dev_str) => format!(".dev{}", dev_str),
+        None => String::new(),
+    };
 
     vec![
         // Base schemas
@@ -160,12 +170,12 @@ pub fn create_all_standard_schema_test_cases(
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE_POST_DEV,
             semver_expectation: format!(
-                "{}-{}.{}.post.{}.dev.{{timestamp:now}}",
-                base_version, semver_label, pre_release_num, post
+                "{}-{}.{}.post.{}{}",
+                base_version, semver_label, pre_release_num, post, semver_dev
             ),
             pep440_expectation: format!(
-                "{}{}{}.post{}.dev{{timestamp:now}}",
-                base_version, pep440_label, pre_release_num, post
+                "{}{}{}.post{}{}",
+                base_version, pep440_label, pre_release_num, post, pep440_dev
             ),
         },
         // Context schemas
@@ -205,46 +215,82 @@ pub fn create_all_standard_schema_test_cases(
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE_POST_DEV_CONTEXT,
             semver_expectation: format!(
-                "{}-{}.{}.post.{}.dev.{{timestamp:now}}+{}.{}.{{hex:7}}",
-                base_version, semver_label, pre_release_num, post, sanitized_branch_name, distance
+                "{}-{}.{}.post.{}{}+{}.{}.{{hex:7}}",
+                base_version,
+                semver_label,
+                pre_release_num,
+                post,
+                semver_dev,
+                sanitized_branch_name,
+                distance
             ),
             pep440_expectation: format!(
-                "{}{}{}.post{}.dev{{timestamp:now}}+{}.{}.{{hex:7}}",
-                base_version, pep440_label, pre_release_num, post, sanitized_branch_name, distance
+                "{}{}{}.post{}{}+{}.{}.{{hex:7}}",
+                base_version,
+                pep440_label,
+                pre_release_num,
+                post,
+                pep440_dev,
+                sanitized_branch_name,
+                distance
             ),
         },
         // Complete schemas
         SchemaTestCase {
             name: STANDARD_NO_CONTEXT,
             semver_expectation: format!(
-                "{}-{}.{}.post.{}.dev.{{timestamp:now}}",
-                base_version, semver_label, pre_release_num, post
+                "{}-{}.{}.post.{}{}",
+                base_version, semver_label, pre_release_num, post, semver_dev
             ),
             pep440_expectation: format!(
-                "{}{}{}.post{}.dev{{timestamp:now}}",
-                base_version, pep440_label, pre_release_num, post
+                "{}{}{}.post{}{}",
+                base_version, pep440_label, pre_release_num, post, pep440_dev
             ),
         },
         SchemaTestCase {
             name: STANDARD_CONTEXT,
             semver_expectation: format!(
-                "{}-{}.{}.post.{}.dev.{{timestamp:now}}+{}.{}.{{hex:7}}",
-                base_version, semver_label, pre_release_num, post, sanitized_branch_name, distance
+                "{}-{}.{}.post.{}{}+{}.{}.{{hex:7}}",
+                base_version,
+                semver_label,
+                pre_release_num,
+                post,
+                semver_dev,
+                sanitized_branch_name,
+                distance
             ),
             pep440_expectation: format!(
-                "{}{}{}.post{}.dev{{timestamp:now}}+{}.{}.{{hex:7}}",
-                base_version, pep440_label, pre_release_num, post, sanitized_branch_name, distance
+                "{}{}{}.post{}{}+{}.{}.{{hex:7}}",
+                base_version,
+                pep440_label,
+                pre_release_num,
+                post,
+                pep440_dev,
+                sanitized_branch_name,
+                distance
             ),
         },
         SchemaTestCase {
             name: STANDARD,
             semver_expectation: format!(
-                "{}-{}.{}.post.{}.dev.{{timestamp:now}}+{}.{}.{{hex:7}}",
-                base_version, semver_label, pre_release_num, post, sanitized_branch_name, distance
+                "{}-{}.{}.post.{}{}+{}.{}.{{hex:7}}",
+                base_version,
+                semver_label,
+                pre_release_num,
+                post,
+                semver_dev,
+                sanitized_branch_name,
+                distance
             ),
             pep440_expectation: format!(
-                "{}{}{}.post{}.dev{{timestamp:now}}+{}.{}.{{hex:7}}",
-                base_version, pep440_label, pre_release_num, post, sanitized_branch_name, distance
+                "{}{}{}.post{}{}+{}.{}.{{hex:7}}",
+                base_version,
+                pep440_label,
+                pre_release_num,
+                post,
+                pep440_dev,
+                sanitized_branch_name,
+                distance
             ),
         },
     ]

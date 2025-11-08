@@ -18,6 +18,8 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
     let mut args = args;
     args.validate()?;
 
+    let bump_dev = args.bump_dev();
+
     let version_args = VersionArgs {
         input: args.input.clone(),
         output: OutputConfig {
@@ -35,7 +37,7 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
             bump_pre_release_num: args.bump_pre_release_num(),
             bump_patch: args.bump_patch(),
             bump_post: args.bump_post(),
-            bump_dev: args.bump_dev(),
+            bump_dev,
             ..Default::default()
         },
     };
@@ -105,6 +107,7 @@ mod tests {
                 PreReleaseLabel::Alpha,
                 &branch_feature_1_hash.to_string(),
                 0,
+                Some("{timestamp:now}"),
                 "feature.1",
                 0,
             ));
@@ -112,15 +115,26 @@ mod tests {
         test_info!(
             "Scenario 4: Make commit and test version expectations with post=1 and distance=1"
         );
-        scenario.commit().expect_version(
-            &format!(
-                "1.0.1-alpha.{}.post.1+feature.1.1.{{hex:7}}",
-                branch_feature_1_hash
-            ),
-            &format!(
-                "1.0.1a{}.post1+feature.1.1.{{hex:7}}",
-                branch_feature_1_hash
-            ),
-        );
+        scenario
+            .commit()
+            .expect_version(
+                &format!(
+                    "1.0.1-alpha.{}.post.1+feature.1.1.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+                &format!(
+                    "1.0.1a{}.post1+feature.1.1.{{hex:7}}",
+                    branch_feature_1_hash
+                ),
+            )
+            .expect_schema_variants(create_all_standard_schema_test_cases(
+                "1.0.1",
+                PreReleaseLabel::Alpha,
+                &branch_feature_1_hash.to_string(),
+                1,
+                None,
+                "feature.1",
+                1,
+            ));
     }
 }
