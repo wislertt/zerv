@@ -58,10 +58,18 @@ impl GitRepoFixture {
         Ok(fixture)
     }
 
-    /// Checkout to an existing or new branch
-    pub fn checkout_branch(&self, branch: &str) -> Result<(), Box<dyn std::error::Error>> {
+    /// Create a new branch without checking it out
+    pub fn create_branch(&self, branch: &str) -> Result<(), Box<dyn std::error::Error>> {
         self.git_impl
             .create_branch(&self.test_dir, branch)
+            .map_err(|e| format!("Failed to create branch '{}': {e}", branch))?;
+        Ok(())
+    }
+
+    /// Checkout to an existing branch
+    pub fn checkout_branch(&self, branch: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.git_impl
+            .checkout_branch(&self.test_dir, branch)
             .map_err(|e| format!("Failed to checkout branch '{}': {e}", branch))?;
         Ok(())
     }
@@ -109,7 +117,10 @@ mod tests {
 
         let fixture = GitRepoFixture::tagged("v1.0.0").expect("Failed to create fixture with tag");
 
-        // Checkout a new branch
+        // Create and checkout a new branch
+        fixture
+            .create_branch("feature-test")
+            .expect("Failed to create feature-test branch");
         fixture
             .checkout_branch("feature-test")
             .expect("Failed to checkout feature-test branch");

@@ -59,126 +59,30 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
 mod tests {
     use crate::cli::flow::test_utils::{
         FlowTestScenario,
-        SchemaTestCase,
         create_all_standard_schema_test_cases,
         expect_branch_hash,
-        test_flow_pipeline_with_fixture,
-        test_flow_pipeline_with_schema_test_cases,
     };
     use crate::test_info;
-    use crate::test_utils::{
-        GitRepoFixture,
-        should_run_docker_tests,
-    };
+    use crate::test_utils::should_run_docker_tests;
     use crate::version::zerv::PreReleaseLabel;
 
     #[test]
     fn test_trunk_based_development_flow() {
-        test_info!("Starting trunk-based development flow test");
-        if !should_run_docker_tests() {
-            return; // Skip when `ZERV_TEST_DOCKER` are disabled
-        }
-
-        let fixture =
-            GitRepoFixture::tagged("v1.0.0").expect("Failed to create git fixture with tag");
-
-        let fixture_path = fixture.path().to_string_lossy();
-
-        test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
-
-        fixture
-            .checkout_branch("feature-1")
-            .expect("Failed to checkout feature-1 branch");
-
-        test_flow_pipeline_with_fixture(&fixture_path, "1.0.0", "1.0.0");
-
-        let branch_feature_1_hash = expect_branch_hash("feature-1", 5, "42954");
-
-        fixture
-            .make_dirty()
-            .expect("Failed to make working directory dirty");
-
-        test_flow_pipeline_with_fixture(
-            &fixture_path,
-            &format!(
-                "1.0.0-alpha.{branch_feature_1_hash}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}"
-            ),
-            &format!(
-                "1.0.0a{branch_feature_1_hash}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}"
-            ),
-        );
-
-        let schema_test_cases = vec![
-            SchemaTestCase {
-                name: "standard-base",
-                semver_expectation: "1.0.0".to_string(),
-                pep440_expectation: "1.0.0".to_string(),
-            },
-            SchemaTestCase {
-                name: "standard-base-prerelease",
-                semver_expectation: format!("1.0.0-alpha.{}", branch_feature_1_hash),
-                pep440_expectation: format!("1.0.0a{}", branch_feature_1_hash),
-            },
-            SchemaTestCase {
-                name: "standard-base-prerelease-post",
-                semver_expectation: format!("1.0.0-alpha.{}.post.0", branch_feature_1_hash),
-                pep440_expectation: format!("1.0.0a{}.post0", branch_feature_1_hash),
-            },
-            SchemaTestCase {
-                name: "standard-no-context",
-                semver_expectation: format!(
-                    "1.0.0-alpha.{}.post.0.dev.{{timestamp:now}}",
-                    branch_feature_1_hash
-                ),
-                pep440_expectation: format!(
-                    "1.0.0a{}.post0.dev{{timestamp:now}}",
-                    branch_feature_1_hash
-                ),
-            },
-            SchemaTestCase {
-                name: "standard-context",
-                semver_expectation: format!(
-                    "1.0.0-alpha.{}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}",
-                    branch_feature_1_hash
-                ),
-                pep440_expectation: format!(
-                    "1.0.0a{}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}",
-                    branch_feature_1_hash
-                ),
-            },
-            SchemaTestCase {
-                name: "standard",
-                semver_expectation: format!(
-                    "1.0.0-alpha.{}.post.0.dev.{{timestamp:now}}+feature.1.0.{{hex:7}}",
-                    branch_feature_1_hash
-                ),
-                pep440_expectation: format!(
-                    "1.0.0a{}.post0.dev{{timestamp:now}}+feature.1.0.{{hex:7}}",
-                    branch_feature_1_hash
-                ),
-            },
-        ];
-        test_flow_pipeline_with_schema_test_cases(&fixture_path, schema_test_cases);
-    }
-
-    #[test]
-    fn test_trunk_based_development_flow_builder() {
         test_info!("Starting trunk-based development flow test (builder pattern)");
         if !should_run_docker_tests() {
             return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
 
-        // Initial setup - main branch state
         let scenario = FlowTestScenario::new()
             .expect("Failed to create test scenario")
+            .create_tag("v1.0.0")
             .expect_version("1.0.0", "1.0.0");
 
-        // Create feature branch and verify version expectations
         let scenario = scenario
             .create_branch("feature-1")
+            .checkout("feature-1")
             .expect_version("1.0.0", "1.0.0");
 
-        // Make working directory dirty and test schema variants
         let branch_feature_1_hash = expect_branch_hash("feature-1", 5, "42954");
 
         scenario

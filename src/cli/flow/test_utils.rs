@@ -43,22 +43,29 @@ pub struct SchemaTestCase {
 pub struct FlowTestScenario {
     fixture: GitRepoFixture,
     fixture_path: String,
-    current_branch: String,
-    current_hash: String,
 }
 
 impl FlowTestScenario {
+    /// Create an empty git repository without any tags
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let fixture = GitRepoFixture::tagged("v1.0.0")
-            .map_err(|e| format!("Failed to create git fixture with tag: {}", e))?;
+        let fixture = GitRepoFixture::empty()
+            .map_err(|e| format!("Failed to create empty git fixture: {}", e))?;
         let fixture_path = fixture.path().to_string_lossy().to_string();
 
         Ok(Self {
             fixture,
             fixture_path,
-            current_branch: "main".to_string(),
-            current_hash: "0".to_string(),
         })
+    }
+
+    /// Create a tag in the current git repository
+    pub fn create_tag(self, tag: &str) -> Self {
+        test_info!("Creating tag: {}", tag);
+        self.fixture
+            .git_impl
+            .create_tag(&self.fixture.test_dir, tag)
+            .unwrap_or_else(|e| panic!("Failed to create tag '{}': {}", tag, e));
+        self
     }
 
     pub fn expect_version(self, semver: &str, pep440: &str) -> Self {
@@ -73,25 +80,26 @@ impl FlowTestScenario {
         self
     }
 
+    /// Create a new branch without checking it out
     pub fn create_branch(self, branch_name: &str) -> Self {
         test_info!("Creating branch: {}", branch_name);
         self.fixture
+            .create_branch(branch_name)
+            .unwrap_or_else(|e| panic!("Failed to create branch '{}': {}", branch_name, e));
+        self
+    }
+
+    /// Checkout to an existing branch
+    pub fn checkout(self, branch_name: &str) -> Self {
+        test_info!("Switching to branch: {}", branch_name);
+        self.fixture
             .checkout_branch(branch_name)
-            .expect("Failed to checkout branch");
-
-        let hash_template = format!("{{{{ hash_int(value='{}', length=5) }}}}", branch_name);
-        let current_hash = Template::<String>::new(hash_template).render_unwrap(None);
-
-        Self {
-            fixture: self.fixture,
-            fixture_path: self.fixture_path,
-            current_branch: branch_name.to_string(),
-            current_hash,
-        }
+            .unwrap_or_else(|e| panic!("Failed to checkout branch '{}': {}", branch_name, e));
+        self
     }
 
     pub fn commit(self) -> Self {
-        test_info!("Making commit on branch: {}", self.current_branch);
+        test_info!("Making commit");
         // Note: GitRepoFixture doesn't have commit_empty method
         // This would need to be implemented or use the Git operations trait
         self
@@ -101,27 +109,6 @@ impl FlowTestScenario {
         test_info!("Making working directory dirty");
         self.fixture.make_dirty().expect("Failed to make dirty");
         self
-    }
-
-    pub fn checkout(self, branch_name: &str) -> Self {
-        test_info!("Switching to branch: {}", branch_name);
-        self.fixture
-            .checkout_branch(branch_name)
-            .expect("Failed to checkout branch");
-        Self {
-            fixture: self.fixture,
-            fixture_path: self.fixture_path,
-            current_branch: branch_name.to_string(),
-            current_hash: self.current_hash,
-        }
-    }
-
-    pub fn get_current_hash(&self) -> &str {
-        &self.current_hash
-    }
-
-    pub fn get_current_branch(&self) -> &str {
-        &self.current_branch
     }
 }
 

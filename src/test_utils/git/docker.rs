@@ -649,8 +649,8 @@ mod tests {
             .unwrap();
         assert_eq!(
             current_branch.trim(),
-            "feature/test-branch",
-            "Should be on new branch"
+            "main", // Should still be on main since create_branch doesn't checkout
+            "Should still be on main branch"
         );
     }
 
