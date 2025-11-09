@@ -103,18 +103,18 @@ This section demonstrates how Zerv Flow works across different branching strateg
 **Scenario Overview**:
 
 - Development starts from `v1.0.0` on main
-- Three feature branches created in parallel: `feature-1`, `feature-2`, and later `feature-3`
+- Two feature branches created in parallel: `feature-1` and `feature-2`
 - `feature-1` gets completed and released first (`v1.0.1`)
 - `feature-2` syncs with main to get `feature-1` changes, then continues development
-- `feature-3` branches from `feature-2` to implement a sub-feature
-- `feature-3` merges back to `feature-2`, which then releases as `v1.1.0`
+- `feature-3` branches from `feature-2` to implement a sub-feature (nested feature branch)
+- `feature-3` merges back to `feature-2`, which then completes development and releases as `v1.1.0`
 
 **Key Zerv Flow behaviors demonstrated**:
 
 - **Uncommitted changes**: Shows dirty state with `.dev.timestamp` suffix
-- **Parallel development**: Different branches get unique hash-based IDs (`12345`, `54321`, `98765`)
+- **Parallel development**: Different branches get unique hash-based IDs (`68031`, `42954`, `14698`)
 - **Version progression**: Base version updates when syncing with main (`1.0.1` → `1.0.2`)
-- **Post-release distance resets**: Counters reset to `.post.1` after syncing with new base version
+- **Post-release distance continuity**: Distance counters continue accumulating across branches and merges
 - **Nested feature branches**: `feature-3` branching from `feature-2` with independent versioning
 - **Merge handling**: Clean version progression through complex merge scenarios
 - **Alpha pre-releases**: All development branches use `alpha` pre-release identifiers
@@ -126,36 +126,56 @@ config:
   theme: 'base'
 ---
 gitGraph
+    %% Step 1: Initial commit on main with v1.0.0 tag
     commit id: "1.0.0"
 
+    %% Step 2: Create parallel feature branches feature-1 and feature-2 from main
     branch feature-1 order: 2
     branch feature-2 order: 3
 
+    %% Step 3: feature-2: Start development with dirty state
     checkout feature-2
-    commit type:REVERSE id: "1.0.1-alpha.12345.post.0.dev.1729924622" tag: "uncommitted"
-    commit id: "1.0.1-alpha.12345.post.1"
+    commit type:REVERSE id: "1.0.1-alpha.68031.post.0.dev.{timestamp}" tag: "uncommitted"
 
+    %% Step 4: feature-2: Create first commit
+    commit id: "1.0.1-alpha.68031.post.1"
+
+    %% Step 5: feature-1: Create commits (parallel development)
     checkout feature-1
-    commit id: "1.0.1-alpha.54321.post.1"
-    commit id: "1.0.1-alpha.54321.post.2"
+    commit id: "1.0.1-alpha.42954.post.1"
+    commit id: "1.0.1-alpha.42954.post.2"
 
+    %% Step 6: feature-1: Merge to main and release v1.0.1
     checkout main
     merge feature-1 id: "1.0.1" tag: "feature-1 released"
 
+    %% Step 7: feature-2: Sync with main to get feature-1 changes
     checkout feature-2
-    merge main id: "1.0.2-alpha.12345.post.2"
-    commit id: "1.0.2-alpha.12345.post.3"
+    merge main id: "1.0.2-alpha.68031.post.2"
 
+    %% Step 8: feature-2: Create additional commit
+    commit id: "1.0.2-alpha.68031.post.3"
+
+    %% Step 9: feature-3: Branch from feature-2 for sub-feature development
     branch feature-3 order: 4
     checkout feature-3
-    commit id: "1.0.2-alpha.98765.post.4"
-    commit type:REVERSE id: "1.0.2-alpha.98765.post.4.dev.1729924622" tag: "uncommitted"
-    commit id: "1.0.2-alpha.98765.post.5"
+    commit id: "1.0.2-alpha.14698.post.4"
 
+    %% Step 10: feature-3: Continue development with dirty state
+    commit type:REVERSE id: "1.0.2-alpha.14698.post.4.dev.{timestamp}" tag: "uncommitted"
+
+    %% Step 11: feature-3: Continue development with commits
+    commit id: "1.0.2-alpha.14698.post.5"
+    commit id: "1.0.2-alpha.14698.post.6"
+
+    %% Step 12: feature-2: Merge feature-3 back to continue development
     checkout feature-2
-    merge feature-3 id: "1.0.2-alpha.12345.post.4" tag: "feature-3 merged"
+    merge feature-3 id: "1.0.2-alpha.68031.post.6" tag: "feature-3 merged"
 
-    commit id: "1.0.2-alpha.12345.post.5"
+    %% Step 13: feature-2: Final development before release
+    commit id: "1.0.2-alpha.68031.post.7"
+
+    %% Step 14: Final release: feature-2 merges to main and releases v1.1.0
     checkout main
     merge feature-2 id: "1.1.0" tag: "feature-2 released"
 ```
