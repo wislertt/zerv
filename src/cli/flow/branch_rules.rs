@@ -32,7 +32,8 @@ pub enum PostMode {
 pub struct BranchRule {
     pub pattern: String,                    // "develop", "release/*", "feature/*"
     pub pre_release_label: PreReleaseLabel, // "beta", "rc", "alpha"
-    pub pre_release_num: Option<u32>,       // "1" for release branches
+    #[serde(default)]
+    pub pre_release_num: Option<u32>, // "1" for release branches, defaults to None
     pub post_mode: PostMode,                // "tag" for release, "commit" for others
 }
 
@@ -61,6 +62,16 @@ impl BranchRule {
                 self.pattern
             )));
         }
+
+        // Exact patterns (not ending with /*) must have pre_release_num specified
+        if !self.pattern.ends_with("/*") && self.pre_release_num.is_none() {
+            return Err(ZervError::ConflictingOptions(format!(
+                "Branch rule with exact pattern '{}' must have explicit pre_release_num. \
+                Specify pre_release_num: Some(N) or use wildcard pattern '{}/N' for dynamic extraction.",
+                self.pattern, self.pattern
+            )));
+        }
+
         Ok(())
     }
 
@@ -122,9 +133,12 @@ impl BranchRules {
         Ok(Self { rules })
     }
 
-    /// Parse branch rules from RON string
+    /// Parse branch rules from RON string (supports both Some(1) and bare 1 syntax)
     pub fn from_ron(ron_str: &str) -> Result<Self, ZervError> {
-        let rules: Vec<BranchRule> = from_str(ron_str).map_err(|e| {
+        // Preprocess to convert bare numbers to Some(number)
+        let processed_ron = Self::preprocess_ron_syntax(ron_str);
+
+        let rules: Vec<BranchRule> = from_str(&processed_ron).map_err(|e| {
             ZervError::InvalidFormat(format!("Failed to parse branch rules: {}", e))
         })?;
 
@@ -134,6 +148,16 @@ impl BranchRules {
         }
 
         Ok(Self { rules })
+    }
+
+    /// Preprocess RON string to convert bare numbers to Some(number) for pre_release_num
+    fn preprocess_ron_syntax(ron_str: &str) -> String {
+        use regex::Regex;
+
+        // Match pattern: pre_release_num: <number> and convert to pre_release_num: Some(<number>)
+        // This regex finds pre_release_num field with bare numbers and wraps them in Some()
+        let re = Regex::new(r"(pre_release_num:\s*)(\d+)").expect("Failed to compile regex");
+        re.replace_all(ron_str, "${1}Some(${2})").to_string()
     }
 
     /// Find a rule that matches the given branch name
@@ -348,7 +372,7 @@ mod tests {
         let rule = BranchRule {
             pattern: pattern.to_string(),
             pre_release_label: PreReleaseLabel::Rc,
-            pre_release_num: None,
+            pre_release_num: None, // Must be specified in Rust code (#[serde(default)] only for deserialization)
             post_mode: PostMode::Tag,
         };
 
@@ -473,10 +497,10 @@ mod tests {
 
     #[test]
     fn test_branch_rules_from_ron() {
-        // RON requires explicit None values for optional fields
+        // RON with #[serde(default)] - no need to specify pre_release_num: None
         let ron_str = r#"[
             (pattern: "develop", pre_release_label: beta, pre_release_num: Some(1), post_mode: commit),
-            (pattern: "release/*", pre_release_label: rc, pre_release_num: None, post_mode: tag)
+            (pattern: "release/*", pre_release_label: rc, post_mode: tag)
         ]"#;
 
         let rules = BranchRules::from_ron(ron_str).unwrap();
@@ -484,9 +508,69 @@ mod tests {
 
         let develop_rule = rules.find_rule("develop").unwrap();
         assert_eq!(develop_rule.pre_release_label, PreReleaseLabel::Beta);
+        assert_eq!(develop_rule.pre_release_num, Some(1));
 
         let release_rule = rules.find_rule("release/1").unwrap();
         assert_eq!(release_rule.pre_release_label, PreReleaseLabel::Rc);
+        assert_eq!(release_rule.pre_release_num, None); // Defaults to None
+    }
+
+    #[test]
+    fn test_branch_rules_from_ron_minimal() {
+        // Test cleaner RON syntax - omit pre_release_num for wildcard patterns only
+        let ron_str = r#"[
+            (pattern: "develop", pre_release_label: beta, pre_release_num: Some(1), post_mode: commit),
+            (pattern: "release/*", pre_release_label: rc, post_mode: tag)
+        ]"#;
+
+        let rules = BranchRules::from_ron(ron_str).unwrap();
+        assert_eq!(rules.rules.len(), 2);
+
+        let develop_rule = rules.find_rule("develop").unwrap();
+        assert_eq!(develop_rule.pre_release_label, PreReleaseLabel::Beta);
+        assert_eq!(develop_rule.pre_release_num, Some(1));
+
+        let release_rule = rules.find_rule("release/1").unwrap();
+        assert_eq!(release_rule.pre_release_label, PreReleaseLabel::Rc);
+        assert_eq!(release_rule.pre_release_num, None); // Defaults to None for wildcard
+    }
+
+    #[test]
+    fn test_branch_rules_from_ron_simplified() {
+        // Test simplified RON syntax with bare values instead of Some(N)
+        let ron_str = r#"[
+            (pattern: "develop", pre_release_label: beta, pre_release_num: 1, post_mode: commit),
+            (pattern: "release/*", pre_release_label: rc, post_mode: tag)
+        ]"#;
+
+        let rules = BranchRules::from_ron(ron_str).unwrap();
+        assert_eq!(rules.rules.len(), 2);
+
+        let develop_rule = rules.find_rule("develop").unwrap();
+        assert_eq!(develop_rule.pre_release_label, PreReleaseLabel::Beta);
+        assert_eq!(develop_rule.pre_release_num, Some(1)); // 1 becomes Some(1)
+
+        let release_rule = rules.find_rule("release/1").unwrap();
+        assert_eq!(release_rule.pre_release_label, PreReleaseLabel::Rc);
+        assert_eq!(release_rule.pre_release_num, None); // Omitted becomes None
+    }
+
+    #[test]
+    fn test_branch_rules_validation_exact_pattern_requires_num() {
+        // Test that exact patterns without pre_release_num fail validation
+        let ron_str = r#"[
+            (pattern: "develop", pre_release_label: beta, post_mode: commit)
+        ]"#;
+
+        let result = BranchRules::from_ron(ron_str);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ZervError::ConflictingOptions(msg) => {
+                assert!(msg.contains("exact pattern"));
+                assert!(msg.contains("must have explicit pre_release_num"));
+            }
+            _ => panic!("Expected ConflictingOptions error"),
+        }
     }
 
     #[rstest]
