@@ -199,7 +199,8 @@ gitGraph
 - **RC pre-releases**: Release branches use `rc` identifier for release candidates
 - **Clean releases**: Main branch maintains clean versions without pre-release suffixes
 - **Hotfix emergency flow**: Critical fixes from main with proper version propagation
-- **Post-release resolution**: Correct post counting based on pre-release type changes
+- **Release branch post mode**: `release/*` branches use post distance from release tag (commit distance)
+- **Trunk-based post mode**: Other branches use post distance from branch point (for parallel development)
 - **Base version propagation**: Version bumps when syncing branches with newer main releases
 
 ```mermaid
@@ -209,12 +210,14 @@ config:
   theme: 'base'
 ---
 gitGraph
+    %% Initial state: main and develop branches
     commit id: "1.0.0"
 
     branch develop order: 3
     checkout develop
     commit id: "1.0.1-beta.1.post.1"
 
+    %% Feature development from develop branch (trunk-based post mode)
     branch feature/auth order: 4
     checkout feature/auth
     commit id: "1.0.1-alpha.12345.post.1"
@@ -223,29 +226,33 @@ gitGraph
     checkout develop
     merge feature/auth id: "1.0.1-beta.1.post.2" tag: "feature merged"
 
+    %% Hotfix emergency flow from main
     checkout main
     branch hotfix/critical order: 1
     checkout hotfix/critical
     commit id: "1.0.1-alpha.54321.post.1"
 
     checkout main
-    merge hotfix/critical id: "1.0.1" tag: "tagged"
+    merge hotfix/critical id: "1.0.1" tag: "hotfix released"
 
+    %% Sync develop with main changes and continue development
     checkout develop
-    merge main id: "1.0.2-beta.1.post.3" tag: "update main"
+    merge main id: "1.0.2-beta.1.post.3" tag: "sync main"
     commit id: "1.0.2-beta.1.post.4"
 
+    %% Release branch preparation (release/* uses commit distance from tag)
     branch release/1 order: 2
     checkout release/1
     commit id: "1.0.2-rc.1.post.1" tag: "tagged"
     commit id: "1.0.2-rc.1.post.2" tag: "tagged"
-    commit id: "1.0.2-rc.1.post.2.dev.1729924622"
+    commit type:REVERSE id: "1.0.2-rc.1.post.2.dev.{timestamp}" tag: "untagged"
 
     checkout main
-    merge release/1 id: "1.1.0" tag: "tagged"
+    merge release/1 id: "1.1.0" tag: "release 1.1.0"
 
+    %% Sync develop with release and prepare for next cycle
     checkout develop
-    merge main id: "1.1.1-beta.1.post.1" tag: "update main"
+    merge main id: "1.1.1-beta.1.post.1" tag: "sync release"
 ```
 
 ## Scope and Limitations
