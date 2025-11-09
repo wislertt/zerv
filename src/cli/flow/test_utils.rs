@@ -395,7 +395,6 @@ pub fn create_base_schema_test_cases(
     test_cases
 }
 
-// Existing test utility functions (moved from pipeline.rs)
 pub fn test_flow_pipeline_with_fixture(
     fixture_path: &str,
     semver_expectation: &str,

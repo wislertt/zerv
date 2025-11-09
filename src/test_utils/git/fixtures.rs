@@ -1,3 +1,8 @@
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
+
 use super::GitOperations;
 use crate::test_utils::{
     TestDir,
@@ -76,8 +81,12 @@ impl GitRepoFixture {
 
     /// Make the working directory dirty with uncommitted changes
     pub fn make_dirty(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.test_dir
-            .create_file("dirty_file.txt", "dirty content")?;
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let content = format!("dirty content {}", timestamp);
+        self.test_dir.create_file("dirty_file.txt", &content)?;
         Ok(())
     }
 

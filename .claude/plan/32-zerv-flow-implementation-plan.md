@@ -143,19 +143,19 @@ gitGraph
     merge feature-1 id: "1.0.1" tag: "feature-1 released"
 
     checkout feature-2
-    merge main id: "1.0.2-alpha.12345.post.1"
-    commit id: "1.0.2-alpha.12345.post.2"
+    merge main id: "1.0.2-alpha.12345.post.2"
+    commit id: "1.0.2-alpha.12345.post.3"
 
     branch feature-3 order: 4
     checkout feature-3
-    commit id: "1.0.2-alpha.98765.post.3"
-    commit type:REVERSE id: "1.0.2-alpha.98765.post.3.dev.1729924622" tag: "uncommitted"
     commit id: "1.0.2-alpha.98765.post.4"
+    commit type:REVERSE id: "1.0.2-alpha.98765.post.4.dev.1729924622" tag: "uncommitted"
+    commit id: "1.0.2-alpha.98765.post.5"
 
     checkout feature-2
-    merge feature-3 id: "1.0.2-alpha.12345.post.3" tag: "feature-3 merged"
+    merge feature-3 id: "1.0.2-alpha.12345.post.4" tag: "feature-3 merged"
 
-    commit id: "1.0.2-alpha.12345.post.4"
+    commit id: "1.0.2-alpha.12345.post.5"
     checkout main
     merge feature-2 id: "1.1.0" tag: "feature-2 released"
 ```

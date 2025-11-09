@@ -221,16 +221,108 @@ mod tests {
         // DEBUG: Analyze Git state at this moment
         scenario.debug_git_state("after feature-2 merges main");
 
-        test_info!("feature-2: Continue development with one more commit");
-        scenario
+        test_info!("feature-3: Branch from feature-2 for sub-feature development");
+        let branch_feature_3_hash = expect_branch_hash("feature-3", 5, "14698");
+        let scenario = scenario
+            .create_branch("feature-3")
+            .checkout("feature-3")
+            .expect_version(
+                &format!(
+                    "1.0.2-alpha.{}.post.2+feature.3.2.g{{hex:7}}",
+                    branch_feature_3_hash
+                ),
+                &format!(
+                    "1.0.2a{}.post2+feature.3.2.g{{hex:7}}",
+                    branch_feature_3_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Alpha,
+                &branch_feature_3_hash.to_string(),
+                2,
+                None,
+                "feature.3",
+                2,
+            ));
+
+        test_info!("feature-3: Start development");
+        let scenario = scenario
+            .make_dirty()
+            .expect_version(
+                &format!(
+                    "1.0.2-alpha.{}.post.2.dev.{{timestamp:now}}+feature.3.2.g{{hex:7}}",
+                    branch_feature_3_hash
+                ),
+                &format!(
+                    "1.0.2a{}.post2.dev{{timestamp:now}}+feature.3.2.g{{hex:7}}",
+                    branch_feature_3_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Alpha,
+                &branch_feature_3_hash.to_string(),
+                2,
+                Some("{timestamp:now}"),
+                "feature.3",
+                2,
+            ));
+
+        test_info!("feature-3: Continue development");
+        let scenario = scenario
             .commit()
             .expect_version(
                 &format!(
-                    "1.0.2-alpha.{}.post.3+feature.2.3.g{{hex:7}}",
+                    "1.0.2-alpha.{}.post.3+feature.3.3.g{{hex:7}}",
+                    branch_feature_3_hash
+                ),
+                &format!(
+                    "1.0.2a{}.post3+feature.3.3.g{{hex:7}}",
+                    branch_feature_3_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Alpha,
+                &branch_feature_3_hash.to_string(),
+                3,
+                None,
+                "feature.3",
+                3,
+            ))
+            .commit()
+            .expect_version(
+                &format!(
+                    "1.0.2-alpha.{}.post.4+feature.3.4.g{{hex:7}}",
+                    branch_feature_3_hash
+                ),
+                &format!(
+                    "1.0.2a{}.post4+feature.3.4.g{{hex:7}}",
+                    branch_feature_3_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Alpha,
+                &branch_feature_3_hash.to_string(),
+                4,
+                None,
+                "feature.3",
+                4,
+            ));
+
+        test_info!("feature-2: Merge feature-3 back to continue development");
+        let scenario = scenario
+            .checkout("feature-2")
+            .merge_branch("feature-3")
+            .expect_version(
+                &format!(
+                    "1.0.2-alpha.{}.post.4+feature.2.4.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
                 &format!(
-                    "1.0.2a{}.post3+feature.2.3.g{{hex:7}}",
+                    "1.0.2a{}.post4+feature.2.4.g{{hex:7}}",
                     branch_feature_2_hash
                 ),
             )
@@ -238,10 +330,41 @@ mod tests {
                 "1.0.2",
                 PreReleaseLabel::Alpha,
                 &branch_feature_2_hash.to_string(),
-                3,
+                4,
                 None,
                 "feature.2",
-                3,
+                4,
             ));
+
+        test_info!("feature-2: Final development before release");
+        let scenario = scenario
+            .commit()
+            .expect_version(
+                &format!(
+                    "1.0.2-alpha.{}.post.5+feature.2.5.g{{hex:7}}",
+                    branch_feature_2_hash
+                ),
+                &format!(
+                    "1.0.2a{}.post5+feature.2.5.g{{hex:7}}",
+                    branch_feature_2_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Alpha,
+                &branch_feature_2_hash.to_string(),
+                5,
+                None,
+                "feature.2",
+                5,
+            ));
+
+        test_info!("feature-2: Merge to main and release v1.1.0");
+        scenario
+            .checkout("main")
+            .merge_branch("feature-2")
+            .create_tag("v1.1.0")
+            .expect_version("1.1.0", "1.1.0")
+            .expect_schema_variants(create_base_schema_test_cases("1.1.0", "main"));
     }
 }
