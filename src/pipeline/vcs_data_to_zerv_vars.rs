@@ -29,8 +29,10 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
         "{}{}",
         vcs_data.commit_hash_prefix, vcs_data.commit_hash
     ));
-    // TODO: implement last_commit_hash
-    // vars.last_commit_hash = vcs_data.tag_commit_hash
+    // Set last_commit_hash if available from tag_commit_hash
+    vars.last_commit_hash = vcs_data
+        .tag_commit_hash
+        .map(|hash| format!("{}{}", vcs_data.commit_hash_prefix, hash));
     vars.bumped_timestamp = Some(vcs_data.commit_timestamp as u64);
     vars.last_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
 
@@ -86,6 +88,10 @@ mod tests {
             vars.last_timestamp.is_some(),
             "Tag timestamp should be present for {format_name}"
         );
+        assert!(
+            vars.last_commit_hash.is_some(),
+            "Last commit hash should be present for {format_name}"
+        );
     }
 
     #[test]
@@ -107,6 +113,68 @@ mod tests {
             }
             _ => panic!("Expected NoTagsFound error"),
         }
+    }
+
+    #[test]
+    fn test_vcs_data_to_zerv_vars_with_tag_commit_hash() {
+        let vcs_data = VcsData {
+            tag_version: Some("v1.2.3".to_string()),
+            distance: 5,
+            commit_hash: "def456789".to_string(),
+            commit_hash_prefix: "g".to_string(),
+            tag_commit_hash: Some("abc123def456".to_string()),
+            current_branch: Some("main".to_string()),
+            commit_timestamp: 1703123456,
+            tag_timestamp: Some(1703000000),
+            is_dirty: false,
+            is_shallow: false,
+        };
+
+        let vars = vcs_data_to_zerv_vars(vcs_data).expect("should convert vcs data to vars");
+
+        // Check that last_commit_hash is set with prefix
+        assert_eq!(
+            vars.last_commit_hash,
+            Some("gabc123def456".to_string()),
+            "Last commit hash should be set with g prefix"
+        );
+
+        // Check other fields are also set correctly
+        assert_eq!(vars.distance, Some(5));
+        assert_eq!(vars.bumped_branch, Some("main".to_string()));
+        assert_eq!(vars.dirty, Some(false));
+        assert_eq!(vars.bumped_commit_hash, Some("gdef456789".to_string()));
+        assert_eq!(vars.bumped_timestamp, Some(1703123456));
+        assert_eq!(vars.last_timestamp, Some(1703000000));
+    }
+
+    #[test]
+    fn test_vcs_data_to_zerv_vars_without_tag_commit_hash() {
+        let vcs_data = VcsData {
+            tag_version: Some("v1.2.3".to_string()),
+            distance: 0,
+            commit_hash: "abc123def456".to_string(),
+            commit_hash_prefix: "g".to_string(),
+            tag_commit_hash: None, // No tag commit hash
+            current_branch: Some("main".to_string()),
+            commit_timestamp: 1703123456,
+            tag_timestamp: Some(1703000000),
+            is_dirty: false,
+            is_shallow: false,
+        };
+
+        let vars = vcs_data_to_zerv_vars(vcs_data).expect("should convert vcs data to vars");
+
+        // Check that last_commit_hash is None when tag_commit_hash is None
+        assert_eq!(
+            vars.last_commit_hash, None,
+            "Last commit hash should be None when tag_commit_hash is None"
+        );
+
+        // Other fields should still be set
+        assert_eq!(vars.distance, Some(0));
+        assert_eq!(vars.bumped_branch, Some("main".to_string()));
+        assert_eq!(vars.bumped_commit_hash, Some("gabc123def456".to_string()));
     }
 
     #[rstest]

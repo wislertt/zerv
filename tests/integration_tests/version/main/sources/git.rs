@@ -62,11 +62,12 @@ fn test_git_source_comprehensive() {
         )
         .build();
 
-    // Copy non-deterministic timestamp
+    // Copy non-deterministic timestamp and hash fields
     let mut expected = expected;
     expected.vars.bumped_commit_hash = parsed_zerv.vars.bumped_commit_hash.clone();
     expected.vars.last_timestamp = parsed_zerv.vars.last_timestamp;
     expected.vars.bumped_timestamp = parsed_zerv.vars.bumped_timestamp;
+    expected.vars.last_commit_hash = parsed_zerv.vars.last_commit_hash.clone();
 
     // Git source doesn't provide last_branch - it should be None
     assert_eq!(

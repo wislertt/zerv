@@ -27,7 +27,7 @@ pub struct ZervTemplateContext {
     pub bumped_timestamp: Option<u64>,
 
     // Last version fields
-    pub last_branch: Option<String>,
+    // pub last_branch: Option<String>,
     pub last_commit_hash: Option<String>,
     pub last_commit_hash_short: Option<String>,
     pub last_timestamp: Option<u64>,
@@ -66,7 +66,7 @@ impl ZervTemplateContext {
             bumped_commit_hash: vars.bumped_commit_hash.clone(),
             bumped_commit_hash_short: vars.get_bumped_commit_hash_short(),
             bumped_timestamp: vars.bumped_timestamp,
-            last_branch: vars.last_branch.clone(),
+            // last_branch: vars.last_branch.clone(),
             last_commit_hash: vars.last_commit_hash.clone(),
             last_commit_hash_short: vars.get_last_commit_hash_short(),
             last_timestamp: vars.last_timestamp,

@@ -199,6 +199,16 @@ impl GitVcs {
             .map_err(|e| ZervError::CommandFailed(format!("Failed to parse tag timestamp: {e}")))
     }
 
+    /// Get the commit hash that a tag points to
+    fn get_tag_commit_hash(&self, tag: &str) -> Result<Option<String>> {
+        // Use `git rev-list -n 1` to get the commit hash that the tag points to
+        // This works for both annotated and lightweight tags
+        match self.run_git_command(&["rev-list", "-n", "1", tag]) {
+            Ok(hash) if !hash.trim().is_empty() => Ok(Some(hash.trim().to_string())),
+            Ok(_) | Err(_) => Ok(None),
+        }
+    }
+
     /// Check if working directory is dirty
     fn is_dirty(&self) -> Result<bool> {
         let output = self.run_git_command(&["status", "--porcelain"])?;
@@ -235,6 +245,7 @@ impl Vcs for GitVcs {
                 tracing::debug!("Found Git tag: {}", tag);
                 data.distance = self.calculate_distance(&tag).unwrap_or(0);
                 data.tag_timestamp = self.get_tag_timestamp(&tag).unwrap_or(None);
+                data.tag_commit_hash = self.get_tag_commit_hash(&tag).unwrap_or(None);
                 data.tag_version = Some(tag);
             }
             None => {
@@ -402,6 +413,22 @@ mod tests {
         assert!(data.commit_timestamp > 0);
         assert_eq!(data.tag_version, Some("v1.0.0".to_string()));
         assert_eq!(data.distance, 0);
+
+        // Verify tag_commit_hash is populated and valid
+        assert!(
+            data.tag_commit_hash.is_some(),
+            "tag_commit_hash should be populated when tag exists"
+        );
+        let tag_hash = data.tag_commit_hash.unwrap();
+        assert_eq!(
+            tag_hash.len(),
+            40,
+            "Git commit hash should be 40 characters"
+        );
+        assert!(
+            tag_hash.chars().all(|c| c.is_ascii_hexdigit()),
+            "Hash should contain only hex characters"
+        );
     }
 
     #[test]
