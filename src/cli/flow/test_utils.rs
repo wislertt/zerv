@@ -45,7 +45,6 @@ pub struct SchemaTestCase {
 // Flow test scenario builder pattern
 pub struct FlowTestScenario {
     fixture: GitRepoFixture,
-    fixture_path: String,
 }
 
 impl FlowTestScenario {
@@ -53,12 +52,8 @@ impl FlowTestScenario {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let fixture = GitRepoFixture::empty()
             .map_err(|e| format!("Failed to create empty git fixture: {}", e))?;
-        let fixture_path = fixture.path().to_string_lossy().to_string();
 
-        Ok(Self {
-            fixture,
-            fixture_path,
-        })
+        Ok(Self { fixture })
     }
 
     /// Create a tag in the current git repository
@@ -73,13 +68,13 @@ impl FlowTestScenario {
 
     pub fn expect_version(self, semver: &str, pep440: &str) -> Self {
         test_info!("Expecting version: semver={}, pep440={}", semver, pep440);
-        test_flow_pipeline_with_fixture(&self.fixture_path, semver, pep440);
+        test_flow_pipeline_with_fixture(&self.test_dir_path(), semver, pep440);
         self
     }
 
     pub fn expect_schema_variants(self, test_cases: Vec<SchemaTestCase>) -> Self {
         test_info!("Testing {} schema variants", test_cases.len());
-        test_flow_pipeline_with_schema_test_cases(&self.fixture_path, test_cases);
+        test_flow_pipeline_with_schema_test_cases(&self.test_dir_path(), test_cases);
         self
     }
 
@@ -140,6 +135,38 @@ impl FlowTestScenario {
             .merge_branch(&self.fixture.test_dir, branch_name)
             .unwrap_or_else(|e| panic!("Failed to merge branch '{}': {}", branch_name, e));
         self
+    }
+
+    pub fn test_dir_path(&self) -> String {
+        self.fixture.path().to_string_lossy().to_string()
+    }
+
+    pub fn debug_git_state(&self, context: &str) {
+        crate::test_info!("=== DEBUG: {} ===", context);
+        let test_dir_path = self.test_dir_path();
+        crate::test_info!("Test directory: {}", test_dir_path);
+        crate::test_info!(
+            "You can investigate with: cd {} && git log --oneline --graph --all",
+            test_dir_path
+        );
+
+        // Use existing git_impl from fixture for git operations
+        match self.fixture.git_impl.execute_git(
+            &self.fixture.test_dir,
+            &["log", "--oneline", "--graph", "--all", "--decorate", "-10"],
+        ) {
+            Ok(output) => {
+                for line in output.lines().take(20) {
+                    // Limit output to prevent flooding
+                    crate::test_info!("Git: {}", line);
+                }
+            }
+            Err(e) => {
+                crate::test_info!("Git: Failed to get log: {}", e);
+            }
+        }
+
+        crate::test_info!("=== END DEBUG ===");
     }
 }
 

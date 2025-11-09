@@ -194,7 +194,6 @@ mod tests {
             .expect_version("1.0.1", "1.0.1")
             .expect_schema_variants(create_base_schema_test_cases("1.0.1", "main"));
 
-        // TODO: debug this. distance should be 1. current is 2
         test_info!("feature-2: Sync with main to get feature-1 changes");
         let scenario = scenario
             .checkout("feature-2")
@@ -218,6 +217,9 @@ mod tests {
                 "feature.2",
                 2,
             ));
+
+        // DEBUG: Analyze Git state at this moment
+        scenario.debug_git_state("after feature-2 merges main");
 
         test_info!("feature-2: Continue development with one more commit");
         scenario
