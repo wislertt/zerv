@@ -1,16 +1,16 @@
 # Zerv Flow GitFlow Implementation Plan
 
-**Status**: Planned
+**Status**: In Progress (Phase 2: Branch Rules Completed)
 **Priority**: High
 **Context**: Complete GitFlow support for zerv flow with branch pattern rules and post mode configuration to enable GitFlow test matching the Mermaid diagram.
 
 ## Current Implementation Status Analysis
 
-### ✅ **What's Already Working (70% Complete)**
+### ✅ **What's Already Working (40% Complete)**
 
 #### **Core Infrastructure**
 
-- Complete CLI argument parsing and validation (68 tests passing)
+- Complete CLI argument parsing and validation (118 tests passing)
 - Flow pipeline integration with version command (translation layer approach)
 - Basic version generation with alpha pre-releases
 - Hash-based branch identification (e.g., `feature/auth` → `alpha.12345`)
@@ -28,39 +28,48 @@
 - All VCS data properly mapped to ZervVars
 - Git prefix implementation (`g{hex:7}` format)
 
-### ❌ **Missing GitFlow Components (30% Gap)**
+#### **✅ NEW: Branch Rules System (Phase 1 Complete)**
 
-#### **1. Branch Pattern Rules System**
+- ✅ **Implemented**: `src/cli/flow/branch_rules.rs` with complete functionality
+- ✅ **Pattern matching**: Exact (`develop`) and wildcard (`release/*`) patterns
+- ✅ **Number extraction**: From branch names (`release/1` → `Some(1)`)
+- ✅ **Type-safe enums**: `PreReleaseLabel` (Alpha, Beta, Rc) and `PostMode` (Tag, Commit)
+- ✅ **RON configuration**: Simplified syntax (`pre_release_num: 1` vs `Some(1)`)
+- ✅ **Strong validation**: Wildcard patterns vs exact pattern rules
+- ✅ **Comprehensive testing**: 56 branch rules tests passing
+- ✅ **Default GitFlow rules**: `develop` → `beta.1`, `release/*` → `rc`, post modes
 
-- **Missing**: `src/cli/flow/branch_rules.rs`
-- **Missing**: Pattern matching (exact: `develop`, wildcard: `release/*`)
-- **Missing**: Number extraction from branch names (`release/1` → `rc.1`)
-- **Missing**: Pre-release type mapping based on patterns
-- **Missing**: Branch-specific post mode configuration
+### ❌ **Remaining GitFlow Components (60% Gap)**
 
-#### **2. Intelligent Branch Detection Logic**
+#### **1. FlowArgs Integration (Phase 2 - In Progress)**
 
-- Current: All branches use hardcoded `alpha` defaults
-- Missing: Automatic branch type detection:
-    - `develop` → should be `beta.1` (currently: `alpha.*`)
-    - `release/*` → should be `rc.{number}` (currently: `alpha.*`)
-    - `feature/*` → should be `alpha.{hash}` ✅ (working)
-    - `hotfix/*` → should be `alpha.{hash}` ✅ (working)
+- **Missing**: FromStr trait for BranchRules with RON parsing
+- **Missing**: Branch rules field in FlowArgs with default GitFlow rules
+- **Missing**: Integration in FlowArgs validation method
+- **Missing**: Current branch detection and rule matching
+- **Missing**: Combining branch rule defaults with user CLI args
+- **Missing**: Override hierarchy: user args → branch rules → defaults
 
-#### **3. Post Mode Differentiation**
+#### **2. Post Mode Implementation**
 
-- Current: All branches use commit distance mode
-- Missing: Branch-specific post modes:
-    - `release/*` should use tag distance from release tag
-    - `develop` should use commit distance from branch point
-    - `feature/*` should use commit distance from branch point
+- **Current**: All branches use commit distance mode
+- **Missing**: Tag mode implementation for `release/*` branches
+- **Missing**: Post mode differentiation in pipeline logic
 
-#### **4. Translation Layer**
+#### **3. GitFlow Test Implementation (Phase 4)**
 
-- **Missing**: `src/cli/flow/translator.rs`
-- **Missing**: `translate_flow_to_version_args()` function
-- **Missing**: Branch pattern detection and application logic
-- **Missing**: Override vs automatic detection logic
+- **Missing**: Comprehensive GitFlow test matching Mermaid diagram
+- **Missing**: Branch-specific version expectations:
+    - `develop` → `1.0.1-beta.1.post.1`
+    - `release/1` → `1.0.2-rc.1.post.1` (tag mode)
+    - `feature/*` → `1.0.1-alpha.{hash}.post.1` (already working)
+    - `hotfix/*` → `1.0.1-alpha.{hash}.post.1` (already working)
+
+#### **4. Documentation (Phase 5)**
+
+- **Missing**: Updated help text for branch rules
+- **Missing**: GitFlow usage examples
+- **Missing**: Architecture documentation
 
 ## GitFlow Test Requirements
 
@@ -223,215 +232,253 @@ All other branches fall back to the default behavior:
 - **Commit post mode** (distance from branch point)
 - **No special handling** for `main`, `master`, `feature/*`, `hotfix/*` branches
 
-### **Phase 2: Translation Layer Implementation**
+### **Phase 2: FlowArgs Integration with Branch Rules**
 
 **Estimated Effort: 2 days**
 
-#### **Step 2.1: Create Translation Module**
+#### **Step 2.1: ✅ COMPLETED - Branch Rules System**
 
-**File**: `src/cli/flow/translator.rs` (new)
+**Status**: ✅ **COMPLETED** - Full branch rules system implemented with:
+
+- **Type-safe enums** for `PreReleaseLabel` (Alpha, Beta, Rc) and `PostMode` (Tag, Commit)
+- **Pattern matching** with exact ("develop") and wildcard ("release/\*") patterns
+- **Number extraction** from branch names (e.g., "release/1" → `Some(1)`)
+- **RON configuration** with simplified syntax support (`pre_release_num: 1` vs `Some(1)`)
+- **Strong validation**:
+    - Wildcard patterns must have `pre_release_num = None`
+    - Exact patterns must have explicit `pre_release_num`
+- **Comprehensive testing**: 56 tests passing
+- **Clean rstest parameterization** for maintainable test suite
+
+**Files**:
+
+- ✅ `src/cli/flow/branch_rules.rs` (new) - Complete implementation
+- ✅ `src/cli/flow/mod.rs` - Module exports updated
+
+#### **Step 2.2: FromStr Implementation for BranchRules**
+
+**Status**: 📋 **Planned** - FromStr trait implementation planned
+
+**Implementation approach**:
+
+1. **Add FromStr trait to BranchRules**:
+    - Implement standard Rust `FromStr` trait for `BranchRules`
+    - Direct RON string parsing using existing `from_ron()` method
+    - Comprehensive test coverage for parsing success and error cases
+    - Clean integration with Clap's `value_parser!(BranchRules)`
+
+**Files to update**:
+
+- `src/cli/flow/branch_rules.rs` - Add `FromStr` implementation and tests
+
+#### **Step 2.3: FlowArgs Integration with Option<BranchRules>**
+
+**File**: `src/cli/flow/args/main.rs` (update existing)
+
+**Implementation approach**:
+
+2. **Add typed --branch-rules field to FlowArgs**:
+    - Use `Option<BranchRules>` for maximum type safety
+    - Leverage Clap's built-in `value_parser!(BranchRules)`
+    - No default value needed - `None` triggers GitFlow defaults
+    - No custom parser structs needed
+
+3. **Direct FlowArgs validation integration**:
+    - Get typed `BranchRules` object (no parsing needed)
+    - Use `unwrap_or_else(|| BranchRules::default_rules())` for defaults
+    - Get current branch name from VCS data
+    - Match current branch against branch rules
+    - Get `ResolvedBranchArgs` from matching rule
+    - Combine with parsed FlowArgs values for final args
 
 ```rust
-pub fn translate_flow_to_version_args(
-    flow_args: &FlowArgs,
-    vcs_data: &VcsData,
-) -> Result<VersionArgs, ZervError> {
-    // Parse branch rules from FlowArgs
-    let branch_rules = flow_args.parse_branch_rules()?;
+// Add to src/cli/flow/branch_rules.rs
+impl std::str::FromStr for BranchRules {
+    type Err = ZervError;
 
-    // Get current branch name
-    let branch_name = vcs_data.current_branch.as_deref().unwrap_or("main");
-    let rule = branch_rules.find_rule(branch_name);
-
-    // Resolve final values (FlowArgs override branch rules)
-    let pre_release_label = resolve_pre_release_label(flow_args, rule, branch_name)?;
-    let pre_release_num = resolve_pre_release_num(flow_args, rule, branch_name)?;
-    let post_mode = resolve_post_mode(flow_args, rule);
-
-    // Build version args
-    Ok(VersionArgs {
-        input: flow_args.input.clone(),
-        output: OutputConfig {
-            output_format: "zerv".to_string(),
-            output_template: None,
-            output_prefix: None,
-        },
-        main: MainConfig {
-            schema: flow_args.schema.clone(),
-            schema_ron: None,
-        },
-        overrides: Default::default(),
-        bumps: BumpsConfig {
-            bump_pre_release_label: Some(pre_release_label),
-            bump_pre_release_num: pre_release_num,
-            bump_patch: flow_args.bump_patch(),
-            bump_post: Some(post_mode),
-            bump_dev: flow_args.bump_dev(),
-            ..Default::default()
-        },
-    })
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Direct RON string parsing
+        BranchRules::from_ron(s)
+    }
 }
 
-fn resolve_pre_release_label(
-    flow_args: &FlowArgs,
-    rule: Option<&BranchRule>,
-    branch_name: &str
-) -> Result<String, ZervError> {
-    // 1. Explicit FlowArgs override
-    if let Some(label) = flow_args.bump_pre_release_label() {
-        return Ok(label);
-    }
+// Update FlowArgs struct in src/cli/flow/args/main.rs
+#[derive(Debug)]
+pub struct FlowArgs {
+    // ... existing fields ...
 
-    // 2. Branch rule default
-    if let Some(rule) = rule {
-        return Ok(rule.pre_release_label.to_string());
-    }
+    /// Branch rules in RON format (default: GitFlow rules, supports @file.ron syntax)
+    #[arg(
+        long = "branch-rules",
+        help = "Branch rules in RON format (default: GitFlow rules, supports @file.ron syntax)",
+        value_parser = clap::value_parser!(BranchRules)
+    )]
+    pub branch_rules: Option<BranchRules>,
 
-    // 3. Final fallback
-    Ok("alpha".to_string())
+    // ... existing fields ...
 }
 
-fn resolve_pre_release_num(
-    flow_args: &FlowArgs,
-    rule: Option<&BranchRule>,
-    branch_name: &str
-) -> Result<Option<String>, ZervError> {
-    // 1. Explicit FlowArgs override
-    if let Some(num) = flow_args.bump_pre_release_num() {
-        return Ok(Some(num));
-    }
+impl FlowArgs {
+    /// Parse and apply branch rules during validation
+    fn apply_branch_rules(&mut self) -> Result<(), ZervError> {
+        // Get typed BranchRules object (defaults handled automatically)
+        let branch_rules = self.branch_rules.clone().unwrap_or_else(|| {
+            BranchRules::default_rules()
+        });
 
-    // 2. Branch rule default
-    if let Some(rule) = rule {
-        if let Some(num) = &rule.pre_release_num {
-            return Ok(Some(num.clone()));
+        // Get Zerv object by running zerv version internally
+        let zerv_object = self.get_zerv_object_from_zerv_version()?;
+
+        // Extract current branch from Zerv context
+        let branch_name = zerv_object.context.current_branch.as_deref().ok_or_else(|| {
+            ZervError::CommandFailed(
+                "No current branch detected. Make sure you're in a Git repository with a valid branch.".to_string()
+            )
+        })?;
+
+        // Resolve branch defaults from matching rule
+        let resolved_args = branch_rules.resolve_for_branch(branch_name);
+
+        // Apply branch rule defaults only if not explicitly set by user
+        if self.bump_pre_release_label.is_none() {
+            self.bump_pre_release_label = Some(resolved_args.pre_release_label.to_string());
         }
 
-        // Extract number from branch pattern (e.g., "release/1" -> "1")
-        if let Some(extracted) = extract_branch_number(&rule.pattern, branch_name) {
-            return Ok(Some(extracted));
+        if self.bump_pre_release_num.is_none() {
+            self.bump_pre_release_num = resolved_args.pre_release_num
+                .map(|n| n.to_string());
         }
-    }
 
-    // 3. Default: hash-based number
-    Ok(Some(branch_hash_number(branch_name, 5)?))
-}
-
-fn resolve_post_mode(flow_args: &FlowArgs, rule: Option<&BranchRule>) -> String {
-    // 1. Explicit FlowArgs override
-    if let Some(mode) = flow_args.bump_post_mode() {
-        return mode;
-    }
-
-    // 2. Branch rule default
-    if let Some(rule) = rule {
-        return rule.post_mode.to_string();
-    }
-
-    // 3. Final fallback
-    "commit".to_string()
-}
-
-fn extract_branch_number(pattern: &str, branch_name: &str) -> Option<String> {
-    // Extract "1" from "release/1" when pattern is "release/*"
-    if !pattern.ends_with("/*") {
-        return None;
-    }
-
-    let prefix = &pattern[..pattern.len() - 2]; // Remove "/*"
-    if !branch_name.starts_with(prefix) {
-        return None;
-    }
-
-    let remainder = &branch_name[prefix.len()..];
-    // Extract first number from remainder
-    let number_part: String = remainder.chars()
-        .take_while(|c| c.is_numeric())
-        .collect();
-
-    if number_part.is_empty() {
-        None
-    } else {
-        Some(number_part)
-    }
-}
-
-// Helper implementations
-impl PreReleaseLabel {
-    pub fn to_string(&self) -> &'static str {
-        match self {
-            PreReleaseLabel::Alpha => "alpha",
-            PreReleaseLabel::Beta => "beta",
-            PreReleaseLabel::Rc => "rc",
+        if self.bump_post_mode.is_none() {
+            self.bump_post_mode = Some(resolved_args.post_mode.to_string());
         }
-    }
-}
 
-impl PostMode {
-    pub fn to_string(&self) -> &'static str {
-        match self {
-            PostMode::Tag => "tag",
-            PostMode::Commit => "commit",
-        }
+        Ok(())
+    }
+
+    /// Get Zerv object by running zerv version internally
+    fn get_zerv_object_from_zerv_version(&self) -> Result<Zerv, ZervError> {
+        // Create minimal version args to get Zerv object with VCS data
+        let version_args = VersionArgs {
+            input: self.input.clone(),
+            output: OutputConfig {
+                output_format: "zerv".to_string(),
+                output_template: None,
+                output_prefix: None,
+            },
+            main: MainConfig {
+                schema: Some("standard".to_string()),
+                schema_ron: None,
+            },
+            overrides: Default::default(),
+            bumps: BumpsConfig::default(),
+        };
+
+        // Run zerv version pipeline and parse output
+        let ron_output = run_version_pipeline(version_args)?;
+        let zerv_object: Zerv = from_str(&ron_output).map_err(|e| {
+            ZervError::InvalidFormat(format!("Failed to parse zerv output: {}", e))
+        })?;
+
+        Ok(zerv_object)
+    }
+
+    /// Updated validation method with branch rules integration
+    pub fn validate(&mut self) -> Result<(), ZervError> {
+        // Existing validation logic...
+
+        // Apply branch rules as final step
+        self.apply_branch_rules()?;
+
+        Ok(())
     }
 }
 ```
 
-#### **Step 2.2: FlowArgs Integration with Branch Rules**
+**Usage Examples**:
 
-**File**: `src/cli/flow/args/mod.rs` (update existing)
+```bash
+# Using default GitFlow rules (built-in, no args needed)
+zerv flow
+
+# Simple custom rule
+zerv flow --branch-rules "[(pattern: develop, pre_release_label: beta, pre_release_num: 1, post_mode: commit)]"
+
+# Multiple custom rules (concise RON format)
+zerv flow --branch-rules "
+  [
+    (pattern: develop, pre_release_label: beta, pre_release_num: 1, post_mode: commit),
+    (pattern: release/*, pre_release_label: rc, post_mode: tag),
+    (pattern: hotfix/*, pre_release_label: alpha, post_mode: commit)
+  ]
+"
+
+# Complex team configuration
+zerv flow --branch-rules "
+  [
+    (pattern: main, pre_release_label: alpha, post_mode: commit),
+    (pattern: develop, pre_release_label: beta, pre_release_num: 1, post_mode: commit),
+    (pattern: release/*, pre_release_label: rc, post_mode: tag),
+    (pattern: hotfix/*, pre_release_label: alpha, post_mode: commit),
+    (pattern: feature/*, pre_release_label: alpha, post_mode: commit),
+    (pattern: experimental/*, pre_release_label: dev, post_mode: commit)
+  ]
+"
+```
+
+**File-based configuration can be added later**:
+
+```bash
+# Future: Environment variable with file content
+BRANCH_RULES="$(cat team-config.ron)" zerv flow --branch-rules "$BRANCH_RULES"
+```
+
+**Key integration points**:
+
+1. **Maximum type safety**: `Option<BranchRules>` guarantees valid typed objects
+2. **Standard Rust patterns**: Uses `FromStr` trait and built-in Clap value parser
+3. **Complete VCS reuse**: Leverages existing `run_version_pipeline` and `Zerv` object
+4. **Rich context access**: Full `ZervContext` available for future features
+5. **No VCS duplication**: All VCS logic remains in `zerv version` module
+6. **Future-proof**: When new fields added to Zerv, flow gets them automatically
+7. **Override hierarchy**: User CLI args → branch rules → defaults
+8. **Consistent behavior**: Flow uses exactly same data as `zerv version`
+
+**Architecture benefits**:
+
+- ✅ Zero VCS code duplication
+- ✅ Reuses battle-tested `run_version_pipeline`
+- ✅ Complete Zerv object with all context fields
+- ✅ Single source of truth for VCS logic
+- ✅ Clean separation of concerns
+- ✅ Type safety from CLI parsing to final result
+- ✅ Future features ready with rich context data
+
+**Implementation simplicity**:
+
+- ✅ One method call: `run_version_pipeline(version_args)`
+- ✅ One parse: `Zerv::from_str(&ron_output)`
+- ✅ One field access: `zerv_object.context.current_branch`
+- ✅ No custom VCS code needed
+- ✅ Reuses existing error handling patterns
+
+#### **Step 2.3: Pipeline Integration Update**
+
+**File**: `src/cli/flow/pipeline.rs` (update existing)
+
+The pipeline will automatically use the updated FlowArgs after validation, so minimal changes needed:
 
 ```rust
-impl FlowArgs {
-    /// Parse and apply branch rules during validation
-    pub fn resolve_branch_defaults(&self, vcs_data: &VcsData) -> Result<FlowArgs, ZervError> {
-        // Parse branch rules (default or custom)
-        let branch_rules = self.parse_branch_rules()?;
+pub fn run_flow_pipeline(mut args: FlowArgs) -> Result<String, ZervError> {
+    // Validation now includes branch rules application
+    args.validate()?;
 
-        // Get current branch name
-        let branch_name = vcs_data.current_branch.as_deref().unwrap_or("main");
+    // Rest of pipeline unchanged - args now has resolved values
+    let version_args = VersionArgs {
+        // ... use validated args with branch defaults applied
+    };
 
-        // Resolve defaults from branch rules
-        let branch_defaults = branch_rules.resolve_for_branch(branch_name);
-
-        // Create new FlowArgs with branch defaults applied
-        let mut resolved_args = self.clone();
-
-        // Only set values if they weren't explicitly provided by user
-        if resolved_args.bump_pre_release_label.is_none() {
-            resolved_args.bump_pre_release_label = Some(branch_defaults.pre_release_label.to_string());
-        }
-        if resolved_args.bump_pre_release_num.is_none() {
-            resolved_args.bump_pre_release_num = branch_defaults.pre_release_num.map(|n| n.to_string());
-        }
-        if resolved_args.bump_post_mode.is_none() {
-            resolved_args.bump_post_mode = Some(branch_defaults.post_mode.to_string());
-        }
-
-        Ok(resolved_args)
-    }
-
-    /// Parse branch rules from FlowArgs (default or custom RON)
-    pub fn parse_branch_rules(&self) -> Result<BranchRules, ZervError> {
-        // If custom branch rules provided, parse them
-        if let Some(ron_rules) = &self.branch_rules {
-            let rules: Vec<BranchRule> = from_str(ron_rules)
-                .map_err(|e| ZervError::InvalidFormat(format!("Failed to parse branch rules: {}", e)))?;
-            return Ok(BranchRules { rules });
-        }
-
-        // Otherwise use default rules
-        Ok(BranchRules::default_rules())
-    }
-}
-
-// Add field to FlowArgs struct
-pub struct FlowArgs {
-    // ... existing fields ...
-    /// Custom branch rules in RON format (optional)
-    #[arg(long, help = "Custom branch rules in RON format")]
-    pub branch_rules: Option<String>,
-    // ... existing fields ...
+    // ... existing pipeline logic
 }
 ```
 
@@ -568,14 +615,14 @@ scenario
 
 ## Implementation Phases Summary
 
-| Phase     | Components                   | Effort        | Status      |
-| --------- | ---------------------------- | ------------- | ----------- |
-| Phase 1   | Branch rules system          | 2-3 days      | Pending     |
-| Phase 2   | Translation layer            | 2 days        | Pending     |
-| Phase 3   | Pipeline integration         | 1 day         | Pending     |
-| Phase 4   | GitFlow test                 | 2-3 days      | Pending     |
-| Phase 5   | Documentation                | 1 day         | Pending     |
-| **Total** | **Complete GitFlow support** | **8-10 days** | **Planned** |
+| Phase     | Components                   | Effort        | Status             |
+| --------- | ---------------------------- | ------------- | ------------------ |
+| Phase 1   | Branch rules system          | 2-3 days      | ✅ **Completed**   |
+| Phase 2   | FlowArgs integration         | 2 days        | 🎯 **In Progress** |
+| Phase 3   | Pipeline integration         | 1 day         | Pending            |
+| Phase 4   | GitFlow test                 | 2-3 days      | Pending            |
+| Phase 5   | Documentation                | 1 day         | Pending            |
+| **Total** | **Complete GitFlow support** | **8-10 days** | **~40% Complete**  |
 
 ## Key Design Principles
 
