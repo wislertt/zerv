@@ -12,14 +12,15 @@ impl FlowArgs {
         // Use shared validation for input/output
         CommonValidation::validate_io(&self.input, &self.output)?;
 
+        // Apply branch rules first to set proper defaults based on branch patterns
+        self.branch_config.apply_branch_rules(current_zerv)?;
+
+        // Validate and set defaults only for values not already set by branch rules
         self.validate_pre_release_label()?;
         self.validate_pre_release_num()?;
         self.validate_hash_branch_len()?;
         self.validate_post_mode()?;
         self.validate_schema()?;
-
-        // Apply branch rules using provided zerv object
-        self.branch_config.apply_branch_rules(current_zerv)?;
 
         Ok(())
     }

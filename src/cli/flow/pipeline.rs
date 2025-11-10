@@ -378,4 +378,187 @@ mod tests {
             .expect_version("1.1.0", "1.1.0")
             .expect_schema_variants(create_base_schema_test_cases("1.1.0", "main"));
     }
+
+    #[test]
+    fn test_gitflow_development_flow() {
+        test_info!("Starting GitFlow development flow test (exactly matching Mermaid diagram)");
+        if !should_run_docker_tests() {
+            return; // Skip when `ZERV_TEST_DOCKER` are disabled
+        }
+
+        // Initial state: main and develop branches
+        test_info!("Initial setup: main branch state with v1.0.0 tag");
+        let scenario = FlowTestScenario::new()
+            .expect("Failed to create test scenario")
+            .create_tag("v1.0.0")
+            .expect_version("1.0.0", "1.0.0")
+            .expect_schema_variants(create_base_schema_test_cases("1.0.0", "main"));
+
+        // Create develop branch with initial development commit
+        test_info!("Create develop branch and start development");
+        let scenario = scenario
+            .create_branch("develop")
+            .checkout("develop")
+            .commit()
+            .expect_version(
+                "1.0.1-beta.1.post.1+develop.1.g{hex:7}",
+                "1.0.1b1.post1+develop.1.g{hex:7}",
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.1",
+                PreReleaseLabel::Beta,
+                "1", // develop uses pre_release_num: 1
+                1,
+                None,
+                "develop",
+                1,
+            ));
+
+        // Feature development from develop branch (trunk-based post mode)
+        test_info!("Create feature/auth branch from develop");
+        let branch_feature_auth_hash = expect_branch_hash("feature/auth", 5, "92409");
+        let scenario = scenario
+            .create_branch("feature/auth")
+            .checkout("feature/auth")
+            .commit()
+            .expect_version(
+                &format!(
+                    "1.0.1-alpha.{}.post.2+feature.auth.2.g{{hex:7}}",
+                    branch_feature_auth_hash
+                ),
+                &format!(
+                    "1.0.1a{}.post2+feature.auth.2.g{{hex:7}}",
+                    branch_feature_auth_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.1",
+                PreReleaseLabel::Alpha,
+                &branch_feature_auth_hash.to_string(),
+                2,
+                None,
+                "feature.auth",
+                2,
+            ))
+            .commit()
+            .expect_version(
+                &format!(
+                    "1.0.1-alpha.{}.post.3+feature.auth.3.g{{hex:7}}",
+                    branch_feature_auth_hash
+                ),
+                &format!(
+                    "1.0.1a{}.post3+feature.auth.3.g{{hex:7}}",
+                    branch_feature_auth_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.1",
+                PreReleaseLabel::Alpha,
+                &branch_feature_auth_hash.to_string(),
+                3,
+                None,
+                "feature.auth",
+                3,
+            ));
+
+        // Merge feature/auth back to develop
+        test_info!("Merge feature/auth back to develop");
+        let scenario = scenario
+            .checkout("develop")
+            .merge_branch("feature/auth")
+            .expect_version(
+                "1.0.1-beta.1.post.3+develop.3.g{hex:7}",
+                "1.0.1b1.post3+develop.3.g{hex:7}",
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.1",
+                PreReleaseLabel::Beta,
+                "1",
+                3,
+                None,
+                "develop",
+                3,
+            ));
+
+        // Hotfix emergency flow from main
+        test_info!("Create hotfix/critical branch from main for emergency fix");
+        let branch_hotfix_hash = expect_branch_hash("hotfix/critical", 5, "11477");
+        let scenario = scenario
+            .checkout("main")
+            .create_branch("hotfix/critical")
+            .checkout("hotfix/critical")
+            .commit()
+            .expect_version(
+                &format!(
+                    "1.0.1-alpha.{}.post.1+hotfix.critical.1.g{{hex:7}}",
+                    branch_hotfix_hash
+                ),
+                &format!(
+                    "1.0.1a{}.post1+hotfix.critical.1.g{{hex:7}}",
+                    branch_hotfix_hash
+                ),
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.1",
+                PreReleaseLabel::Alpha,
+                &branch_hotfix_hash.to_string(),
+                1,
+                None,
+                "hotfix.critical",
+                1,
+            ));
+
+        // Merge hotfix to main and release v1.0.1
+        test_info!("Merge hotfix to main and release v1.0.1");
+        let scenario = scenario
+            .checkout("main")
+            .merge_branch("hotfix/critical")
+            .create_tag("v1.0.1")
+            .expect_version("1.0.1", "1.0.1")
+            .expect_schema_variants(create_base_schema_test_cases("1.0.1", "main"));
+
+        // Sync develop with main changes and continue development
+        test_info!("Sync develop with main changes");
+        let scenario = scenario
+            .checkout("develop")
+            .merge_branch("main")
+            .expect_version(
+                "1.0.2-beta.1.post.4+develop.4.g{hex:7}",
+                "1.0.2b1.post4+develop.4.g{hex:7}",
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Beta,
+                "1",
+                4,
+                None,
+                "develop",
+                4,
+            ));
+
+        // Continue development on develop
+        test_info!("Continue development on develop branch");
+        let scenario = scenario
+            .commit()
+            .expect_version(
+                "1.0.2-beta.1.post.5+develop.5.g{hex:7}",
+                "1.0.2b1.post5+develop.5.g{hex:7}",
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Beta,
+                "1",
+                5,
+                None,
+                "develop",
+                5,
+            ));
+
+        // Test completes here as requested (up to commit "1.0.2-beta.1.post.5")
+        // TODO: The remaining GitFlow scenario includes release branch preparation,
+        //       release tagging, and final merges which are not yet implemented
+        test_info!("GitFlow test completed successfully up to develop sync with main");
+
+        drop(scenario); // Test completes successfully
+    }
 }
