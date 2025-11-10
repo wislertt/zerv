@@ -172,17 +172,15 @@ impl BranchRules {
     }
 
     /// Find and resolve rule for a branch, or return default args
-    pub fn resolve_for_branch(&self, branch_name: &str) -> ResolvedBranchArgs {
-        if let Some(rule) = self.find_rule(branch_name) {
-            rule.resolve_for_branch(branch_name)
-        } else {
-            // Default fallback for unmapped branches
-            ResolvedBranchArgs {
+    pub fn resolve_for_branch(&self, branch_name: Option<&str>) -> ResolvedBranchArgs {
+        branch_name
+            .and_then(|name| self.find_rule(name))
+            .map(|rule| rule.resolve_for_branch(branch_name.unwrap()))
+            .unwrap_or_else(|| ResolvedBranchArgs {
                 pre_release_label: PreReleaseLabel::Alpha,
                 pre_release_num: None,
                 post_mode: PostMode::Commit,
-            }
-        }
+            })
     }
 }
 
@@ -497,16 +495,22 @@ mod tests {
         let rules = BranchRules::default_rules();
 
         // Mapped branch should use rule
-        let develop_args = rules.resolve_for_branch("develop");
+        let develop_args = rules.resolve_for_branch(Some("develop"));
         assert_eq!(develop_args.pre_release_label, PreReleaseLabel::Beta);
         assert_eq!(develop_args.pre_release_num, Some(1));
         assert_eq!(develop_args.post_mode, PostMode::Commit);
 
         // Unmapped branch should use defaults
-        let feature_args = rules.resolve_for_branch("feature/auth");
+        let feature_args = rules.resolve_for_branch(Some("feature/auth"));
         assert_eq!(feature_args.pre_release_label, PreReleaseLabel::Alpha);
         assert_eq!(feature_args.pre_release_num, None); // FlowArgs will handle generation
         assert_eq!(feature_args.post_mode, PostMode::Commit);
+
+        // None branch name should use defaults
+        let none_args = rules.resolve_for_branch(None);
+        assert_eq!(none_args.pre_release_label, PreReleaseLabel::Alpha);
+        assert_eq!(none_args.pre_release_num, None);
+        assert_eq!(none_args.post_mode, PostMode::Commit);
     }
 
     #[test]

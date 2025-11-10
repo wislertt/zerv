@@ -16,6 +16,7 @@ use crate::utils::constants::{
     post_modes,
     pre_release_labels,
 };
+use crate::version::zerv::core::Zerv;
 
 /// Generate version with intelligent pre-release management based on Git branch patterns
 #[derive(Parser)]
@@ -102,8 +103,8 @@ pub struct FlowArgs {
 
     /// Post calculation mode (commit, tag)
     #[arg(long = "post-mode", value_parser = clap::builder::PossibleValuesParser::new(post_modes::VALID_MODES),
-          default_value = post_modes::COMMIT, help = "Post calculation mode (commit, tag)")]
-    pub post_mode: String,
+          help = "Post calculation mode (commit, tag)")]
+    pub post_mode: Option<String>,
 
     /// Branch rules in RON format (default: GitFlow rules)
     #[arg(
@@ -130,7 +131,7 @@ impl Default for FlowArgs {
             pre_release_label: None,
             pre_release_num: None,
             hash_branch_len: 5,
-            post_mode: post_modes::COMMIT.to_string(),
+            post_mode: None,
             branch_rules: BranchRules::default_rules(),
             schema: None,
         }
@@ -149,7 +150,7 @@ impl FlowArgs {
         if_part.to_string() + content + else_part
     }
 
-    pub fn validate(&mut self) -> Result<(), ZervError> {
+    pub fn validate(&mut self, current_zerv: &Zerv) -> Result<(), ZervError> {
         // Use shared validation for input/output
         CommonValidation::validate_io(&self.input, &self.output)?;
 
@@ -159,6 +160,27 @@ impl FlowArgs {
         self.validate_post_mode()?;
         self.validate_schema()?;
 
+        // Apply branch rules using provided zerv object
+        self.apply_branch_rules(current_zerv)?;
+
+        Ok(())
+    }
+
+    /// Apply branch rules using provided zerv object
+    pub fn apply_branch_rules(&mut self, current_zerv: &Zerv) -> Result<(), ZervError> {
+        let resolved_args = self
+            .branch_rules
+            .resolve_for_branch(current_zerv.vars.bumped_branch.as_deref());
+
+        if self.pre_release_label.is_none() {
+            self.pre_release_label = Some(resolved_args.pre_release_label.to_string().into());
+        }
+        if self.pre_release_num.is_none() {
+            self.pre_release_num = resolved_args.pre_release_num;
+        }
+        if self.post_mode.is_none() {
+            self.post_mode = Some(resolved_args.post_mode.to_string().into());
+        }
         Ok(())
     }
 
@@ -185,11 +207,13 @@ impl FlowArgs {
     }
 
     fn validate_post_mode(&self) -> Result<(), ZervError> {
-        if !post_modes::VALID_MODES.contains(&self.post_mode.as_str()) {
+        if let Some(post_mode) = &self.post_mode
+            && !post_modes::VALID_MODES.contains(&post_mode.as_str())
+        {
             return Err(ZervError::InvalidArgument(format!(
                 "post-mode must be one of: {}, got {}",
                 post_modes::VALID_MODES.join(", "),
-                self.post_mode
+                post_mode
             )));
         }
         Ok(())
@@ -250,7 +274,7 @@ impl FlowArgs {
     }
 
     pub fn bump_post(&self) -> Option<Option<Template<u32>>> {
-        let content = match self.post_mode.as_str() {
+        let content = match self.post_mode.as_deref().unwrap_or(post_modes::COMMIT) {
             post_modes::COMMIT => "{{ distance }}", // bump post by distance
             post_modes::TAG => "1",                 // bump post by 1
             _ => unreachable!("Invalid post_mode should have been caught by validation"),
@@ -277,6 +301,15 @@ mod tests {
         InputConfig,
         OutputConfig,
     };
+    use crate::test_utils::zerv::ZervFixture;
+
+    /// Helper function to create a mock zerv object for tests
+    fn mock_zerv() -> Zerv {
+        let mut zerv = ZervFixture::new().build();
+        // Set a mock branch name for tests that need branch detection
+        zerv.vars.last_branch = Some("main".to_string());
+        zerv
+    }
 
     mod defaults {
         use super::*;
@@ -289,14 +322,14 @@ mod tests {
             assert_eq!(args.hash_branch_len, 5);
             assert!(args.pre_release_label.is_none());
             assert!(args.pre_release_num.is_none());
-            assert_eq!(args.post_mode, post_modes::COMMIT);
+            assert_eq!(args.post_mode, None);
             assert!(args.schema.is_none()); // Default is None (will use standard schema)
         }
 
         #[test]
         fn test_flow_args_validation_success() {
             let mut args = FlowArgs::default();
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
             assert!(args.schema.is_none()); // Should remain None after validation
         }
     }
@@ -313,7 +346,7 @@ mod tests {
                 pre_release_label: Some(label.to_string()),
                 ..FlowArgs::default()
             };
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
         }
 
         #[rstest]
@@ -325,7 +358,7 @@ mod tests {
                 hash_branch_len: length,
                 ..FlowArgs::default()
             };
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
         }
 
         #[rstest]
@@ -333,10 +366,10 @@ mod tests {
         #[case(post_modes::TAG)]
         fn test_valid_post_modes(#[case] mode: &str) {
             let mut args = FlowArgs {
-                post_mode: mode.to_string(),
+                post_mode: Some(mode.to_string()),
                 ..FlowArgs::default()
             };
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
         }
 
         #[rstest]
@@ -348,7 +381,7 @@ mod tests {
                 hash_branch_len: length,
                 ..FlowArgs::default()
             };
-            let result = args.validate();
+            let result = args.validate(&mock_zerv());
             assert!(result.is_err());
             assert!(
                 result
@@ -365,10 +398,10 @@ mod tests {
         #[case("")]
         fn test_invalid_post_modes(#[case] mode: &str) {
             let mut args = FlowArgs {
-                post_mode: mode.to_string(),
+                post_mode: Some(mode.to_string()),
                 ..FlowArgs::default()
             };
-            let result = args.validate();
+            let result = args.validate(&mock_zerv());
             assert!(result.is_err());
             assert!(
                 result
@@ -389,7 +422,7 @@ mod tests {
                 pre_release_num: num,
                 ..FlowArgs::default()
             };
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
         }
     }
 
@@ -414,7 +447,7 @@ mod tests {
             assert_eq!(args.input.source, "git");
             assert_eq!(args.output.output_format, "zerv");
             assert_eq!(args.output.output_prefix, Some("v".to_string()));
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
         }
     }
 
@@ -424,7 +457,7 @@ mod tests {
         #[test]
         fn test_default_returns_alpha() {
             let mut args = FlowArgs::default();
-            args.validate().unwrap(); // This sets the default pre_release_label
+            args.validate(&mock_zerv()).unwrap(); // This sets the default pre_release_label
             let expected = args.build_pre_release_bump_template("alpha");
             assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
         }
@@ -517,7 +550,7 @@ mod tests {
             // Note: Our current validation only checks structural constraints, not value constraints
             // The clap argument parser would catch invalid values before they reach validate()
             // This test shows the validation passes but the values would be rejected by clap
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
         }
     }
 
@@ -529,7 +562,7 @@ mod tests {
         #[case(post_modes::TAG, "1")]
         fn test_bump_post_templates(#[case] mode: &str, #[case] expected_content: &str) {
             let args = FlowArgs {
-                post_mode: mode.to_string(),
+                post_mode: Some(mode.to_string()),
                 pre_release_label: Some("alpha".to_string()), // Need a pre-release label
                 ..FlowArgs::default()
             };
@@ -561,7 +594,7 @@ mod tests {
         #[should_panic(expected = "Invalid post_mode should have been caught by validation")]
         fn test_bump_post_invalid_mode_panics() {
             let args = FlowArgs {
-                post_mode: "invalid".to_string(),
+                post_mode: Some("invalid".to_string()),
                 ..FlowArgs::default()
             };
 
@@ -609,7 +642,7 @@ mod tests {
                 schema: Some(schema.to_string()),
                 ..FlowArgs::default()
             };
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
         }
 
         #[rstest]
@@ -626,7 +659,7 @@ mod tests {
                 schema: Some(schema.to_string()),
                 ..FlowArgs::default()
             };
-            let result = args.validate();
+            let result = args.validate(&mock_zerv());
             assert!(result.is_err());
             let error_msg = result.unwrap_err().to_string();
 
@@ -643,7 +676,7 @@ mod tests {
             assert!(args.schema.is_none());
 
             let mut args = args;
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
             assert!(args.schema.is_none()); // Should remain None
         }
 
@@ -657,7 +690,7 @@ mod tests {
             };
 
             // Should validate successfully - schema and manual overrides can coexist
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
         }
     }
 
@@ -705,7 +738,7 @@ mod tests {
             };
 
             // Validation should succeed even with custom branch rules
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
         }
     }
 
@@ -726,12 +759,12 @@ mod tests {
                 pre_release_label: Some(label.to_string()),
                 pre_release_num: num,
                 hash_branch_len: hash_len,
-                post_mode: post_mode.to_string(),
+                post_mode: Some(post_mode.to_string()),
                 ..FlowArgs::default()
             };
 
             // Test validation
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
 
             // Test bump_pre_release_label
             let expected = args.build_pre_release_bump_template(label);
@@ -782,17 +815,17 @@ mod tests {
                 branch_rules: custom_ron.parse().unwrap(),
                 pre_release_label: Some("alpha".to_string()), // Manual override
                 pre_release_num: Some(42),                    // Manual override
-                post_mode: "tag".to_string(),                 // Manual override
+                post_mode: Some("tag".to_string()),           // Manual override
                 ..FlowArgs::default()
             };
 
             // Should validate successfully - branch rules and manual overrides can coexist
-            assert!(args.validate().is_ok());
+            assert!(args.validate(&mock_zerv()).is_ok());
 
             // Manual overrides should be preserved
             assert_eq!(args.pre_release_label, Some("alpha".to_string()));
             assert_eq!(args.pre_release_num, Some(42));
-            assert_eq!(args.post_mode, "tag");
+            assert_eq!(args.post_mode, Some("tag".to_string()));
 
             // Branch rules should still be available for validation logic
             assert!(args.branch_rules.find_rule("develop").is_some());

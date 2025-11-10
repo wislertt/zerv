@@ -43,6 +43,16 @@ CalVer Schema Family:
     pub schema_ron: Option<String>,
 }
 
+impl MainConfig {
+    /// Create MainConfig from schema name
+    pub fn from_schema(schema: Option<String>) -> Self {
+        Self {
+            schema,
+            schema_ron: None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -50,6 +60,20 @@ mod tests {
     #[test]
     fn test_main_config_defaults() {
         let config = MainConfig::default();
+        assert!(config.schema.is_none());
+        assert!(config.schema_ron.is_none());
+    }
+
+    #[test]
+    fn test_main_config_from_schema() {
+        let config = MainConfig::from_schema(Some("standard".to_string()));
+        assert_eq!(config.schema, Some("standard".to_string()));
+        assert!(config.schema_ron.is_none());
+    }
+
+    #[test]
+    fn test_main_config_from_schema_none() {
+        let config = MainConfig::from_schema(None);
         assert!(config.schema.is_none());
         assert!(config.schema_ron.is_none());
     }

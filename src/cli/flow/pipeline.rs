@@ -1,13 +1,7 @@
 use ron::from_str;
 
-use crate::cli::common::args::OutputConfig;
 use crate::cli::flow::args::FlowArgs;
 use crate::cli::utils::output_formatter::OutputFormatter;
-use crate::cli::version::args::{
-    BumpsConfig,
-    MainConfig,
-    VersionArgs,
-};
 use crate::cli::version::pipeline::run_version_pipeline;
 use crate::error::ZervError;
 use crate::version::zerv::core::Zerv;
@@ -16,32 +10,17 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
     tracing::debug!("Starting flow pipeline with args: {:?}", args);
 
     let mut args = args;
-    args.validate()?;
 
-    let bump_dev = args.bump_dev();
+    // Step 1: Get current state (no bumps)
+    let current_zerv = args.get_current_zerv_object()?;
 
-    let version_args = VersionArgs {
-        input: args.input.clone(),
-        output: OutputConfig {
-            output_format: "zerv".to_string(),
-            output_template: None,
-            output_prefix: None,
-        },
-        main: MainConfig {
-            schema: args.schema.clone(),
-            schema_ron: None,
-        },
-        overrides: Default::default(),
-        bumps: BumpsConfig {
-            bump_pre_release_label: args.bump_pre_release_label(),
-            bump_pre_release_num: args.bump_pre_release_num(),
-            bump_patch: args.bump_patch(),
-            bump_post: args.bump_post(),
-            bump_dev,
-            ..Default::default()
-        },
-    };
+    // Step 2: Validate and apply branch rules using current state
+    args.validate(&current_zerv)?;
 
+    // Step 3: Create bumped version args
+    let version_args = args.create_bumped_version_args(&current_zerv)?;
+
+    // Step 4: Run version pipeline
     let ron_output = run_version_pipeline(version_args)?;
 
     let zerv_object: Zerv = from_str(&ron_output)

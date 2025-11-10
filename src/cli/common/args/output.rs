@@ -39,6 +39,17 @@ impl Default for OutputConfig {
     }
 }
 
+impl OutputConfig {
+    /// Create output config for internal zerv processing
+    pub fn zerv() -> Self {
+        Self {
+            output_format: "zerv".to_string(),
+            output_template: None,
+            output_prefix: None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -47,6 +58,14 @@ mod tests {
     fn test_output_config_defaults() {
         let config = OutputConfig::default();
         assert_eq!(config.output_format, formats::SEMVER);
+        assert!(config.output_template.is_none());
+        assert!(config.output_prefix.is_none());
+    }
+
+    #[test]
+    fn test_output_config_zerv() {
+        let config = OutputConfig::zerv();
+        assert_eq!(config.output_format, "zerv");
         assert!(config.output_template.is_none());
         assert!(config.output_prefix.is_none());
     }
