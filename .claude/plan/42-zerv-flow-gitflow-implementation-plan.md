@@ -1,6 +1,6 @@
 # Zerv Flow GitFlow Implementation Plan
 
-**Status**: In Progress (Phase 2: Branch Rules Completed)
+**Status**: In Progress (Phase 2: FlowArgs Integration Mostly Complete)
 **Priority**: High
 **Context**: Complete GitFlow support for zerv flow with branch pattern rules and post mode configuration to enable GitFlow test matching the Mermaid diagram.
 
@@ -39,12 +39,13 @@
 - ✅ **Comprehensive testing**: 56 branch rules tests passing
 - ✅ **Default GitFlow rules**: `develop` → `beta.1`, `release/*` → `rc`, post modes
 
-### ❌ **Remaining GitFlow Components (60% Gap)**
+### ⚠️ **Remaining GitFlow Components (40% Gap)**
 
-#### **1. FlowArgs Integration (Phase 2 - In Progress)**
+#### **1. FlowArgs Integration (Phase 2 - Mostly Complete)**
 
 - **✅ Completed**: FromStr trait for BranchRules with RON parsing
-- **Missing**: Branch rules field in FlowArgs with default GitFlow rules
+- **✅ Completed**: Branch rules field in FlowArgs with default GitFlow rules
+- **✅ Completed**: Display trait for BranchRules with RON serialization
 - **Missing**: Integration in FlowArgs validation method
 - **Missing**: Current branch detection and rule matching
 - **Missing**: Combining branch rule defaults with user CLI args
@@ -273,25 +274,50 @@ All other branches fall back to the default behavior:
 
 **Test coverage**: 3 new FromStr tests added, all 59 branch rules tests passing
 
-#### **Step 2.3: FlowArgs Integration with Option<BranchRules>**
+#### **Step 2.3: ✅ COMPLETED - FlowArgs Integration with BranchRules**
 
-**File**: `src/cli/flow/args/main.rs` (update existing)
+**Status**: ✅ **COMPLETED** - --branch-rules field added to FlowArgs with non-optional type
+
+**Completed implementation**:
+
+2. **✅ Added typed --branch-rules field to FlowArgs**:
+    - Used `BranchRules` (non-optional) for maximum type safety
+    - Leveraged Clap's built-in `value_parser!(BranchRules)`
+    - Added `Display` trait implementation for `default_value_t` support
+    - Clean architecture with built-in GitFlow defaults
+
+**Files updated**:
+
+- ✅ `src/cli/flow/args/main.rs` - Added `branch_rules: BranchRules` field
+- ✅ Updated Default implementation with `BranchRules::default_rules()`
+- ✅ Added comprehensive test coverage (3 new tests)
+- ✅ All 71 FlowArgs tests passing
+
+**Test coverage**:
+
+- `test_flow_args_default_has_gitflow_rules` - Verifies GitFlow defaults
+- `test_flow_args_with_custom_branch_rules` - Tests custom rules override
+- `test_flow_args_validation_with_custom_branch_rules` - Tests validation
+- `test_integration_with_branch_rules_and_manual_overrides` - Tests coexistence
+
+**Additional Features**:
+
+- ✅ **Display trait implementation** for `BranchRules` with RON serialization
+- ✅ **Exact string validation** in tests using readable concatenation
+- ✅ **Round-trip compatibility**: Display → FromStr produces identical rules
+- ✅ **Compact RON format**: `[(pattern:"develop",...), (pattern:"release/*",...)]`
+
+#### **Step 2.4: FlowArgs Validation with Branch Rule Integration**
 
 **Implementation approach**:
 
-2. **Add typed --branch-rules field to FlowArgs**:
-    - Use `Option<BranchRules>` for maximum type safety
-    - Leverage Clap's built-in `value_parser!(BranchRules)`
-    - No default value needed - `None` triggers GitFlow defaults
-    - No custom parser structs needed
-
 3. **Direct FlowArgs validation integration**:
-    - Get typed `BranchRules` object (no parsing needed)
-    - Use `unwrap_or_else(|| BranchRules::default_rules())` for defaults
-    - Get current branch name from VCS data
+    - Get typed `BranchRules` object (no parsing needed, always available)
+    - Get current branch name from VCS data via `zerv version`
     - Match current branch against branch rules
     - Get `ResolvedBranchArgs` from matching rule
     - Combine with parsed FlowArgs values for final args
+    - Override hierarchy: user args → branch rules → defaults
 
 ```rust
 // Add to src/cli/flow/branch_rules.rs
@@ -464,7 +490,7 @@ BRANCH_RULES="$(cat team-config.ron)" zerv flow --branch-rules "$BRANCH_RULES"
 - ✅ No custom VCS code needed
 - ✅ Reuses existing error handling patterns
 
-#### **Step 2.3: Pipeline Integration Update**
+#### **Step 2.5: Pipeline Integration Update**
 
 **File**: `src/cli/flow/pipeline.rs` (update existing)
 
@@ -484,7 +510,7 @@ pub fn run_flow_pipeline(mut args: FlowArgs) -> Result<String, ZervError> {
 }
 ```
 
-#### **Step 2.3: Updated Pipeline Integration**
+#### **Step 2.6: Updated Pipeline Integration**
 
 **File**: `src/cli/flow/pipeline.rs` (update existing)
 
@@ -617,14 +643,14 @@ scenario
 
 ## Implementation Phases Summary
 
-| Phase     | Components                   | Effort        | Status             |
-| --------- | ---------------------------- | ------------- | ------------------ |
-| Phase 1   | Branch rules system          | 2-3 days      | ✅ **Completed**   |
-| Phase 2   | FlowArgs integration         | 2 days        | 🎯 **In Progress** |
-| Phase 3   | Pipeline integration         | 1 day         | Pending            |
-| Phase 4   | GitFlow test                 | 2-3 days      | Pending            |
-| Phase 5   | Documentation                | 1 day         | Pending            |
-| **Total** | **Complete GitFlow support** | **8-10 days** | **~40% Complete**  |
+| Phase     | Components                   | Effort        | Status               |
+| --------- | ---------------------------- | ------------- | -------------------- |
+| Phase 1   | Branch rules system          | 2-3 days      | ✅ **Completed**     |
+| Phase 2   | FlowArgs integration         | 2 days        | 🎯 **~75% Complete** |
+| Phase 3   | Pipeline integration         | 1 day         | Pending              |
+| Phase 4   | GitFlow test                 | 2-3 days      | Pending              |
+| Phase 5   | Documentation                | 1 day         | Pending              |
+| **Total** | **Complete GitFlow support** | **8-10 days** | **~60% Complete**    |
 
 ## Key Design Principles
 

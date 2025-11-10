@@ -1,8 +1,12 @@
 // Branch rules system for GitFlow support
 
+use std::fmt;
 use std::str::FromStr;
 
-use ron::from_str;
+use ron::{
+    from_str,
+    to_string,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -199,6 +203,13 @@ impl FromStr for BranchRules {
         }
 
         Ok(Self { rules })
+    }
+}
+
+impl fmt::Display for BranchRules {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ron_string = to_string(&self.rules).map_err(|_| fmt::Error)?;
+        write!(f, "{}", ron_string)
     }
 }
 
@@ -603,5 +614,51 @@ mod tests {
             }
             _ => panic!("Expected ConflictingOptions error"),
         }
+    }
+
+    #[test]
+    fn test_branch_rules_display_round_trip() {
+        // Test that Display produces valid RON that can be parsed back
+        let original_ron = r#"[
+            (pattern: "develop", pre_release_label: beta, pre_release_num: 1, post_mode: commit),
+            (pattern: "release/*", pre_release_label: rc, post_mode: tag)
+        ]"#;
+
+        let rules: BranchRules = original_ron.parse().unwrap();
+        let display_output = rules.to_string();
+
+        // Should be able to parse the display output back
+        let reparsed_rules: BranchRules = display_output.parse().unwrap();
+
+        // Both should have the same rules
+        assert_eq!(
+            rules.find_rule("develop").unwrap().pre_release_label,
+            reparsed_rules
+                .find_rule("develop")
+                .unwrap()
+                .pre_release_label
+        );
+        assert_eq!(
+            rules.find_rule("release/1").unwrap().pre_release_label,
+            reparsed_rules
+                .find_rule("release/1")
+                .unwrap()
+                .pre_release_label
+        );
+    }
+
+    #[test]
+    fn test_branch_rules_display_format() {
+        // Test that Display produces expected RON format
+        let rules = BranchRules::default_rules();
+        let display_output = rules.to_string();
+
+        // Should exactly match the expected GitFlow rules RON format (compact)
+        let develop_rule = r#"(pattern:"develop",pre_release_label:beta,pre_release_num:Some(1),post_mode:commit)"#;
+        let release_rule =
+            r#"(pattern:"release/*",pre_release_label:rc,pre_release_num:None,post_mode:tag)"#;
+        let expected = format!("[{},{}]", develop_rule, release_rule);
+
+        assert_eq!(display_output, expected);
     }
 }

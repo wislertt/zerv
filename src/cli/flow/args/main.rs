@@ -7,6 +7,7 @@ use crate::cli::common::args::{
     OutputConfig,
     Validation as CommonValidation,
 };
+use crate::cli::flow::branch_rules::BranchRules;
 use crate::cli::utils::template::Template;
 use crate::error::ZervError;
 use crate::schema::ZervSchemaPreset;
@@ -104,6 +105,15 @@ pub struct FlowArgs {
           default_value = post_modes::COMMIT, help = "Post calculation mode (commit, tag)")]
     pub post_mode: String,
 
+    /// Branch rules in RON format (default: GitFlow rules)
+    #[arg(
+        long = "branch-rules",
+        help = "Branch rules in RON format (default: GitFlow rules)",
+        value_parser = clap::value_parser!(BranchRules),
+        default_value_t = BranchRules::default_rules(),
+    )]
+    pub branch_rules: BranchRules,
+
     /// Schema variant for output components [default: standard]
     #[arg(
         long,
@@ -121,6 +131,7 @@ impl Default for FlowArgs {
             pre_release_num: None,
             hash_branch_len: 5,
             post_mode: post_modes::COMMIT.to_string(),
+            branch_rules: BranchRules::default_rules(),
             schema: None,
         }
     }
@@ -650,6 +661,54 @@ mod tests {
         }
     }
 
+    mod branch_rules {
+        use super::*;
+
+        #[test]
+        fn test_flow_args_default_has_gitflow_rules() {
+            let args = FlowArgs::default();
+            // Should have default GitFlow rules
+            assert!(args.branch_rules.find_rule("develop").is_some());
+            assert!(args.branch_rules.find_rule("release/1").is_some());
+        }
+
+        #[test]
+        fn test_flow_args_with_custom_branch_rules() {
+            let custom_ron = r#"[
+                (pattern: "main", pre_release_label: beta, pre_release_num: 1, post_mode: commit),
+                (pattern: "hotfix/*", pre_release_label: rc, post_mode: tag)
+            ]"#;
+
+            let custom_rules: BranchRules = custom_ron.parse().unwrap();
+            let args = FlowArgs {
+                branch_rules: custom_rules,
+                ..FlowArgs::default()
+            };
+
+            // Should have custom rules, not default GitFlow rules
+            assert!(args.branch_rules.find_rule("main").is_some());
+            assert!(args.branch_rules.find_rule("hotfix/123").is_some());
+            assert!(args.branch_rules.find_rule("develop").is_none()); // Not in custom rules
+            assert!(args.branch_rules.find_rule("release/1").is_none()); // Not in custom rules
+        }
+
+        #[test]
+        fn test_flow_args_validation_with_custom_branch_rules() {
+            let custom_ron = r#"[
+                (pattern: "develop", pre_release_label: beta, pre_release_num: 1, post_mode: commit),
+                (pattern: "release/*", pre_release_label: rc, post_mode: tag)
+            ]"#;
+
+            let mut args = FlowArgs {
+                branch_rules: custom_ron.parse().unwrap(),
+                ..FlowArgs::default()
+            };
+
+            // Validation should succeed even with custom branch rules
+            assert!(args.validate().is_ok());
+        }
+    }
+
     mod integration {
         use super::*;
 
@@ -710,6 +769,34 @@ mod tests {
             };
             let expected_post = args.build_pre_release_bump_template(expected_post_content);
             assert_eq!(post_template.as_str(), expected_post);
+        }
+
+        #[test]
+        fn test_integration_with_branch_rules_and_manual_overrides() {
+            let custom_ron = r#"[
+                (pattern: "develop", pre_release_label: beta, pre_release_num: 1, post_mode: commit),
+                (pattern: "release/*", pre_release_label: rc, post_mode: tag)
+            ]"#;
+
+            let mut args = FlowArgs {
+                branch_rules: custom_ron.parse().unwrap(),
+                pre_release_label: Some("alpha".to_string()), // Manual override
+                pre_release_num: Some(42),                    // Manual override
+                post_mode: "tag".to_string(),                 // Manual override
+                ..FlowArgs::default()
+            };
+
+            // Should validate successfully - branch rules and manual overrides can coexist
+            assert!(args.validate().is_ok());
+
+            // Manual overrides should be preserved
+            assert_eq!(args.pre_release_label, Some("alpha".to_string()));
+            assert_eq!(args.pre_release_num, Some(42));
+            assert_eq!(args.post_mode, "tag");
+
+            // Branch rules should still be available for validation logic
+            assert!(args.branch_rules.find_rule("develop").is_some());
+            assert!(args.branch_rules.find_rule("release/1").is_some());
         }
     }
 }
