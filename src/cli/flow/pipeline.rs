@@ -386,16 +386,16 @@ mod tests {
             return; // Skip when `ZERV_TEST_DOCKER` are disabled
         }
 
-        // Initial state: main and develop branches
-        test_info!("Initial setup: main branch state with v1.0.0 tag");
+        // Step 1: Initial state: main and develop branches
+        test_info!("Step 1: Initial setup: main branch state with v1.0.0 tag");
         let scenario = FlowTestScenario::new()
             .expect("Failed to create test scenario")
             .create_tag("v1.0.0")
             .expect_version("1.0.0", "1.0.0")
             .expect_schema_variants(create_base_schema_test_cases("1.0.0", "main"));
 
-        // Create develop branch with initial development commit
-        test_info!("Create develop branch and start development");
+        // Step 2: Create develop branch with initial development commit
+        test_info!("Step 2: Create develop branch and start development");
         let scenario = scenario
             .create_branch("develop")
             .checkout("develop")
@@ -414,8 +414,8 @@ mod tests {
                 1,
             ));
 
-        // Feature development from develop branch (trunk-based post mode)
-        test_info!("Create feature/auth branch from develop");
+        // Step 3: Feature development from develop branch (trunk-based post mode)
+        test_info!("Step 3: Create feature/auth branch from develop");
         let branch_feature_auth_hash = expect_branch_hash("feature/auth", 5, "92409");
         let scenario = scenario
             .create_branch("feature/auth")
@@ -461,8 +461,8 @@ mod tests {
                 3,
             ));
 
-        // Merge feature/auth back to develop
-        test_info!("Merge feature/auth back to develop");
+        // Step 4: Merge feature/auth back to develop
+        test_info!("Step 4: Merge feature/auth back to develop");
         let scenario = scenario
             .checkout("develop")
             .merge_branch("feature/auth")
@@ -480,8 +480,8 @@ mod tests {
                 3,
             ));
 
-        // Hotfix emergency flow from main
-        test_info!("Create hotfix/critical branch from main for emergency fix");
+        // Step 5: Hotfix emergency flow from main
+        test_info!("Step 5: Create hotfix/critical branch from main for emergency fix");
         let branch_hotfix_hash = expect_branch_hash("hotfix/critical", 5, "11477");
         let scenario = scenario
             .checkout("main")
@@ -508,8 +508,8 @@ mod tests {
                 1,
             ));
 
-        // Merge hotfix to main and release v1.0.1
-        test_info!("Merge hotfix to main and release v1.0.1");
+        // Step 6: Merge hotfix to main and release v1.0.1
+        test_info!("Step 6: Merge hotfix to main and release v1.0.1");
         let scenario = scenario
             .checkout("main")
             .merge_branch("hotfix/critical")
@@ -517,8 +517,8 @@ mod tests {
             .expect_version("1.0.1", "1.0.1")
             .expect_schema_variants(create_base_schema_test_cases("1.0.1", "main"));
 
-        // Sync develop with main changes and continue development
-        test_info!("Sync develop with main changes");
+        // Step 7: Sync develop with main changes and continue development
+        test_info!("Step 7: Sync develop with main changes");
         let scenario = scenario
             .checkout("develop")
             .merge_branch("main")
@@ -536,8 +536,8 @@ mod tests {
                 4,
             ));
 
-        // Continue development on develop
-        test_info!("Continue development on develop branch");
+        // Step 8: Continue development on develop
+        test_info!("Step 8: Continue development on develop branch");
         let scenario = scenario
             .commit()
             .expect_version(

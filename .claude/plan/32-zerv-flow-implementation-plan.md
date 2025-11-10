@@ -210,37 +210,42 @@ config:
   theme: 'base'
 ---
 gitGraph
-    %% Initial state: main and develop branches
+    %% Step 1: Initial state: main and develop branches
     commit id: "1.0.0"
 
+    %% Step 2: Create develop branch with initial development commit
     branch develop order: 3
     checkout develop
     commit id: "1.0.1-beta.1.post.1"
 
-    %% Feature development from develop branch (trunk-based post mode)
+    %% Step 3: Feature development from develop branch (trunk-based post mode)
     branch feature/auth order: 4
     checkout feature/auth
-    commit id: "1.0.1-alpha.12345.post.1"
-    commit id: "1.0.1-alpha.12345.post.2"
+    commit id: "1.0.1-alpha.92409.post.2"
+    commit id: "1.0.1-alpha.92409.post.3"
 
     checkout develop
-    merge feature/auth id: "1.0.1-beta.1.post.2" tag: "feature merged"
+    %% Step 4: Merge feature/auth back to develop
+    merge feature/auth id: "1.0.1-beta.1.post.3" tag: "feature merged"
 
-    %% Hotfix emergency flow from main
+    %% Step 5: Hotfix emergency flow from main
     checkout main
     branch hotfix/critical order: 1
     checkout hotfix/critical
-    commit id: "1.0.1-alpha.54321.post.1"
+    commit id: "1.0.1-alpha.11477.post.1"
 
     checkout main
+    %% Step 6: Merge hotfix to main and release v1.0.1
     merge hotfix/critical id: "1.0.1" tag: "hotfix released"
 
-    %% Sync develop with main changes and continue development
+    %% Step 7: Sync develop with main changes and continue development
     checkout develop
-    merge main id: "1.0.2-beta.1.post.3" tag: "sync main"
-    commit id: "1.0.2-beta.1.post.4"
+    merge main id: "1.0.2-beta.1.post.4" tag: "sync main"
 
-    %% Release branch preparation (release/* uses commit distance from tag)
+    %% Step 8: Continue development on develop branch
+    commit id: "1.0.2-beta.1.post.5"
+
+    %% Step 9: Release branch preparation (release/* uses commit distance from tag)
     branch release/1 order: 2
     checkout release/1
     commit id: "1.0.2-rc.1.post.1" tag: "tagged"
@@ -248,9 +253,10 @@ gitGraph
     commit type:REVERSE id: "1.0.2-rc.1.post.2.dev.{timestamp}" tag: "untagged"
 
     checkout main
+    %% Step 10: Final release: merge release/1 to main
     merge release/1 id: "1.1.0" tag: "release 1.1.0"
 
-    %% Sync develop with release and prepare for next cycle
+    %% Step 11: Sync develop with release and prepare for next cycle
     checkout develop
     merge main id: "1.1.1-beta.1.post.1" tag: "sync release"
 ```
