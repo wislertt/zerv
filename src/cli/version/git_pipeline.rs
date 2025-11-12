@@ -16,7 +16,8 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDra
     } else {
         None
     };
-    let vcs_data = crate::vcs::detect_vcs_with_limit(work_dir, max_depth)?.get_vcs_data()?;
+    let vcs_data = crate::vcs::detect_vcs_with_limit(work_dir, max_depth)?
+        .get_vcs_data(&args.input.input_format)?;
 
     // Parse git tag with input format if available and validate it
     if let Some(ref tag_version) = vcs_data.tag_version {

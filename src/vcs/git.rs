@@ -12,6 +12,7 @@ use crate::vcs::{
     Vcs,
     VcsData,
 };
+use crate::version::VersionObject;
 
 /// Git VCS implementation
 pub struct GitVcs {
@@ -133,14 +134,63 @@ impl GitVcs {
         ZervError::CommandFailed(format!("Git command failed: {stderr_str}"))
     }
 
-    /// Get latest version tag
-    fn get_latest_tag(&self) -> Result<Option<String>> {
-        match self.run_git_command(&["describe", "--tags", "--abbrev=0"]) {
-            Ok(tag) if !tag.is_empty() => Ok(Some(tag)),
-            Ok(_) => Ok(None),
-            Err(ZervError::CommandFailed(_)) => Ok(None), // No tags found
-            Err(e) => Err(e),
+    /// Get latest version tag using enhanced algorithm
+    fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
+        // Get all tags traceable from current commit, ordered by reverse commit date
+        let output =
+            match self.run_git_command(&["tag", "--merged", "HEAD", "--sort=-committerdate"]) {
+                Ok(tags) => tags,
+                Err(ZervError::CommandFailed(_)) => return Ok(None), // No tags found
+                Err(e) => return Err(e),
+            };
+
+        if output.is_empty() {
+            return Ok(None);
         }
+
+        // For each tag in chronological order (newest first)
+        for tag in output.lines() {
+            let trimmed_tag = tag.trim();
+            if trimmed_tag.is_empty() {
+                continue;
+            }
+
+            // Check if tag is parsable as a version using the provided format
+            if VersionObject::parse_with_format(trimmed_tag, format).is_ok() {
+                // Get the commit hash this tag points to
+                let commit_hash = match self.run_git_command(&["rev-list", "-n", "1", trimmed_tag])
+                {
+                    Ok(hash) => hash.trim().to_string(),
+                    Err(_) => continue, // Skip if we can't get commit hash
+                };
+
+                // Get all tags pointing to this same commit
+                let tags_on_commit =
+                    match self.run_git_command(&["tag", "--points-at", &commit_hash]) {
+                        Ok(tags) => tags,
+                        Err(_) => continue,
+                    };
+
+                if tags_on_commit.is_empty() {
+                    continue;
+                }
+
+                // Find the highest semantic version among all tags on this commit
+                // Use iterator pipeline for efficiency - no Vec allocation, no sorting needed
+                let best_tag = tags_on_commit
+                    .lines()
+                    .map(|line| line.trim())
+                    .filter(|tag| !tag.is_empty())
+                    .filter(|tag| VersionObject::parse_with_format(tag, format).is_ok())
+                    .max();
+
+                if let Some(best_tag) = best_tag {
+                    return Ok(Some(best_tag.to_string()));
+                }
+            }
+        }
+
+        Ok(None) // No valid version tags found
     }
 
     /// Calculate distance from tag to HEAD
@@ -222,8 +272,11 @@ impl GitVcs {
 }
 
 impl Vcs for GitVcs {
-    fn get_vcs_data(&self) -> Result<VcsData> {
-        tracing::debug!("Detecting Git version in current directory");
+    fn get_vcs_data(&self, input_format: &str) -> Result<VcsData> {
+        tracing::debug!(
+            "Detecting Git version in current directory with input format: {}",
+            input_format
+        );
 
         // Check for shallow clone and warn
         if self.check_shallow_clone() {
@@ -240,7 +293,7 @@ impl Vcs for GitVcs {
         };
 
         // Get tag information
-        match self.get_latest_tag()? {
+        match self.get_latest_tag(input_format)? {
             Some(tag) => {
                 tracing::debug!("Found Git tag: {}", tag);
                 data.distance = self.calculate_distance(&tag).unwrap_or(0);
@@ -280,6 +333,7 @@ mod tests {
     };
     use crate::test_utils::{
         GitOperations,
+        GitRepoFixture,
         TestDir,
         should_run_docker_tests,
         should_use_native_git,
@@ -371,7 +425,7 @@ mod tests {
             });
 
         // Get VCS data with detailed error context
-        let data = git_vcs.get_vcs_data()
+        let data = git_vcs.get_vcs_data("auto")
             .unwrap_or_else(|e| {
                 panic!("Failed to get VCS data from repo at {}: {}. Check Git operations and repository state.",
                        temp_dir.path().display(), e);
@@ -407,7 +461,7 @@ mod tests {
         }
         let temp_dir = setup_git_repo_with_tag("v1.0.0");
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
-        let data = git_vcs.get_vcs_data().expect("should get vcs data");
+        let data = git_vcs.get_vcs_data("auto").expect("should get vcs data");
 
         assert!(!data.commit_hash.is_empty());
         assert!(data.commit_timestamp > 0);
@@ -447,7 +501,7 @@ mod tests {
             .expect("should create commit");
 
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
-        let data = git_vcs.get_vcs_data().expect("should get vcs data");
+        let data = git_vcs.get_vcs_data("auto").expect("should get vcs data");
 
         assert_eq!(data.tag_version, Some("v1.0.0".to_string()));
         assert_eq!(data.distance, 1);
@@ -465,7 +519,7 @@ mod tests {
         fs::write(path.join("untracked.txt"), "untracked").unwrap();
 
         let git_vcs = GitVcs::new(temp_dir.path()).unwrap();
-        let data = git_vcs.get_vcs_data().unwrap();
+        let data = git_vcs.get_vcs_data("auto").unwrap();
 
         assert!(data.is_dirty);
     }
@@ -477,7 +531,7 @@ mod tests {
         }
         let temp_dir = setup_git_repo();
         let git_vcs = GitVcs::new(temp_dir.path()).expect("should create GitVcs");
-        let data = git_vcs.get_vcs_data().expect("should get vcs data");
+        let data = git_vcs.get_vcs_data("auto").expect("should get vcs data");
 
         assert!(!data.is_dirty);
     }
@@ -753,5 +807,96 @@ mod tests {
                 ),
             }
         }
+    }
+
+    #[test]
+    fn test_get_latest_tag_comprehensive() -> crate::error::Result<()> {
+        if !should_run_docker_tests() {
+            return Ok(());
+        }
+
+        // Create repository with complex history covering all scenarios
+        let mut fixture =
+            GitRepoFixture::tagged("v1.0.0").expect("Failed to create initial fixture");
+        let git_vcs = GitVcs::new(fixture.path())?;
+
+        // Test 1: Empty repo behavior (already has v1.0.0 tag)
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v1.0.0".to_string()),
+            "Should find initial tag"
+        );
+
+        // Test 2: Multiple tags on same commit (main bug scenario)
+        fixture = fixture.create_tag("v1.0.1-beta.1")   // pre-release
+            .create_tag("build-123")                   // non-version tag
+            .create_tag("v1.0.2-rc.1.post.3")          // problematic pre-release from bug
+            .create_tag("v1.1.0")                      // clean release (should be chosen)
+            .create_tag("release-candidate"); // another non-version tag
+
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v1.1.0".to_string()),
+            "Should return v1.1.0 (clean release) over pre-release tags"
+        );
+
+        // Test 3: Format-specific behavior
+        let result_semver = git_vcs.get_latest_tag("semver")?;
+        assert!(result_semver.is_some(), "SemVer format should find a tag");
+
+        let result_pep440 = git_vcs.get_latest_tag("pep440")?;
+        assert!(result_pep440.is_some(), "PEP440 format should find a tag");
+
+        // Test 4: Build history with HEAD not at latest commit
+        fixture = fixture
+            .commit("Feature A")
+            .create_tag("v2.0.0")
+            .commit("Work after v2.0.0")
+            .commit("Feature B")
+            .create_tag("v3.0.0");
+
+        // Get v2.0.0 commit and checkout to it (middle of history)
+        let v2_commit = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
+            .expect("Failed to get v2.0.0 commit");
+        let v2_commit = v2_commit.trim();
+        fixture = fixture.checkout(v2_commit);
+
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v2.0.0".to_string()),
+            "Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0"
+        );
+
+        // Test 5: Old commit with high version tag
+        let head_commit = fixture
+            .get_head_commit()
+            .expect("Failed to get HEAD commit");
+
+        // Reset to initial commit and add high version tag
+        let v1_0_0_commit = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v1.0.0"])
+            .expect("Failed to get v1.0.0 commit");
+        let v1_0_0_commit = v1_0_0_commit.trim();
+
+        fixture = fixture
+            .checkout(v1_0_0_commit)
+            .commit("Old feature")
+            .create_tag("v10.5.0")
+            .checkout(&head_commit);
+
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v2.0.0".to_string()),
+            "Should return v2.0.0 (traceable from HEAD), not v10.5.0 (old high version)"
+        );
+
+        Ok(())
     }
 }

@@ -42,7 +42,9 @@ fn create_vcs_data_with_tag(tag: &str, filename: &str, content: &str, commit_msg
         .expect("Failed to create commit");
 
     let git_vcs = GitVcs::new(test_dir.path()).expect("Failed to create GitVcs");
-    git_vcs.get_vcs_data().expect("Failed to get VCS data")
+    git_vcs
+        .get_vcs_data("auto")
+        .expect("Failed to get VCS data")
 }
 
 /// Get real VCS data with SemVer tag (v1.2.3) and 1 commit distance

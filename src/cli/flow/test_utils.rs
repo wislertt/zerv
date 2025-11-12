@@ -59,11 +59,9 @@ impl FlowTestScenario {
     /// Create a tag in the current git repository
     pub fn create_tag(self, tag: &str) -> Self {
         test_info!("Creating tag: {}", tag);
-        self.fixture
-            .git_impl
-            .create_tag(&self.fixture.test_dir, tag)
-            .unwrap_or_else(|e| panic!("Failed to create tag '{}': {}", tag, e));
-        self
+        Self {
+            fixture: self.fixture.create_tag(tag),
+        }
     }
 
     pub fn expect_version(self, semver: &str, pep440: &str) -> Self {
@@ -81,60 +79,38 @@ impl FlowTestScenario {
     /// Create a new branch without checking it out
     pub fn create_branch(self, branch_name: &str) -> Self {
         test_info!("Creating branch: {}", branch_name);
-        self.fixture
-            .create_branch(branch_name)
-            .unwrap_or_else(|e| panic!("Failed to create branch '{}': {}", branch_name, e));
-        self
+        Self {
+            fixture: self.fixture.with_branch(branch_name),
+        }
     }
 
     /// Checkout to an existing branch
     pub fn checkout(self, branch_name: &str) -> Self {
         test_info!("Switching to branch: {}", branch_name);
-        self.fixture
-            .checkout_branch(branch_name)
-            .unwrap_or_else(|e| panic!("Failed to checkout branch '{}': {}", branch_name, e));
-        self
+        Self {
+            fixture: self.fixture.with_checkout(branch_name),
+        }
     }
 
     pub fn commit(self) -> Self {
         test_info!("Making commit");
-        // Create a unique file with timestamp to ensure it's always a new change
-        use std::time::{
-            SystemTime,
-            UNIX_EPOCH,
-        };
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
-
-        let filename = format!("commit_file_{}.txt", timestamp);
-        let content = format!("Test commit content at timestamp {}", timestamp);
-
-        self.fixture
-            .test_dir
-            .create_file(&filename, &content)
-            .unwrap_or_else(|e| panic!("Failed to create file for commit: {}", e));
-        self.fixture
-            .git_impl
-            .create_commit(&self.fixture.test_dir, "Test commit")
-            .unwrap_or_else(|e| panic!("Failed to create commit: {}", e));
-        self
+        Self {
+            fixture: self.fixture.commit("Test commit"),
+        }
     }
 
     pub fn make_dirty(self) -> Self {
         test_info!("Making working directory dirty");
-        self.fixture.make_dirty().expect("Failed to make dirty");
-        self
+        Self {
+            fixture: self.fixture.with_dirty(),
+        }
     }
 
     pub fn merge_branch(self, branch_name: &str) -> Self {
         test_info!("Merging branch: {}", branch_name);
-        self.fixture
-            .git_impl
-            .merge_branch(&self.fixture.test_dir, branch_name)
-            .unwrap_or_else(|e| panic!("Failed to merge branch '{}': {}", branch_name, e));
-        self
+        Self {
+            fixture: self.fixture.merge_branch(branch_name),
+        }
     }
 
     pub fn test_dir_path(&self) -> String {
