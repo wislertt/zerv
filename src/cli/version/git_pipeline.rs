@@ -2,9 +2,9 @@ use std::path::Path;
 
 use super::args::VersionArgs;
 use super::zerv_draft::ZervDraft;
-use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
+use crate::version::VersionObject;
 
 /// Process git source and return a ZervDraft object
 pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDraft, ZervError> {
@@ -21,7 +21,7 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDra
     // Parse git tag with input format if available and validate it
     if let Some(ref tag_version) = vcs_data.tag_version {
         let _parsed_version =
-            InputFormatHandler::parse_version_string(tag_version, &args.input.input_format)?;
+            VersionObject::parse_with_format(tag_version, &args.input.input_format)?;
         // Validation passed - the tag is in a valid format
     }
 

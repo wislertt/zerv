@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use crate::error::ZervError;
 use crate::version::{
     PEP440,
     SemVer,
@@ -21,12 +22,41 @@ impl VersionObject {
         }
     }
 
-    pub fn parse_with_format(tag: &str, format_str: &str) -> Option<Self> {
+    /// Enhanced parsing with auto-detection and detailed error handling
+    pub fn parse_with_format(tag: &str, format_str: &str) -> Result<Self, ZervError> {
         match format_str.to_lowercase().as_str() {
-            "pep440" => PEP440::from_str(tag).ok().map(VersionObject::PEP440),
-            "semver" => SemVer::from_str(tag).ok().map(VersionObject::SemVer),
-            _ => None,
+            "semver" => SemVer::from_str(tag)
+                .map(VersionObject::SemVer)
+                .map_err(|e| {
+                    ZervError::InvalidFormat(format!("Invalid SemVer format '{tag}': {e}"))
+                }),
+            "pep440" => PEP440::from_str(tag)
+                .map(VersionObject::PEP440)
+                .map_err(|e| {
+                    ZervError::InvalidFormat(format!("Invalid PEP440 format '{tag}': {e}"))
+                }),
+            "auto" => Self::parse_auto_detect(tag),
+            _ => Err(ZervError::UnknownFormat(format!(
+                "Unknown input format '{format_str}'. Supported formats: semver, pep440, auto"
+            ))),
         }
+    }
+
+    /// Auto-detect version format (try SemVer first, then PEP440)
+    fn parse_auto_detect(version_str: &str) -> Result<Self, ZervError> {
+        // Try SemVer first
+        if let Ok(semver) = SemVer::from_str(version_str) {
+            return Ok(VersionObject::SemVer(semver));
+        }
+
+        // Fall back to PEP440
+        if let Ok(pep440) = PEP440::from_str(version_str) {
+            return Ok(VersionObject::PEP440(pep440));
+        }
+
+        Err(ZervError::InvalidVersion(format!(
+            "Version '{version_str}' is not valid SemVer or PEP440 format"
+        )))
     }
 }
 
@@ -56,6 +86,8 @@ mod tests {
     #[case("1.2.3a1", "pep440", "pep440")]
     #[case("1.0.0-alpha.1", "SEMVER", "semver")] // case insensitive
     #[case("2!1.2.3", "PEP440", "pep440")] // case insensitive
+    #[case("1.2.3", "auto", "semver")] // auto detection - semver
+    #[case("1.2.3a1", "auto", "pep440")] // auto detection - pep440
     fn test_version_object_parse_with_format(
         #[case] tag: &str,
         #[case] format: &str,
@@ -66,12 +98,24 @@ mod tests {
     }
 
     #[rstest]
-    #[case("1.2.3", "unknown")]
-    #[case("1.2.3", "invalid")]
-    #[case("invalid", "semver")]
-    fn test_version_object_parse_with_format_invalid(#[case] tag: &str, #[case] format: &str) {
-        let version = VersionObject::parse_with_format(tag, format);
-        assert!(version.is_none());
+    #[case("1.2.3", "unknown", "Unknown input format")]
+    #[case("1.2.3", "invalid", "Unknown input format")]
+    #[case("invalid", "semver", "Invalid SemVer format")]
+    #[case("invalid", "pep440", "Invalid PEP440 format")]
+    #[case("completely-invalid", "auto", "not valid SemVer or PEP440 format")]
+    fn test_version_object_parse_with_format_invalid(
+        #[case] tag: &str,
+        #[case] format: &str,
+        #[case] expected_error: &str,
+    ) {
+        let error = VersionObject::parse_with_format(tag, format).unwrap_err();
+        let error_message = error.to_string();
+        assert!(
+            error_message.contains(expected_error),
+            "Expected error message to contain '{}', got: '{}'",
+            expected_error,
+            error_message
+        );
     }
 
     #[test]

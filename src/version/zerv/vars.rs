@@ -5,9 +5,9 @@ use serde::{
 };
 use serde_json;
 
-use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::version::VersionArgs;
 use crate::error::ZervError;
+use crate::version::VersionObject;
 use crate::version::zerv::core::PreReleaseVar;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -142,9 +142,9 @@ impl ZervVars {
     fn apply_tag_version_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Apply tag version override (parse and extract components)
         if let Some(ref tag_version) = args.overrides.tag_version {
-            // Use existing InputFormatHandler for parsing
+            // Use consolidated VersionObject parsing
             let version_object =
-                InputFormatHandler::parse_version_string(tag_version, &args.input.input_format)?;
+                VersionObject::parse_with_format(tag_version, &args.input.input_format)?;
             let parsed_vars = ZervVars::from(version_object);
 
             // Apply parsed version components to self

@@ -4,6 +4,7 @@ use crate::vcs::VcsData;
 use crate::version::ZervVars;
 
 /// Convert VCS data to ZervVars
+/// TODO: vcs_data_to_zerv_vars should taks input_format as input arg and pass that into parse_version_from_tag
 pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
     tracing::debug!("Converting VCS data to Zerv variables");
     tracing::debug!("VCS data: {:?}", vcs_data);

@@ -1,28 +1,9 @@
-use std::str::FromStr;
-
-use crate::version::{
-    PEP440,
-    SemVer,
-    VersionObject,
-};
+use crate::version::VersionObject;
 
 /// Parse version from tag string with optional format specification
 pub fn parse_version_from_tag(tag: &str, input_format: Option<&str>) -> Option<VersionObject> {
-    match input_format {
-        Some(format) => VersionObject::parse_with_format(tag, format),
-        None => {
-            // Auto-detection: try SemVer first, then PEP440
-            if let Ok(semver) = SemVer::from_str(tag) {
-                return Some(VersionObject::SemVer(semver));
-            }
-
-            if let Ok(pep440) = PEP440::from_str(tag) {
-                return Some(VersionObject::PEP440(pep440));
-            }
-
-            None
-        }
-    }
+    let format = input_format.unwrap_or("auto");
+    VersionObject::parse_with_format(tag, format).ok() // Gracefully handle parsing errors
 }
 
 #[cfg(test)]
@@ -30,6 +11,10 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
+    use crate::version::{
+        PEP440,
+        SemVer,
+    };
 
     #[rstest]
     // Basic SemVer cases (auto-detection should pick SemVer first)
