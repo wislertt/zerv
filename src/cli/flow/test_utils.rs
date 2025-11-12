@@ -141,7 +141,7 @@ impl FlowTestScenario {
         self.fixture.path().to_string_lossy().to_string()
     }
 
-    pub fn debug_git_state(&self, context: &str) {
+    pub fn debug_git_state(self, context: &str) -> Self {
         crate::test_info!("=== DEBUG: {} ===", context);
         let test_dir_path = self.test_dir_path();
         crate::test_info!("Test directory: {}", test_dir_path);
@@ -150,15 +150,76 @@ impl FlowTestScenario {
             test_dir_path
         );
 
-        // Use existing git_impl from fixture for git operations
+        // Current branch and HEAD info
+        match self
+            .fixture
+            .git_impl
+            .execute_git(&self.fixture.test_dir, &["branch", "--show-current"])
+        {
+            Ok(output) => {
+                crate::test_info!("Current branch: {}", output.trim());
+            }
+            Err(e) => {
+                crate::test_info!("Git: Failed to get current branch: {}", e);
+            }
+        }
+
+        match self
+            .fixture
+            .git_impl
+            .execute_git(&self.fixture.test_dir, &["rev-parse", "HEAD"])
+        {
+            Ok(output) => {
+                crate::test_info!("HEAD commit: {}", output.trim());
+            }
+            Err(e) => {
+                crate::test_info!("Git: Failed to get HEAD: {}", e);
+            }
+        }
+
+        // Tags on current commit
+        match self
+            .fixture
+            .git_impl
+            .execute_git(&self.fixture.test_dir, &["tag", "--points-at", "HEAD"])
+        {
+            Ok(output) => {
+                if output.trim().is_empty() {
+                    crate::test_info!("Tags on HEAD: None");
+                } else {
+                    crate::test_info!("Tags on HEAD: {}", output.trim());
+                }
+            }
+            Err(e) => {
+                crate::test_info!("Git: Failed to get tags on HEAD: {}", e);
+            }
+        }
+
+        // All tags in repo
+        match self.fixture.git_impl.execute_git(
+            &self.fixture.test_dir,
+            &["tag", "--list", "-n", "--sort=-version:refname"],
+        ) {
+            Ok(output) => {
+                crate::test_info!("All tags (sorted):");
+                for line in output.lines().take(10) {
+                    crate::test_info!("Tag: {}", line);
+                }
+            }
+            Err(e) => {
+                crate::test_info!("Git: Failed to get tag list: {}", e);
+            }
+        }
+
+        // Recent commits with tags
         match self.fixture.git_impl.execute_git(
             &self.fixture.test_dir,
             &["log", "--oneline", "--graph", "--all", "--decorate", "-10"],
         ) {
             Ok(output) => {
+                crate::test_info!("Recent commits with decorations:");
                 for line in output.lines().take(20) {
-                    // Limit output to prevent flooding
-                    crate::test_info!("Git: {}", line);
+                    crate::test_info!("Commit: {}", line);
                 }
             }
             Err(e) => {
@@ -166,7 +227,75 @@ impl FlowTestScenario {
             }
         }
 
+        // Describe current commit
+        match self.fixture.git_impl.execute_git(
+            &self.fixture.test_dir,
+            &["describe", "--tags", "--always", "--abbrev=7"],
+        ) {
+            Ok(output) => {
+                crate::test_info!("Git describe: {}", output.trim());
+            }
+            Err(e) => {
+                crate::test_info!("Git: Failed to describe: {}", e);
+            }
+        }
+
         crate::test_info!("=== END DEBUG ===");
+        self
+    }
+
+    /// Copy test directory to .cache/tmp for debugging
+    pub fn copy_test_path_to_cache(self, context: &str) -> Self {
+        let test_dir_path = self.test_dir_path();
+        let cache_dir = std::path::Path::new(".cache/tmp");
+
+        // Create cache directory if it doesn't exist
+        if let Err(e) = std::fs::create_dir_all(cache_dir) {
+            crate::test_info!("Failed to create cache directory: {}", e);
+            return self;
+        }
+
+        // Create unique subdirectory for this debug session
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let target_dir = cache_dir.join(format!("{}-{}", context, timestamp));
+
+        // Copy the test directory
+        match std::fs::create_dir_all(&target_dir) {
+            Ok(_) => {
+                // Use cp command for recursive copy
+                match std::process::Command::new("cp")
+                    .arg("-r")
+                    .arg(&test_dir_path)
+                    .arg(&target_dir)
+                    .output()
+                {
+                    Ok(output) => {
+                        if output.status.success() {
+                            crate::test_info!("Copied test directory to: {}", target_dir.display());
+                            crate::test_info!(
+                                "You can investigate with: cd {}",
+                                target_dir.display()
+                            );
+                        } else {
+                            crate::test_info!(
+                                "Failed to copy directory: {}",
+                                String::from_utf8_lossy(&output.stderr)
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        crate::test_info!("Failed to run cp command: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                crate::test_info!("Failed to create target directory: {}", e);
+            }
+        }
+        self
     }
 }
 

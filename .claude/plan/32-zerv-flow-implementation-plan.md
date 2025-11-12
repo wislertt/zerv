@@ -250,7 +250,9 @@ gitGraph
     checkout release/1
     commit id: "1.0.2-rc.1.post.1" tag: "tagged"
     commit id: "1.0.2-rc.1.post.2" tag: "tagged"
-    commit type:REVERSE id: "1.0.2-rc.1.post.2.dev.{timestamp}" tag: "untagged"
+    commit type:REVERSE id: "1.0.2-rc.1.post.2.dev.{timestamp1}" tag: "uncommit"
+    commit id: "1.0.2-rc.1.post.2.dev.{timestamp2}" tag: "untagged"
+    commit id: "1.0.2-rc.1.post.3" tag: "tagged"
 
     checkout main
     %% Step 10: Final release: merge release/1 to main
