@@ -554,104 +554,104 @@ mod tests {
                 5,
             ));
 
-        // // Step 9: Release branch preparation (release/1) from develop
-        // test_info!("Step 9: Create release/1 branch from develop for release preparation");
-        // let scenario = scenario
-        //     .create_branch("release/1")
-        //     .checkout("release/1")
-        //     .commit()
-        //     .expect_version(
-        //         "1.0.2-rc.1.post.1+release.1.6.g{hex:7}",
-        //         "1.0.2rc1.post1+release.1.6.g{hex:7}",
-        //     )
-        //     .expect_schema_variants(create_full_schema_test_cases(
-        //         "1.0.2",
-        //         PreReleaseLabel::Rc,
-        //         "1", // release/1 uses pre_release_num: 1
-        //         1,
-        //         None,
-        //         "release.1",
-        //         6,
-        //     ))
-        //     .create_tag("v1.0.2-rc.1.post.1")
-        //     .expect_version("1.0.2-rc.1.post.1", "1.0.2rc1.post1")
-        //     // .expect_schema_variants(create_base_schema_test_cases("1.0.2-rc.1.post.1", "release/1"))
-        //     .commit()
-        //     .expect_version(
-        //         "1.0.2-rc.1.post.1+release.1.1.g{hex:7}",
-        //         "1.0.2rc1.post1+release.1.1.g{hex:7}",
-        //     )
-        //     .expect_schema_variants(create_full_schema_test_cases(
-        //         "1.0.2",
-        //         PreReleaseLabel::Rc,
-        //         "1",
-        //         1,
-        //         None,
-        //         "release.1",
-        //         1,
-        //     ))
-        //     .create_tag("v1.0.2-rc.1.post.2")
-        //     .expect_version("1.0.2-rc.1.post.2", "1.0.2rc1.post2");
-        // // .expect_schema_variants(create_base_schema_test_cases("1.0.2-rc.1.post.2", "release/1"));
+        // Step 9: Release branch preparation (release/1) from develop
+        test_info!("Step 9: Create release/1 branch from develop for release preparation");
+        let scenario = scenario
+            .create_branch("release/1")
+            .checkout("release/1")
+            .commit()
+            .expect_version(
+                "1.0.2-rc.1.post.1+release.1.6.g{hex:7}",
+                "1.0.2rc1.post1+release.1.6.g{hex:7}",
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Rc,
+                "1", // release/1 uses pre_release_num: 1
+                1,
+                None,
+                "release.1",
+                6,
+            ))
+            .create_tag("v1.0.2-rc.1.post.1")
+            .expect_version("1.0.2-rc.1.post.1", "1.0.2rc1.post1")
+            // .expect_schema_variants(create_base_schema_test_cases("1.0.2rc1.post1", "release/1"))
+            .commit()
+            .expect_version(
+                "1.0.2-rc.1.post.1+release.1.1.g{hex:7}",
+                "1.0.2rc1.post1+release.1.1.g{hex:7}",
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Rc,
+                "1",
+                1,
+                None,
+                "release.1",
+                1,
+            ))
+            .create_tag("v1.0.2-rc.1.post.2")
+            .expect_version("1.0.2-rc.1.post.2", "1.0.2rc1.post2");
+        // .expect_schema_variants(create_base_schema_test_cases("1.0.2rc1.post2", "release/1"));
 
-        // // Step 10: Continue release branch development with dirty state and commits
-        // test_info!("Step 10: Continue release branch development with dirty state and commits");
-        // let scenario = scenario
-        //     .make_dirty()
-        //     .expect_version(
-        //         "1.0.2-rc.1.post.1.dev.{timestamp:now}+release.1.0.g{hex:7}",
-        //         "1.0.2rc1.post1.dev{timestamp:now}+release.1.0.g{hex:7}",
-        //     )
-        //     .expect_schema_variants(create_full_schema_test_cases(
-        //         "1.0.2",
-        //         PreReleaseLabel::Rc,
-        //         "1",
-        //         1,
-        //         Some("{timestamp:now}"),
-        //         "release.1",
-        //         0,
-        //     ))
-        //     .commit()
-        //     .expect_version(
-        //         "1.0.2-rc.1.post.1+release.1.1.g{hex:7}",
-        //         "1.0.2rc1.post1+release.1.1.g{hex:7}",
-        //     )
-        //     .expect_schema_variants(create_full_schema_test_cases(
-        //         "1.0.2",
-        //         PreReleaseLabel::Rc,
-        //         "1",
-        //         1,
-        //         None,
-        //         "release.1",
-        //         1,
-        //     ))
-        //     .create_tag("v1.0.2-rc.1.post.3")
-        //     .expect_version("1.0.2-rc.1.post.3", "1.0.2rc1.post3");
-        //     // .expect_schema_variants(create_base_schema_test_cases(
-        //     //     "1.0.2-rc.1.post.3",
-        //     //     "release/1",
-        //     // ))
+        // Step 10: Continue release branch development with dirty state and commits
+        test_info!("Step 10: Continue release branch development with dirty state and commits");
+        let scenario = scenario
+            .make_dirty()
+            .expect_version(
+                "1.0.2-rc.1.post.1.dev.{timestamp:now}+release.1.0.g{hex:7}",
+                "1.0.2rc1.post1.dev{timestamp:now}+release.1.0.g{hex:7}",
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Rc,
+                "1",
+                1,
+                Some("{timestamp:now}"),
+                "release.1",
+                0,
+            ))
+            .commit()
+            .expect_version(
+                "1.0.2-rc.1.post.1+release.1.1.g{hex:7}",
+                "1.0.2rc1.post1+release.1.1.g{hex:7}",
+            )
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                PreReleaseLabel::Rc,
+                "1",
+                1,
+                None,
+                "release.1",
+                1,
+            ))
+            .create_tag("v1.0.2-rc.1.post.3")
+            .expect_version("1.0.2-rc.1.post.3", "1.0.2rc1.post3");
+        // .expect_schema_variants(create_base_schema_test_cases(
+        //     "1.0.2rc1.post3",
+        //     "release/1",
+        // ));
 
-        // // Step 11: Final release merge to main
-        // test_info!("Step 11: Final release merge to main and release v1.1.0");
-        // let scenario = scenario
-        //     .checkout("main")
-        //     .merge_branch("release/1")
-        //     .create_tag("v1.1.0")
-        //     .debug_git_state("After creating v1.1.0 tag")
-        //     .copy_test_path_to_cache("v1.1.0-tag-created")
-        //     .expect_version("1.1.0", "1.1.0")
-        //     .expect_schema_variants(create_base_schema_test_cases("1.1.0", "main"));
+        // Step 11: Final release merge to main
+        test_info!("Step 11: Final release merge to main and release v1.1.0");
+        let scenario = scenario
+            .checkout("main")
+            .merge_branch("release/1")
+            .create_tag("v1.1.0")
+            .debug_git_state("After creating v1.1.0 tag")
+            .copy_test_path_to_cache("v1.1.0-tag-created")
+            .expect_version("1.1.0", "1.1.0")
+            .expect_schema_variants(create_base_schema_test_cases("1.1.0", "main"));
 
-        // // Step 12: Sync develop with release for next cycle
-        // test_info!("Step 12: Sync develop with release and prepare for next cycle");
-        // let scenario = scenario
-        //     .checkout("develop")
-        //     .merge_branch("main")
-        //     .expect_version("1.1.0", "1.1.0")
-        //     .expect_schema_variants(create_base_schema_test_cases("1.1.0", "develop"));
+        // Step 12: Sync develop with release for next cycle
+        test_info!("Step 12: Sync develop with release and prepare for next cycle");
+        let scenario = scenario
+            .checkout("develop")
+            .merge_branch("main")
+            .expect_version("1.1.0", "1.1.0")
+            .expect_schema_variants(create_base_schema_test_cases("1.1.0", "develop"));
 
-        // test_info!("GitFlow test completed successfully - full scenario implemented");
+        test_info!("GitFlow test completed successfully - full scenario implemented");
 
         drop(scenario); // Test completes successfully
     }

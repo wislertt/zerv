@@ -884,7 +884,7 @@ mod tests {
             .expect("Failed to get v1.0.0 commit");
         let v1_0_0_commit = v1_0_0_commit.trim();
 
-        fixture = fixture
+        let _fixture = fixture
             .checkout(v1_0_0_commit)
             .commit("Old feature")
             .create_tag("v10.5.0")
