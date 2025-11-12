@@ -42,6 +42,7 @@ mod tests {
         FlowTestScenario,
         create_base_schema_test_cases,
         create_full_schema_test_cases,
+        create_full_schema_test_cases_with_build_context,
         expect_branch_hash,
     };
     use crate::test_info;
@@ -575,7 +576,16 @@ mod tests {
             ))
             .create_tag("v1.0.2-rc.1.post.1")
             .expect_version("1.0.2-rc.1.post.1", "1.0.2rc1.post1")
-            // .expect_schema_variants(create_base_schema_test_cases("1.0.2rc1.post1", "release/1"))
+            .expect_schema_variants(create_full_schema_test_cases_with_build_context(
+                "1.0.2",
+                PreReleaseLabel::Rc,
+                "1",
+                1,
+                None,
+                "release.1",
+                0,
+                false, // No build context for tagged versions
+            ))
             .commit()
             .expect_version(
                 "1.0.2-rc.1.post.1+release.1.1.g{hex:7}",

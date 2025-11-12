@@ -285,6 +285,29 @@ pub fn create_full_schema_test_cases(
     sanitized_branch_name: &str,
     distance: u32,
 ) -> Vec<SchemaTestCase> {
+    create_full_schema_test_cases_with_build_context(
+        base_version,
+        pre_release_label,
+        pre_release_num,
+        post,
+        dev,
+        sanitized_branch_name,
+        distance,
+        true, // Default: include build context for STANDARD
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_full_schema_test_cases_with_build_context(
+    base_version: &str,
+    pre_release_label: PreReleaseLabel,
+    pre_release_num: &str,
+    post: u32,
+    dev: Option<&str>,
+    sanitized_branch_name: &str,
+    distance: u32,
+    include_build_context: bool,
+) -> Vec<SchemaTestCase> {
     let semver_label = pre_release_label.label_str();
     let pep440_label = pre_release_label_to_pep440_string(&pre_release_label);
 
@@ -425,26 +448,40 @@ pub fn create_full_schema_test_cases(
         },
         SchemaTestCase {
             name: STANDARD,
-            semver_expectation: format!(
-                "{}-{}.{}.post.{}{}+{}.{}.g{{hex:7}}",
-                base_version,
-                semver_label,
-                pre_release_num,
-                post,
-                semver_dev,
-                sanitized_branch_name,
-                distance
-            ),
-            pep440_expectation: format!(
-                "{}{}{}.post{}{}+{}.{}.g{{hex:7}}",
-                base_version,
-                pep440_label,
-                pre_release_num,
-                post,
-                pep440_dev,
-                sanitized_branch_name,
-                distance
-            ),
+            semver_expectation: if include_build_context {
+                format!(
+                    "{}-{}.{}.post.{}{}+{}.{}.g{{hex:7}}",
+                    base_version,
+                    semver_label,
+                    pre_release_num,
+                    post,
+                    semver_dev,
+                    sanitized_branch_name,
+                    distance
+                )
+            } else {
+                format!(
+                    "{}-{}.{}.post.{}{}",
+                    base_version, semver_label, pre_release_num, post, semver_dev
+                )
+            },
+            pep440_expectation: if include_build_context {
+                format!(
+                    "{}{}{}.post{}{}+{}.{}.g{{hex:7}}",
+                    base_version,
+                    pep440_label,
+                    pre_release_num,
+                    post,
+                    pep440_dev,
+                    sanitized_branch_name,
+                    distance
+                )
+            } else {
+                format!(
+                    "{}{}{}.post{}{}",
+                    base_version, pep440_label, pre_release_num, post, pep440_dev
+                )
+            },
         },
     ]
 }
