@@ -276,46 +276,32 @@ impl FlowTestScenario {
 }
 
 /// Creates comprehensive test cases for ALL standard-related schema constants
-pub fn create_full_schema_test_cases(
-    base_version: &str,
-    pre_release_label: PreReleaseLabel,
-    pre_release_num: &str,
-    post: u32,
-    dev: Option<&str>,
-    sanitized_branch_name: &str,
-    distance: u32,
-) -> Vec<SchemaTestCase> {
-    create_full_schema_test_cases_with_build_context(
-        base_version,
-        pre_release_label,
-        pre_release_num,
-        post,
-        dev,
-        sanitized_branch_name,
-        distance,
-        true, // Default: include build context for STANDARD
-    )
+pub struct SchemaTestExtraCore<'a> {
+    pub pre_release_label: PreReleaseLabel,
+    pub pre_release_num: &'a str,
+    pub post: u32,
+    pub dev: Option<&'a str>,
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn create_full_schema_test_cases_with_build_context(
-    base_version: &str,
-    pre_release_label: PreReleaseLabel,
-    pre_release_num: &str,
-    post: u32,
-    dev: Option<&str>,
-    sanitized_branch_name: &str,
-    distance: u32,
-    include_build_context: bool,
-) -> Vec<SchemaTestCase> {
-    let semver_label = pre_release_label.label_str();
-    let pep440_label = pre_release_label_to_pep440_string(&pre_release_label);
+pub struct SchemaTestBuild<'a> {
+    pub sanitized_branch_name: &'a str,
+    pub distance: u32,
+    pub include_build_for_standard: bool,
+}
 
-    let semver_dev = match dev {
+pub fn create_full_schema_test_cases(
+    base_version: &str,
+    extra_core: SchemaTestExtraCore,
+    build: SchemaTestBuild,
+) -> Vec<SchemaTestCase> {
+    let semver_label = extra_core.pre_release_label.label_str();
+    let pep440_label = pre_release_label_to_pep440_string(&extra_core.pre_release_label);
+
+    let semver_dev = match extra_core.dev {
         Some(dev_str) => format!(".dev.{}", dev_str),
         None => String::new(),
     };
-    let pep440_dev = match dev {
+    let pep440_dev = match extra_core.dev {
         Some(dev_str) => format!(".dev{}", dev_str),
         None => String::new(),
     };
@@ -329,29 +315,35 @@ pub fn create_full_schema_test_cases_with_build_context(
         },
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE,
-            semver_expectation: format!("{}-{}.{}", base_version, semver_label, pre_release_num),
-            pep440_expectation: format!("{}{}{}", base_version, pep440_label, pre_release_num),
+            semver_expectation: format!(
+                "{}-{}.{}",
+                base_version, semver_label, extra_core.pre_release_num
+            ),
+            pep440_expectation: format!(
+                "{}{}{}",
+                base_version, pep440_label, extra_core.pre_release_num
+            ),
         },
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE_POST,
             semver_expectation: format!(
                 "{}-{}.{}.post.{}",
-                base_version, semver_label, pre_release_num, post
+                base_version, semver_label, extra_core.pre_release_num, extra_core.post
             ),
             pep440_expectation: format!(
                 "{}{}{}.post{}",
-                base_version, pep440_label, pre_release_num, post
+                base_version, pep440_label, extra_core.pre_release_num, extra_core.post
             ),
         },
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE_POST_DEV,
             semver_expectation: format!(
                 "{}-{}.{}.post.{}{}",
-                base_version, semver_label, pre_release_num, post, semver_dev
+                base_version, semver_label, extra_core.pre_release_num, extra_core.post, semver_dev
             ),
             pep440_expectation: format!(
                 "{}{}{}.post{}{}",
-                base_version, pep440_label, pre_release_num, post, pep440_dev
+                base_version, pep440_label, extra_core.pre_release_num, extra_core.post, pep440_dev
             ),
         },
         // Context schemas
@@ -359,33 +351,51 @@ pub fn create_full_schema_test_cases_with_build_context(
             name: STANDARD_BASE_CONTEXT,
             semver_expectation: format!(
                 "{}+{}.{}.g{{hex:7}}",
-                base_version, sanitized_branch_name, distance
+                base_version, build.sanitized_branch_name, build.distance
             ),
             pep440_expectation: format!(
                 "{}+{}.{}.g{{hex:7}}",
-                base_version, sanitized_branch_name, distance
+                base_version, build.sanitized_branch_name, build.distance
             ),
         },
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE_CONTEXT,
             semver_expectation: format!(
                 "{}-{}.{}+{}.{}.g{{hex:7}}",
-                base_version, semver_label, pre_release_num, sanitized_branch_name, distance
+                base_version,
+                semver_label,
+                extra_core.pre_release_num,
+                build.sanitized_branch_name,
+                build.distance
             ),
             pep440_expectation: format!(
                 "{}{}{}+{}.{}.g{{hex:7}}",
-                base_version, pep440_label, pre_release_num, sanitized_branch_name, distance
+                base_version,
+                pep440_label,
+                extra_core.pre_release_num,
+                build.sanitized_branch_name,
+                build.distance
             ),
         },
         SchemaTestCase {
             name: STANDARD_BASE_PRERELEASE_POST_CONTEXT,
             semver_expectation: format!(
                 "{}-{}.{}.post.{}+{}.{}.g{{hex:7}}",
-                base_version, semver_label, pre_release_num, post, sanitized_branch_name, distance
+                base_version,
+                semver_label,
+                extra_core.pre_release_num,
+                extra_core.post,
+                build.sanitized_branch_name,
+                build.distance
             ),
             pep440_expectation: format!(
                 "{}{}{}.post{}+{}.{}.g{{hex:7}}",
-                base_version, pep440_label, pre_release_num, post, sanitized_branch_name, distance
+                base_version,
+                pep440_label,
+                extra_core.pre_release_num,
+                extra_core.post,
+                build.sanitized_branch_name,
+                build.distance
             ),
         },
         SchemaTestCase {
@@ -394,21 +404,21 @@ pub fn create_full_schema_test_cases_with_build_context(
                 "{}-{}.{}.post.{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 semver_label,
-                pre_release_num,
-                post,
+                extra_core.pre_release_num,
+                extra_core.post,
                 semver_dev,
-                sanitized_branch_name,
-                distance
+                build.sanitized_branch_name,
+                build.distance
             ),
             pep440_expectation: format!(
                 "{}{}{}.post{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 pep440_label,
-                pre_release_num,
-                post,
+                extra_core.pre_release_num,
+                extra_core.post,
                 pep440_dev,
-                sanitized_branch_name,
-                distance
+                build.sanitized_branch_name,
+                build.distance
             ),
         },
         // Complete schemas
@@ -416,11 +426,11 @@ pub fn create_full_schema_test_cases_with_build_context(
             name: STANDARD_NO_CONTEXT,
             semver_expectation: format!(
                 "{}-{}.{}.post.{}{}",
-                base_version, semver_label, pre_release_num, post, semver_dev
+                base_version, semver_label, extra_core.pre_release_num, extra_core.post, semver_dev
             ),
             pep440_expectation: format!(
                 "{}{}{}.post{}{}",
-                base_version, pep440_label, pre_release_num, post, pep440_dev
+                base_version, pep440_label, extra_core.pre_release_num, extra_core.post, pep440_dev
             ),
         },
         SchemaTestCase {
@@ -429,57 +439,65 @@ pub fn create_full_schema_test_cases_with_build_context(
                 "{}-{}.{}.post.{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 semver_label,
-                pre_release_num,
-                post,
+                extra_core.pre_release_num,
+                extra_core.post,
                 semver_dev,
-                sanitized_branch_name,
-                distance
+                build.sanitized_branch_name,
+                build.distance
             ),
             pep440_expectation: format!(
                 "{}{}{}.post{}{}+{}.{}.g{{hex:7}}",
                 base_version,
                 pep440_label,
-                pre_release_num,
-                post,
+                extra_core.pre_release_num,
+                extra_core.post,
                 pep440_dev,
-                sanitized_branch_name,
-                distance
+                build.sanitized_branch_name,
+                build.distance
             ),
         },
         SchemaTestCase {
             name: STANDARD,
-            semver_expectation: if include_build_context {
+            semver_expectation: if build.include_build_for_standard {
                 format!(
                     "{}-{}.{}.post.{}{}+{}.{}.g{{hex:7}}",
                     base_version,
                     semver_label,
-                    pre_release_num,
-                    post,
+                    extra_core.pre_release_num,
+                    extra_core.post,
                     semver_dev,
-                    sanitized_branch_name,
-                    distance
+                    build.sanitized_branch_name,
+                    build.distance
                 )
             } else {
                 format!(
                     "{}-{}.{}.post.{}{}",
-                    base_version, semver_label, pre_release_num, post, semver_dev
+                    base_version,
+                    semver_label,
+                    extra_core.pre_release_num,
+                    extra_core.post,
+                    semver_dev
                 )
             },
-            pep440_expectation: if include_build_context {
+            pep440_expectation: if build.include_build_for_standard {
                 format!(
                     "{}{}{}.post{}{}+{}.{}.g{{hex:7}}",
                     base_version,
                     pep440_label,
-                    pre_release_num,
-                    post,
+                    extra_core.pre_release_num,
+                    extra_core.post,
                     pep440_dev,
-                    sanitized_branch_name,
-                    distance
+                    build.sanitized_branch_name,
+                    build.distance
                 )
             } else {
                 format!(
                     "{}{}{}.post{}{}",
-                    base_version, pep440_label, pre_release_num, post, pep440_dev
+                    base_version,
+                    pep440_label,
+                    extra_core.pre_release_num,
+                    extra_core.post,
+                    pep440_dev
                 )
             },
         },

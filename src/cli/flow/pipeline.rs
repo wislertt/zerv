@@ -40,9 +40,10 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
 mod tests {
     use crate::cli::flow::test_utils::{
         FlowTestScenario,
+        SchemaTestBuild,
+        SchemaTestExtraCore,
         create_base_schema_test_cases,
         create_full_schema_test_cases,
-        create_full_schema_test_cases_with_build_context,
         expect_branch_hash,
     };
     use crate::test_info;
@@ -91,12 +92,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
-                PreReleaseLabel::Alpha,
-                &branch_feature_2_hash.to_string(),
-                0,
-                Some("{timestamp:now}"),
-                "feature.2",
-                0,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_2_hash.to_string(),
+                    post: 0,
+                    dev: Some("{timestamp:now}"),
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.2",
+                    distance: 0,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 4: feature-2: Create first commit
@@ -115,12 +121,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
-                PreReleaseLabel::Alpha,
-                &branch_feature_2_hash.to_string(),
-                1,
-                None,
-                "feature.2",
-                1,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_2_hash.to_string(),
+                    post: 1,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.2",
+                    distance: 1,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 5: feature-1: Create commits (parallel development)
@@ -140,12 +151,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
-                PreReleaseLabel::Alpha,
-                &branch_feature_1_hash.to_string(),
-                1,
-                None,
-                "feature.1",
-                1,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_1_hash.to_string(),
+                    post: 1,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.1",
+                    distance: 1,
+                    include_build_for_standard: true,
+                },
             ))
             .commit()
             .expect_version(
@@ -160,12 +176,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
-                PreReleaseLabel::Alpha,
-                &branch_feature_1_hash.to_string(),
-                2,
-                None,
-                "feature.1",
-                2,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_1_hash.to_string(),
+                    post: 2,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.1",
+                    distance: 2,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 6: feature-1: Merge to main and release v1.0.1
@@ -194,12 +215,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Alpha,
-                &branch_feature_2_hash.to_string(),
-                2,
-                None,
-                "feature.2",
-                2,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_2_hash.to_string(),
+                    post: 2,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.2",
+                    distance: 2,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 8: feature-2: Create additional commit
@@ -218,12 +244,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Alpha,
-                &branch_feature_2_hash.to_string(),
-                3,
-                None,
-                "feature.2",
-                3,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_2_hash.to_string(),
+                    post: 3,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.2",
+                    distance: 3,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 9: feature-3: Branch from feature-2 for sub-feature development
@@ -245,12 +276,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Alpha,
-                &branch_feature_3_hash.to_string(),
-                4,
-                None,
-                "feature.3",
-                4,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_3_hash.to_string(),
+                    post: 4,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.3",
+                    distance: 4,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 10: feature-3: Continue development with dirty state
@@ -269,12 +305,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Alpha,
-                &branch_feature_3_hash.to_string(),
-                4,
-                Some("{timestamp:now}"),
-                "feature.3",
-                4,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_3_hash.to_string(),
+                    post: 4,
+                    dev: Some("{timestamp:now}"),
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.3",
+                    distance: 4,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 11: feature-3: Continue development with commits
@@ -293,12 +334,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Alpha,
-                &branch_feature_3_hash.to_string(),
-                5,
-                None,
-                "feature.3",
-                5,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_3_hash.to_string(),
+                    post: 5,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.3",
+                    distance: 5,
+                    include_build_for_standard: true,
+                },
             ))
             .commit()
             .expect_version(
@@ -313,12 +359,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Alpha,
-                &branch_feature_3_hash.to_string(),
-                6,
-                None,
-                "feature.3",
-                6,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_3_hash.to_string(),
+                    post: 6,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.3",
+                    distance: 6,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 12: feature-2: Merge feature-3 back to continue development
@@ -338,12 +389,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Alpha,
-                &branch_feature_2_hash.to_string(),
-                6,
-                None,
-                "feature.2",
-                6,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_2_hash.to_string(),
+                    post: 6,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.2",
+                    distance: 6,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 13: feature-2: Final development before release
@@ -362,12 +418,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Alpha,
-                &branch_feature_2_hash.to_string(),
-                7,
-                None,
-                "feature.2",
-                7,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_2_hash.to_string(),
+                    post: 7,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.2",
+                    distance: 7,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 14: Final release: feature-2 merges to main and releases v1.1.0
@@ -407,12 +468,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
-                PreReleaseLabel::Beta,
-                "1", // develop uses pre_release_num: 1
-                1,
-                None,
-                "develop",
-                1,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Beta,
+                    pre_release_num: "1", // develop uses pre_release_num: 1
+                    post: 1,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "develop",
+                    distance: 1,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 3: Feature development from develop branch (trunk-based post mode)
@@ -434,12 +500,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
-                PreReleaseLabel::Alpha,
-                &branch_feature_auth_hash.to_string(),
-                2,
-                None,
-                "feature.auth",
-                2,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_auth_hash.to_string(),
+                    post: 2,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.auth",
+                    distance: 2,
+                    include_build_for_standard: true,
+                },
             ))
             .commit()
             .expect_version(
@@ -454,12 +525,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
-                PreReleaseLabel::Alpha,
-                &branch_feature_auth_hash.to_string(),
-                3,
-                None,
-                "feature.auth",
-                3,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_feature_auth_hash.to_string(),
+                    post: 3,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "feature.auth",
+                    distance: 3,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 4: Merge feature/auth back to develop
@@ -473,12 +549,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
-                PreReleaseLabel::Beta,
-                "1",
-                3,
-                None,
-                "develop",
-                3,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Beta,
+                    pre_release_num: "1",
+                    post: 3,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "develop",
+                    distance: 3,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 5: Hotfix emergency flow from main
@@ -501,12 +582,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.1",
-                PreReleaseLabel::Alpha,
-                &branch_hotfix_hash.to_string(),
-                1,
-                None,
-                "hotfix.critical",
-                1,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Alpha,
+                    pre_release_num: &branch_hotfix_hash.to_string(),
+                    post: 1,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "hotfix.critical",
+                    distance: 1,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 6: Merge hotfix to main and release v1.0.1
@@ -529,12 +615,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Beta,
-                "1",
-                4,
-                None,
-                "develop",
-                4,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Beta,
+                    pre_release_num: "1",
+                    post: 4,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "develop",
+                    distance: 4,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 8: Continue development on develop
@@ -547,12 +638,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Beta,
-                "1",
-                5,
-                None,
-                "develop",
-                5,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Beta,
+                    pre_release_num: "1",
+                    post: 5,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "develop",
+                    distance: 5,
+                    include_build_for_standard: true,
+                },
             ));
 
         // Step 9: Release branch preparation (release/1) from develop
@@ -567,24 +663,33 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Rc,
-                "1", // release/1 uses pre_release_num: 1
-                1,
-                None,
-                "release.1",
-                6,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Rc,
+                    pre_release_num: "1", // release/1 uses pre_release_num: 1
+                    post: 1,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "release.1",
+                    distance: 6,
+                    include_build_for_standard: true,
+                },
             ))
             .create_tag("v1.0.2-rc.1.post.1")
             .expect_version("1.0.2-rc.1.post.1", "1.0.2rc1.post1")
-            .expect_schema_variants(create_full_schema_test_cases_with_build_context(
+            .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Rc,
-                "1",
-                1,
-                None,
-                "release.1",
-                0,
-                false, // No build context for tagged versions
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Rc,
+                    pre_release_num: "1",
+                    post: 1,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "release.1",
+                    distance: 0,
+                    include_build_for_standard: false,
+                },
             ))
             .commit()
             .expect_version(
@@ -593,16 +698,34 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Rc,
-                "1",
-                1,
-                None,
-                "release.1",
-                1,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Rc,
+                    pre_release_num: "1",
+                    post: 1,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "release.1",
+                    distance: 1,
+                    include_build_for_standard: true,
+                },
             ))
             .create_tag("v1.0.2-rc.1.post.2")
-            .expect_version("1.0.2-rc.1.post.2", "1.0.2rc1.post2");
-        // .expect_schema_variants(create_base_schema_test_cases("1.0.2rc1.post2", "release/1"));
+            .expect_version("1.0.2-rc.1.post.2", "1.0.2rc1.post2")
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Rc,
+                    pre_release_num: "1",
+                    post: 2,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "release.1",
+                    distance: 0,
+                    include_build_for_standard: false,
+                },
+            ));
 
         // Step 10: Continue release branch development with dirty state and commits
         test_info!("Step 10: Continue release branch development with dirty state and commits");
@@ -614,12 +737,17 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Rc,
-                "1",
-                1,
-                Some("{timestamp:now}"),
-                "release.1",
-                0,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Rc,
+                    pre_release_num: "1",
+                    post: 1,
+                    dev: Some("{timestamp:now}"),
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "release.1",
+                    distance: 0,
+                    include_build_for_standard: true,
+                },
             ))
             .commit()
             .expect_version(
@@ -628,19 +756,34 @@ mod tests {
             )
             .expect_schema_variants(create_full_schema_test_cases(
                 "1.0.2",
-                PreReleaseLabel::Rc,
-                "1",
-                1,
-                None,
-                "release.1",
-                1,
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Rc,
+                    pre_release_num: "1",
+                    post: 1,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "release.1",
+                    distance: 1,
+                    include_build_for_standard: true,
+                },
             ))
             .create_tag("v1.0.2-rc.1.post.3")
-            .expect_version("1.0.2-rc.1.post.3", "1.0.2rc1.post3");
-        // .expect_schema_variants(create_base_schema_test_cases(
-        //     "1.0.2rc1.post3",
-        //     "release/1",
-        // ));
+            .expect_version("1.0.2-rc.1.post.3", "1.0.2rc1.post3")
+            .expect_schema_variants(create_full_schema_test_cases(
+                "1.0.2",
+                SchemaTestExtraCore {
+                    pre_release_label: PreReleaseLabel::Rc,
+                    pre_release_num: "1",
+                    post: 3,
+                    dev: None,
+                },
+                SchemaTestBuild {
+                    sanitized_branch_name: "release.1",
+                    distance: 0,
+                    include_build_for_standard: false,
+                },
+            ));
 
         // Step 11: Final release merge to main
         test_info!("Step 11: Final release merge to main and release v1.1.0");
