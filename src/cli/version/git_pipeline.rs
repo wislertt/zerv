@@ -26,7 +26,7 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDra
     }
 
     // Convert VCS data to ZervVars
-    let vars = vcs_data_to_zerv_vars(vcs_data)?;
+    let vars = vcs_data_to_zerv_vars(vcs_data, &args.input.input_format)?;
 
     // Return ZervDraft without schema (git source)
     Ok(ZervDraft::new(vars, None))

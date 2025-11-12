@@ -1,19 +1,28 @@
-use super::parse_version_from_tag::parse_version_from_tag;
 use crate::error::ZervError;
 use crate::vcs::VcsData;
-use crate::version::ZervVars;
+use crate::version::{
+    VersionObject,
+    ZervVars,
+};
 
 /// Convert VCS data to ZervVars
-/// TODO: vcs_data_to_zerv_vars should taks input_format as input arg and pass that into parse_version_from_tag
-pub fn vcs_data_to_zerv_vars(vcs_data: VcsData) -> Result<ZervVars, ZervError> {
-    tracing::debug!("Converting VCS data to Zerv variables");
+pub fn vcs_data_to_zerv_vars(vcs_data: VcsData, input_format: &str) -> Result<ZervVars, ZervError> {
+    tracing::debug!(
+        "Converting VCS data to Zerv variables with input format: {}",
+        input_format
+    );
     tracing::debug!("VCS data: {:?}", vcs_data);
 
-    // Parse version from tag_version
+    // Parse version from tag_version using the provided input format
     let version = if let Some(ref tag_version) = vcs_data.tag_version {
-        parse_version_from_tag(tag_version, None).ok_or_else(|| {
-            tracing::error!("Failed to parse version from tag: {}", tag_version);
-            ZervError::InvalidFormat(format!("Failed to parse version from tag: {tag_version}"))
+        VersionObject::parse_with_format(tag_version, input_format).map_err(|e| {
+            tracing::error!(
+                "Failed to parse version from tag: {} with format {}: {}",
+                tag_version,
+                input_format,
+                e
+            );
+            e
         })?
     } else {
         tracing::warn!("No tag version found in VCS data");
@@ -53,18 +62,19 @@ mod tests {
     };
 
     #[rstest]
-    #[case::semver(get_real_semver_vcs_data(), (1, 2, 3), "SemVer")]
-    #[case::pep440(get_real_pep440_vcs_data(), (2, 0, 1), "PEP440")]
+    #[case::semver(get_real_semver_vcs_data(), (1, 2, 3), "SemVer", "auto")]
+    #[case::pep440(get_real_pep440_vcs_data(), (2, 0, 1), "PEP440", "auto")]
     fn test_vcs_data_to_zerv_vars_real_formats(
         #[case] vcs_data: &VcsData,
         #[case] expected_version: (u64, u64, u64),
         #[case] format_name: &str,
+        #[case] input_format: &str,
     ) {
         if !should_run_docker_tests() {
             return;
         }
 
-        let vars = vcs_data_to_zerv_vars(vcs_data.clone())
+        let vars = vcs_data_to_zerv_vars(vcs_data.clone(), input_format)
             .unwrap_or_else(|_| panic!("Failed to convert {format_name} VCS data to ZervVars"));
 
         assert_eq!(
@@ -102,7 +112,7 @@ mod tests {
             commit_hash: "abc1234".to_string(),
             ..Default::default()
         };
-        let result = vcs_data_to_zerv_vars(vcs_data);
+        let result = vcs_data_to_zerv_vars(vcs_data, "auto");
         assert!(result.is_err());
 
         match result {
@@ -131,7 +141,8 @@ mod tests {
             is_shallow: false,
         };
 
-        let vars = vcs_data_to_zerv_vars(vcs_data).expect("should convert vcs data to vars");
+        let vars =
+            vcs_data_to_zerv_vars(vcs_data, "auto").expect("should convert vcs data to vars");
 
         // Check that last_commit_hash is set with prefix
         assert_eq!(
@@ -164,7 +175,8 @@ mod tests {
             is_shallow: false,
         };
 
-        let vars = vcs_data_to_zerv_vars(vcs_data).expect("should convert vcs data to vars");
+        let vars =
+            vcs_data_to_zerv_vars(vcs_data, "auto").expect("should convert vcs data to vars");
 
         // Check that last_commit_hash is None when tag_commit_hash is None
         assert_eq!(
@@ -192,16 +204,35 @@ mod tests {
             commit_hash: "abc1234".to_string(),
             ..Default::default()
         };
-        let result = vcs_data_to_zerv_vars(vcs_data);
+        let result = vcs_data_to_zerv_vars(vcs_data, "auto");
 
         match result {
             Err(ZervError::InvalidFormat(msg)) => {
-                assert_eq!(
-                    msg,
-                    format!("Failed to parse version from tag: {invalid_tag}")
+                // Check that the error message contains the tag name
+                assert!(
+                    msg.contains(invalid_tag),
+                    "Error message should contain tag: {}",
+                    msg
+                );
+                // Check that it contains format information
+                assert!(
+                    msg.contains("auto") || msg.contains("semver") || msg.contains("pep440"),
+                    "Error message should contain format information: {}",
+                    msg
                 );
             }
-            _ => panic!("Expected InvalidFormat error for tag: {invalid_tag}"),
+            Err(ZervError::InvalidVersion(msg)) => {
+                // Check that the error message contains the tag name for auto-detection failures
+                assert!(
+                    msg.contains(invalid_tag),
+                    "Error message should contain tag: {}",
+                    msg
+                );
+            }
+            _ => panic!(
+                "Expected InvalidFormat or InvalidVersion error for tag: {invalid_tag}, got: {:?}",
+                result
+            ),
         }
     }
 }
