@@ -10,10 +10,10 @@ update:
 	cargo update
 
 lint:
+	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 	cargo +nightly check --tests
 	cargo +nightly fmt -- --check || (cargo +nightly fmt && exit 1)
 	cargo +nightly clippy --all-targets --all-features -- -D warnings
-	npx prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
 _test:
 	RUST_BACKTRACE=1 RUST_LOG=cargo_tarpaulin=off cargo tarpaulin \
