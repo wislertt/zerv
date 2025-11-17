@@ -4,11 +4,15 @@
 // Uses FlowIntegrationTestScenario with the same API as existing pipeline tests
 
 use zerv::cli::flow::test_utils::{
+    SchemaTestBuild,
+    SchemaTestExtraCore,
     create_base_schema_test_cases,
+    create_full_schema_test_cases,
     expect_branch_hash,
 };
 use zerv::test_info;
 use zerv::test_utils::should_run_docker_tests;
+use zerv::version::zerv::PreReleaseLabel;
 
 use crate::flow::scenarios::FlowIntegrationTestScenario;
 
@@ -41,16 +45,33 @@ fn test_trunk_based_development_flow() {
 
     // Step 3: feature-2: Start development with dirty state (matches Mermaid REVERSE commit)
     test_info!("Step 3: feature-2: Start development with dirty state");
-    let scenario = scenario.checkout("feature-2").make_dirty().expect_version(
-        &format!(
-            "1.0.1-alpha.{}.post.0.dev.{{timestamp:now}}+feature.2.0.g{{hex:7}}",
-            branch_feature_2_hash
-        ),
-        &format!(
-            "1.0.1a{}.post0.dev{{timestamp:now}}+feature.2.0.g{{hex:7}}",
-            branch_feature_2_hash
-        ),
-    );
+    let scenario = scenario
+        .checkout("feature-2")
+        .make_dirty()
+        .expect_version(
+            &format!(
+                "1.0.1-alpha.{}.post.0.dev.{{timestamp:now}}+feature.2.0.g{{hex:7}}",
+                branch_feature_2_hash
+            ),
+            &format!(
+                "1.0.1a{}.post0.dev{{timestamp:now}}+feature.2.0.g{{hex:7}}",
+                branch_feature_2_hash
+            ),
+        )
+        .expect_schema_variants(create_full_schema_test_cases(
+            "1.0.1",
+            SchemaTestExtraCore {
+                pre_release_label: PreReleaseLabel::Alpha,
+                pre_release_num: &branch_feature_2_hash.to_string(),
+                post: 0,
+                dev: Some("{timestamp:now}"),
+            },
+            SchemaTestBuild {
+                sanitized_branch_name: "feature.2",
+                distance: 0,
+                include_build_for_standard: true,
+            },
+        ));
 
     // Step 4: feature-2: Create first commit
     test_info!("Step 4: feature-2: Create first commit");
