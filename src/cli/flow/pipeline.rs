@@ -6,7 +6,7 @@ use crate::cli::version::pipeline::run_version_pipeline;
 use crate::error::ZervError;
 use crate::version::zerv::core::Zerv;
 
-pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
+pub fn run_flow_pipeline(args: FlowArgs, stdin_content: Option<&str>) -> Result<String, ZervError> {
     tracing::debug!("Starting flow pipeline with args: {:?}", args);
 
     let mut args = args;
@@ -20,8 +20,8 @@ pub fn run_flow_pipeline(args: FlowArgs) -> Result<String, ZervError> {
     // Step 3: Create bumped version args
     let version_args = args.create_bumped_version_args(&current_zerv)?;
 
-    // Step 4: Run version pipeline
-    let ron_output = run_version_pipeline(version_args)?;
+    // Step 4: Run version pipeline with stdin content
+    let ron_output = run_version_pipeline(version_args, stdin_content)?;
 
     let zerv_object: Zerv = from_str(&ron_output)
         .map_err(|e| ZervError::InvalidFormat(format!("Failed to parse version output: {}", e)))?;

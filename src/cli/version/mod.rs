@@ -7,5 +7,5 @@ pub mod zerv_draft;
 pub use args::VersionArgs;
 pub use git_pipeline::process_git_source;
 pub use pipeline::run_version_pipeline;
-pub use stdin_pipeline::process_stdin_source;
+pub use stdin_pipeline::process_cached_stdin_source;
 pub use zerv_draft::ZervDraft;

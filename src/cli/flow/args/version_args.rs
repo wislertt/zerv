@@ -22,7 +22,7 @@ impl FlowArgs {
             bumps: BumpsConfig::default(),
         };
 
-        let ron_output = run_version_pipeline(version_args)?;
+        let ron_output = run_version_pipeline(version_args, None)?;
         from_str(&ron_output)
             .map_err(|e| ZervError::InvalidFormat(format!("Failed to parse version output: {}", e)))
     }

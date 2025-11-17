@@ -603,7 +603,7 @@ pub fn test_flow_pipeline_with_fixture_and_schema_opt(
             args.schema = Some(schema_value.to_string());
         }
 
-        let result = run_flow_pipeline(args);
+        let result = run_flow_pipeline(args, None);
         let schema_desc = match schema {
             Some(s) => format!(" and {} schema", s),
             None => String::new(),
