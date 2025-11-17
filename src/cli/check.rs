@@ -22,15 +22,17 @@ pub struct CheckArgs {
     pub format: Option<String>,
 }
 
-fn print_format_validation<T: Display>(original: &str, parsed: &T, format_name: &str) {
+fn format_validation<T: Display>(original: &str, parsed: &T, format_name: &str) -> String {
     if original == parsed.to_string() {
-        println!("✓ Valid {format_name} format");
+        format!("✓ Valid {format_name} format")
     } else {
-        println!("✓ Valid {format_name} format (normalized: {parsed})");
+        format!("✓ Valid {format_name} format (normalized: {parsed})")
     }
 }
 
-pub fn run_check_command(args: CheckArgs) -> Result<(), ZervError> {
+pub fn run_check_command(args: CheckArgs) -> Result<String, ZervError> {
+    let mut output = String::new();
+
     match args.format.as_deref() {
         Some(formats::PEP440) => {
             let parsed = PEP440::from_str(&args.version).map_err(|_| {
@@ -40,8 +42,12 @@ pub fn run_check_command(args: CheckArgs) -> Result<(), ZervError> {
                     format_names::PEP440
                 ))
             })?;
-            println!("Version: {}", args.version);
-            print_format_validation(&args.version, &parsed, format_names::PEP440);
+            output.push_str(&format!("Version: {}\n", args.version));
+            output.push_str(&format_validation(
+                &args.version,
+                &parsed,
+                format_names::PEP440,
+            ));
         }
         Some(formats::SEMVER) => {
             let parsed = SemVer::from_str(&args.version).map_err(|_| {
@@ -51,8 +57,12 @@ pub fn run_check_command(args: CheckArgs) -> Result<(), ZervError> {
                     format_names::SEMVER
                 ))
             })?;
-            println!("Version: {}", args.version);
-            print_format_validation(&args.version, &parsed, format_names::SEMVER);
+            output.push_str(&format!("Version: {}\n", args.version));
+            output.push_str(&format_validation(
+                &args.version,
+                &parsed,
+                format_names::SEMVER,
+            ));
         }
         None => {
             // Auto-detect format
@@ -67,25 +77,36 @@ pub fn run_check_command(args: CheckArgs) -> Result<(), ZervError> {
                 )));
             }
 
-            println!("Version: {}", args.version);
+            output.push_str(&format!("Version: {}\n", args.version));
 
             if let Ok(ref parsed) = pep440_result {
-                print_format_validation(&args.version, parsed, format_names::PEP440);
+                output.push_str(&format_validation(
+                    &args.version,
+                    parsed,
+                    format_names::PEP440,
+                ));
+                output.push('\n');
             }
             if let Ok(ref parsed) = semver_result {
-                print_format_validation(&args.version, parsed, format_names::SEMVER);
+                output.push_str(&format_validation(
+                    &args.version,
+                    parsed,
+                    format_names::SEMVER,
+                ));
+                output.push('\n');
             }
         }
         Some(format) => {
-            eprintln!("✗ Unknown format: {format}");
-            eprintln!(
-                "Supported formats: {}",
+            return Err(ZervError::UnknownFormat(format!(
+                "{format}. Supported formats: {}",
                 formats::SUPPORTED_FORMATS.join(", ")
-            );
-            return Err(ZervError::UnknownFormat(format.to_string()));
+            )));
         }
     }
-    Ok(())
+
+    // Remove trailing newline if present
+    output = output.trim_end().to_string();
+    Ok(output)
 }
 
 #[cfg(test)]

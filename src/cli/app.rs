@@ -44,7 +44,8 @@ pub fn run_with_args<W: Write>(
             writeln!(writer, "{output}")?;
         }
         Some(Commands::Check(check_args)) => {
-            run_check_command(check_args)?;
+            let output = run_check_command(check_args)?;
+            writeln!(writer, "{output}")?;
         }
         None => {
             // No subcommand provided, but --llm-help was not used either
