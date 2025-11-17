@@ -136,13 +136,12 @@ impl GitVcs {
 
     /// Get latest version tag using enhanced algorithm
     fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
-        // Get all tags traceable from current commit, ordered by reverse commit date
-        let output =
-            match self.run_git_command(&["tag", "--merged", "HEAD", "--sort=-committerdate"]) {
-                Ok(tags) => tags,
-                Err(ZervError::CommandFailed(_)) => return Ok(None), // No tags found
-                Err(e) => return Err(e),
-            };
+        // Get all tags ordered by reverse commit date (more reliable across git versions)
+        let output = match self.run_git_command(&["tag", "--sort=-committerdate"]) {
+            Ok(tags) => tags,
+            Err(ZervError::CommandFailed(_)) => return Ok(None), // No tags found
+            Err(e) => return Err(e),
+        };
 
         if output.is_empty() {
             return Ok(None);
@@ -157,6 +156,21 @@ impl GitVcs {
 
             // Check if tag is parsable as a version using the provided format
             if VersionObject::parse_with_format(trimmed_tag, format).is_ok() {
+                // Check if tag is actually reachable from current HEAD (more reliable than --merged)
+                let is_reachable = match self.run_git_command(&[
+                    "merge-base",
+                    "--is-ancestor",
+                    trimmed_tag,
+                    "HEAD",
+                ]) {
+                    Ok(_) => true,
+                    Err(ZervError::CommandFailed(_)) => false, // Not reachable
+                    Err(_) => false,                           // Other error, assume not reachable
+                };
+
+                if !is_reachable {
+                    continue; // Skip tags not reachable from current HEAD
+                }
                 // Get the commit hash this tag points to
                 let commit_hash = match self.run_git_command(&["rev-list", "-n", "1", trimmed_tag])
                 {
