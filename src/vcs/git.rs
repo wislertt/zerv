@@ -136,12 +136,13 @@ impl GitVcs {
 
     /// Get latest version tag using enhanced algorithm
     fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
-        // Get all tags ordered by reverse commit date (more reliable across git versions)
-        let output = match self.run_git_command(&["tag", "--sort=-committerdate"]) {
-            Ok(tags) => tags,
-            Err(ZervError::CommandFailed(_)) => return Ok(None), // No tags found
-            Err(e) => return Err(e),
-        };
+        // Get all tags traceable from current commit, ordered by reverse commit date
+        let output =
+            match self.run_git_command(&["tag", "--merged", "HEAD", "--sort=-committerdate"]) {
+                Ok(tags) => tags,
+                Err(ZervError::CommandFailed(_)) => return Ok(None), // No tags found
+                Err(e) => return Err(e),
+            };
 
         if output.is_empty() {
             return Ok(None);
@@ -156,21 +157,6 @@ impl GitVcs {
 
             // Check if tag is parsable as a version using the provided format
             if VersionObject::parse_with_format(trimmed_tag, format).is_ok() {
-                // Check if tag is actually reachable from current HEAD (more reliable than --merged)
-                let is_reachable = match self.run_git_command(&[
-                    "merge-base",
-                    "--is-ancestor",
-                    trimmed_tag,
-                    "HEAD",
-                ]) {
-                    Ok(_) => true,
-                    Err(ZervError::CommandFailed(_)) => false, // Not reachable
-                    Err(_) => false,                           // Other error, assume not reachable
-                };
-
-                if !is_reachable {
-                    continue; // Skip tags not reachable from current HEAD
-                }
                 // Get the commit hash this tag points to
                 let commit_hash = match self.run_git_command(&["rev-list", "-n", "1", trimmed_tag])
                 {
@@ -879,12 +865,60 @@ mod tests {
         let v2_commit = v2_commit.trim();
         fixture = fixture.checkout(v2_commit);
 
+        // Debug: Check what HEAD commit we're on
+        let head_debug = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["rev-parse", "HEAD"])
+            .unwrap_or_else(|_| "Failed to get HEAD".to_string());
+        let head_debug = head_debug.trim();
+
+        // Debug: Check what v2.0.0 commit is
+        let v2_tag_commit = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
+            .unwrap_or_else(|_| "Failed to get v2.0.0 commit".to_string());
+        let v2_tag_commit = v2_tag_commit.trim();
+
+        // Debug: Check what tags git thinks are merged
+        let merged_tags_debug = fixture
+            .git_impl
+            .execute_git(
+                &fixture.test_dir,
+                &["tag", "--merged", "HEAD", "--sort=-committerdate"],
+            )
+            .unwrap_or_else(|_| "Failed to get merged tags".to_string());
+
+        // Debug: Check if v2.0.0 is actually an ancestor of HEAD
+        let v2_is_ancestor = fixture
+            .git_impl
+            .execute_git(
+                &fixture.test_dir,
+                &["merge-base", "--is-ancestor", "v2.0.0", "HEAD"],
+            )
+            .map(|_| "YES")
+            .unwrap_or_else(|_| "NO");
+
         let result = git_vcs.get_latest_tag("auto")?;
-        assert_eq!(
-            result,
-            Some("v2.0.0".to_string()),
-            "Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0"
-        );
+
+        // Only fail if we're truly on the wrong commit
+        if head_debug != v2_tag_commit {
+            panic!(
+                "HEAD commit mismatch! Expected v2.0.0 commit ({}) but got HEAD ({}). \
+                 This is a test setup issue, not a get_latest_tag issue.",
+                v2_tag_commit, head_debug
+            );
+        }
+
+        // If we're on the right commit but get wrong result, provide detailed debug info
+        if result != Some("v2.0.0".to_string()) {
+            panic!(
+                "Wrong tag result when HEAD is at v2.0.0 commit ({})! \
+                 Got: {:?}, Expected: Some(v2.0.0). \
+                 v2.0.0 is ancestor of HEAD: {}. \
+                 All merged tags: [{}]",
+                head_debug, result, v2_is_ancestor, merged_tags_debug
+            );
+        }
 
         // Test 5: Old commit with high version tag
         let head_commit = fixture
