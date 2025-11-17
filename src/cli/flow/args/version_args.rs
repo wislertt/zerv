@@ -5,6 +5,7 @@ use crate::cli::common::args::OutputConfig;
 use crate::cli::version::args::{
     BumpsConfig,
     MainConfig,
+    OverridesConfig,
     VersionArgs,
 };
 use crate::cli::version::pipeline::run_version_pipeline;
@@ -18,7 +19,10 @@ impl FlowArgs {
             input: self.input.clone(),
             output: OutputConfig::zerv(),
             main: MainConfig::from_schema(self.schema.clone()),
-            overrides: Default::default(),
+            overrides: OverridesConfig {
+                bumped_branch: self.bumped_branch.clone(),
+                ..Default::default()
+            },
             bumps: BumpsConfig::default(),
         };
 
@@ -36,7 +40,10 @@ impl FlowArgs {
             input: self.input.clone(),
             output: OutputConfig::zerv(),
             main: MainConfig::from_schema(self.schema.clone()),
-            overrides: Default::default(),
+            overrides: OverridesConfig {
+                bumped_branch: self.bumped_branch.clone(),
+                ..Default::default()
+            },
             bumps: BumpsConfig {
                 bump_pre_release_label: self.bump_pre_release_label(),
                 bump_pre_release_num: self.bump_pre_release_num(),

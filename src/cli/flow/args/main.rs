@@ -86,6 +86,13 @@ pub struct FlowArgs {
         help = "Schema variant for output components [default: standard] [possible values: standard, standard-no-context, standard-context, standard-base, standard-base-prerelease, standard-base-prerelease-post, standard-base-prerelease-post-dev]"
     )]
     pub schema: Option<String>,
+
+    /// Override the detected current branch name
+    #[arg(
+        long,
+        help = "Override current branch name (used for template hashing)"
+    )]
+    pub bumped_branch: Option<String>,
 }
 
 impl Default for FlowArgs {
@@ -96,6 +103,7 @@ impl Default for FlowArgs {
             branch_config: BranchRulesConfig::default(),
             hash_branch_len: 5,
             schema: None,
+            bumped_branch: None,
         }
     }
 }
@@ -130,6 +138,7 @@ mod tests {
             assert!(args.branch_config.pre_release_num.is_none());
             assert_eq!(args.branch_config.post_mode, None);
             assert!(args.schema.is_none()); // Default is None (will use standard schema)
+            assert!(args.bumped_branch.is_none()); // Default is None (use detected branch)
         }
 
         #[test]
