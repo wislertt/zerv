@@ -5,9 +5,9 @@ use serde::{
 };
 use serde_json;
 
-use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::cli::version::VersionArgs;
 use crate::error::ZervError;
+use crate::version::VersionObject;
 use crate::version::zerv::core::PreReleaseVar;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -48,8 +48,8 @@ fn default_custom_value() -> serde_json::Value {
 impl ZervVars {
     fn derive_short_hash(hash: Option<&String>) -> Option<String> {
         hash.map(|h| {
-            if h.len() >= 7 {
-                h[..7].to_string()
+            if h.len() >= 8 {
+                h[..8].to_string()
             } else {
                 h.clone()
             }
@@ -142,9 +142,9 @@ impl ZervVars {
     fn apply_tag_version_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Apply tag version override (parse and extract components)
         if let Some(ref tag_version) = args.overrides.tag_version {
-            // Use existing InputFormatHandler for parsing
+            // Use consolidated VersionObject parsing
             let version_object =
-                InputFormatHandler::parse_version_string(tag_version, &args.input.input_format)?;
+                VersionObject::parse_with_format(tag_version, &args.input.input_format)?;
             let parsed_vars = ZervVars::from(version_object);
 
             // Apply parsed version components to self
@@ -191,7 +191,7 @@ mod tests {
     use crate::version::zerv::core::PreReleaseLabel;
 
     #[rstest]
-    #[case(Some("abcdef1234567890"), Some("abcdef1"))]
+    #[case(Some("abcdef1234567890"), Some("abcdef12"))]
     #[case(Some("abc123"), Some("abc123"))]
     #[case(Some("a"), Some("a"))]
     #[case(Some(""), Some(""))]
@@ -212,7 +212,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case(Some("fedcba0987654321"), Some("fedcba0"))]
+    #[case(Some("fedcba0987654321"), Some("fedcba09"))]
     #[case(Some("def456"), Some("def456"))]
     #[case(Some("x"), Some("x"))]
     #[case(Some(""), Some(""))]
@@ -266,7 +266,7 @@ mod tests {
         );
         assert_eq!(
             parsed.get_bumped_commit_hash_short(),
-            Some("abcdef1".to_string())
+            Some("abcdef12".to_string())
         );
     }
 

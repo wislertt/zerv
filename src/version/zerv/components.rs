@@ -485,8 +485,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case(Var::BumpedCommitHashShort, "abcdef1234567890", "abcdef1")]
-    #[case(Var::BumpedCommitHashShort, "123456789", "1234567")]
+    #[case(Var::BumpedCommitHashShort, "abcdef1234567890", "abcdef12")]
+    #[case(Var::BumpedCommitHashShort, "123456789", "12345678")]
     fn test_var_commit_hash_short(#[case] var: Var, #[case] hash: &str, #[case] expected: &str) {
         let zerv = base_fixture().with_commit_hash(hash.to_string()).build();
         let sanitizer = Sanitizer::semver_str();
@@ -895,7 +895,7 @@ mod tests {
                 &value_sanitizer,
                 &key_sanitizer
             ),
-            vec!["commit".to_string(), "abcdef1".to_string()]
+            vec!["commit".to_string(), "abcdef12".to_string()]
         );
     }
 
@@ -937,7 +937,7 @@ mod tests {
     #[rstest]
     #[case(Var::LastBranch, "last.branch", "last.branch")]
     #[case(Var::LastCommitHash, "abc123", "abc123")]
-    #[case(Var::LastCommitHashShort, "abc1234567", "abc1234")]
+    #[case(Var::LastCommitHashShort, "abc12345678", "abc12345")]
     fn test_var_expanded_with_key_sanitizer_last_fields(
         #[case] var: Var,
         #[case] value: &str,

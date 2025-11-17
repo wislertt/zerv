@@ -132,8 +132,8 @@ mod schema_preset_standard {
     }
 
     #[rstest]
-    #[case::dirty((1, 0, 0), "1.0.0-dev.1234567890+feature.branch.5.abc123d")]
-    #[case::with_distance((2, 1, 0), "2.1.0-dev.1234567890+feature.branch.5.abc123d")]
+    #[case::dirty((1, 0, 0), "1.0.0-dev.1234567890+feature.branch.5.abc123de")]
+    #[case::with_distance((2, 1, 0), "2.1.0-dev.1234567890+feature.branch.5.abc123de")]
     fn test_tier_3(
         tier_3_fixture: ZervFixture,
         #[case] version: (u64, u64, u64),
@@ -485,7 +485,7 @@ mod schema_tier_behavior {
             TestCommand::run_with_stdin("version --source stdin --schema standard", zerv_ron);
 
         assert_eq!(
-            output, "1.2.3-dev.1234567890+main.branch.0.def456a",
+            output, "1.2.3-dev.1234567890+main.branch.0.def456ab",
             "Dirty state should trigger tier 3 with dev component"
         );
     }

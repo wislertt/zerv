@@ -155,7 +155,7 @@ mod schema_bump_combinations {
             "version --source stdin --schema standard --bump-major --output-format semver",
             zerv_ron,
         );
-        assert_eq!(output, "3.0.0+feature.test.branch.5.abc123d");
+        assert_eq!(output, "3.0.0+feature.test.branch.5.abc123de");
     }
 
     #[rstest]
@@ -165,7 +165,7 @@ mod schema_bump_combinations {
             "version --source stdin --schema calver --bump-major --output-format semver",
             zerv_ron,
         );
-        assert_eq!(output, "0.0.0+release.3.xyz789a");
+        assert_eq!(output, "0.0.0+release.3.xyz789ab");
     }
 
     #[rstest]
@@ -177,7 +177,7 @@ mod schema_bump_combinations {
             "version --source stdin --schema standard --bump-core 0=2 --output-format semver",
             zerv_ron,
         );
-        assert_eq!(output, "4.0.0+feature.test.branch.5.abc123d");
+        assert_eq!(output, "4.0.0+feature.test.branch.5.abc123de");
     }
 
     #[rstest]
@@ -189,7 +189,7 @@ mod schema_bump_combinations {
             "version --source stdin --schema standard --bump-major --bump-minor --output-format semver",
             zerv_ron,
         );
-        assert_eq!(output, "3.1.0+feature.test.branch.5.abc123d");
+        assert_eq!(output, "3.1.0+feature.test.branch.5.abc123de");
     }
 }
 

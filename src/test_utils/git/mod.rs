@@ -50,9 +50,21 @@ pub trait GitOperations {
     /// Create a commit
     fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()>;
 
-    /// Create and checkout a new branch
+    /// Create a new branch without checking it out
     fn create_branch(&self, test_dir: &TestDir, branch_name: &str) -> io::Result<()> {
-        self.execute_git(test_dir, &["checkout", "-b", branch_name])?;
+        self.execute_git(test_dir, &["branch", branch_name])?;
+        Ok(())
+    }
+
+    /// Checkout an existing branch
+    fn checkout_branch(&self, test_dir: &TestDir, branch_name: &str) -> io::Result<()> {
+        self.execute_git(test_dir, &["checkout", branch_name])?;
+        Ok(())
+    }
+
+    /// Merge a branch into the current branch
+    fn merge_branch(&self, test_dir: &TestDir, branch_name: &str) -> io::Result<()> {
+        self.execute_git(test_dir, &["merge", branch_name])?;
         Ok(())
     }
 }

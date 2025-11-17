@@ -406,7 +406,7 @@ mod real_world_scenarios {
                 Some(0),
                 Some(false),
                 Some("main".to_string()),
-                Some("abc123def456".to_string()),
+                Some("gabc123def456".to_string()),
                 None,
                 None,
                 None,
@@ -425,6 +425,6 @@ mod real_world_scenarios {
             zerv_ron,
         );
 
-        assert_eq!(output, "ghcr.io/myorg/myapp:3.0.0-abc123d");
+        assert_eq!(output, "ghcr.io/myorg/myapp:3.0.0-gabc123d");
     }
 }

@@ -2,9 +2,9 @@ use std::path::Path;
 
 use super::args::VersionArgs;
 use super::zerv_draft::ZervDraft;
-use crate::cli::utils::format_handler::InputFormatHandler;
 use crate::error::ZervError;
 use crate::pipeline::vcs_data_to_zerv_vars;
+use crate::version::VersionObject;
 
 /// Process git source and return a ZervDraft object
 pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDraft, ZervError> {
@@ -16,17 +16,18 @@ pub fn process_git_source(work_dir: &Path, args: &VersionArgs) -> Result<ZervDra
     } else {
         None
     };
-    let vcs_data = crate::vcs::detect_vcs_with_limit(work_dir, max_depth)?.get_vcs_data()?;
+    let vcs_data = crate::vcs::detect_vcs_with_limit(work_dir, max_depth)?
+        .get_vcs_data(&args.input.input_format)?;
 
     // Parse git tag with input format if available and validate it
     if let Some(ref tag_version) = vcs_data.tag_version {
         let _parsed_version =
-            InputFormatHandler::parse_version_string(tag_version, &args.input.input_format)?;
+            VersionObject::parse_with_format(tag_version, &args.input.input_format)?;
         // Validation passed - the tag is in a valid format
     }
 
     // Convert VCS data to ZervVars
-    let vars = vcs_data_to_zerv_vars(vcs_data)?;
+    let vars = vcs_data_to_zerv_vars(vcs_data, &args.input.input_format)?;
 
     // Return ZervDraft without schema (git source)
     Ok(ZervDraft::new(vars, None))

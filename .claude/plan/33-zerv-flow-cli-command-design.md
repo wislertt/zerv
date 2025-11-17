@@ -39,16 +39,61 @@ zerv flow [OPTIONS]
       --bumped-branch <BRANCH>     Override branch name for pre-release resolution (same as zerv version)
       --bumped-branch-hash-length <LENGTH> Branch hash length for pre-release numbers [default: 5] [range: 4..16]
       --post-mode <TYPE>            Post calculation mode [default: tag] [possible values: tag, commit]
-      --build-context              Include build context (+branch.commit) in output [default: true]
-      --no-build-context            Exclude build context from output
-      --dev-ts                     Include dev timestamp for dirty working directory [default: auto-detect]
-      --no-dev-ts                  Exclude dev timestamp from output
-      --with-pre-release           Include pre-release/post-release but no build context
-      --base-only                  Base version only (major.minor.patch)
+      --schema <SCHEMA>             Schema variant for output components [default: standard] [possible values: standard, standard-no-context, standard-context, standard-base, standard-base-prerelease, standard-base-prerelease-post, standard-base-prerelease-post-dev]
 -v, --verbose                    Show verbose output including version resolution details
 -h, --help                       Print help
 -V, --version                    Print version
 ```
+
+### Schema System
+
+**zerv flow uses the flexible schema system from zerv version but restricted to standard schema family only.**
+
+#### Available Standard Schema Variants
+
+- **`standard`** (default) - Smart context: includes context only for dirty/distance states, excludes for clean tagged
+- **`standard-no-context`** - Never includes build context (branch.commit info)
+- **`standard-context`** - Always includes build context
+- **`standard-base`** - Base version only (e.g., `1.2.3`)
+- **`standard-base-prerelease`** - Base + prerelease (e.g., `1.2.3-alpha.1`)
+- **`standard-base-prerelease-post`** - Base + prerelease + post (e.g., `1.2.3-alpha.1.post.2`)
+- **`standard-base-prerelease-post-dev`** - Base + prerelease + post + dev (e.g., `1.2.3-alpha.1.post.2.dev.123`)
+
+#### Schema Behavior Examples
+
+**Smart Context (`standard` - default):**
+
+- Clean tagged commit: `1.0.1-rc.1.post.1`
+- Dirty working directory: `1.0.1-rc.1.post.1.dev.1729924622+feature.auth.1.a1b2c3d`
+- Distance from tag: `1.0.1-rc.1.post.2+feature.auth.2.c2d3e4f`
+
+**No Context (`standard-no-context`):**
+
+- Any state: `1.0.1-rc.1.post.1` (never includes +branch.commit)
+
+**Always Context (`standard-context`):**
+
+- Any state: `1.0.1-rc.1.post.1+feature.auth.1.a1b2c3d` (always includes context)
+
+**Base Components:**
+
+- `standard-base`: `1.2.3`
+- `standard-base-prerelease`: `1.2.3-alpha.1`
+- `standard-base-prerelease-post`: `1.2.3-alpha.1.post.2`
+- `standard-base-prerelease-post-dev`: `1.2.3-alpha.1.post.2.dev.123`
+
+#### Schema Validation
+
+**Only standard schema family supported in zerv flow:**
+
+- ✅ **Valid**: `standard`, `standard-no-context`, `standard-context`, `standard-base`, `standard-base-prerelease`, `standard-base-prerelease-post`, `standard-base-prerelease-post-dev`
+- ❌ **Invalid**: Any `calver*` schema variants will produce error
+- ❌ **Invalid**: Any deprecated tier-based schemas will produce error
+
+**Error handling:**
+
+- Non-standard schemas will result in: `Error: zerv flow only supports standard schema variants, got: 'calver'`
+- Invalid schema names will result in: `Error: Unknown schema variant: 'invalid-schema'`
 
 ## Pre-release Resolution Logic
 
@@ -162,17 +207,21 @@ zerv flow --branch-rules
 
 ### Manual Override
 
-**Mutually exclusive with `--pre-release-from-branch`:**
+**Schema can be combined with manual pre-release overrides:**
 
 ```bash
-# Force specific pre-release type and number
-zerv flow --pre-release-label beta --pre-release-num 1
+# Force specific pre-release type and number with context
+zerv flow --pre-release-label beta --pre-release-num 1 --schema standard-context
 
-# Force rc for release-like branches
-zerv flow --pre-release-label rc --pre-release-num 2
+# Force rc for release-like branches, no context
+zerv flow --pre-release-label rc --pre-release-num 2 --schema standard-base-prerelease-post
 
-# Force alpha for feature branches (uses hash by default)
-zerv flow --pre-release-label alpha
+# Force alpha for feature branches with full context
+zerv flow --pre-release-label alpha --schema standard-base-prerelease-post-dev-context
+
+# Manual overrides with different schema levels
+zerv flow --pre-release-label beta --schema standard-base-prerelease
+zerv flow --pre-release-label rc --schema standard-base
 ```
 
 ### Branch Override
@@ -180,25 +229,32 @@ zerv flow --pre-release-label alpha
 **Test different branch scenarios without switching branches:**
 
 ```bash
-zerv flow --bumped-branch develop --pre-release-from-branch
-zerv flow --bumped-branch release/1 --pre-release-from-branch
+# Test develop branch with different schemas
+zerv flow --bumped-branch develop --schema standard
+zerv flow --bumped-branch develop --schema standard-no-context
+
+# Test release branch with specific schema
+zerv flow --bumped-branch release/1 --schema standard-base-prerelease-post-context
+
+# Test feature branch scenarios
+zerv flow --bumped-branch feature/auth --schema standard-base-prerelease-post-dev
 ```
 
 ## Output Modes
 
-### Full Output (default)
+### Full Output (default - `standard` schema)
 
 ```
 1.0.1-alpha.12345.post.2.dev.1729924622+feature.auth.2.a1b2c3d
 ```
 
-### Pre-release Output (`--with-pre-release`)
+### Pre-release Output (`--schema standard-base-prerelease-post`)
 
 ```
 1.0.1-alpha.12345.post.2
 ```
 
-### Base-Only Output (`--base-only`)
+### Base-Only Output (`--schema standard-base`)
 
 ```
 1.0.1
@@ -235,36 +291,42 @@ zerv flow --bumped-branch release/1 --pre-release-from-branch
 ### Basic Usage
 
 ```bash
-# Generate flow version with automatic pre-release
+# Generate flow version with smart context (default schema)
 zerv flow
-
-# Enable branch pattern detection (GitFlow)
-zerv flow --pre-release-from-branch
 
 # Force specific pre-release type
 zerv flow --pre-release-label beta
 
 # Include pre-release/post-release but no build context
-zerv flow --with-pre-release
+zerv flow --schema standard-base-prerelease-post
 
 # Base version only
-zerv flow --base-only
+zerv flow --schema standard-base
+
+# Never include build context
+zerv flow --schema standard-no-context
+
+# Always include build context
+zerv flow --schema standard-context
 ```
 
 ### Advanced Usage
 
 ```bash
-# Complete control over pre-release
-zerv flow --bumped-branch release/1 --pre-release-from-branch
+# Complete control over pre-release with schema
+zerv flow --bumped-branch release/1 --schema standard-base-prerelease-post-context
 
-# Custom template output
-zerv flow --output-template "v{{version}}-{{pre_release}}"
+# Custom template output with specific schema
+zerv flow --schema standard-base --output-template "v{{version}}-{{pre_release}}"
 
 # Different repository directory
-zerv flow --directory ../other-repo
+zerv flow --directory ../other-repo --schema standard
 
 # Verbose output
-zerv flow --verbose
+zerv flow --verbose --schema standard-base-prerelease-post-dev
+
+# Error case - this will fail with calver schema
+zerv flow --schema calver  # Error: zerv flow only supports standard schema variants
 ```
 
 ## Future Configuration
@@ -291,11 +353,11 @@ zerv flow --config .zerv.ron
 
 ## Key Design Principles
 
-1. **Mirror zerv version**: Same output/input options structure
-2. **Intelligent defaults**: Smart branch-based pre-release detection
-3. **Flexible overrides**: Manual control when needed
-4. **Honest versioning**: Never hides Git state, always accurate
-5. **Clean alternatives**: `--with-pre-release` and `--base-only` for simplified output
+1. **Mirror zerv version**: Same output/input options structure with shared schema system
+2. **Intelligent defaults**: Smart branch-based pre-release detection with smart context schema
+3. **Flexible overrides**: Manual control when needed, including schema selection
+4. **Honest versioning**: Never hides Git state, always accurate (unless explicitly requested via schema)
+5. **Schema-based flexibility**: Single `--schema` argument replaces multiple context/control flags
 
 ---
 

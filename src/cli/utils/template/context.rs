@@ -27,7 +27,7 @@ pub struct ZervTemplateContext {
     pub bumped_timestamp: Option<u64>,
 
     // Last version fields
-    pub last_branch: Option<String>,
+    // pub last_branch: Option<String>,
     pub last_commit_hash: Option<String>,
     pub last_commit_hash_short: Option<String>,
     pub last_timestamp: Option<u64>,
@@ -66,7 +66,7 @@ impl ZervTemplateContext {
             bumped_commit_hash: vars.bumped_commit_hash.clone(),
             bumped_commit_hash_short: vars.get_bumped_commit_hash_short(),
             bumped_timestamp: vars.bumped_timestamp,
-            last_branch: vars.last_branch.clone(),
+            // last_branch: vars.last_branch.clone(),
             last_commit_hash: vars.last_commit_hash.clone(),
             last_commit_hash_short: vars.get_last_commit_hash_short(),
             last_timestamp: vars.last_timestamp,
@@ -111,7 +111,7 @@ mod tests {
             Some(5),
             Some(true),
             Some("feature/test".to_string()),
-            Some("abc123def456".to_string()),
+            Some("gabc123def456".to_string()),
             Some("abc123".to_string()),
             Some(1703123456),
             Some("main".to_string()),
@@ -123,10 +123,13 @@ mod tests {
         assert_eq!(context.distance, Some(5));
         assert_eq!(context.dirty, Some(true));
         assert_eq!(context.bumped_branch, Some("feature/test".to_string()));
-        assert_eq!(context.bumped_commit_hash, Some("abc123def456".to_string()));
+        assert_eq!(
+            context.bumped_commit_hash,
+            Some("gabc123def456".to_string())
+        );
         assert_eq!(
             context.bumped_commit_hash_short,
-            Some("abc123d".to_string())
+            Some("gabc123d".to_string())
         );
         // bumped_timestamp is not set by with_vcs_data, so we won't test it here
     }

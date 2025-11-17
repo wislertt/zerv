@@ -1,3 +1,8 @@
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
+
 use super::GitOperations;
 use crate::test_utils::{
     TestDir,
@@ -58,19 +63,60 @@ impl GitRepoFixture {
         Ok(fixture)
     }
 
-    /// Checkout to an existing or new branch
-    pub fn checkout_branch(&self, branch: &str) -> Result<(), Box<dyn std::error::Error>> {
+    /// Create a new branch without checking it out
+    pub fn create_branch(&self, branch: &str) -> Result<(), Box<dyn std::error::Error>> {
         self.git_impl
             .create_branch(&self.test_dir, branch)
+            .map_err(|e| format!("Failed to create branch '{}': {e}", branch))?;
+        Ok(())
+    }
+
+    /// Checkout to an existing branch
+    pub fn checkout_branch(&self, branch: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.git_impl
+            .checkout_branch(&self.test_dir, branch)
             .map_err(|e| format!("Failed to checkout branch '{}': {e}", branch))?;
         Ok(())
     }
 
+    /// Builder-style: Create a new branch without checking it out
+    pub fn with_branch(self, branch: &str) -> Self {
+        self.git_impl
+            .create_branch(&self.test_dir, branch)
+            .unwrap_or_else(|e| panic!("Failed to create branch '{}': {}", branch, e));
+        self
+    }
+
+    /// Builder-style: Checkout to an existing branch
+    pub fn with_checkout(self, branch: &str) -> Self {
+        self.git_impl
+            .checkout_branch(&self.test_dir, branch)
+            .unwrap_or_else(|e| panic!("Failed to checkout branch '{}': {}", branch, e));
+        self
+    }
+
     /// Make the working directory dirty with uncommitted changes
     pub fn make_dirty(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.test_dir
-            .create_file("dirty_file.txt", "dirty content")?;
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let content = format!("dirty content {}", timestamp);
+        self.test_dir.create_file("dirty_file.txt", &content)?;
         Ok(())
+    }
+
+    /// Builder-style: Make the working directory dirty with uncommitted changes
+    pub fn with_dirty(self) -> Self {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let content = format!("dirty content {}", timestamp);
+        self.test_dir
+            .create_file("dirty_file.txt", &content)
+            .expect("Failed to create dirty file");
+        self
     }
 
     /// Create a repository with dirty working directory (Tier 3: major.minor.patch.dev<timestamp>+branch.<commit>)
@@ -88,6 +134,59 @@ impl GitRepoFixture {
     /// Get the path to the test directory
     pub fn path(&self) -> &std::path::Path {
         self.test_dir.path()
+    }
+
+    /// Create a single tag
+    pub fn create_tag(self, tag: &str) -> Self {
+        self.git_impl
+            .create_tag(&self.test_dir, tag)
+            .unwrap_or_else(|e| panic!("Failed to create tag '{}': {}", tag, e));
+        self
+    }
+
+    /// Create a commit without tagging (for building distance)
+    pub fn commit(self, message: &str) -> Self {
+        // Create a file change to ensure there's something to commit
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        self.test_dir
+            .create_file(
+                format!("commit_{}.txt", timestamp),
+                &format!("Content for {}", message),
+            )
+            .expect("Failed to create commit file");
+
+        self.git_impl
+            .create_commit(&self.test_dir, message)
+            .unwrap_or_else(|e| panic!("Failed to create commit '{}': {}", message, e));
+        self
+    }
+
+    /// Get current HEAD commit hash
+    pub fn get_head_commit(&self) -> Result<String, Box<dyn std::error::Error>> {
+        let output = self
+            .git_impl
+            .execute_git(&self.test_dir, &["rev-parse", "HEAD"])
+            .map_err(|e| format!("Failed to get HEAD commit: {e}"))?;
+        Ok(output.trim().to_string())
+    }
+
+    /// Checkout to a specific commit (preserves commit history)
+    pub fn checkout(self, commit: &str) -> Self {
+        self.git_impl
+            .execute_git(&self.test_dir, &["checkout", commit])
+            .unwrap_or_else(|e| panic!("Failed to checkout commit '{}': {}", commit, e));
+        self
+    }
+
+    /// Merge a branch into the current branch
+    pub fn merge_branch(self, branch: &str) -> Self {
+        self.git_impl
+            .merge_branch(&self.test_dir, branch)
+            .unwrap_or_else(|e| panic!("Failed to merge branch '{}': {}", branch, e));
+        self
     }
 }
 
@@ -109,7 +208,10 @@ mod tests {
 
         let fixture = GitRepoFixture::tagged("v1.0.0").expect("Failed to create fixture with tag");
 
-        // Checkout a new branch
+        // Create and checkout a new branch
+        fixture
+            .create_branch("feature-test")
+            .expect("Failed to create feature-test branch");
         fixture
             .checkout_branch("feature-test")
             .expect("Failed to checkout feature-test branch");
@@ -334,5 +436,74 @@ mod tests {
 
         // Should not have additional files (zero distance means no extra commits)
         assert!(!fixture_path.join("file1.txt").exists());
+    }
+
+    #[test]
+    #[serial(fixture_methods)]
+    fn test_merge_branch_and_checkout() {
+        if !should_run_docker_tests() {
+            return;
+        }
+
+        let mut fixture =
+            GitRepoFixture::tagged("v1.0.0").expect("Failed to create fixture with tag");
+
+        // Test 1: Branch creation and merging
+        fixture
+            .create_branch("feature-branch")
+            .expect("Failed to create feature branch");
+        fixture
+            .checkout_branch("feature-branch")
+            .expect("Failed to checkout feature branch");
+
+        // Add a commit on the feature branch
+        fixture = fixture.commit("Feature commit");
+
+        // Switch back to main and merge
+        fixture
+            .checkout_branch("main")
+            .expect("Failed to checkout main");
+        fixture = fixture.merge_branch("feature-branch");
+
+        // Verify merge was successful by checking the commit exists
+        let output = fixture
+            .git_impl
+            .execute_git(
+                &fixture.test_dir,
+                &["log", "--oneline", "--grep=Feature commit"],
+            )
+            .expect("Failed to check git log");
+        assert!(
+            output.contains("Feature commit"),
+            "Feature commit should be merged into main"
+        );
+
+        // Test 2: Checkout preserves commit history (safer than reset)
+        // Create more commits with tags
+        fixture = fixture
+            .commit("Feature A")
+            .create_tag("v2.0.0")
+            .commit("Feature B")
+            .create_tag("v3.0.0");
+
+        // Get v2.0.0 commit hash
+        let v2_commit = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
+            .expect("Failed to get v2.0.0 commit");
+        let v2_commit = v2_commit.trim();
+
+        // Checkout to v2.0.0 (preserves history)
+        fixture = fixture.checkout(v2_commit);
+
+        // Verify we can still see v3.0.0 tag even though we're checked out to v2.0.0
+        let all_tags = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["tag", "--list"])
+            .expect("Failed to list tags");
+        assert!(
+            all_tags.contains("v3.0.0"),
+            "v3.0.0 tag should still exist after checkout"
+        );
     }
 }

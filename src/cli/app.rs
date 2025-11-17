@@ -1,4 +1,8 @@
-use std::io::Write;
+use std::io::{
+    IsTerminal,
+    Read,
+    Write,
+};
 
 use clap::Parser;
 
@@ -27,17 +31,21 @@ pub fn run_with_args<W: Write>(
         return Ok(());
     }
 
+    // Extract stdin content once at the beginning
+    let stdin_content = extract_stdin_once()?;
+
     match cli.command {
         Some(Commands::Version(version_args)) => {
-            let output = run_version_pipeline(*version_args)?;
+            let output = run_version_pipeline(*version_args, stdin_content.as_deref())?;
             writeln!(writer, "{output}")?;
         }
         Some(Commands::Flow(flow_args)) => {
-            let output = run_flow_pipeline(*flow_args)?;
+            let output = run_flow_pipeline(*flow_args, stdin_content.as_deref())?;
             writeln!(writer, "{output}")?;
         }
         Some(Commands::Check(check_args)) => {
-            run_check_command(check_args)?;
+            let output = run_check_command(check_args)?;
+            writeln!(writer, "{output}")?;
         }
         None => {
             // No subcommand provided, but --llm-help was not used either
@@ -45,6 +53,27 @@ pub fn run_with_args<W: Write>(
         }
     }
     Ok(())
+}
+
+/// Extract stdin content once, regardless of command
+/// Returns Ok(Some(String)) if stdin is available, Ok(None) otherwise
+fn extract_stdin_once() -> Result<Option<String>, Box<dyn std::error::Error>> {
+    // Check if stdin is being piped
+    if std::io::stdin().is_terminal() {
+        return Ok(None);
+    }
+
+    let mut input = String::new();
+    match std::io::stdin().read_to_string(&mut input) {
+        Ok(_) => {
+            if input.trim().is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(input))
+            }
+        }
+        Err(e) => Err(Box::new(e)),
+    }
 }
 
 pub fn run() {

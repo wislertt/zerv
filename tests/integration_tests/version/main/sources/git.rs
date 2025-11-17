@@ -37,12 +37,13 @@ fn test_git_source_comprehensive() {
     );
     if let Some(ref hash) = parsed_zerv.vars.bumped_commit_hash {
         assert!(
-            hash.len() >= 7 && hash.len() <= 40,
-            "Commit hash should be 7-40 chars"
+            hash.len() >= 8 && hash.len() <= 41,
+            "Commit hash should be 8-41 chars (including g prefix)"
         );
+        assert_eq!(&hash[..1], "g", "Commit hash should start with 'g' prefix");
         assert!(
-            hash.chars().all(|c| c.is_ascii_hexdigit()),
-            "Commit hash should be hex"
+            hash[1..].chars().all(|c| c.is_ascii_hexdigit()),
+            "Commit hash suffix should be hex"
         );
     }
 
@@ -61,11 +62,12 @@ fn test_git_source_comprehensive() {
         )
         .build();
 
-    // Copy non-deterministic timestamp
+    // Copy non-deterministic timestamp and hash fields
     let mut expected = expected;
     expected.vars.bumped_commit_hash = parsed_zerv.vars.bumped_commit_hash.clone();
     expected.vars.last_timestamp = parsed_zerv.vars.last_timestamp;
     expected.vars.bumped_timestamp = parsed_zerv.vars.bumped_timestamp;
+    expected.vars.last_commit_hash = parsed_zerv.vars.last_commit_hash.clone();
 
     // Git source doesn't provide last_branch - it should be None
     assert_eq!(

@@ -88,13 +88,13 @@ mod template_vcs_fields {
     )]
     #[case::commit_hash(
         "{{major}}.{{minor}}.{{patch}}+{{bumped_commit_hash}}",
-        |f: ZervFixture| f.with_vcs_data(None, None, None, Some("abc123def456".to_string()), None, None, None),
-        "1.0.0+abc123def456"
+        |f: ZervFixture| f.with_vcs_data(None, None, None, Some("gabc123def456".to_string()), None, None, None),
+        "1.0.0+gabc123def456"
     )]
     #[case::commit_hash_short(
         "{{major}}.{{minor}}.{{patch}}+{{bumped_commit_hash_short}}",
-        |f: ZervFixture| f.with_vcs_data(None, None, None, Some("abc123def456".to_string()), None, None, None),
-        "1.0.0+abc123d"
+        |f: ZervFixture| f.with_vcs_data(None, None, None, Some("gabc123def456".to_string()), None, None, None),
+        "1.0.0+gabc123d"
     )]
     fn test_template_vcs(
         #[case] template: &str,
@@ -267,12 +267,12 @@ mod template_complex_scenarios {
             Some(5),
             Some(false),
             Some("main".to_string()),
-            Some("abc123".to_string()),
+            Some("gabc123".to_string()),
             None,
             None,
             None,
         );
-        assert_eq!(run_template(template, fixture), "1.2.3.post5+main.abc123");
+        assert_eq!(run_template(template, fixture), "1.2.3.post5+main.gabc123");
     }
 
     #[test]
@@ -288,14 +288,14 @@ mod template_complex_scenarios {
                 Some(0),
                 Some(true),
                 Some("feature.branch".to_string()),
-                Some("def456".to_string()),
+                Some("gdef456".to_string()),
                 None,
                 None,
                 None,
             );
         assert_eq!(
             run_template(template, fixture),
-            "1.0.0.dev1234567890+feature.branch.def456"
+            "1.0.0.dev1234567890+feature.branch.gdef456"
         );
     }
 

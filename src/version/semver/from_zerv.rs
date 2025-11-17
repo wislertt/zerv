@@ -275,7 +275,7 @@ mod tests {
     #[case(zerv_calver::calver_yyyy_mm_patch(), "2024.3.1")]
     #[case(zerv_calver::calver_with_timestamp_build(), "1.0.0+2024.3.16")]
     // Maximum complexity test
-    #[case(from::v2_3_4_max_complexity().build(), "2.3.4-core.value.99.epoch.5.alpha.1.post.2.extra.value.literal.42+feature.complex.test.7.abcdef1.true.build.value.build.123")]
+    #[case(from::v2_3_4_max_complexity().build(), "2.3.4-core.value.99.epoch.5.alpha.1.post.2.extra.value.literal.42+feature.complex.test.7.abcdef12.true.build.value.build.123")]
     fn test_zerv_to_semver_conversion(#[case] zerv: Zerv, #[case] expected_semver_str: &str) {
         let semver: SemVer = zerv.into();
         assert_eq!(semver.to_string(), expected_semver_str);

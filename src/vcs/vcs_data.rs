@@ -2,18 +2,14 @@
 pub struct VcsData {
     /// Latest version tag (e.g., "v1.2.3")
     pub tag_version: Option<String>,
-    /// Distance from latest tag to HEAD
-    pub distance: u32,
-    /// Current commit hash (full)
-    pub commit_hash: String,
-    /// Current branch name
-    pub current_branch: Option<String>,
-    /// Commit timestamp (Unix timestamp)
-    pub commit_timestamp: i64,
-    /// Tag timestamp (Unix timestamp)
+    pub tag_commit_hash: Option<String>,
     pub tag_timestamp: Option<i64>,
-    /// Whether the working directory is dirty (has uncommitted changes)
-    pub is_dirty: bool,
-    /// Whether the repository is shallow (limited history)
+
+    pub commit_hash: String,
+    pub commit_hash_prefix: String,
+    pub commit_timestamp: i64,
+    pub current_branch: Option<String>,
     pub is_shallow: bool,
+    pub is_dirty: bool,
+    pub distance: u32,
 }

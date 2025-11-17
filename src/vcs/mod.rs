@@ -16,7 +16,7 @@ pub use vcs_data::VcsData;
 /// Version Control System trait for extracting repository metadata
 pub trait Vcs {
     /// Extract VCS data from the repository
-    fn get_vcs_data(&self) -> Result<VcsData>;
+    fn get_vcs_data(&self, input_format: &str) -> Result<VcsData>;
 
     /// Check if this VCS type is available in the given directory
     fn is_available(&self, path: &Path) -> bool;
