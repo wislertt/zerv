@@ -148,7 +148,9 @@ impl GitVcs {
             return Ok(None);
         }
 
-        // For each tag in chronological order (newest first)
+        // Collect all valid version tags from reachable commits, then find the highest one
+        let mut valid_tags = Vec::new();
+
         for tag in output.lines() {
             let trimmed_tag = tag.trim();
             if trimmed_tag.is_empty() {
@@ -175,19 +177,21 @@ impl GitVcs {
                     continue;
                 }
 
-                // Find the highest semantic version among all tags on this commit
-                // Use iterator pipeline for efficiency - no Vec allocation, no sorting needed
-                let best_tag = tags_on_commit
-                    .lines()
-                    .map(|line| line.trim())
-                    .filter(|tag| !tag.is_empty())
-                    .filter(|tag| VersionObject::parse_with_format(tag, format).is_ok())
-                    .max();
-
-                if let Some(best_tag) = best_tag {
-                    return Ok(Some(best_tag.to_string()));
+                // Collect all valid version tags on this commit
+                for tag_line in tags_on_commit.lines() {
+                    let tag_on_commit = tag_line.trim();
+                    if !tag_on_commit.is_empty()
+                        && VersionObject::parse_with_format(tag_on_commit, format).is_ok()
+                    {
+                        valid_tags.push(tag_on_commit.to_string());
+                    }
                 }
             }
+        }
+
+        // Find the highest semantic version among all collected tags
+        if let Some(best_tag) = valid_tags.iter().max() {
+            return Ok(Some(best_tag.clone()));
         }
 
         Ok(None) // No valid version tags found
@@ -865,60 +869,12 @@ mod tests {
         let v2_commit = v2_commit.trim();
         fixture = fixture.checkout(v2_commit);
 
-        // Debug: Check what HEAD commit we're on
-        let head_debug = fixture
-            .git_impl
-            .execute_git(&fixture.test_dir, &["rev-parse", "HEAD"])
-            .unwrap_or_else(|_| "Failed to get HEAD".to_string());
-        let head_debug = head_debug.trim();
-
-        // Debug: Check what v2.0.0 commit is
-        let v2_tag_commit = fixture
-            .git_impl
-            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
-            .unwrap_or_else(|_| "Failed to get v2.0.0 commit".to_string());
-        let v2_tag_commit = v2_tag_commit.trim();
-
-        // Debug: Check what tags git thinks are merged
-        let merged_tags_debug = fixture
-            .git_impl
-            .execute_git(
-                &fixture.test_dir,
-                &["tag", "--merged", "HEAD", "--sort=-committerdate"],
-            )
-            .unwrap_or_else(|_| "Failed to get merged tags".to_string());
-
-        // Debug: Check if v2.0.0 is actually an ancestor of HEAD
-        let v2_is_ancestor = fixture
-            .git_impl
-            .execute_git(
-                &fixture.test_dir,
-                &["merge-base", "--is-ancestor", "v2.0.0", "HEAD"],
-            )
-            .map(|_| "YES")
-            .unwrap_or_else(|_| "NO");
-
         let result = git_vcs.get_latest_tag("auto")?;
-
-        // Only fail if we're truly on the wrong commit
-        if head_debug != v2_tag_commit {
-            panic!(
-                "HEAD commit mismatch! Expected v2.0.0 commit ({}) but got HEAD ({}). \
-                 This is a test setup issue, not a get_latest_tag issue.",
-                v2_tag_commit, head_debug
-            );
-        }
-
-        // If we're on the right commit but get wrong result, provide detailed debug info
-        if result != Some("v2.0.0".to_string()) {
-            panic!(
-                "Wrong tag result when HEAD is at v2.0.0 commit ({})! \
-                 Got: {:?}, Expected: Some(v2.0.0). \
-                 v2.0.0 is ancestor of HEAD: {}. \
-                 All merged tags: [{}]",
-                head_debug, result, v2_is_ancestor, merged_tags_debug
-            );
-        }
+        assert_eq!(
+            result,
+            Some("v2.0.0".to_string()),
+            "Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0"
+        );
 
         // Test 5: Old commit with high version tag
         let head_commit = fixture
