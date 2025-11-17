@@ -136,68 +136,88 @@ impl GitVcs {
 
     /// Get latest version tag using enhanced algorithm
     fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
-        // Get all tags traceable from current commit, ordered by reverse commit date
-        let output =
-            match self.run_git_command(&["tag", "--merged", "HEAD", "--sort=-committerdate"]) {
-                Ok(tags) => tags,
-                Err(ZervError::CommandFailed(_)) => return Ok(None), // No tags found
-                Err(e) => return Err(e),
-            };
+        let tags_output = self.get_merged_tags()?;
 
-        if output.is_empty() {
+        if tags_output.is_empty() {
             return Ok(None);
         }
 
-        // Collect all valid version tags from reachable commits, then find the highest one
+        let valid_tags = self.collect_valid_version_tags(&tags_output, format)?;
+        self.find_highest_version_tag(valid_tags)
+    }
+
+    /// Get all tags merged into HEAD, sorted by commit date
+    fn get_merged_tags(&self) -> Result<String> {
+        match self.run_git_command(&["tag", "--merged", "HEAD", "--sort=-committerdate"]) {
+            Ok(tags) => Ok(tags),
+            Err(ZervError::CommandFailed(_)) => Ok(String::new()), // No tags found
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Collect all valid version tags from the git output
+    fn collect_valid_version_tags(&self, tags_output: &str, format: &str) -> Result<Vec<String>> {
         let mut valid_tags = Vec::new();
 
-        for tag in output.lines() {
-            let trimmed_tag = tag.trim();
+        for tag_line in tags_output.lines() {
+            let trimmed_tag = tag_line.trim();
             if trimmed_tag.is_empty() {
                 continue;
             }
 
-            // Check if tag is parsable as a version using the provided format
-            if VersionObject::parse_with_format(trimmed_tag, format).is_ok() {
-                // Get the commit hash this tag points to
-                let commit_hash = match self.run_git_command(&["rev-list", "-n", "1", trimmed_tag])
-                {
-                    Ok(hash) => hash.trim().to_string(),
-                    Err(_) => continue, // Skip if we can't get commit hash
-                };
-
-                // Get all tags pointing to this same commit
-                let tags_on_commit =
-                    match self.run_git_command(&["tag", "--points-at", &commit_hash]) {
-                        Ok(tags) => tags,
-                        Err(_) => continue,
-                    };
-
-                if tags_on_commit.is_empty() {
-                    continue;
-                }
-
-                // Collect all valid version tags on this commit
-                for tag_line in tags_on_commit.lines() {
-                    let tag_on_commit = tag_line.trim();
-                    if !tag_on_commit.is_empty()
-                        && VersionObject::parse_with_format(tag_on_commit, format).is_ok()
-                    {
-                        valid_tags.push(tag_on_commit.to_string());
-                    }
-                }
+            if self.is_valid_version_tag(trimmed_tag, format) {
+                let commit_tags = self.get_valid_tags_for_commit(trimmed_tag, format)?;
+                valid_tags.extend(commit_tags);
             }
         }
 
-        // Find the highest semantic version among all collected tags
-        if let Some(best_tag) = valid_tags.iter().max() {
-            return Ok(Some(best_tag.clone()));
-        }
-
-        Ok(None) // No valid version tags found
+        Ok(valid_tags)
     }
 
-    /// Calculate distance from tag to HEAD
+    /// Check if a tag is a valid version for the given format
+    fn is_valid_version_tag(&self, tag: &str, format: &str) -> bool {
+        VersionObject::parse_with_format(tag, format).is_ok()
+    }
+
+    /// Get all valid version tags pointing to the same commit as the given tag
+    fn get_valid_tags_for_commit(&self, tag: &str, format: &str) -> Result<Vec<String>> {
+        let commit_hash = self.get_commit_hash_for_tag(tag)?;
+        let tags_on_commit = self.get_tags_pointing_at_commit(&commit_hash)?;
+
+        // Filter and return only valid version tags
+        Ok(tags_on_commit
+            .lines()
+            .map(|line| line.trim())
+            .filter(|trimmed_tag| !trimmed_tag.is_empty())
+            .filter(|trimmed_tag| self.is_valid_version_tag(trimmed_tag, format))
+            .map(|tag| tag.to_string())
+            .collect())
+    }
+
+    /// Get the commit hash for a given tag
+    fn get_commit_hash_for_tag(&self, tag: &str) -> Result<String> {
+        match self.run_git_command(&["rev-list", "-n", "1", tag]) {
+            Ok(hash) => Ok(hash.trim().to_string()),
+            Err(_) => Err(ZervError::CommandFailed(format!(
+                "Failed to get commit hash for tag: {}",
+                tag
+            ))),
+        }
+    }
+
+    /// Get all tags pointing to a specific commit
+    fn get_tags_pointing_at_commit(&self, commit_hash: &str) -> Result<String> {
+        match self.run_git_command(&["tag", "--points-at", commit_hash]) {
+            Ok(tags) => Ok(tags),
+            Err(_) => Ok(String::new()), // Return empty if no tags found
+        }
+    }
+
+    /// Find the highest semantic version from a list of tags
+    fn find_highest_version_tag(&self, tags: Vec<String>) -> Result<Option<String>> {
+        Ok(tags.iter().max().cloned())
+    }
+
     fn calculate_distance(&self, tag: &str) -> Result<u32> {
         let output = self.run_git_command(&["rev-list", "--count", &format!("{tag}..HEAD")])?;
         output
