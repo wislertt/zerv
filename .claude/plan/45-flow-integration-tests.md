@@ -2,7 +2,7 @@
 
 ## Status
 
-**In Progress** - Steps 1-3 completed, remaining steps pending
+**In Progress** - Steps 1-3 completed, Step 4.1-4.4 ready for implementation
 
 ## Priority
 
@@ -58,10 +58,54 @@ The existing `pipeline.rs` test uses `FlowTestScenario` which tests the flow pip
 
 ### Step 4: Workflow Scenario Tests (using git repositories)
 
-- Test trunk-based development workflow scenarios using actual git repositories
-- Test GitFlow development workflow scenarios using actual git repositories
-- Test branch switching, tagging, and merging scenarios through CLI
+#### Step 4.1: Trunk-Based Workflow - Foundation Tests
+
+**Reference Unit Test**: `src/cli/flow/pipeline.rs::test_trunk_based_development_flow()`
+
+**Convert First Step**: Initial setup on main branch with v1.0.0 tag
+**Reference Unit Test Code** (lines 60-66):
+
+```rust
+// Step 1: Initial commit on main with v1.0.0
+let scenario = FlowTestScenario::new()
+    .expect("Failed to create test scenario")
+    .create_tag("v1.0.0")
+    .expect_version("1.0.0", "1.0.0")
+    .expect_schema_variants(create_base_schema_test_cases("1.0.0", "main"));
+```
+
+**Integration Test Conversion**:
+
+- Convert from: `FlowTestScenario::new().create_tag("v1.0.0").expect_version("1.0.0", "1.0.0")`
+- To integration test: `FlowIntegrationTestScenario::new().create_tag("v1.0.0").expect_version("1.0.0", "1.0.0")`
+- Use actual git repositories through CLI (not unit test internals)
+- Test main branch development scenarios (tags, commits, clean working directory)
+- Test simple branch creation and switching scenarios
+- Test basic CLI flow command execution with git repositories
+- Verify integration test matches unit test behavior exactly
+- Add Docker test gating: `if !should_run_docker_tests() { return; }`
+
+#### Step 4.2: Trunk-Based Workflow - Advanced Scenarios
+
+- Test complex branch switching and merging scenarios through CLI
 - Test dirty working directory scenarios through CLI
+- Test multiple commit scenarios and version progression
+- Test branch cleanup and tag management scenarios
+- Test edge cases and error conditions in trunk-based workflows
+
+#### Step 4.3: GitFlow Workflow - Foundation Tests
+
+- Test GitFlow development workflow scenarios using actual git repositories
+- Test feature branch creation, development, and merge scenarios
+- Test release branch scenarios and version tagging
+- Test hotfix branch workflows and emergency releases
+
+#### Step 4.4: GitFlow Workflow - Advanced Scenarios
+
+- Test complex GitFlow branching patterns and release management
+- Test multi-developer collaboration scenarios through CLI
+- Test GitFlow integration with flow command pre-release detection
+- Test GitFlow edge cases and error handling scenarios
 
 ### Step 5: Error Handling Tests (using stdin input)
 
@@ -208,12 +252,13 @@ let scenario = FlowIntegrationTestScenario::new()?
 1. ✅ Comprehensive integration test coverage for "zerv flow" command
 2. ✅ **ACHIEVED**: Flow command stdin support works like version command
 3. ⏳ Tests cover all major CLI options and output formats (pending Steps 4-6)
-4. ⏳ Tests cover trunk-based and GitFlow workflow scenarios (pending Step 4)
-5. ⏳ Error handling tests ensure robust CLI behavior (pending Step 5)
-6. ✅ Tests are maintainable and follow existing patterns
-7. ✅ Tests are properly gated for Docker dependencies
-8. ✅ Integration tests are separate from but complementary to existing pipeline tests
-9. ✅ **INNOVATION**: Solved two-pass stdin reading limitation through caching mechanism
+4. ⏳ Tests cover trunk-based workflow scenarios (pending Steps 4.1-4.2)
+5. ⏳ Tests cover GitFlow workflow scenarios (pending Steps 4.3-4.4)
+6. ⏳ Error handling tests ensure robust CLI behavior (pending Step 5)
+7. ✅ Tests are maintainable and follow existing patterns
+8. ✅ Tests are properly gated for Docker dependencies
+9. ✅ Integration tests are separate from but complementary to existing pipeline tests
+10. ✅ **INNOVATION**: Solved two-pass stdin reading limitation through caching mechanism
 
 ## Notes
 
