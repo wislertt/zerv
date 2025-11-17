@@ -13,7 +13,7 @@ use crate::version::zerv::core::Zerv;
 
 impl FlowArgs {
     /// Get current zerv object "as-is" (no bumps)
-    pub fn get_current_zerv_object(&self) -> Result<Zerv, ZervError> {
+    pub fn get_current_zerv_object(&self, stdin_content: Option<&str>) -> Result<Zerv, ZervError> {
         let version_args = VersionArgs {
             input: self.input.clone(),
             output: OutputConfig::zerv(),
@@ -22,7 +22,7 @@ impl FlowArgs {
             bumps: BumpsConfig::default(),
         };
 
-        let ron_output = run_version_pipeline(version_args, None)?;
+        let ron_output = run_version_pipeline(version_args, stdin_content)?;
         from_str(&ron_output)
             .map_err(|e| ZervError::InvalidFormat(format!("Failed to parse version output: {}", e)))
     }

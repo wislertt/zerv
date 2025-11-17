@@ -12,7 +12,7 @@ pub fn run_flow_pipeline(args: FlowArgs, stdin_content: Option<&str>) -> Result<
     let mut args = args;
 
     // Step 1: Get current state (no bumps)
-    let current_zerv = args.get_current_zerv_object()?;
+    let current_zerv = args.get_current_zerv_object(stdin_content)?;
 
     // Step 2: Validate and apply branch rules using current state
     args.validate(&current_zerv)?;
