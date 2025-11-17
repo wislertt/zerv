@@ -2,6 +2,7 @@ pub mod args;
 pub mod branch_rules;
 pub mod pipeline;
 
+#[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils;
 
 pub use args::FlowArgs;
