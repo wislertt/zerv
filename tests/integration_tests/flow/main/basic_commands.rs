@@ -114,11 +114,21 @@ fn test_flow_command_help() {
 fn test_flow_command_requires_source() {
     // Test that flow command works (defaults to git source)
     let mut cmd = TestCommand::new();
-    cmd.arg("flow");
+    cmd.args_from_str("flow -C ."); // Use -C to explicitly set git directory to current workspace root
+
     let result = cmd.output().expect("Failed to execute flow command");
 
     // The flow command should work successfully (defaults to git source)
-    assert!(result.status.success());
+    // TODO: Remove debug output after CI fix is verified
+    if !result.status.success() {
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        let stdout = String::from_utf8_lossy(&result.stdout);
+        let exit_code = result.status.code();
+        panic!(
+            "Flow command failed!\nExit code: {:?}\nSTDERR:\n{}\nSTDOUT:\n{}",
+            exit_code, stderr, stdout
+        );
+    }
 }
 
 #[test]
