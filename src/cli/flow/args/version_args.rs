@@ -20,7 +20,7 @@ impl FlowArgs {
             output: OutputConfig::zerv(),
             main: MainConfig::from_schema(self.schema.clone()),
             overrides: OverridesConfig {
-                bumped_branch: self.bumped_branch.clone(),
+                bumped_branch: self.overrides.bumped_branch.clone(),
                 ..Default::default()
             },
             bumps: BumpsConfig::default(),
@@ -41,8 +41,26 @@ impl FlowArgs {
             output: OutputConfig::zerv(),
             main: MainConfig::from_schema(self.schema.clone()),
             overrides: OverridesConfig {
-                bumped_branch: self.bumped_branch.clone(),
-                ..Default::default()
+                tag_version: self.overrides.tag_version.clone(),
+                distance: self.overrides.distance,
+                dirty: self.overrides.dirty,
+                no_dirty: self.overrides.no_dirty,
+                clean: self.overrides.clean,
+                bumped_branch: self.overrides.bumped_branch.clone(),
+                bumped_commit_hash: self.overrides.bumped_commit_hash.clone(),
+                bumped_timestamp: self.overrides.bumped_timestamp,
+                major: self.overrides.major.clone(),
+                minor: self.overrides.minor.clone(),
+                patch: self.overrides.patch.clone(),
+                epoch: self.overrides.epoch.clone(),
+                post: self.overrides.post.clone(),
+                dev: self.overrides.dev.clone(),
+                pre_release_label: None, // Flow handles pre-release through branch rules
+                pre_release_num: None,   // Flow handles pre-release through branch rules
+                custom: None,            // Not supported in flow
+                core: vec![],            // Not supported in flow
+                extra_core: vec![],      // Not supported in flow
+                build: vec![],           // Not supported in flow
             },
             bumps: BumpsConfig {
                 bump_pre_release_label: self.bump_pre_release_label(),

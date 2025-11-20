@@ -5,6 +5,7 @@ use crate::cli::common::args::{
     OutputConfig,
 };
 use crate::cli::flow::args::branch_rules::BranchRulesConfig;
+use crate::cli::flow::args::overrides::OverridesConfig;
 
 /// Generate version with intelligent pre-release management based on Git branch patterns
 #[derive(Parser)]
@@ -34,6 +35,23 @@ POST MODE OPTIONS:
 SCHEMA OPTIONS:
   --schema <SCHEMA>         Schema variant for output components [default: standard] [possible values: standard, standard-no-context, standard-context, standard-base, standard-base-prerelease, standard-base-prerelease-post, standard-base-prerelease-post-dev]
 
+VCS OVERRIDE OPTIONS:
+  --tag-version <VERSION>   Override detected tag version (e.g., 'v2.0.0', '1.5.0-beta.1')
+  --distance <NUM>          Override distance from tag (number of commits since tag)
+  --dirty/--no-dirty        Override dirty state to true/false
+  --clean                   Force clean release state (sets distance=0, dirty=false)
+  --bumped-branch <BRANCH>  Override current branch name
+  --bumped-commit-hash <HASH> Override commit hash (full or short form)
+  --bumped-timestamp <TS>   Override commit timestamp (Unix timestamp)
+
+VERSION COMPONENT OVERRIDES:
+  --major <NUM>             Override major version number
+  --minor <NUM>             Override minor version number
+  --patch <NUM>             Override patch version number
+  --epoch <NUM>             Override epoch number
+  --post <NUM>              Override post number
+  --dev <NUM>               Override dev number
+
 EXAMPLES:
   # Basic flow version with automatic pre-release detection (smart schema)
   zerv flow
@@ -58,6 +76,18 @@ EXAMPLES:
   zerv flow --schema standard-base         # base version only
   zerv flow --schema standard-base-prerelease-post  # prerelease + post only
 
+  # Override VCS values for testing or CI/CD
+  zerv flow --tag-version v2.0.0 --distance 5 --dirty
+  zerv flow --clean  # Force clean release state
+  zerv flow --bumped-branch feature/test  # Override branch name
+
+  # Override version components
+  zerv flow --major 2 --minor 0 --patch 0
+  zerv flow --post 1 --dev 1234567890
+
+  # Combined overrides and branch rules
+  zerv flow --schema standard-base --tag-version v1.5.0 --pre-release-label beta
+
   # Use in different directory
   zerv flow -C /path/to/repo"
 )]
@@ -71,6 +101,9 @@ pub struct FlowArgs {
 
     #[command(flatten)]
     pub branch_config: BranchRulesConfig,
+
+    #[command(flatten)]
+    pub overrides: OverridesConfig,
 
     #[arg(
         long = "hash-branch-len",
@@ -86,13 +119,6 @@ pub struct FlowArgs {
         help = "Schema variant for output components [default: standard] [possible values: standard, standard-no-context, standard-context, standard-base, standard-base-prerelease, standard-base-prerelease-post, standard-base-prerelease-post-dev]"
     )]
     pub schema: Option<String>,
-
-    /// Override the detected current branch name
-    #[arg(
-        long,
-        help = "Override current branch name (used for template hashing)"
-    )]
-    pub bumped_branch: Option<String>,
 }
 
 impl Default for FlowArgs {
@@ -101,9 +127,9 @@ impl Default for FlowArgs {
             input: InputConfig::default(),
             output: OutputConfig::default(),
             branch_config: BranchRulesConfig::default(),
+            overrides: OverridesConfig::default(),
             hash_branch_len: 5,
             schema: None,
-            bumped_branch: None,
         }
     }
 }
@@ -138,7 +164,7 @@ mod tests {
             assert!(args.branch_config.pre_release_num.is_none());
             assert_eq!(args.branch_config.post_mode, None);
             assert!(args.schema.is_none()); // Default is None (will use standard schema)
-            assert!(args.bumped_branch.is_none()); // Default is None (use detected branch)
+            assert!(args.overrides.bumped_branch.is_none()); // Default is None (use detected branch)
         }
 
         #[test]
