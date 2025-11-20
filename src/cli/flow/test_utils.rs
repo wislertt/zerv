@@ -10,9 +10,15 @@ use crate::cli::utils::template::{
 };
 use crate::schema::schema_preset_names::*;
 use crate::test_utils::assert_version_expectation;
-use crate::test_utils::zerv::ZervFixture;
+use crate::test_utils::zerv::{
+    ZervFixture,
+    ZervVarsFixture,
+};
 use crate::version::pep440::utils::pre_release_label_to_pep440_string;
-use crate::version::zerv::PreReleaseLabel;
+use crate::version::zerv::{
+    PreReleaseLabel,
+    ZervVars,
+};
 use crate::{
     test_debug,
     test_info,
@@ -62,73 +68,64 @@ fn generate_commit_hash(branch_name: &str, distance: u64) -> String {
 
 // Flow test scenario builder pattern
 pub struct FlowTestScenario {
-    fixture: ZervFixture,
-    // Track branch-specific state for accurate simulation
-    branch_distances: HashMap<String, u64>,
-    branch_versions: HashMap<String, (u64, u64, u64)>, // Track version per branch: (major, minor, patch)
+    /// Branch name -> ZervVars for that branch
+    branch_vars: HashMap<String, ZervVars>,
+
+    /// Current active branch
+    current_branch: String,
+
+    /// Current branch's vars
+    current_vars: ZervVars,
 }
 
 impl FlowTestScenario {
-    /// Create a new scenario with ZervFixture
+    /// Create a new scenario with ZervVarsFixture
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        let initial_vars = ZervVarsFixture::new()
+            .with_bumped_branch("main".to_string())
+            .build();
+
+        let mut branch_vars = HashMap::new();
+        branch_vars.insert("main".to_string(), initial_vars.clone());
+
         Ok(Self {
-            fixture: ZervFixture::new(),
-            branch_distances: HashMap::new(),
-            branch_versions: HashMap::new(),
+            branch_vars,
+            current_branch: "main".to_string(),
+            current_vars: initial_vars,
         })
     }
 
-    /// Get current branch name or default to "main"
+    /// Get current branch name
     fn get_current_branch(&self) -> String {
-        self.fixture
-            .zerv()
-            .vars
-            .bumped_branch
-            .as_deref()
-            .unwrap_or("main")
-            .to_string()
+        self.current_branch.clone()
     }
 
-    // /// Get distance for current branch, defaulting to 0 if not set
-    // fn get_current_branch_distance(&self) -> u64 {
-    //     let branch = self.get_current_branch();
-    //     self.branch_distances.get(&branch).copied().unwrap_or(0)
-    // }
-
-    /// Create a tag by parsing it and setting version in fixture
+    /// Create a tag by parsing it and setting version in vars
     pub fn create_tag(mut self, tag: &str) -> Self {
         test_info!("Creating tag: {}", tag);
 
         // Remove 'v' prefix if present for SemVer parsing
         let semver_str = tag.strip_prefix('v').unwrap_or(tag);
 
-        // Use ZervFixture's existing from_semver_str method
-        let mut fixture = ZervFixture::from_semver_str(semver_str);
+        // Parse with ZervFixture, then convert to ZervVarsFixture
+        let mut vars_fixture =
+            ZervVarsFixture::from(ZervFixture::from_semver_str(semver_str).zerv().vars.clone());
 
-        // Set current branch and commit hash for the tag
+        // Set branch and commit info for the tag
         let current_branch = self.get_current_branch();
         let commit_hash = generate_commit_hash(&current_branch, 0); // Tags have distance 0
 
-        fixture = fixture
-            .with_branch(current_branch.clone())
+        vars_fixture = vars_fixture
+            .with_bumped_branch(current_branch.clone())
             .with_distance(0) // Tags have distance 0
-            .with_commit_hash(commit_hash) // Tags have commit hash
+            .with_bumped_commit_hash(commit_hash) // Tags have commit hash
             .with_dirty(false); // Tags are clean
 
-        self.fixture = fixture;
+        self.current_vars = vars_fixture.build();
 
-        // Reset distance for this branch to 0 (tags start fresh)
-        self.branch_distances.insert(current_branch.clone(), 0);
-
-        // Save version for this branch
-        if let (Some(major), Some(minor), Some(patch)) = (
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-        ) {
-            self.branch_versions
-                .insert(current_branch, (major, minor, patch));
-        }
+        // Save state for this branch
+        self.branch_vars
+            .insert(current_branch.clone(), self.current_vars.clone());
 
         self
     }
@@ -150,39 +147,21 @@ impl FlowTestScenario {
         test_info!("Creating branch: {}", branch_name);
         let branch_name = branch_name.to_string();
 
-        // Get current branch distance before switching
-        let current_branch = self.get_current_branch();
-        let current_distance = self
-            .branch_distances
-            .get(&current_branch)
-            .copied()
-            .unwrap_or(0);
+        // Save current branch state
+        self.branch_vars
+            .insert(self.current_branch.clone(), self.current_vars.clone());
 
-        // Save current branch version state before creating new branch
-        if let (Some(major), Some(minor), Some(patch)) = (
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-        ) {
-            self.branch_versions
-                .insert(current_branch.clone(), (major, minor, patch));
-        }
+        // Create new branch vars that inherit current state but with new branch name
+        let mut new_branch_vars = self.current_vars.clone();
+        new_branch_vars.bumped_branch = Some(branch_name.clone());
 
-        // Switch to new branch and inherit distance and version
-        self.fixture = self.fixture.with_branch(branch_name.clone());
-        self.branch_distances
-            .entry(branch_name.clone())
-            .or_insert(current_distance);
+        // Switch to new branch
+        self.current_branch = branch_name.clone();
+        self.current_vars = new_branch_vars;
 
-        // New branch inherits current version
-        if let (Some(major), Some(minor), Some(patch)) = (
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-        ) {
-            self.branch_versions
-                .insert(branch_name, (major, minor, patch));
-        }
+        // Save new branch state
+        self.branch_vars
+            .insert(branch_name, self.current_vars.clone());
 
         self
     }
@@ -192,67 +171,51 @@ impl FlowTestScenario {
         test_info!("Switching to branch: {}", branch_name);
         let branch_name = branch_name.to_string();
 
-        // Debug: Show current fixture state before checkout
+        // Debug: Show current vars state before checkout
         test_debug!(
             "DEBUG: Before checkout to '{}': major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
             branch_name,
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-            self.fixture.zerv().vars.pre_release,
-            self.fixture.zerv().vars.post
+            self.current_vars.major,
+            self.current_vars.minor,
+            self.current_vars.patch,
+            self.current_vars.pre_release,
+            self.current_vars.post
         );
 
         // Save current branch state before switching
-        let current_branch = self.get_current_branch();
-        if let (Some(major), Some(minor), Some(patch)) = (
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-        ) {
-            self.branch_versions
-                .insert(current_branch, (major, minor, patch));
-        }
+        self.branch_vars
+            .insert(self.current_branch.clone(), self.current_vars.clone());
 
-        // Switch to new branch
-        self.fixture = self.fixture.with_branch(branch_name.clone());
+        // Switch to new branch - restore saved state or create new
+        self.current_vars = self
+            .branch_vars
+            .get(&branch_name)
+            .cloned()
+            .unwrap_or_else(|| {
+                // Create new branch state with default values but inherit current version
+                let mut new_vars = ZervVarsFixture::new()
+                    .with_bumped_branch(branch_name.clone())
+                    .build();
 
-        // Restore version state for the new branch if available, otherwise keep current
-        if let Some((major, minor, patch)) = self.branch_versions.get(&branch_name) {
-            test_debug!(
-                "Restoring version for branch '{}': {}.{}.{}",
-                branch_name,
-                major,
-                minor,
-                patch
-            );
-            self.fixture = self.fixture.with_version(*major, *minor, *patch);
-        } else {
-            // Initialize with current version if no saved state
-            if let (Some(major), Some(minor), Some(patch)) = (
-                self.fixture.zerv().vars.major,
-                self.fixture.zerv().vars.minor,
-                self.fixture.zerv().vars.patch,
-            ) {
-                self.branch_versions
-                    .insert(branch_name.clone(), (major, minor, patch));
-            }
-        }
+                // Inherit version from current branch
+                new_vars.major = self.current_vars.major;
+                new_vars.minor = self.current_vars.minor;
+                new_vars.patch = self.current_vars.patch;
 
-        // Initialize distance for branch if not already present
-        self.branch_distances
-            .entry(branch_name.clone())
-            .or_insert(0);
+                new_vars
+            });
 
-        // Debug: Show current fixture state after checkout
+        self.current_branch = branch_name.clone();
+
+        // Debug: Show current vars state after checkout
         test_debug!(
             "DEBUG: After checkout to '{}': major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
             branch_name,
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-            self.fixture.zerv().vars.pre_release,
-            self.fixture.zerv().vars.post
+            self.current_vars.major,
+            self.current_vars.minor,
+            self.current_vars.patch,
+            self.current_vars.pre_release,
+            self.current_vars.post
         );
         self
     }
@@ -260,32 +223,17 @@ impl FlowTestScenario {
     pub fn commit(mut self) -> Self {
         test_info!("Making commit");
         let branch_name = self.get_current_branch();
-        let current_distance = self
-            .branch_distances
-            .get(&branch_name)
-            .copied()
-            .unwrap_or(0)
-            + 1;
+        let current_distance = self.current_vars.distance.unwrap_or(0) + 1;
         let commit_hash = generate_commit_hash(&branch_name, current_distance);
 
-        self.branch_distances
-            .insert(branch_name.clone(), current_distance);
+        // Update current vars with commit info
+        self.current_vars.distance = Some(current_distance);
+        self.current_vars.bumped_commit_hash = Some(commit_hash);
+        self.current_vars.dirty = Some(false); // commits clean working directory
 
-        self.fixture = self
-            .fixture
-            .with_distance(current_distance)
-            .with_commit_hash(commit_hash)
-            .with_dirty(false); // commits clean working directory
-
-        // Save the version state for the current branch after commit
-        if let (Some(major), Some(minor), Some(patch)) = (
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-        ) {
-            self.branch_versions
-                .insert(branch_name, (major, minor, patch));
-        }
+        // Save state for current branch
+        self.branch_vars
+            .insert(branch_name, self.current_vars.clone());
 
         self
     }
@@ -301,10 +249,8 @@ impl FlowTestScenario {
             .expect("Time went backwards")
             .as_secs();
 
-        self.fixture = self
-            .fixture
-            .with_dirty(true)
-            .with_bumped_timestamp(current_time);
+        self.current_vars.dirty = Some(true);
+        self.current_vars.bumped_timestamp = Some(current_time);
 
         self
     }
@@ -321,12 +267,12 @@ impl FlowTestScenario {
             || (current_branch.starts_with("develop") && branch_name == "main")
             || (current_branch == "main" && branch_name.starts_with("feature"));
 
-        let current_distance = self
-            .branch_distances
-            .get(&current_branch)
-            .copied()
+        let current_distance = self.current_vars.distance.unwrap_or(0);
+        let merged_distance = self
+            .branch_vars
+            .get(branch_name)
+            .and_then(|vars| vars.distance)
             .unwrap_or(0);
-        let merged_distance = self.branch_distances.get(branch_name).copied().unwrap_or(0);
 
         // Debug: Show merge context
         test_debug!(
@@ -338,12 +284,12 @@ impl FlowTestScenario {
             merged_distance
         );
         test_debug!(
-            "DEBUG: Before merge: current fixture version major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-            self.fixture.zerv().vars.pre_release,
-            self.fixture.zerv().vars.post
+            "DEBUG: Before merge: current vars version major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+            self.current_vars.major,
+            self.current_vars.minor,
+            self.current_vars.patch,
+            self.current_vars.pre_release,
+            self.current_vars.post
         );
 
         // For forward development merges, increment max distance. For sync merges, just use max.
@@ -358,35 +304,32 @@ impl FlowTestScenario {
         if current_branch == "develop" && branch_name == "main" {
             test_debug!("Sync merge detected: main -> develop, syncing version components");
 
-            // Get main's version (from Step 6: v1.0.1)
-            let main_version = if let Some(main_version) = self.branch_versions.get("main") {
-                *main_version
-            } else {
-                // Fallback: assume main has the tag version from Step 6
-                (1, 0, 1) // v1.0.1 from Step 6
-            };
+            // Get main's version from branch state
+            let main_vars = self.branch_vars.get("main");
+            if let Some(main_vars) = main_vars {
+                test_debug!(
+                    "Syncing to main's version: {}.{}.{}",
+                    main_vars.major.unwrap_or(1),
+                    main_vars.minor.unwrap_or(0),
+                    main_vars.patch.unwrap_or(1)
+                );
 
-            test_debug!(
-                "Syncing to main's version: {}.{}.{}",
-                main_version.0,
-                main_version.1,
-                main_version.2
-            );
+                // Set develop branch to main's version and clear all development state
+                self.current_vars.major = main_vars.major;
+                self.current_vars.minor = main_vars.minor;
+                self.current_vars.patch = main_vars.patch;
+                self.current_vars.pre_release = None;
+                self.current_vars.post = None;
 
-            // Set develop branch to main's version and clear all development state
-            self.fixture = self.fixture
-                .with_version(main_version.0, main_version.1, main_version.2)
-                .without_pre_release()   // Clear any pre-release from development
-                .without_post(); // Clear any post-release from development
-
-            test_debug!(
-                "After sync version setting: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
-                self.fixture.zerv().vars.major,
-                self.fixture.zerv().vars.minor,
-                self.fixture.zerv().vars.patch,
-                self.fixture.zerv().vars.pre_release,
-                self.fixture.zerv().vars.post
-            );
+                test_debug!(
+                    "After sync version setting: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+                    self.current_vars.major,
+                    self.current_vars.minor,
+                    self.current_vars.patch,
+                    self.current_vars.pre_release,
+                    self.current_vars.post
+                );
+            }
         }
         // Special handling for forward merges in trunk-based development
         // When a feature branch merges main, it should increment the patch version
@@ -397,47 +340,41 @@ impl FlowTestScenario {
                 current_branch
             );
 
-            // Get main's version
-            let main_version = if let Some(main_version) = self.branch_versions.get("main") {
-                *main_version
-            } else {
-                // Fallback: try to get from current fixture
-                if let (Some(major), Some(minor), Some(patch)) = (
-                    self.fixture.zerv().vars.major,
-                    self.fixture.zerv().vars.minor,
-                    self.fixture.zerv().vars.patch,
-                ) {
-                    (major, minor, patch)
-                } else {
-                    (1, 0, 0) // ultimate fallback
-                }
-            };
+            // Get main's version from branch state
+            if let Some(main_vars) = self.branch_vars.get("main") {
+                let major = main_vars.major.unwrap_or(1);
+                let minor = main_vars.minor.unwrap_or(0);
+                let patch = main_vars.patch.unwrap_or(0);
 
-            // Increment patch version for continued development
-            let new_patch = main_version.2 + 1;
-            test_debug!(
-                "Incrementing version from {}.{}.{} to {}.{}.{}",
-                main_version.0,
-                main_version.1,
-                main_version.2,
-                main_version.0,
-                main_version.1,
-                new_patch
-            );
+                // Increment patch version for continued development
+                let new_patch = patch + 1;
+                test_debug!(
+                    "Incrementing version from {}.{}.{} to {}.{}.{}",
+                    major,
+                    minor,
+                    patch,
+                    major,
+                    minor,
+                    new_patch
+                );
 
-            self.fixture = self
-                .fixture
-                .with_version(main_version.0, main_version.1, new_patch)
-                .with_pre_release(crate::version::zerv::PreReleaseLabel::Alpha, Some(68031));
+                self.current_vars.major = Some(major);
+                self.current_vars.minor = Some(minor);
+                self.current_vars.patch = Some(new_patch);
+                self.current_vars.pre_release = Some(crate::version::zerv::PreReleaseVar {
+                    label: crate::version::zerv::PreReleaseLabel::Alpha,
+                    number: Some(68031),
+                });
 
-            test_debug!(
-                "After version bump: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
-                self.fixture.zerv().vars.major,
-                self.fixture.zerv().vars.minor,
-                self.fixture.zerv().vars.patch,
-                self.fixture.zerv().vars.pre_release,
-                self.fixture.zerv().vars.post
-            );
+                test_debug!(
+                    "After version bump: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+                    self.current_vars.major,
+                    self.current_vars.minor,
+                    self.current_vars.patch,
+                    self.current_vars.pre_release,
+                    self.current_vars.post
+                );
+            }
         }
 
         let merge_hash = generate_commit_hash(&format!("merge-{}", branch_name), new_distance);
@@ -445,46 +382,40 @@ impl FlowTestScenario {
         // For sync merges (main -> develop), check if we need to reset distance for clean version
         let final_distance = if current_branch == "develop" && branch_name == "main" {
             // Check if this is syncing to v1.1.0 (final release)
-            let main_version = if let Some(main_version) = self.branch_versions.get("main") {
-                *main_version
+            if let Some(main_vars) = self.branch_vars.get("main") {
+                if let (Some(major), Some(minor), Some(patch)) =
+                    (main_vars.major, main_vars.minor, main_vars.patch)
+                {
+                    if (major, minor, patch) == (1, 1, 0) {
+                        0 // Reset distance for final clean sync
+                    } else {
+                        new_distance // Keep distance for regular sync
+                    }
+                } else {
+                    new_distance
+                }
             } else {
-                (1, 0, 1) // fallback
-            };
-
-            if main_version == (1, 1, 0) {
-                0 // Reset distance for final clean sync
-            } else {
-                new_distance // Keep distance for regular sync
+                new_distance
             }
         } else {
             new_distance
         };
 
-        self.branch_distances
-            .insert(current_branch.clone(), final_distance);
+        // Update current vars with merge info
+        self.current_vars.distance = Some(final_distance);
+        self.current_vars.bumped_commit_hash = Some(merge_hash);
 
-        self.fixture = self
-            .fixture
-            .with_distance(final_distance)
-            .with_commit_hash(merge_hash);
-
-        // Save the version state for the current branch after merge
-        if let (Some(major), Some(minor), Some(patch)) = (
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-        ) {
-            self.branch_versions
-                .insert(current_branch, (major, minor, patch));
-        }
+        // Save state for current branch
+        self.branch_vars
+            .insert(current_branch, self.current_vars.clone());
 
         test_debug!(
-            "DEBUG: After merge: final fixture version major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
-            self.fixture.zerv().vars.major,
-            self.fixture.zerv().vars.minor,
-            self.fixture.zerv().vars.patch,
-            self.fixture.zerv().vars.pre_release,
-            self.fixture.zerv().vars.post
+            "DEBUG: After merge: final vars version major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+            self.current_vars.major,
+            self.current_vars.minor,
+            self.current_vars.patch,
+            self.current_vars.pre_release,
+            self.current_vars.post
         );
 
         self
@@ -495,29 +426,33 @@ impl FlowTestScenario {
         "dummy-path-for-stdin".to_string()
     }
 
-    /// Convert ZervFixture to stdin content for pipeline execution
+    /// Convert ZervVars to stdin content for pipeline execution
     fn to_stdin_content(&self) -> String {
-        // Get a reference to the zerv and convert it to RON format
-        let zerv = self.fixture.zerv();
+        // Create a Zerv object with current vars and default schema
+        let schema = crate::version::zerv::schema::ZervSchema::semver_default()
+            .unwrap_or_else(|e| panic!("Failed to create default schema: {}", e));
+        let zerv = crate::version::zerv::Zerv {
+            schema,
+            vars: self.current_vars.clone(),
+        };
         ron::to_string(&zerv).unwrap_or_else(|e| format!("Error serializing Zerv to RON: {}", e))
     }
 
     /// Simple debug method for stdin-based testing
     pub fn debug_git_state(self, context: &str) -> Self {
         crate::test_info!("=== DEBUG: {} ===", context);
-        crate::test_info!("Using stdin-based ZervFixture (no Git operations)");
+        crate::test_info!("Using stdin-based ZervVars (no Git operations)");
 
-        let zerv = self.fixture.zerv();
         crate::test_info!(
             "Version: major={:?}, minor={:?}, patch={:?}",
-            zerv.vars.major,
-            zerv.vars.minor,
-            zerv.vars.patch
+            self.current_vars.major,
+            self.current_vars.minor,
+            self.current_vars.patch
         );
-        crate::test_info!("Branch: {:?}", zerv.vars.bumped_branch);
-        crate::test_info!("Distance: {:?}", zerv.vars.distance);
-        crate::test_info!("Commit hash: {:?}", zerv.vars.bumped_commit_hash);
-        crate::test_info!("Dirty: {:?}", zerv.vars.dirty);
+        crate::test_info!("Branch: {:?}", self.current_vars.bumped_branch);
+        crate::test_info!("Distance: {:?}", self.current_vars.distance);
+        crate::test_info!("Commit hash: {:?}", self.current_vars.bumped_commit_hash);
+        crate::test_info!("Dirty: {:?}", self.current_vars.dirty);
         crate::test_info!("=== END DEBUG ===");
         self
     }
