@@ -47,15 +47,11 @@ mod tests {
         expect_branch_hash,
     };
     use crate::test_info;
-    use crate::test_utils::should_run_docker_tests;
     use crate::version::zerv::PreReleaseLabel;
 
     #[test]
     fn test_trunk_based_development_flow() {
         test_info!("Starting trunk-based development flow test (exactly matching Mermaid diagram)");
-        if !should_run_docker_tests() {
-            return; // Skip when `ZERV_TEST_DOCKER` are disabled
-        }
 
         // Step 1: Initial commit on main with v1.0.0
         test_info!("Step 1: Initial setup: main branch state with v1.0.0 tag");
@@ -436,9 +432,6 @@ mod tests {
     #[test]
     fn test_gitflow_development_flow() {
         test_info!("Starting GitFlow development flow test (exactly matching Mermaid diagram)");
-        if !should_run_docker_tests() {
-            return; // Skip when `ZERV_TEST_DOCKER` are disabled
-        }
 
         // Step 1: Initial state: main and develop branches
         test_info!("Step 1: Initial setup: main branch state with v1.0.0 tag");

@@ -95,6 +95,24 @@ impl ZervVarsFixture {
         self
     }
 
+    /// Add bumped timestamp
+    pub fn with_bumped_timestamp(mut self, timestamp: u64) -> Self {
+        self.vars.bumped_timestamp = Some(timestamp);
+        self
+    }
+
+    /// Clear pre-release (set to None)
+    pub fn without_pre_release(mut self) -> Self {
+        self.vars.pre_release = None;
+        self
+    }
+
+    /// Clear post-release (set to None)
+    pub fn without_post(mut self) -> Self {
+        self.vars.post = None;
+        self
+    }
+
     /// Add last branch
     pub fn with_last_branch(mut self, branch: String) -> Self {
         self.vars.last_branch = Some(branch);
