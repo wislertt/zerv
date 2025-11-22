@@ -266,7 +266,7 @@ impl GitVcs {
             let tag_commit = self.get_commit_hash_from_tag(trimmed_tag)?;
 
             // Calculate distance from HEAD to tag commit
-            let distance = self.get_commit_distance(&head_commit, &tag_commit)?;
+            let distance = self.get_commit_distance(&tag_commit, &head_commit)?;
 
             if distance < min_distance {
                 min_distance = distance;
