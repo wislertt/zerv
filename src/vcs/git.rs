@@ -952,6 +952,15 @@ mod tests {
             .expect("Failed to get v3.0.0 commit")
             .trim()
             .to_string();
+        let debug_reachable_tags_raw = git_vcs
+            .run_git_command(&[
+                "tag",
+                "--merged",
+                "HEAD",
+                "--sort=-committerdate",
+                "--format=%(refname:short)||%(committerdate:unix)",
+            ])
+            .expect("Failed to get reachable tags raw");
         let debug_reachable_tags = {
             let tags = git_vcs
                 .get_merged_tags()
@@ -974,7 +983,8 @@ mod tests {
             "UBUNTU DEBUG: HEAD={}, v2.0.0={}, v3.0.0={}, result={:?}. \
              HEAD==v2.0.0={}, HEAD==v3.0.0={}. \
              Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0. \
-             Reachable tags: [{}]. Tags at HEAD: [{}]. \
+             RAW_GIT_OUTPUT: [{}]. \
+             PARSED_TAGS: [{}]. Tags at HEAD: [{}]. \
              get_latest_tag result: {:?}",
             debug_head,
             debug_v2_commit,
@@ -982,11 +992,8 @@ mod tests {
             result,
             debug_head == debug_v2_commit,
             debug_head == debug_v3_commit,
-            debug_reachable_tags
-                .lines()
-                .filter(|l| !l.trim().is_empty())
-                .collect::<Vec<_>>()
-                .join(", "),
+            debug_reachable_tags_raw.trim(),
+            debug_reachable_tags,
             debug_tags_at_head
                 .lines()
                 .filter(|l| !l.trim().is_empty())
@@ -1038,58 +1045,74 @@ v1.0.0||1731736800
 v0.0.8||1732082400"#,
             vec!["v0.0.8", "v0.0.9", "v2.0.0", "v1.1.0", "v1.0.0"]
         )]
-        //         #[case::normal_output(
-        //             r#"v2.0.0|1731909600
-        // v1.1.0|1731823200
-        // v1.0.0|1731736800"#,
-        //             vec!["v2.0.0", "v1.1.0", "v1.0.0"]
-        //         )]
-        //         #[case::empty_input("", vec![])]
-        //         #[case::empty_lines(
-        //             r#"v1.0.0|1731736800
+        #[case::empty_input("", vec![])]
+        #[case::empty_lines(
+            r#"v1.0.0||1731736800
 
-        // v1.1.0|1731823200
+v1.1.0||1731823200
 
-        // v2.0.0|1731909600"#,
-        //             vec!["v2.0.0", "v1.1.0", "v1.0.0"]
-        //         )]
-        //         #[case::no_separator(
-        //             r#"v1.0.0
-        // v1.1.0
-        // v2.0.0"#,
-        //             vec![]
-        //         )]
-        //         #[case::with_spaces(
-        //             r#"  v2.0.0	1731909600
-        //   v1.1.0	1731823200
-        //   v1.0.0	1731736800  "#,
-        //             vec!["v2.0.0", "v1.1.0", "v1.0.0"]
-        //         )]
-        //         #[case::complex_tags(
-        //             r#"v1.0.1-beta.1	1731764400
-        // v1.0.2-rc.1.post.3	1731768000
-        // v2.0.0-alpha.1+build.123	1731858000
-        // release-candidate	1731678000
-        // build-123	1731676200"#,
-        //             vec!["v2.0.0-alpha.1+build.123", "v1.0.2-rc.1.post.3", "v1.0.1-beta.1", "release-candidate", "build-123"]
-        //         )]
-        //         #[case::real_world_format(
-        //             r#"v0.7.77	1731943341
-        // v0.7.76	1731943859
-        // v0.7.75	1730990173
-        // v0.7.74	1729777401
-        // v0.7.73	1729446103
-        // v0.7.72	1729120816
-        // v0.7.71	1729111418
-        // v0.7.70	1729025276"#,
-        //             vec!["v0.7.76", "v0.7.77", "v0.7.75", "v0.7.74", "v0.7.73", "v0.7.72", "v0.7.71", "v0.7.70"]
-        //         )]
-        //         #[case::edge_cases(
-        //             r#"v1.0.0
-        // 	1731956400
-        // v2.0.0	1731960000"#,
-        //             vec!["v2.0.0"]
-        //         )]
+v2.0.0||1731909600"#,
+            vec!["v2.0.0", "v1.1.0", "v1.0.0"]
+        )]
+        #[case::malformed_lines(
+            r#"v1.0.0||1731736800
+invalid_line_without_separator
+v2.0.0||1731909600
+v3.0.0||invalid_timestamp
+v1.1.0||1731823200"#,
+            vec!["v2.0.0", "v1.1.0", "v1.0.0"]
+        )]
+        #[case::with_spaces(
+            r#"  v2.0.0  ||  1731909600
+   v1.1.0||1731823200
+   v1.0.0  ||1731736800  "#,
+            vec!["v2.0.0", "v1.1.0", "v1.0.0"]
+        )]
+        #[case::complex_tags(
+            r#"v1.0.1-beta.1||1731764400
+v1.0.2-rc.1.post.3||1731768000
+v2.0.0-alpha.1+build.123||1731858000
+release-candidate||1731678000
+build-123||1731676200"#,
+            vec!["v2.0.0-alpha.1+build.123", "v1.0.2-rc.1.post.3", "v1.0.1-beta.1", "release-candidate", "build-123"]
+        )]
+        #[case::same_timestamps_order_preserved(
+            r#"v1.0.0||1731909600
+v2.0.0||1731909600
+v3.0.0||1731909600"#,
+            vec!["v1.0.0", "v2.0.0", "v3.0.0"]
+        )]
+        #[case::single_tag("v1.0.0||1731736800", vec!["v1.0.0"])]
+        #[case::only_malformed_lines(
+            r#"invalid_line1
+v1.0.0
+no_separator_here
+another_bad_line"#,
+            vec![]
+        )]
+        #[case::real_world_format(
+            r#"v0.7.77||1731943341
+v0.7.76||1731943859
+v0.7.75||1730990173
+v0.7.74||1729777401
+v0.7.73||1729446103
+v0.7.72||1729120816
+v0.7.71||1729111418
+v0.7.70||1729025276"#,
+            vec!["v0.7.76", "v0.7.77", "v0.7.75", "v0.7.74", "v0.7.73", "v0.7.72", "v0.7.71", "v0.7.70"]
+        )]
+        #[case::negative_timestamps(
+            r#"v1.0.0||-86400
+v2.0.0||0
+v0.9.0||-172800"#,
+            vec!["v2.0.0", "v1.0.0", "v0.9.0"]
+        )]
+        #[case::very_large_timestamps(
+            r#"v1.0.0||9999999999
+v2.0.0||2147483647
+v3.0.0||4294967295"#,
+            vec!["v1.0.0", "v3.0.0", "v2.0.0"]
+        )]
         fn test_parse_tags_with_dates(#[case] input: &str, #[case] expected: Vec<&str>) {
             let expected: Vec<String> = expected.into_iter().map(|s| s.to_string()).collect();
             let result = GitVcs::parse_tags_with_dates(input);
