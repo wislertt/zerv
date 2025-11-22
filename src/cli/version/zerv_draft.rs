@@ -89,6 +89,7 @@ impl ZervDraft {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::common::overrides::CommonOverridesConfig;
     use crate::cli::version::args::{
         MainConfig,
         OverridesConfig,
@@ -129,7 +130,10 @@ mod tests {
 
         let args = VersionArgs {
             overrides: OverridesConfig {
-                tag_version: Some("5.0.0".to_string()),
+                common: CommonOverridesConfig {
+                    tag_version: Some("5.0.0".to_string()),
+                    ..Default::default()
+                },
                 ..Default::default()
             },
             ..Default::default()

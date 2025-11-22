@@ -8,20 +8,20 @@ fn test_overrides_config_defaults() {
     let config = OverridesConfig::try_parse_from(["version"]).unwrap();
 
     // VCS override options should be None/false by default
-    assert!(config.tag_version.is_none());
-    assert!(config.distance.is_none());
-    assert!(!config.dirty);
-    assert!(!config.no_dirty);
-    assert!(!config.clean);
-    assert!(config.bumped_branch.is_none());
-    assert!(config.bumped_commit_hash.is_none());
+    assert!(config.common.tag_version.is_none());
+    assert!(config.common.distance.is_none());
+    assert!(!config.common.dirty);
+    assert!(!config.common.no_dirty);
+    assert!(!config.common.clean);
+    assert!(config.common.bumped_branch.is_none());
+    assert!(config.common.bumped_commit_hash.is_none());
 
     // Version component overrides should be None by default
-    assert!(config.major.is_none());
-    assert!(config.minor.is_none());
-    assert!(config.patch.is_none());
-    assert!(config.epoch.is_none());
-    assert!(config.post.is_none());
+    assert!(config.common.major.is_none());
+    assert!(config.common.minor.is_none());
+    assert!(config.common.patch.is_none());
+    assert!(config.common.epoch.is_none());
+    assert!(config.common.post.is_none());
     assert!(config.dev.is_none());
     assert!(config.pre_release_label.is_none());
     assert!(config.pre_release_num.is_none());
@@ -54,16 +54,19 @@ fn test_overrides_config_with_values() {
     ])
     .unwrap();
 
-    assert_eq!(config.tag_version, Some("v2.0.0".to_string()));
-    assert_eq!(config.distance, Some(5));
-    assert!(config.dirty);
-    assert!(!config.no_dirty);
-    assert!(!config.clean);
-    assert_eq!(config.bumped_branch, Some("feature/test".to_string()));
-    assert_eq!(config.bumped_commit_hash, Some("abc123".to_string()));
-    assert_eq!(config.major, Some(2.into()));
-    assert_eq!(config.minor, Some(1.into()));
-    assert_eq!(config.patch, Some(0.into()));
+    assert_eq!(config.common.tag_version, Some("v2.0.0".to_string()));
+    assert_eq!(config.common.distance, Some(5));
+    assert!(config.common.dirty);
+    assert!(!config.common.no_dirty);
+    assert!(!config.common.clean);
+    assert_eq!(
+        config.common.bumped_branch,
+        Some("feature/test".to_string())
+    );
+    assert_eq!(config.common.bumped_commit_hash, Some("abc123".to_string()));
+    assert_eq!(config.common.major, Some(2.into()));
+    assert_eq!(config.common.minor, Some(1.into()));
+    assert_eq!(config.common.patch, Some(0.into()));
     assert_eq!(
         config.pre_release_label,
         Some(Template::new("alpha".to_string()))
@@ -75,23 +78,23 @@ fn test_overrides_config_with_values() {
 fn test_overrides_config_clean_flag() {
     let config = OverridesConfig::try_parse_from(["version", "--clean"]).unwrap();
 
-    assert!(config.clean);
-    assert!(config.distance.is_none());
-    assert!(!config.dirty);
-    assert!(!config.no_dirty);
+    assert!(config.common.clean);
+    assert!(config.common.distance.is_none());
+    assert!(!config.common.dirty);
+    assert!(!config.common.no_dirty);
 }
 
 #[test]
 fn test_overrides_config_dirty_flags() {
     // Test --dirty flag
     let config = OverridesConfig::try_parse_from(["version", "--dirty"]).unwrap();
-    assert!(config.dirty);
-    assert!(!config.no_dirty);
+    assert!(config.common.dirty);
+    assert!(!config.common.no_dirty);
 
     // Test --no-dirty flag
     let config = OverridesConfig::try_parse_from(["version", "--no-dirty"]).unwrap();
-    assert!(!config.dirty);
-    assert!(config.no_dirty);
+    assert!(!config.common.dirty);
+    assert!(config.common.no_dirty);
 }
 
 #[test]

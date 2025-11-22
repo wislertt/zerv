@@ -22,25 +22,25 @@ impl Validation {
     /// Validate overrides configuration
     pub fn validate_overrides(overrides: &OverridesConfig) -> Result<(), ZervError> {
         // Check for conflicting dirty flags
-        if overrides.dirty && overrides.no_dirty {
+        if overrides.common.dirty && overrides.common.no_dirty {
             return Err(ZervError::ConflictingOptions(
                 "Cannot use --dirty with --no-dirty (conflicting options)".to_string(),
             ));
         }
 
         // Check for --clean conflicts
-        if overrides.clean {
-            if overrides.distance.is_some() {
+        if overrides.common.clean {
+            if overrides.common.distance.is_some() {
                 return Err(ZervError::ConflictingOptions(
                     "Cannot use --clean with --distance (conflicting options)".to_string(),
                 ));
             }
-            if overrides.dirty {
+            if overrides.common.dirty {
                 return Err(ZervError::ConflictingOptions(
                     "Cannot use --clean with --dirty (conflicting options)".to_string(),
                 ));
             }
-            if overrides.no_dirty {
+            if overrides.common.no_dirty {
                 return Err(ZervError::ConflictingOptions(
                     "Cannot use --clean with --no-dirty (conflicting options)".to_string(),
                 ));
@@ -72,7 +72,7 @@ impl Validation {
         bumps: &BumpsConfig,
     ) -> Result<(), ZervError> {
         // Check for conflicting context control and dirty flags
-        if bumps.no_bump_context && overrides.dirty {
+        if bumps.no_bump_context && overrides.common.dirty {
             return Err(ZervError::ConflictingOptions(
                 "Cannot use --no-bump-context with --dirty (conflicting options)".to_string(),
             ));

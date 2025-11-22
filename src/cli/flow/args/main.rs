@@ -164,7 +164,7 @@ mod tests {
             assert!(args.branch_config.pre_release_num.is_none());
             assert_eq!(args.branch_config.post_mode, None);
             assert!(args.schema.is_none()); // Default is None (will use standard schema)
-            assert!(args.overrides.bumped_branch.is_none()); // Default is None (use detected branch)
+            assert!(args.overrides.common.bumped_branch.is_none()); // Default is None (use detected branch)
         }
 
         #[test]

@@ -20,19 +20,11 @@ impl FlowArgs {
             output: OutputConfig::zerv(),
             main: MainConfig::from_schema(self.schema.clone()),
             overrides: OverridesConfig {
-                tag_version: self.overrides.tag_version.clone(),
-                distance: self.overrides.distance,
-                dirty: self.overrides.dirty,
-                no_dirty: self.overrides.no_dirty,
-                clean: self.overrides.clean,
-                bumped_branch: self.overrides.bumped_branch.clone(),
-                bumped_commit_hash: self.overrides.bumped_commit_hash.clone(),
-                bumped_timestamp: self.overrides.bumped_timestamp,
-                major: self.overrides.major.clone(),
-                minor: self.overrides.minor.clone(),
-                patch: self.overrides.patch.clone(),
-                epoch: self.overrides.epoch.clone(),
-                post: self.overrides.override_post(),
+                common: {
+                    let mut common_config = self.overrides.common.clone();
+                    common_config.post = self.overrides.override_post();
+                    common_config
+                },
                 ..Default::default()
             },
             bumps,
