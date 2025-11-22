@@ -1012,103 +1012,103 @@ mod tests {
         fixture = fixture.checkout(v2_commit);
 
         // Original assertion (commented out for easy revert)
-        // let result = git_vcs.get_latest_tag("auto")?;
-        // assert_eq!(
-        //     result,
-        //     Some("v2.0.0".to_string()),
-        //     "Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0"
-        // );
-
-        // Debug assertion with verbose information for Ubuntu debugging
         let result = git_vcs.get_latest_tag("auto")?;
-
-        // ==== DEBUG START ====
-        // Collect debug information only for assertion failure (no side effects)
-        let debug_head = fixture
-            .get_head_commit()
-            .expect("Failed to get current HEAD commit")
-            .trim()
-            .to_string();
-        let debug_v2_commit = fixture
-            .git_impl
-            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
-            .expect("Failed to get v2.0.0 commit")
-            .trim()
-            .to_string();
-        let debug_v3_commit = fixture
-            .git_impl
-            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v3.0.0"])
-            .expect("Failed to get v3.0.0 commit")
-            .trim()
-            .to_string();
-        let debug_reachable_tags_raw = git_vcs
-            .run_git_command(&[
-                "tag",
-                "--merged",
-                "HEAD",
-                "--sort=-committerdate",
-                "--format=%(refname:short)||%(committerdate:unix)",
-            ])
-            .expect("Failed to get reachable tags raw");
-        let debug_reachable_tags = {
-            let tag_groups = git_vcs
-                .get_merged_tags()
-                .expect("Failed to get merged tags");
-            let mut display = Vec::new();
-            for (i, group) in tag_groups.iter().enumerate() {
-                display.push(format!(
-                    "Group {}: [{}]",
-                    i,
-                    group.iter().cloned().collect::<Vec<_>>().join(", ")
-                ));
-            }
-            display.join(" | ")
-        };
-        let debug_tags_at_head = fixture
-            .git_impl
-            .execute_git(&fixture.test_dir, &["tag", "--points-at", &debug_head])
-            .expect("Failed to get tags at HEAD");
-
-        // Debug: check what find_latest_valid_version_tag returns
-        let debug_tag_groups = git_vcs
-            .get_merged_tags()
-            .expect("Failed to get merged tags");
-        let debug_find_result = git_vcs
-            .find_latest_valid_version_tag(&debug_tag_groups, "auto")
-            .expect("Failed to find latest valid version tag");
-
-        // Debug: reuse the working get_latest_tag method
-        let debug_result = git_vcs
-            .get_latest_tag("auto")
-            .expect("Failed to get latest tag");
-
         assert_eq!(
             result,
             Some("v2.0.0".to_string()),
-            "UBUNTU DEBUG: HEAD={}, v2.0.0={}, v3.0.0={}, result={:?}. \
-             HEAD==v2.0.0={}, HEAD==v3.0.0={}. \
-             Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0. \
-             RAW_GIT_OUTPUT: [{}]. \
-             PARSED_TAGS: [{}]. Tags at HEAD: [{}]. \
-             find_latest_valid_version_tag result: {:?}. \
-             get_latest_tag result: {:?}",
-            debug_head,
-            debug_v2_commit,
-            debug_v3_commit,
-            result,
-            debug_head == debug_v2_commit,
-            debug_head == debug_v3_commit,
-            debug_reachable_tags_raw.trim(),
-            debug_reachable_tags,
-            debug_tags_at_head
-                .lines()
-                .filter(|l| !l.trim().is_empty())
-                .collect::<Vec<_>>()
-                .join(", "),
-            debug_find_result,
-            debug_result
+            "Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0"
         );
-        // ==== DEBUG END ====
+
+        // // Debug assertion with verbose information for Ubuntu debugging
+        // let result = git_vcs.get_latest_tag("auto")?;
+
+        // // ==== DEBUG START ====
+        // // Collect debug information only for assertion failure (no side effects)
+        // let debug_head = fixture
+        //     .get_head_commit()
+        //     .expect("Failed to get current HEAD commit")
+        //     .trim()
+        //     .to_string();
+        // let debug_v2_commit = fixture
+        //     .git_impl
+        //     .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
+        //     .expect("Failed to get v2.0.0 commit")
+        //     .trim()
+        //     .to_string();
+        // let debug_v3_commit = fixture
+        //     .git_impl
+        //     .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v3.0.0"])
+        //     .expect("Failed to get v3.0.0 commit")
+        //     .trim()
+        //     .to_string();
+        // let debug_reachable_tags_raw = git_vcs
+        //     .run_git_command(&[
+        //         "tag",
+        //         "--merged",
+        //         "HEAD",
+        //         "--sort=-committerdate",
+        //         "--format=%(refname:short)||%(committerdate:unix)",
+        //     ])
+        //     .expect("Failed to get reachable tags raw");
+        // let debug_reachable_tags = {
+        //     let tag_groups = git_vcs
+        //         .get_merged_tags()
+        //         .expect("Failed to get merged tags");
+        //     let mut display = Vec::new();
+        //     for (i, group) in tag_groups.iter().enumerate() {
+        //         display.push(format!(
+        //             "Group {}: [{}]",
+        //             i,
+        //             group.iter().cloned().collect::<Vec<_>>().join(", ")
+        //         ));
+        //     }
+        //     display.join(" | ")
+        // };
+        // let debug_tags_at_head = fixture
+        //     .git_impl
+        //     .execute_git(&fixture.test_dir, &["tag", "--points-at", &debug_head])
+        //     .expect("Failed to get tags at HEAD");
+
+        // // Debug: check what find_latest_valid_version_tag returns
+        // let debug_tag_groups = git_vcs
+        //     .get_merged_tags()
+        //     .expect("Failed to get merged tags");
+        // let debug_find_result = git_vcs
+        //     .find_latest_valid_version_tag(&debug_tag_groups, "auto")
+        //     .expect("Failed to find latest valid version tag");
+
+        // // Debug: reuse the working get_latest_tag method
+        // let debug_result = git_vcs
+        //     .get_latest_tag("auto")
+        //     .expect("Failed to get latest tag");
+
+        // assert_eq!(
+        //     result,
+        //     Some("v2.0.0".to_string()),
+        //     "UBUNTU DEBUG: HEAD={}, v2.0.0={}, v3.0.0={}, result={:?}. \
+        //      HEAD==v2.0.0={}, HEAD==v3.0.0={}. \
+        //      Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0. \
+        //      RAW_GIT_OUTPUT: [{}]. \
+        //      PARSED_TAGS: [{}]. Tags at HEAD: [{}]. \
+        //      find_latest_valid_version_tag result: {:?}. \
+        //      get_latest_tag result: {:?}",
+        //     debug_head,
+        //     debug_v2_commit,
+        //     debug_v3_commit,
+        //     result,
+        //     debug_head == debug_v2_commit,
+        //     debug_head == debug_v3_commit,
+        //     debug_reachable_tags_raw.trim(),
+        //     debug_reachable_tags,
+        //     debug_tags_at_head
+        //         .lines()
+        //         .filter(|l| !l.trim().is_empty())
+        //         .collect::<Vec<_>>()
+        //         .join(", "),
+        //     debug_find_result,
+        //     debug_result
+        // );
+        // // ==== DEBUG END ====
 
         // Test 5: Old commit with high version tag
         let head_commit = fixture
