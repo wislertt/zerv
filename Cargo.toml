@@ -46,6 +46,7 @@ tracing = "^0.1"
 tracing-subscriber = { version = "^0.3", features = ["env-filter"] }
 
 [dev-dependencies]
+cargo-audit = "^0.22.0"
 ctor = "^0.6"
 dotenvy = "^0.15"
 rstest = "^0.26.0"
