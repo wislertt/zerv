@@ -1,6 +1,12 @@
 // Test utilities for flow scenario integration tests
 // Reuses utilities from src/cli/flow/test_utils.rs
 
+use std::path::PathBuf;
+use std::{
+    fs,
+    io,
+};
+
 use zerv::cli::flow::test_utils::SchemaTestCase;
 use zerv::test_utils::{
     GitRepoFixture,
@@ -98,6 +104,82 @@ impl FlowIntegrationTestScenario {
     /// Get the test directory path
     pub fn test_dir_path(&self) -> String {
         self.fixture.path().to_string_lossy().to_string()
+    }
+
+    /// Copy the test repository to a temporary directory for debugging
+    /// Creates a copy in .cache/tmp/<tmp_dir_name> that can be inspected manually
+    /// If the directory already exists, it will be deleted first
+    pub fn copy_to_tmp(self, tmp_dir_name: &str) -> Self {
+        // Create .cache directory if it doesn't exist
+        let cache_dir = PathBuf::from(".cache");
+        if let Err(e) = fs::create_dir_all(&cache_dir) {
+            panic!("Failed to create .cache directory: {}", e);
+        }
+
+        // Create .cache/tmp directory
+        let tmp_base = cache_dir.join("tmp");
+        if let Err(e) = fs::create_dir_all(&tmp_base) {
+            panic!("Failed to create .cache/tmp directory: {}", e);
+        }
+
+        let tmp_dir_path = tmp_base.join(tmp_dir_name);
+        let source_path = self.fixture.path();
+
+        // Remove existing directory if it exists
+        if tmp_dir_path.exists()
+            && let Err(e) = fs::remove_dir_all(&tmp_dir_path)
+        {
+            panic!("Failed to remove existing directory: {}", e);
+        }
+
+        // Copy the directory using Rust's built-in capabilities
+        let source_buf = source_path.to_path_buf();
+        if let Err(e) = Self::copy_directory_recursive(&source_buf, &tmp_dir_path) {
+            panic!("Failed to copy test repository: {}", e);
+        }
+
+        println!("Test repository copied to: {}", tmp_dir_path.display());
+
+        self
+    }
+
+    /// Delete a temporary directory created by copy_to_tmp
+    pub fn delete_tmp(self, tmp_dir_name: &str) -> Self {
+        let cache_dir = PathBuf::from(".cache");
+        let tmp_dir_path = cache_dir.join("tmp").join(tmp_dir_name);
+
+        if tmp_dir_path.exists() {
+            if let Err(e) = fs::remove_dir_all(&tmp_dir_path) {
+                panic!(
+                    "Failed to delete temporary directory {}: {}",
+                    tmp_dir_path.display(),
+                    e
+                );
+            }
+            println!("Deleted temporary directory: {}", tmp_dir_path.display());
+        }
+        self
+    }
+
+    /// Copy directory recursively using Rust's built-in functionality
+    fn copy_directory_recursive(source: &PathBuf, destination: &PathBuf) -> io::Result<()> {
+        fs::create_dir_all(destination)?;
+
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let file_type = entry.file_type()?;
+            let source_path = entry.path();
+            let file_name = entry.file_name();
+            let dest_path = destination.join(file_name);
+
+            if file_type.is_dir() {
+                Self::copy_directory_recursive(&source_path, &dest_path)?;
+            } else {
+                fs::copy(&source_path, &dest_path)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
