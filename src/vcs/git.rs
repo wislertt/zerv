@@ -882,92 +882,73 @@ mod tests {
         let v2_commit = v2_commit.trim();
         fixture = fixture.checkout(v2_commit);
 
-        // ====== DEBUG START ========
-
-        // // Debug information to understand Ubuntu vs other OS differences - BEFORE calling get_latest_tag
-        // let current_head = fixture
-        //     .get_head_commit()
-        //     .expect("Failed to get current HEAD commit");
-        // let v2_tag_commit = fixture
-        //     .git_impl
-        //     .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
-        //     .expect("Failed to get v2.0.0 tag commit");
-        // let v2_tag_commit = v2_tag_commit.trim();
-        // let v3_tag_commit = fixture
-        //     .git_impl
-        //     .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v3.0.0"])
-        //     .expect("Failed to get v3.0.0 tag commit");
-        // let v3_tag_commit = v3_tag_commit.trim();
-
-        // // Check reachable tags from current HEAD (this is what get_latest_tag uses first)
-        // let reachable_tags = fixture
-        //     .git_impl
-        //     .execute_git(
-        //         &fixture.test_dir,
-        //         &["tag", "--merged", "HEAD", "--sort=-committerdate"],
-        //     )
-        //     .expect("Failed to get reachable tags");
-
-        // // Check tags pointing at HEAD commit
-        // let tags_at_head = fixture
-        //     .git_impl
-        //     .execute_git(
-        //         &fixture.test_dir,
-        //         &["tag", "--points-at", current_head.trim()],
-        //     )
-        //     .expect("Failed to get tags at HEAD");
-
-        // eprintln!("=== DEBUG: Ubuntu Git behavior analysis (PRE get_latest_tag) ===");
-        // eprintln!("Current HEAD commit: {}", current_head.trim());
-        // eprintln!("v2.0.0 tag commit: {}", v2_tag_commit);
-        // eprintln!("v3.0.0 tag commit: {}", v3_tag_commit);
-        // eprintln!(
-        //     "HEAD == v2.0.0 commit: {}",
-        //     current_head.trim() == v2_tag_commit
-        // );
-        // eprintln!(
-        //     "HEAD == v3.0.0 commit: {}",
-        //     current_head.trim() == v3_tag_commit
-        // );
-        // eprintln!("Tags reachable from HEAD (sorted by -committerdate):");
-        // for line in reachable_tags.lines() {
-        //     if !line.trim().is_empty() {
-        //         eprintln!("  {}", line.trim());
-        //     }
-        // }
-        // eprintln!("Tags pointing directly at HEAD:");
-        // for line in tags_at_head.lines() {
-        //     if !line.trim().is_empty() {
-        //         eprintln!("  {}", line.trim());
-        //     }
-        // }
-        // eprintln!("=== END PRE DEBUG ===");
-
+        // Original assertion (commented out for easy revert)
         // let result = git_vcs.get_latest_tag("auto")?;
-
-        // eprintln!("=== DEBUG: POST get_latest_tag ===");
-        // eprintln!("get_latest_tag result: {:?}", result);
-        // eprintln!("Expected: Some(\"v2.0.0\")");
-        // eprintln!("=== END DEBUG ===");
-
         // assert_eq!(
         //     result,
         //     Some("v2.0.0".to_string()),
-        //     "DEBUG: HEAD={}, v2.0.0={}, v3.0.0={}, result={:?}. Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0. Ubuntu vs macOS/Windows difference analysis above.",
-        //     current_head.trim(),
-        //     v2_tag_commit,
-        //     v3_tag_commit,
-        //     result
+        //     "Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0"
         // );
-        // ====== DEBUG END ========
 
-        // Original assertion - commented out for debugging
+        // Debug assertion with verbose information for Ubuntu debugging
         let result = git_vcs.get_latest_tag("auto")?;
+
+        // ==== DEBUG START ====
+        // Collect debug information only for assertion failure (no side effects)
+        let debug_head = fixture
+            .get_head_commit()
+            .expect("Failed to get current HEAD commit")
+            .trim()
+            .to_string();
+        let debug_v2_commit = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
+            .expect("Failed to get v2.0.0 commit")
+            .trim()
+            .to_string();
+        let debug_v3_commit = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v3.0.0"])
+            .expect("Failed to get v3.0.0 commit")
+            .trim()
+            .to_string();
+        let debug_reachable_tags = fixture
+            .git_impl
+            .execute_git(
+                &fixture.test_dir,
+                &["tag", "--merged", "HEAD", "--sort=-committerdate"],
+            )
+            .expect("Failed to get reachable tags");
+        let debug_tags_at_head = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["tag", "--points-at", &debug_head])
+            .expect("Failed to get tags at HEAD");
+
         assert_eq!(
             result,
             Some("v2.0.0".to_string()),
-            "Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0"
+            "UBUNTU DEBUG: HEAD={}, v2.0.0={}, v3.0.0={}, result={:?}. \
+             HEAD==v2.0.0={}, HEAD==v3.0.0={}. \
+             Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0. \
+             Reachable tags: [{}]. Tags at HEAD: [{}]",
+            debug_head,
+            debug_v2_commit,
+            debug_v3_commit,
+            result,
+            debug_head == debug_v2_commit,
+            debug_head == debug_v3_commit,
+            debug_reachable_tags
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .collect::<Vec<_>>()
+                .join(", "),
+            debug_tags_at_head
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .collect::<Vec<_>>()
+                .join(", ")
         );
+        // ==== DEBUG END ====
 
         // Test 5: Old commit with high version tag
         let head_commit = fixture
