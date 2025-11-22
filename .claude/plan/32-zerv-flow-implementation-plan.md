@@ -316,7 +316,6 @@ gitGraph
     %% Step 4: release/2 completes preparation successfully
     checkout release/2
     commit id: "1.0.1-rc.2.post.4"
-    commit id: "1.0.1-rc.2.post.5"
 
     %% Step 5: Merge release/2 to main and release v1.1.0
     %% Note: release/1 remains abandoned and never merged
@@ -327,7 +326,7 @@ gitGraph
 **Version progression details:**
 
 - **release/1**: `1.0.1-rc.1.post.1` → `1.0.1-rc.1.post.2` → `1.0.1-rc.1.post.3` (abandoned)
-- **release/2**: Created from `release/1`'s second commit (`1.0.1-rc.1.post.2`), continues as `1.0.1-rc.2.post.3` → `1.0.1-rc.2.post.4` → `1.0.1-rc.2.post.5`
+- **release/2**: Created from `release/1`'s second commit (`1.0.1-rc.1.post.2`), continues as `1.0.1-rc.2.post.3` → `1.0.1-rc.2.post.4`
 - **Main**: Clean progression `1.0.0` → `1.1.0` (only from successful `release/2` merge)
 
 **Key insights from this example:**
