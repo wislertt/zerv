@@ -14,9 +14,9 @@ use crate::error::ZervError;
 use crate::version::zerv::core::Zerv;
 
 impl FlowArgs {
-    /// Get current zerv object "as-is" (no bumps)
-    pub fn get_current_zerv_object(&self, stdin_content: Option<&str>) -> Result<Zerv, ZervError> {
-        let version_args = VersionArgs {
+    /// Create base VersionArgs with shared configuration
+    fn create_version_args(&self, bumps: BumpsConfig) -> VersionArgs {
+        VersionArgs {
             input: self.input.clone(),
             output: OutputConfig::zerv(),
             main: MainConfig::from_schema(self.schema.clone()),
@@ -37,8 +37,13 @@ impl FlowArgs {
                 dev: self.overrides.dev.clone(),
                 ..Default::default()
             },
-            bumps: BumpsConfig::default(),
-        };
+            bumps,
+        }
+    }
+
+    /// Get current zerv object "as-is" (no bumps)
+    pub fn get_current_zerv_object(&self, stdin_content: Option<&str>) -> Result<Zerv, ZervError> {
+        let version_args = self.create_version_args(BumpsConfig::default());
 
         let ron_output = run_version_pipeline(version_args, stdin_content)?;
         from_str(&ron_output)
@@ -50,35 +55,15 @@ impl FlowArgs {
         &self,
         _current_zerv: &Zerv,
     ) -> Result<VersionArgs, ZervError> {
-        Ok(VersionArgs {
-            input: self.input.clone(),
-            output: OutputConfig::zerv(),
-            main: MainConfig::from_schema(self.schema.clone()),
-            overrides: OverridesConfig {
-                tag_version: self.overrides.tag_version.clone(),
-                distance: self.overrides.distance,
-                dirty: self.overrides.dirty,
-                no_dirty: self.overrides.no_dirty,
-                clean: self.overrides.clean,
-                bumped_branch: self.overrides.bumped_branch.clone(),
-                bumped_commit_hash: self.overrides.bumped_commit_hash.clone(),
-                bumped_timestamp: self.overrides.bumped_timestamp,
-                major: self.overrides.major.clone(),
-                minor: self.overrides.minor.clone(),
-                patch: self.overrides.patch.clone(),
-                epoch: self.overrides.epoch.clone(),
-                post: Some(Template::new("{{ post }}".to_string())),
-                dev: self.overrides.dev.clone(),
-                ..Default::default()
-            },
-            bumps: BumpsConfig {
-                bump_pre_release_label: self.bump_pre_release_label(),
-                bump_pre_release_num: self.bump_pre_release_num(),
-                bump_patch: self.bump_patch(),
-                bump_post: self.bump_post(),
-                bump_dev: self.bump_dev(),
-                ..Default::default()
-            },
-        })
+        let bumps = BumpsConfig {
+            bump_pre_release_label: self.bump_pre_release_label(),
+            bump_pre_release_num: self.bump_pre_release_num(),
+            bump_patch: self.bump_patch(),
+            bump_post: self.bump_post(),
+            bump_dev: self.bump_dev(),
+            ..Default::default()
+        };
+
+        Ok(self.create_version_args(bumps))
     }
 }
