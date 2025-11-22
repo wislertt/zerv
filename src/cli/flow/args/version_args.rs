@@ -33,7 +33,6 @@ impl FlowArgs {
                 patch: self.overrides.patch.clone(),
                 epoch: self.overrides.epoch.clone(),
                 post: self.overrides.override_post(),
-                dev: self.overrides.dev.clone(),
                 ..Default::default()
             },
             bumps,

@@ -90,7 +90,6 @@ fn test_post_override_with_pre_release() {
 #[case::patch_override("1.2.8", "--patch 8")]
 #[case::epoch_override("1.2.3-epoch.5", "--epoch 5")]
 #[case::post_override("1.2.3-post.15", "--post 15")]
-#[case::dev_override("1.2.3-dev.7", "--dev 7")]
 fn test_individual_overrides(#[case] expected: &str, #[case] override_arg: &str) {
     let zerv_ron = ZervFixture::new()
         .with_version(1, 2, 3)
@@ -100,7 +99,7 @@ fn test_individual_overrides(#[case] expected: &str, #[case] override_arg: &str)
 
     let output = TestCommand::run_with_stdin(
         &format!(
-            "flow --source stdin --schema standard-base-prerelease-post-dev --output-format semver {override_arg}"
+            "flow --source stdin --schema standard-base-prerelease-post --output-format semver {override_arg}"
         ),
         zerv_ron,
     );
@@ -117,27 +116,11 @@ fn test_multiple_overrides_combined() {
         .to_string();
 
     let output = TestCommand::run_with_stdin(
-        "flow --source stdin --schema standard-base-prerelease-post-dev --output-format semver --major 3 --minor 5 --patch 7 --post 42",
+        "flow --source stdin --schema standard-base-prerelease-post --output-format semver --major 3 --minor 5 --patch 7 --post 42",
         zerv_ron,
     );
 
     assert_eq!(output, "3.5.7-post.42");
-}
-
-#[rstest]
-fn test_post_and_dev_overrides_combined() {
-    let zerv_ron = ZervFixture::new()
-        .with_version(1, 2, 3)
-        .with_branch("main".to_string())
-        .build()
-        .to_string();
-
-    let output = TestCommand::run_with_stdin(
-        "flow --source stdin --schema standard-base-prerelease-post-dev --output-format semver --post 99 --dev 11",
-        zerv_ron,
-    );
-
-    assert_eq!(output, "1.2.3-post.99.dev.11");
 }
 
 #[rstest]
