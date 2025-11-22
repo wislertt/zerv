@@ -1,0 +1,75 @@
+name: ci-parallel-ubuntu
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        types: [opened, synchronize, reopened]
+
+jobs:
+    test:
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest-1, ubuntu-latest-2, ubuntu-latest-3, ubuntu-latest-4, ubuntu-latest-5]
+        runs-on: ubuntu-latest
+        env:
+            ZERV_TEST_NATIVE_GIT: true
+            ZERV_TEST_DOCKER: ${{ startsWith(matrix.os, 'ubuntu-latest') && 'true' || 'false' }}
+            ZERV_FORCE_RUST_LOG_OFF: ${{ startsWith(matrix.os, 'ubuntu-latest') && 'true' || 'false' }}
+        steps:
+            - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+              with:
+                  fetch-depth: 0
+
+            - uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e # stable
+              with:
+                  toolchain: stable
+
+            - name: Production build check
+              run: cargo build --verbose
+
+            - name: Restore cache
+              uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ matrix.os }}
+                  restore-keys: |
+                      cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.os }}
+                      cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                      cargo-${{ runner.os }}-
+
+            - run: cargo install cargo-tarpaulin --locked || true
+
+            - run: make _test
+              shell: bash
+
+            - name: Save cache
+              uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+              if: always()
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ matrix.os }}
+
+            - name: SonarQube Scan
+              if: matrix.os == 'ubuntu-latest-1'
+              uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6.0.0
+              env:
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+            - name: Upload coverage reports to Codecov
+              if: matrix.os == 'ubuntu-latest-1'
+              uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
+              with:
+                  fail_ci_if_error: true
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  verbose: true
