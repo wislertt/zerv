@@ -9,6 +9,7 @@ use crate::error::{
 };
 
 pub mod git;
+pub mod git_utils;
 pub mod vcs_data;
 
 pub use vcs_data::VcsData;

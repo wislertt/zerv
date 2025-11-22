@@ -155,27 +155,27 @@ fn test_gitflow_development_flow() {
         ))
         .commit()
         .expect_version(
-            "1.0.2-rc.1.post.1+release.1.1.g{hex:7}",
-            "1.0.2rc1.post1+release.1.1.g{hex:7}",
+            "1.0.2-rc.1.post.2+release.1.1.g{hex:7}",
+            "1.0.2rc1.post2+release.1.1.g{hex:7}",
         )
-        .create_tag("v1.0.2-rc.1.post.2")
-        .expect_version("1.0.2-rc.1.post.2", "1.0.2rc1.post2");
+        .create_tag("v1.0.2-rc.1.post.3")
+        .expect_version("1.0.2-rc.1.post.3", "1.0.2rc1.post3");
 
     // Step 10: Continue release branch development with dirty state and commits
     test_info!("Step 10: Continue release branch development with dirty state and commits");
     let scenario = scenario
         .make_dirty()
         .expect_version(
-            "1.0.2-rc.1.post.1.dev.{timestamp:now}+release.1.0.g{hex:7}",
-            "1.0.2rc1.post1.dev{timestamp:now}+release.1.0.g{hex:7}",
+            "1.0.2-rc.1.post.4.dev.{timestamp:now}+release.1.0.g{hex:7}",
+            "1.0.2rc1.post4.dev{timestamp:now}+release.1.0.g{hex:7}",
         )
         .commit()
         .expect_version(
-            "1.0.2-rc.1.post.1+release.1.1.g{hex:7}",
-            "1.0.2rc1.post1+release.1.1.g{hex:7}",
+            "1.0.2-rc.1.post.4+release.1.1.g{hex:7}",
+            "1.0.2rc1.post4+release.1.1.g{hex:7}",
         )
-        .create_tag("v1.0.2-rc.1.post.3")
-        .expect_version("1.0.2-rc.1.post.3", "1.0.2rc1.post3");
+        .create_tag("v1.0.2-rc.1.post.4")
+        .expect_version("1.0.2-rc.1.post.4", "1.0.2rc1.post4");
 
     // Step 11: Final release merge to main
     test_info!("Step 11: Final release merge to main and release v1.1.0");

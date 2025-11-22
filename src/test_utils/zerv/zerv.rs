@@ -208,6 +208,24 @@ impl ZervFixture {
         self
     }
 
+    /// Set bumped timestamp (chainable)
+    pub fn with_bumped_timestamp(mut self, timestamp: u64) -> Self {
+        self.zerv.vars.bumped_timestamp = Some(timestamp);
+        self
+    }
+
+    /// Clear pre-release (chainable)
+    pub fn without_pre_release(mut self) -> Self {
+        self.zerv.vars.pre_release = None;
+        self
+    }
+
+    /// Clear post-release (chainable)
+    pub fn without_post(mut self) -> Self {
+        self.zerv.vars.post = None;
+        self
+    }
+
     /// Create from SemVer string (chainable)
     pub fn from_semver_str(semver_str: &str) -> Self {
         let semver = SemVer::from_str(semver_str)

@@ -76,43 +76,43 @@ impl VersionArgsFixture {
 
     /// Set tag version
     pub fn with_tag_version(mut self, tag_version: &str) -> Self {
-        self.args.overrides.tag_version = Some(tag_version.to_string());
+        self.args.overrides.common.tag_version = Some(tag_version.to_string());
         self
     }
 
     /// Set distance
     pub fn with_distance(mut self, distance: u32) -> Self {
-        self.args.overrides.distance = Some(distance);
+        self.args.overrides.common.distance = Some(distance);
         self
     }
 
     /// Set dirty flag
     pub fn with_dirty(mut self, dirty: bool) -> Self {
-        self.args.overrides.dirty = dirty;
+        self.args.overrides.common.dirty = dirty;
         self
     }
 
     /// Set no_dirty flag
     pub fn with_no_dirty(mut self, no_dirty: bool) -> Self {
-        self.args.overrides.no_dirty = no_dirty;
+        self.args.overrides.common.no_dirty = no_dirty;
         self
     }
 
     /// Set clean flag
     pub fn with_clean_flag(mut self, clean: bool) -> Self {
-        self.args.overrides.clean = clean;
+        self.args.overrides.common.clean = clean;
         self
     }
 
     /// Set current branch
     pub fn with_current_branch(mut self, branch: &str) -> Self {
-        self.args.overrides.bumped_branch = Some(branch.to_string());
+        self.args.overrides.common.bumped_branch = Some(branch.to_string());
         self
     }
 
     /// Set commit hash
     pub fn with_commit_hash(mut self, hash: &str) -> Self {
-        self.args.overrides.bumped_commit_hash = Some(hash.to_string());
+        self.args.overrides.common.bumped_commit_hash = Some(hash.to_string());
         self
     }
 
@@ -120,7 +120,7 @@ impl VersionArgsFixture {
 
     /// Set post value
     pub fn with_post(mut self, post: u32) -> Self {
-        self.args.overrides.post = Some(Template::new(post.to_string()));
+        self.args.overrides.common.post = Some(Template::new(post.to_string()));
         self
     }
 
@@ -145,25 +145,25 @@ impl VersionArgsFixture {
 
     /// Set epoch
     pub fn with_epoch(mut self, epoch: u32) -> Self {
-        self.args.overrides.epoch = Some(epoch.into());
+        self.args.overrides.common.epoch = Some(epoch.into());
         self
     }
 
     /// Set major version
     pub fn with_major(mut self, major: u32) -> Self {
-        self.args.overrides.major = Some(major.into());
+        self.args.overrides.common.major = Some(major.into());
         self
     }
 
     /// Set minor version
     pub fn with_minor(mut self, minor: u32) -> Self {
-        self.args.overrides.minor = Some(minor.into());
+        self.args.overrides.common.minor = Some(minor.into());
         self
     }
 
     /// Set patch version
     pub fn with_patch(mut self, patch: u32) -> Self {
-        self.args.overrides.patch = Some(patch.into());
+        self.args.overrides.common.patch = Some(patch.into());
         self
     }
 
@@ -299,23 +299,25 @@ impl VersionArgsFixture {
         for override_type in overrides {
             match override_type {
                 OverrideType::TagVersion(version) => {
-                    self.args.overrides.tag_version = Some(version)
+                    self.args.overrides.common.tag_version = Some(version)
                 }
-                OverrideType::Distance(distance) => self.args.overrides.distance = Some(distance),
-                OverrideType::Dirty(dirty) => self.args.overrides.dirty = dirty,
+                OverrideType::Distance(distance) => {
+                    self.args.overrides.common.distance = Some(distance)
+                }
+                OverrideType::Dirty(dirty) => self.args.overrides.common.dirty = dirty,
                 OverrideType::BumpedBranch(branch) => {
-                    self.args.overrides.bumped_branch = Some(branch)
+                    self.args.overrides.common.bumped_branch = Some(branch)
                 }
                 OverrideType::BumpedCommitHash(hash) => {
-                    self.args.overrides.bumped_commit_hash = Some(hash)
+                    self.args.overrides.common.bumped_commit_hash = Some(hash)
                 }
                 OverrideType::BumpedTimestamp(timestamp) => {
-                    self.args.overrides.bumped_timestamp = Some(timestamp)
+                    self.args.overrides.common.bumped_timestamp = Some(timestamp)
                 }
-                OverrideType::Major(major) => self.args.overrides.major = Some(major.into()),
-                OverrideType::Minor(minor) => self.args.overrides.minor = Some(minor.into()),
-                OverrideType::Patch(patch) => self.args.overrides.patch = Some(patch.into()),
-                OverrideType::Post(post) => self.args.overrides.post = Some(post.into()),
+                OverrideType::Major(major) => self.args.overrides.common.major = Some(major.into()),
+                OverrideType::Minor(minor) => self.args.overrides.common.minor = Some(minor.into()),
+                OverrideType::Patch(patch) => self.args.overrides.common.patch = Some(patch.into()),
+                OverrideType::Post(post) => self.args.overrides.common.post = Some(post.into()),
                 OverrideType::Dev(dev) => self.args.overrides.dev = Some(dev.into()),
                 OverrideType::PreReleaseLabel(label) => {
                     use crate::cli::utils::template::Template;
@@ -324,7 +326,7 @@ impl VersionArgsFixture {
                 OverrideType::PreReleaseNum(num) => {
                     self.args.overrides.pre_release_num = Some(num.into())
                 }
-                OverrideType::Epoch(epoch) => self.args.overrides.epoch = Some(epoch.into()),
+                OverrideType::Epoch(epoch) => self.args.overrides.common.epoch = Some(epoch.into()),
             }
         }
         self
@@ -354,10 +356,10 @@ mod tests {
         assert_eq!(args.input.source, sources::GIT);
         assert_eq!(args.input.input_format, formats::AUTO);
         assert_eq!(args.output.output_format, formats::SEMVER);
-        assert_eq!(args.overrides.tag_version, None);
+        assert_eq!(args.overrides.common.tag_version, None);
         assert_eq!(args.main.schema, None);
-        assert!(!args.overrides.dirty);
-        assert!(!args.overrides.clean);
+        assert!(!args.overrides.common.dirty);
+        assert!(!args.overrides.common.clean);
     }
 
     #[test]
@@ -370,7 +372,7 @@ mod tests {
             .with_directory("/test/dir")
             .build();
 
-        assert_eq!(args.overrides.tag_version, Some("2.0.0".to_string()));
+        assert_eq!(args.overrides.common.tag_version, Some("2.0.0".to_string()));
         assert_eq!(args.input.source, "custom");
         assert_eq!(args.main.schema, Some("test-schema".to_string()));
         assert_eq!(args.output.output_format, formats::PEP440);
@@ -387,15 +389,18 @@ mod tests {
             .with_commit_hash("deadbeef")
             .build();
 
-        assert_eq!(args.overrides.tag_version, Some("v3.0.0".to_string()));
-        assert_eq!(args.overrides.distance, Some(10));
-        assert!(args.overrides.dirty);
         assert_eq!(
-            args.overrides.bumped_branch,
+            args.overrides.common.tag_version,
+            Some("v3.0.0".to_string())
+        );
+        assert_eq!(args.overrides.common.distance, Some(10));
+        assert!(args.overrides.common.dirty);
+        assert_eq!(
+            args.overrides.common.bumped_branch,
             Some("feature/test".to_string())
         );
         assert_eq!(
-            args.overrides.bumped_commit_hash,
+            args.overrides.common.bumped_commit_hash,
             Some("deadbeef".to_string())
         );
     }
@@ -433,7 +438,10 @@ mod tests {
         assert_eq!(args.bumps.bump_major, Some(Some(2.into())));
         assert_eq!(args.bumps.bump_minor, Some(Some(3.into())));
         assert_eq!(args.bumps.bump_patch, Some(Some(1.into())));
-        assert_eq!(args.overrides.tag_version, Some("v1.0.0".to_string()));
+        assert_eq!(
+            args.overrides.common.tag_version,
+            Some("v1.0.0".to_string())
+        );
     }
 
     #[test]
@@ -450,10 +458,16 @@ mod tests {
             .with_output_format(formats::PEP440)
             .build();
 
-        assert_eq!(args.overrides.tag_version, Some("v2.0.0".to_string()));
-        assert_eq!(args.overrides.distance, Some(15));
-        assert!(args.overrides.dirty);
-        assert_eq!(args.overrides.bumped_branch, Some("main".to_string()));
+        assert_eq!(
+            args.overrides.common.tag_version,
+            Some("v2.0.0".to_string())
+        );
+        assert_eq!(args.overrides.common.distance, Some(15));
+        assert!(args.overrides.common.dirty);
+        assert_eq!(
+            args.overrides.common.bumped_branch,
+            Some("main".to_string())
+        );
         assert_eq!(args.output.output_format, formats::PEP440);
     }
 
@@ -469,7 +483,7 @@ mod tests {
         assert_eq!(args1.input.source, args2.input.source);
         assert_eq!(args1.input.input_format, args2.input.input_format);
         assert_eq!(args1.output.output_format, args2.output.output_format);
-        assert_eq!(args1.overrides.dirty, args2.overrides.dirty);
+        assert_eq!(args1.overrides.common.dirty, args2.overrides.common.dirty);
     }
 
     // Tests for uncovered methods
@@ -509,19 +523,19 @@ mod tests {
     #[test]
     fn test_with_no_dirty() {
         let args = VersionArgsFixture::new().with_no_dirty(true).build();
-        assert!(args.overrides.no_dirty);
+        assert!(args.overrides.common.no_dirty);
 
         let args2 = VersionArgsFixture::new().with_no_dirty(false).build();
-        assert!(!args2.overrides.no_dirty);
+        assert!(!args2.overrides.common.no_dirty);
     }
 
     #[test]
     fn test_with_clean_flag() {
         let args = VersionArgsFixture::new().with_clean_flag(true).build();
-        assert!(args.overrides.clean);
+        assert!(args.overrides.common.clean);
 
         let args2 = VersionArgsFixture::new().with_clean_flag(false).build();
-        assert!(!args2.overrides.clean);
+        assert!(!args2.overrides.common.clean);
     }
 
     #[test]
@@ -530,7 +544,7 @@ mod tests {
             .with_commit_hash("deadbeef1234567890")
             .build();
         assert_eq!(
-            args.overrides.bumped_commit_hash,
+            args.overrides.common.bumped_commit_hash,
             Some("deadbeef1234567890".to_string())
         );
     }
@@ -564,10 +578,10 @@ mod tests {
             ))
         );
         assert_eq!(args.output.output_prefix, Some("v".to_string()));
-        assert!(args.overrides.no_dirty);
-        assert!(args.overrides.clean);
+        assert!(args.overrides.common.no_dirty);
+        assert!(args.overrides.common.clean);
         assert_eq!(
-            args.overrides.bumped_commit_hash,
+            args.overrides.common.bumped_commit_hash,
             Some("hash123".to_string())
         );
         assert_eq!(args.overrides.custom, Some("custom_value".to_string()));

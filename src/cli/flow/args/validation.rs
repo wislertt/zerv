@@ -21,6 +21,7 @@ impl FlowArgs {
         self.validate_hash_branch_len()?;
         self.validate_post_mode()?;
         self.validate_schema()?;
+        self.validate_overrides()?;
 
         Ok(())
     }
@@ -81,6 +82,36 @@ impl FlowArgs {
         } else {
             Ok(())
         }
+    }
+
+    fn validate_overrides(&self) -> Result<(), ZervError> {
+        // Validate clean override conflicts
+        if self.overrides.common.clean {
+            if self.overrides.common.distance.is_some() {
+                return Err(ZervError::InvalidArgument(
+                    "--clean conflicts with --distance".to_string(),
+                ));
+            }
+            if self.overrides.common.dirty {
+                return Err(ZervError::InvalidArgument(
+                    "--clean conflicts with --dirty".to_string(),
+                ));
+            }
+            if self.overrides.common.no_dirty {
+                return Err(ZervError::InvalidArgument(
+                    "--clean conflicts with --no-dirty".to_string(),
+                ));
+            }
+        }
+
+        // Validate dirty/no_dirty mutual exclusion
+        if self.overrides.common.dirty && self.overrides.common.no_dirty {
+            return Err(ZervError::InvalidArgument(
+                "--dirty and --no-dirty cannot be used together".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -262,6 +293,153 @@ mod tests {
 
             // Should validate successfully - schema and manual overrides can coexist
             assert!(args.validate(&mock_zerv()).is_ok());
+        }
+
+        mod overrides_validation {
+            use super::*;
+            use crate::cli::common::overrides::CommonOverridesConfig;
+            use crate::cli::flow::args::overrides::OverridesConfig;
+
+            #[test]
+            fn test_valid_overrides() {
+                let mut args = FlowArgs {
+                    overrides: OverridesConfig {
+                        common: CommonOverridesConfig {
+                            tag_version: Some("v1.0.0".to_string()),
+                            bumped_branch: Some("feature/test".to_string()),
+                            major: Some("{{major}}".parse().unwrap()),
+                            minor: Some("5".parse().unwrap()),
+                            ..Default::default()
+                        },
+                    },
+                    ..FlowArgs::default()
+                };
+                assert!(args.validate(&mock_zerv()).is_ok());
+            }
+
+            #[test]
+            fn test_clean_conflicts_with_distance() {
+                let mut args = FlowArgs {
+                    overrides: OverridesConfig {
+                        common: CommonOverridesConfig {
+                            clean: true,
+                            distance: Some(5),
+                            ..Default::default()
+                        },
+                    },
+                    ..FlowArgs::default()
+                };
+                let result = args.validate(&mock_zerv());
+                assert!(result.is_err());
+                assert!(
+                    result
+                        .unwrap_err()
+                        .to_string()
+                        .contains("--clean conflicts with --distance")
+                );
+            }
+
+            #[test]
+            fn test_clean_conflicts_with_dirty() {
+                let mut args = FlowArgs {
+                    overrides: OverridesConfig {
+                        common: CommonOverridesConfig {
+                            clean: true,
+                            dirty: true,
+                            ..Default::default()
+                        },
+                    },
+                    ..FlowArgs::default()
+                };
+                let result = args.validate(&mock_zerv());
+                assert!(result.is_err());
+                assert!(
+                    result
+                        .unwrap_err()
+                        .to_string()
+                        .contains("--clean conflicts with --dirty")
+                );
+            }
+
+            #[test]
+            fn test_clean_conflicts_with_no_dirty() {
+                let mut args = FlowArgs {
+                    overrides: OverridesConfig {
+                        common: CommonOverridesConfig {
+                            clean: true,
+                            no_dirty: true,
+                            ..Default::default()
+                        },
+                    },
+                    ..FlowArgs::default()
+                };
+                let result = args.validate(&mock_zerv());
+                assert!(result.is_err());
+                assert!(
+                    result
+                        .unwrap_err()
+                        .to_string()
+                        .contains("--clean conflicts with --no-dirty")
+                );
+            }
+
+            #[test]
+            fn test_dirty_and_no_dirty_conflict() {
+                let mut args = FlowArgs {
+                    overrides: OverridesConfig {
+                        common: CommonOverridesConfig {
+                            dirty: true,
+                            no_dirty: true,
+                            ..Default::default()
+                        },
+                    },
+                    ..FlowArgs::default()
+                };
+                let result = args.validate(&mock_zerv());
+                assert!(result.is_err());
+                assert!(
+                    result
+                        .unwrap_err()
+                        .to_string()
+                        .contains("--dirty and --no-dirty cannot be used together")
+                );
+            }
+
+            #[test]
+            fn test_bumped_branch_override() {
+                let mut args = FlowArgs {
+                    overrides: OverridesConfig {
+                        common: CommonOverridesConfig {
+                            bumped_branch: Some("custom-branch".to_string()),
+                            ..Default::default()
+                        },
+                    },
+                    ..FlowArgs::default()
+                };
+                assert!(args.validate(&mock_zerv()).is_ok());
+                assert_eq!(
+                    args.overrides.common.bumped_branch,
+                    Some("custom-branch".to_string())
+                );
+            }
+
+            #[test]
+            fn test_all_version_component_overrides() {
+                let mut args = FlowArgs {
+                    overrides: OverridesConfig {
+                        common: CommonOverridesConfig {
+                            major: Some("1".parse().unwrap()),
+                            minor: Some("2".parse().unwrap()),
+                            patch: Some("3".parse().unwrap()),
+                            epoch: Some("0".parse().unwrap()),
+                            post: Some("4".parse().unwrap()),
+                            ..Default::default()
+                        },
+                    },
+                    ..FlowArgs::default()
+                };
+                assert!(args.validate(&mock_zerv()).is_ok());
+            }
         }
     }
 }

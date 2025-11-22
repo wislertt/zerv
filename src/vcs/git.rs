@@ -1,9 +1,11 @@
+use std::collections::BTreeSet;
 use std::path::{
     Path,
     PathBuf,
 };
 use std::process::Command;
 
+use super::git_utils::GitUtils;
 use crate::error::{
     Result,
     ZervError,
@@ -136,73 +138,198 @@ impl GitVcs {
 
     /// Get latest version tag using enhanced algorithm
     fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
-        let tags_output = self.get_merged_tags()?;
+        let tags = self.get_merged_tags()?;
+        let latest_valid_version_tag = match self.find_latest_valid_version_tag(&tags, format)? {
+            Some(tag) => tag,
+            None => return Ok(None),
+        };
+        let commit_hash = self.get_commit_hash_from_tag(&latest_valid_version_tag)?;
+        let tags = self.get_all_tags_from_commit_hash(&commit_hash)?;
 
-        if tags_output.is_empty() {
-            return Ok(None);
-        }
+        let valid_tags = GitUtils::filter_only_valid_tags(&tags, format)?;
+        let max_tag = GitUtils::find_max_version_tag(&valid_tags)?;
 
-        let valid_tags = self.collect_valid_version_tags(&tags_output, format)?;
-        self.find_highest_version_tag(valid_tags)
+        Ok(max_tag)
     }
 
-    /// Get all tags merged into HEAD, sorted by commit date
-    fn get_merged_tags(&self) -> Result<String> {
-        match self.run_git_command(&["tag", "--merged", "HEAD", "--sort=-committerdate"]) {
-            Ok(tags) => Ok(tags),
-            Err(ZervError::CommandFailed(_)) => Ok(String::new()), // No tags found
+    /// Get HEAD commit hash
+    fn get_head_commit(&self) -> Result<String> {
+        let output = self.run_git_command(&["rev-parse", "HEAD"])?;
+        Ok(output.trim().to_string())
+    }
+
+    /// Get commit hash from tag
+    fn get_commit_hash_from_tag(&self, tag: &str) -> Result<String> {
+        let output = self.run_git_command(&["rev-parse", &format!("{}^{{commit}}", tag)])?;
+        Ok(output.trim().to_string())
+    }
+
+    /// Get all tags pointing to a commit hash
+    fn get_all_tags_from_commit_hash(&self, commit_hash: &str) -> Result<Vec<String>> {
+        let tags_output = self.get_tags_pointing_at_commit(commit_hash)?;
+        Ok(tags_output
+            .lines()
+            .map(|line| line.trim().to_string())
+            .filter(|tag| !tag.is_empty())
+            .collect())
+    }
+
+    /// Parse git tag output into groups of tags with same timestamp, sorted by timestamp (newest first)
+    fn parse_tags_into_groups(tags_output: &str) -> Vec<BTreeSet<String>> {
+        let mut tag_timestamp_pairs: Vec<(String, i64)> = tags_output
+            .lines()
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.split("||").collect();
+                if parts.len() != 2 {
+                    return None;
+                }
+
+                let tag = parts[0].trim().to_string();
+                let timestamp_str = parts[1].trim();
+
+                match timestamp_str.parse::<i64>() {
+                    Ok(timestamp) => Some((tag, timestamp)),
+                    Err(_) => None,
+                }
+            })
+            .filter(|(tag, _)| !tag.is_empty())
+            .collect();
+
+        // Sort by timestamp (newest first)
+        tag_timestamp_pairs
+            .sort_by(|(_, timestamp_a), (_, timestamp_b)| timestamp_b.cmp(timestamp_a));
+
+        // Group tags by timestamp using BTreeSet for deterministic ordering
+        let mut tag_groups: Vec<BTreeSet<String>> = Vec::new();
+        let mut current_timestamp: Option<i64> = None;
+        let mut current_group: BTreeSet<String> = BTreeSet::new();
+
+        for (tag, timestamp) in tag_timestamp_pairs {
+            match current_timestamp {
+                None => {
+                    current_timestamp = Some(timestamp);
+                    current_group.insert(tag);
+                }
+                Some(current_ts) => {
+                    if timestamp == current_ts {
+                        current_group.insert(tag);
+                    } else {
+                        tag_groups.push(current_group);
+                        current_group = BTreeSet::new();
+                        current_group.insert(tag);
+                        current_timestamp = Some(timestamp);
+                    }
+                }
+            }
+        }
+
+        // Add the last group if not empty
+        if !current_group.is_empty() {
+            tag_groups.push(current_group);
+        }
+
+        tag_groups
+    }
+
+    /// Get all tags merged into HEAD, grouped by timestamp (newest first)
+    fn get_merged_tags(&self) -> Result<Vec<BTreeSet<String>>> {
+        match self.run_git_command(&[
+            "tag",
+            "--merged",
+            "HEAD",
+            "--sort=-committerdate",
+            "--format=%(refname:short)||%(committerdate:unix)",
+        ]) {
+            Ok(tags_output) => {
+                let tag_groups = Self::parse_tags_into_groups(&tags_output);
+                Ok(tag_groups)
+            }
+            Err(ZervError::CommandFailed(_)) => Ok(Vec::new()), // No tags found
             Err(e) => Err(e),
         }
     }
 
-    /// Collect all valid version tags from the git output
-    fn collect_valid_version_tags(&self, tags_output: &str, format: &str) -> Result<Vec<String>> {
-        let mut valid_tags = Vec::new();
+    /// Find the closest tag to HEAD from a list of tags using commit distance
+    fn find_closest_tag_to_head(&self, tags: &[String]) -> Result<String> {
+        let head_commit = self.get_head_commit()?;
 
-        for tag_line in tags_output.lines() {
-            let trimmed_tag = tag_line.trim();
+        let mut closest_tag = None;
+        let mut min_distance = u32::MAX;
+
+        for tag in tags {
+            let trimmed_tag = tag.trim();
             if trimmed_tag.is_empty() {
                 continue;
             }
 
-            if self.is_valid_version_tag(trimmed_tag, format) {
-                let commit_tags = self.get_valid_tags_for_commit(trimmed_tag, format)?;
-                valid_tags.extend(commit_tags);
+            // Get commit hash for this tag
+            let tag_commit = self.get_commit_hash_from_tag(trimmed_tag)?;
+
+            // Calculate distance from HEAD to tag commit
+            let distance = self.get_commit_distance(&tag_commit, &head_commit)?;
+
+            if distance < min_distance {
+                min_distance = distance;
+                closest_tag = Some(trimmed_tag.to_string());
             }
         }
 
-        Ok(valid_tags)
+        closest_tag.ok_or_else(|| ZervError::CommandFailed("No valid tags found".to_string()))
+    }
+
+    /// Get commit distance between two commits
+    fn get_commit_distance(&self, from_commit: &str, to_commit: &str) -> Result<u32> {
+        let output = self.run_git_command(&[
+            "rev-list",
+            "--count",
+            &format!("{}..{}", from_commit, to_commit),
+        ])?;
+        output
+            .trim()
+            .parse::<u32>()
+            .map_err(|_| ZervError::CommandFailed("Failed to parse commit distance".to_string()))
+    }
+
+    /// Find the latest valid version tag from grouped git tags
+    fn find_latest_valid_version_tag(
+        &self,
+        tag_groups: &[BTreeSet<String>],
+        format: &str,
+    ) -> Result<Option<String>> {
+        // Process groups in order (newest timestamps first)
+        for group in tag_groups {
+            let valid_tags: Vec<String> = group
+                .iter()
+                .filter_map(|tag| {
+                    let trimmed_tag = tag.trim();
+                    if trimmed_tag.is_empty() {
+                        return None;
+                    }
+                    if self.is_valid_version_tag(trimmed_tag, format) {
+                        Some(trimmed_tag.to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            match valid_tags.len() {
+                1 => return Ok(Some(valid_tags[0].clone())), // Single valid tag - use it
+                0 => continue, // No valid tags in this group, try next group
+                _ => {
+                    // Multiple valid tags in same group - use commit distance to pick closest
+                    let closest = self.find_closest_tag_to_head(&valid_tags)?;
+                    return Ok(Some(closest));
+                }
+            }
+        }
+
+        Ok(None) // No valid tags found in any group
     }
 
     /// Check if a tag is a valid version for the given format
     fn is_valid_version_tag(&self, tag: &str, format: &str) -> bool {
         VersionObject::parse_with_format(tag, format).is_ok()
-    }
-
-    /// Get all valid version tags pointing to the same commit as the given tag
-    fn get_valid_tags_for_commit(&self, tag: &str, format: &str) -> Result<Vec<String>> {
-        let commit_hash = self.get_commit_hash_for_tag(tag)?;
-        let tags_on_commit = self.get_tags_pointing_at_commit(&commit_hash)?;
-
-        // Filter and return only valid version tags
-        Ok(tags_on_commit
-            .lines()
-            .map(|line| line.trim())
-            .filter(|trimmed_tag| !trimmed_tag.is_empty())
-            .filter(|trimmed_tag| self.is_valid_version_tag(trimmed_tag, format))
-            .map(|tag| tag.to_string())
-            .collect())
-    }
-
-    /// Get the commit hash for a given tag
-    fn get_commit_hash_for_tag(&self, tag: &str) -> Result<String> {
-        match self.run_git_command(&["rev-list", "-n", "1", tag]) {
-            Ok(hash) => Ok(hash.trim().to_string()),
-            Err(_) => Err(ZervError::CommandFailed(format!(
-                "Failed to get commit hash for tag: {}",
-                tag
-            ))),
-        }
     }
 
     /// Get all tags pointing to a specific commit
@@ -211,11 +338,6 @@ impl GitVcs {
             Ok(tags) => Ok(tags),
             Err(_) => Ok(String::new()), // Return empty if no tags found
         }
-    }
-
-    /// Find the highest semantic version from a list of tags
-    fn find_highest_version_tag(&self, tags: Vec<String>) -> Result<Option<String>> {
-        Ok(tags.iter().max().cloned())
     }
 
     fn calculate_distance(&self, tag: &str) -> Result<u32> {
@@ -316,7 +438,6 @@ impl Vcs for GitVcs {
             ..Default::default()
         };
 
-        // Get tag information
         match self.get_latest_tag(input_format)? {
             Some(tag) => {
                 tracing::debug!("Found Git tag: {}", tag);
@@ -833,6 +954,7 @@ mod tests {
         }
     }
 
+    // TODO: debug this test
     #[test]
     fn test_get_latest_tag_comprehensive() -> crate::error::Result<()> {
         if !should_run_docker_tests() {
@@ -889,6 +1011,7 @@ mod tests {
         let v2_commit = v2_commit.trim();
         fixture = fixture.checkout(v2_commit);
 
+        // Original assertion (commented out for easy revert)
         let result = git_vcs.get_latest_tag("auto")?;
         assert_eq!(
             result,
@@ -922,5 +1045,57 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    mod parse_tags_into_groups_tests {
+        use rstest::rstest;
+
+        use super::*;
+
+        #[rstest]
+        #[case::same_timestamp_grouping(
+            r#"v2.0.0||1763817334
+v1.1.0||1763817334
+v0.9.0||1763817333
+v0.8.0||1763817332
+v1.0.0||1763817334
+v0.7.0||1763817900"#,
+            vec![
+                BTreeSet::from(["v0.7.0".to_string()]),
+                BTreeSet::from(["v1.0.0".to_string(), "v1.1.0".to_string(), "v2.0.0".to_string()]),
+                BTreeSet::from(["v0.9.0".to_string()]),
+                BTreeSet::from(["v0.8.0".to_string()]),
+            ]
+        )]
+        #[case::different_timestamps(
+            r#"v3.0.0||1732000000
+v2.0.0||1731900000
+v1.0.0||1731800000"#,
+            vec![
+                BTreeSet::from(["v3.0.0".to_string()]),
+                BTreeSet::from(["v2.0.0".to_string()]),
+                BTreeSet::from(["v1.0.0".to_string()]),
+            ]
+        )]
+        #[case::empty_input("", vec![])]
+        #[case::mixed_valid_invalid(
+            r#"v2.0.0||1732000000
+invalid_line
+v1.0.0||1731900000
+v1.5.0||invalid_timestamp
+v0.9.0||1731800000"#,
+            vec![
+                BTreeSet::from(["v2.0.0".to_string()]),
+                BTreeSet::from(["v1.0.0".to_string()]),
+                BTreeSet::from(["v0.9.0".to_string()]),
+            ]
+        )]
+        fn test_parse_tags_into_groups(
+            #[case] input: &str,
+            #[case] expected: Vec<BTreeSet<String>>,
+        ) {
+            let result = GitVcs::parse_tags_into_groups(input);
+            assert_eq!(result, expected);
+        }
     }
 }

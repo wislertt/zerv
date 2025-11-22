@@ -13,18 +13,27 @@ use crate::error::ZervError;
 use crate::version::zerv::core::Zerv;
 
 impl FlowArgs {
-    /// Get current zerv object "as-is" (no bumps)
-    pub fn get_current_zerv_object(&self, stdin_content: Option<&str>) -> Result<Zerv, ZervError> {
-        let version_args = VersionArgs {
+    /// Create base VersionArgs with shared configuration
+    fn create_version_args(&self, bumps: BumpsConfig) -> VersionArgs {
+        VersionArgs {
             input: self.input.clone(),
             output: OutputConfig::zerv(),
             main: MainConfig::from_schema(self.schema.clone()),
             overrides: OverridesConfig {
-                bumped_branch: self.bumped_branch.clone(),
+                common: {
+                    let mut common_config = self.overrides.common.clone();
+                    common_config.post = self.overrides.override_post();
+                    common_config
+                },
                 ..Default::default()
             },
-            bumps: BumpsConfig::default(),
-        };
+            bumps,
+        }
+    }
+
+    /// Get current zerv object "as-is" (no bumps)
+    pub fn get_current_zerv_object(&self, stdin_content: Option<&str>) -> Result<Zerv, ZervError> {
+        let version_args = self.create_version_args(BumpsConfig::default());
 
         let ron_output = run_version_pipeline(version_args, stdin_content)?;
         from_str(&ron_output)
@@ -36,22 +45,15 @@ impl FlowArgs {
         &self,
         _current_zerv: &Zerv,
     ) -> Result<VersionArgs, ZervError> {
-        Ok(VersionArgs {
-            input: self.input.clone(),
-            output: OutputConfig::zerv(),
-            main: MainConfig::from_schema(self.schema.clone()),
-            overrides: OverridesConfig {
-                bumped_branch: self.bumped_branch.clone(),
-                ..Default::default()
-            },
-            bumps: BumpsConfig {
-                bump_pre_release_label: self.bump_pre_release_label(),
-                bump_pre_release_num: self.bump_pre_release_num(),
-                bump_patch: self.bump_patch(),
-                bump_post: self.bump_post(),
-                bump_dev: self.bump_dev(),
-                ..Default::default()
-            },
-        })
+        let bumps = BumpsConfig {
+            bump_pre_release_label: self.bump_pre_release_label(),
+            bump_pre_release_num: self.bump_pre_release_num(),
+            bump_patch: self.bump_patch(),
+            bump_post: self.bump_post(),
+            bump_dev: self.bump_dev(),
+            ..Default::default()
+        };
+
+        Ok(self.create_version_args(bumps))
     }
 }

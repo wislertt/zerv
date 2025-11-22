@@ -19,7 +19,7 @@ jobs:
             new_release_published: ${{ steps.set-outputs.outputs.published }}
         steps:
             - name: Checkout
-              uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+              uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
               with:
                   fetch-depth: 0
 
@@ -97,9 +97,9 @@ jobs:
                       asset_name: zerv-windows-arm64.exe
 
         steps:
-            - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+            - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
-            - uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
+            - uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e # stable
               with:
                   toolchain: stable
                   targets: ${{ matrix.target }}
@@ -125,7 +125,7 @@ jobs:
               run: cargo build --release --target ${{ matrix.target }}
 
             - name: Upload binary to release
-              uses: svenstaro/upload-release-action@81c65b7cd4de9b2570615ce3aad67a41de5b1a13 # v2.11.2
+              uses: svenstaro/upload-release-action@6b7fa9f267e90b50a19fef07b3596790bb941741 # 2.11.3
               with:
                   repo_token: ${{ secrets.GITHUB_TOKEN }}
                   file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
@@ -139,9 +139,9 @@ jobs:
         needs: [versioning, release-bin]
         if: needs.versioning.outputs.new_release_published == 'true'
         steps:
-            - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+            - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
-            - uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
+            - uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e # stable
               with:
                   toolchain: stable
 

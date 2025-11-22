@@ -41,9 +41,9 @@ fn test_resolved_args_template_resolution(
     #[case] patch: u64,
 ) {
     let mut args = VersionArgsFixture::new().build();
-    args.overrides.major = Some("{{major}}".into());
-    args.overrides.minor = Some("{{minor}}".into());
-    args.overrides.patch = Some("{{patch}}".into());
+    args.overrides.common.major = Some("{{major}}".into());
+    args.overrides.common.minor = Some("{{minor}}".into());
+    args.overrides.common.patch = Some("{{patch}}".into());
     args.bumps.bump_major = Some(Some("{{major}}".into()));
     args.bumps.bump_minor = Some(Some("{{minor}}".into()));
 
@@ -200,8 +200,8 @@ fn test_resolved_args_mixed_templates_and_values(
         .with_major(override_major)
         .with_bump_major(bump_major)
         .build();
-    args.overrides.minor = Some("{{major}}".into());
-    args.overrides.patch = Some("{{minor}}".into());
+    args.overrides.common.minor = Some("{{major}}".into());
+    args.overrides.common.patch = Some("{{minor}}".into());
     args.bumps.bump_minor = Some(Some("{{patch}}".into()));
 
     let zerv = ZervFixture::new()

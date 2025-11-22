@@ -18,19 +18,19 @@ fn test_version_args_defaults() {
     assert_eq!(args.output.output_format, formats::SEMVER);
 
     // VCS override options should be None/false by default
-    assert!(args.overrides.tag_version.is_none());
-    assert!(args.overrides.distance.is_none());
-    assert!(!args.overrides.dirty);
-    assert!(!args.overrides.no_dirty);
-    assert!(!args.overrides.clean);
-    assert!(args.overrides.bumped_branch.is_none());
-    assert!(args.overrides.bumped_commit_hash.is_none());
-    assert!(args.overrides.bumped_timestamp.is_none());
-    assert!(args.overrides.post.is_none());
+    assert!(args.overrides.common.tag_version.is_none());
+    assert!(args.overrides.common.distance.is_none());
+    assert!(!args.overrides.common.dirty);
+    assert!(!args.overrides.common.no_dirty);
+    assert!(!args.overrides.common.clean);
+    assert!(args.overrides.common.bumped_branch.is_none());
+    assert!(args.overrides.common.bumped_commit_hash.is_none());
+    assert!(args.overrides.common.bumped_timestamp.is_none());
+    assert!(args.overrides.common.post.is_none());
     assert!(args.overrides.dev.is_none());
     assert!(args.overrides.pre_release_label.is_none());
     assert!(args.overrides.pre_release_num.is_none());
-    assert!(args.overrides.epoch.is_none());
+    assert!(args.overrides.common.epoch.is_none());
     assert!(args.overrides.custom.is_none());
 
     // Bump options should be None by default
@@ -77,17 +77,20 @@ fn test_version_args_with_overrides() {
     ])
     .unwrap();
 
-    assert_eq!(args.overrides.tag_version, Some("v2.0.0".to_string()));
-    assert_eq!(args.overrides.distance, Some(5));
-    assert!(args.overrides.dirty);
-    assert!(!args.overrides.no_dirty);
-    assert!(!args.overrides.clean);
     assert_eq!(
-        args.overrides.bumped_branch,
+        args.overrides.common.tag_version,
+        Some("v2.0.0".to_string())
+    );
+    assert_eq!(args.overrides.common.distance, Some(5));
+    assert!(args.overrides.common.dirty);
+    assert!(!args.overrides.common.no_dirty);
+    assert!(!args.overrides.common.clean);
+    assert_eq!(
+        args.overrides.common.bumped_branch,
         Some("feature/test".to_string())
     );
     assert_eq!(
-        args.overrides.bumped_commit_hash,
+        args.overrides.common.bumped_commit_hash,
         Some("abc123".to_string())
     );
     assert_eq!(args.input.input_format, formats::SEMVER);
@@ -98,28 +101,28 @@ fn test_version_args_with_overrides() {
 fn test_version_args_clean_flag() {
     let args = VersionArgs::try_parse_from(["version", "--clean"]).unwrap();
 
-    assert!(args.overrides.clean);
-    assert!(args.overrides.distance.is_none());
-    assert!(!args.overrides.dirty);
-    assert!(!args.overrides.no_dirty);
+    assert!(args.overrides.common.clean);
+    assert!(args.overrides.common.distance.is_none());
+    assert!(!args.overrides.common.dirty);
+    assert!(!args.overrides.common.no_dirty);
 }
 
 #[test]
 fn test_version_args_dirty_flags() {
     // Test --dirty flag
     let args = VersionArgs::try_parse_from(["version", "--dirty"]).unwrap();
-    assert!(args.overrides.dirty);
-    assert!(!args.overrides.no_dirty);
+    assert!(args.overrides.common.dirty);
+    assert!(!args.overrides.common.no_dirty);
 
     // Test --no-dirty flag
     let args = VersionArgs::try_parse_from(["version", "--no-dirty"]).unwrap();
-    assert!(!args.overrides.dirty);
-    assert!(args.overrides.no_dirty);
+    assert!(!args.overrides.common.dirty);
+    assert!(args.overrides.common.no_dirty);
 
     // Test both flags together should fail early validation
     let mut args = VersionArgs::try_parse_from(["version", "--dirty", "--no-dirty"]).unwrap();
-    assert!(args.overrides.dirty);
-    assert!(args.overrides.no_dirty);
+    assert!(args.overrides.common.dirty);
+    assert!(args.overrides.common.no_dirty);
 
     // The conflict should be caught by early validation
     let result = args.validate();
@@ -289,14 +292,14 @@ fn test_version_args_fixture() {
         .with_dirty(true)
         .build();
     assert_eq!(
-        args_with_overrides.overrides.tag_version,
+        args_with_overrides.overrides.common.tag_version,
         Some("v2.0.0".to_string())
     );
-    assert_eq!(args_with_overrides.overrides.distance, Some(5));
-    assert!(args_with_overrides.overrides.dirty);
+    assert_eq!(args_with_overrides.overrides.common.distance, Some(5));
+    assert!(args_with_overrides.overrides.common.dirty);
 
     let args_with_clean = VersionArgsFixture::new().with_clean_flag(true).build();
-    assert!(args_with_clean.overrides.clean);
+    assert!(args_with_clean.overrides.common.clean);
 
     let args_with_bumps = VersionArgsFixture::new()
         .with_bump_major(1)

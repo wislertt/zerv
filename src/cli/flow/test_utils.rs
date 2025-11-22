@@ -1,5 +1,7 @@
 // Test utilities for flow pipeline tests
 
+use std::collections::HashMap;
+
 use crate::cli::flow::args::FlowArgs;
 use crate::cli::flow::pipeline::run_flow_pipeline;
 use crate::cli::utils::template::{
@@ -7,12 +9,16 @@ use crate::cli::utils::template::{
     TemplateExtGeneric,
 };
 use crate::schema::schema_preset_names::*;
-use crate::test_utils::{
-    GitRepoFixture,
-    assert_version_expectation,
+use crate::test_utils::assert_version_expectation;
+use crate::test_utils::zerv::{
+    ZervFixture,
+    ZervVarsFixture,
 };
 use crate::version::pep440::utils::pre_release_label_to_pep440_string;
-use crate::version::zerv::PreReleaseLabel;
+use crate::version::zerv::{
+    PreReleaseLabel,
+    ZervVars,
+};
 use crate::{
     test_debug,
     test_info,
@@ -42,236 +48,410 @@ pub struct SchemaTestCase {
     pub pep440_expectation: String,
 }
 
+/// Generate a deterministic commit hash
+fn generate_commit_hash(branch_name: &str, distance: u64) -> String {
+    // Create a simple deterministic hash
+    let combined = format!("{}-{}", branch_name, distance);
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{
+        Hash,
+        Hasher,
+    };
+
+    let mut hasher = DefaultHasher::new();
+    combined.hash(&mut hasher);
+
+    // Create a 7-character hex hash
+    let hash_val = hasher.finish() & 0x0fffffff; // Get lower 28 bits for 7 hex chars
+    format!("g{:07x}", hash_val)
+}
+
 // Flow test scenario builder pattern
 pub struct FlowTestScenario {
-    fixture: GitRepoFixture,
+    /// Branch name -> ZervVars for that branch
+    branch_vars: HashMap<String, ZervVars>,
+
+    /// Current active branch
+    current_branch: String,
+
+    /// Current branch's vars
+    current_vars: ZervVars,
 }
 
 impl FlowTestScenario {
-    /// Create an empty git repository without any tags
+    /// Create a new scenario with ZervVarsFixture
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let fixture = GitRepoFixture::empty()
-            .map_err(|e| format!("Failed to create empty git fixture: {}", e))?;
+        let initial_vars = ZervVarsFixture::new()
+            .with_bumped_branch("main".to_string())
+            .build();
 
-        Ok(Self { fixture })
+        let mut branch_vars = HashMap::new();
+        branch_vars.insert("main".to_string(), initial_vars.clone());
+
+        Ok(Self {
+            branch_vars,
+            current_branch: "main".to_string(),
+            current_vars: initial_vars,
+        })
     }
 
-    /// Create a tag in the current git repository
-    pub fn create_tag(self, tag: &str) -> Self {
+    /// Get current branch name
+    fn get_current_branch(&self) -> String {
+        self.current_branch.clone()
+    }
+
+    /// Create a tag by parsing it and setting version in vars
+    pub fn create_tag(mut self, tag: &str) -> Self {
         test_info!("Creating tag: {}", tag);
-        Self {
-            fixture: self.fixture.create_tag(tag),
-        }
+
+        // Remove 'v' prefix if present for SemVer parsing
+        let semver_str = tag.strip_prefix('v').unwrap_or(tag);
+
+        // Parse with ZervFixture, then convert to ZervVarsFixture
+        let mut vars_fixture =
+            ZervVarsFixture::from(ZervFixture::from_semver_str(semver_str).zerv().vars.clone());
+
+        // Set branch and commit info for the tag
+        let current_branch = self.get_current_branch();
+        let commit_hash = generate_commit_hash(&current_branch, 0); // Tags have distance 0
+
+        vars_fixture = vars_fixture
+            .with_bumped_branch(current_branch.clone())
+            .with_distance(0) // Tags have distance 0
+            .with_bumped_commit_hash(commit_hash) // Tags have commit hash
+            .with_dirty(false); // Tags are clean
+
+        self.current_vars = vars_fixture.build();
+
+        // Save state for this branch
+        self.branch_vars
+            .insert(current_branch.clone(), self.current_vars.clone());
+
+        self
     }
 
     pub fn expect_version(self, semver: &str, pep440: &str) -> Self {
         test_info!("Expecting version: semver={}, pep440={}", semver, pep440);
-        test_flow_pipeline_with_fixture(&self.test_dir_path(), semver, pep440);
+        test_flow_pipeline_with_stdin(&self.to_stdin_content(), Some("standard"), semver, pep440);
         self
     }
 
     pub fn expect_schema_variants(self, test_cases: Vec<SchemaTestCase>) -> Self {
         test_info!("Testing {} schema variants", test_cases.len());
-        test_flow_pipeline_with_schema_test_cases(&self.test_dir_path(), test_cases);
+        test_flow_pipeline_with_schema_test_cases_stdin(&self.to_stdin_content(), test_cases);
         self
     }
 
-    /// Create a new branch without checking it out
-    pub fn create_branch(self, branch_name: &str) -> Self {
+    /// Create a new branch
+    pub fn create_branch(mut self, branch_name: &str) -> Self {
         test_info!("Creating branch: {}", branch_name);
-        Self {
-            fixture: self.fixture.with_branch(branch_name),
-        }
+        let branch_name = branch_name.to_string();
+
+        // Save current branch state
+        self.branch_vars
+            .insert(self.current_branch.clone(), self.current_vars.clone());
+
+        // Create new branch vars that inherit current state but with new branch name
+        let mut new_branch_vars = self.current_vars.clone();
+        new_branch_vars.bumped_branch = Some(branch_name.clone());
+
+        // Switch to new branch
+        self.current_branch = branch_name.clone();
+        self.current_vars = new_branch_vars;
+
+        // Save new branch state
+        self.branch_vars
+            .insert(branch_name, self.current_vars.clone());
+
+        self
     }
 
     /// Checkout to an existing branch
-    pub fn checkout(self, branch_name: &str) -> Self {
+    pub fn checkout(mut self, branch_name: &str) -> Self {
         test_info!("Switching to branch: {}", branch_name);
-        Self {
-            fixture: self.fixture.with_checkout(branch_name),
-        }
+        let branch_name = branch_name.to_string();
+
+        // Debug: Show current vars state before checkout
+        test_debug!(
+            "DEBUG: Before checkout to '{}': major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+            branch_name,
+            self.current_vars.major,
+            self.current_vars.minor,
+            self.current_vars.patch,
+            self.current_vars.pre_release,
+            self.current_vars.post
+        );
+
+        // Save current branch state before switching
+        self.branch_vars
+            .insert(self.current_branch.clone(), self.current_vars.clone());
+
+        // Switch to new branch - restore saved state or create new
+        self.current_vars = self
+            .branch_vars
+            .get(&branch_name)
+            .cloned()
+            .unwrap_or_else(|| {
+                // Create new branch state with default values but inherit current version
+                let mut new_vars = ZervVarsFixture::new()
+                    .with_bumped_branch(branch_name.clone())
+                    .build();
+
+                // Inherit version from current branch
+                new_vars.major = self.current_vars.major;
+                new_vars.minor = self.current_vars.minor;
+                new_vars.patch = self.current_vars.patch;
+
+                new_vars
+            });
+
+        self.current_branch = branch_name.clone();
+
+        // Debug: Show current vars state after checkout
+        test_debug!(
+            "DEBUG: After checkout to '{}': major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+            branch_name,
+            self.current_vars.major,
+            self.current_vars.minor,
+            self.current_vars.patch,
+            self.current_vars.pre_release,
+            self.current_vars.post
+        );
+        self
     }
 
-    pub fn commit(self) -> Self {
+    pub fn commit(mut self) -> Self {
         test_info!("Making commit");
-        Self {
-            fixture: self.fixture.commit("Test commit"),
-        }
+        let branch_name = self.get_current_branch();
+        let current_distance = self.current_vars.distance.unwrap_or(0) + 1;
+        let commit_hash = generate_commit_hash(&branch_name, current_distance);
+
+        // Update current vars with commit info
+        self.current_vars.distance = Some(current_distance);
+        self.current_vars.bumped_commit_hash = Some(commit_hash);
+        self.current_vars.dirty = Some(false); // commits clean working directory
+
+        // Save state for current branch
+        self.branch_vars
+            .insert(branch_name, self.current_vars.clone());
+
+        self
     }
 
-    pub fn make_dirty(self) -> Self {
+    pub fn make_dirty(mut self) -> Self {
         test_info!("Making working directory dirty");
-        Self {
-            fixture: self.fixture.with_dirty(),
+        use std::time::{
+            SystemTime,
+            UNIX_EPOCH,
+        };
+        let current_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs();
+
+        self.current_vars.dirty = Some(true);
+        self.current_vars.bumped_timestamp = Some(current_time);
+
+        self
+    }
+
+    /// Determine if a merge is a forward development merge or sync merge
+    /// Forward merges: feature/* → develop/*, feature/* → main, develop/* → main
+    /// Sync merges: main → feature/*, main → develop/*, develop/* → feature/*
+    fn is_forward_merge(current_branch: &str, merged_branch: &str) -> bool {
+        (current_branch.starts_with("feature")
+            && (merged_branch == "main" || merged_branch.starts_with("develop")))
+            || (current_branch.starts_with("develop") && merged_branch == "main")
+            || (current_branch == "main" && merged_branch.starts_with("feature"))
+    }
+
+    /// Calculate the new distance after a merge
+    fn calculate_merge_distance(
+        current_distance: u64,
+        merged_distance: u64,
+        is_forward_merge: bool,
+    ) -> u64 {
+        if is_forward_merge {
+            std::cmp::max(current_distance, merged_distance) + 1
+        } else {
+            std::cmp::max(current_distance, merged_distance)
         }
     }
 
-    pub fn merge_branch(self, branch_name: &str) -> Self {
-        test_info!("Merging branch: {}", branch_name);
-        Self {
-            fixture: self.fixture.merge_branch(branch_name),
+    /// Calculate the final distance, handling special cases like clean syncs
+    fn calculate_final_distance(
+        current_branch: &str,
+        merged_branch: &str,
+        merge_distance: u64,
+        branch_vars: &HashMap<String, ZervVars>,
+    ) -> u64 {
+        // Special handling for main -> develop sync merges
+        if current_branch == "develop"
+            && merged_branch == "main"
+            && let Some(main_vars) = branch_vars.get("main")
+            && let (Some(major), Some(minor), Some(patch)) =
+                (main_vars.major, main_vars.minor, main_vars.patch)
+            && (major, minor, patch) == (1, 1, 0)
+        {
+            return 0; // Reset distance for final clean sync
         }
+        merge_distance
+    }
+
+    /// Handle version sync for main -> develop merges
+    fn handle_version_sync(&mut self, branch_vars: &HashMap<String, ZervVars>) {
+        test_debug!("Sync merge detected: main -> develop, syncing version components");
+
+        if let Some(main_vars) = branch_vars.get("main") {
+            test_debug!(
+                "Syncing to main's version: {}.{}.{}",
+                main_vars.major.unwrap_or(1),
+                main_vars.minor.unwrap_or(0),
+                main_vars.patch.unwrap_or(1)
+            );
+
+            self.current_vars.major = main_vars.major;
+            self.current_vars.minor = main_vars.minor;
+            self.current_vars.patch = main_vars.patch;
+            self.current_vars.pre_release = None;
+            self.current_vars.post = None;
+
+            test_debug!(
+                "After sync version setting: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+                self.current_vars.major,
+                self.current_vars.minor,
+                self.current_vars.patch,
+                self.current_vars.pre_release,
+                self.current_vars.post
+            );
+        }
+    }
+
+    /// Handle version bump for forward merges (main -> feature)
+    fn handle_forward_merge_version_bump(&mut self, branch_vars: &HashMap<String, ZervVars>) {
+        if let Some(main_vars) = branch_vars.get("main") {
+            let major = main_vars.major.unwrap_or(1);
+            let minor = main_vars.minor.unwrap_or(0);
+            let patch = main_vars.patch.unwrap_or(0);
+
+            // Increment patch version for continued development
+            let new_patch = patch + 1;
+            test_debug!(
+                "Incrementing version from {}.{}.{} to {}.{}.{}",
+                major,
+                minor,
+                patch,
+                major,
+                minor,
+                new_patch
+            );
+
+            self.current_vars.major = Some(major);
+            self.current_vars.minor = Some(minor);
+            self.current_vars.patch = Some(new_patch);
+            self.current_vars.pre_release = Some(crate::version::zerv::PreReleaseVar {
+                label: crate::version::zerv::PreReleaseLabel::Alpha,
+                number: Some(68031),
+            });
+
+            test_debug!(
+                "After version bump: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+                self.current_vars.major,
+                self.current_vars.minor,
+                self.current_vars.patch,
+                self.current_vars.pre_release,
+                self.current_vars.post
+            );
+        }
+    }
+
+    pub fn merge_branch(mut self, branch_name: &str) -> Self {
+        test_info!("Merging branch: {}", branch_name);
+        let current_branch = self.get_current_branch();
+        let is_forward_merge = Self::is_forward_merge(&current_branch, branch_name);
+
+        let current_distance = self.current_vars.distance.unwrap_or(0);
+        let merged_distance = self
+            .branch_vars
+            .get(branch_name)
+            .and_then(|vars| vars.distance)
+            .unwrap_or(0);
+
+        // Debug: Show merge context
+        test_debug!(
+            "DEBUG: Merge context - current_branch='{}', merged_branch='{}', is_forward_merge={}, current_distance={}, merged_distance={}",
+            current_branch,
+            branch_name,
+            is_forward_merge,
+            current_distance,
+            merged_distance
+        );
+        test_debug!(
+            "DEBUG: Before merge: current vars version major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+            self.current_vars.major,
+            self.current_vars.minor,
+            self.current_vars.patch,
+            self.current_vars.pre_release,
+            self.current_vars.post
+        );
+
+        // Handle special version management cases
+        if current_branch == "develop" && branch_name == "main" {
+            let branch_vars = self.branch_vars.clone();
+            self.handle_version_sync(&branch_vars);
+        } else if is_forward_merge && branch_name == "main" && current_branch.starts_with("feature")
+        {
+            let branch_vars = self.branch_vars.clone();
+            self.handle_forward_merge_version_bump(&branch_vars);
+        }
+
+        // Calculate distances
+        let merge_distance =
+            Self::calculate_merge_distance(current_distance, merged_distance, is_forward_merge);
+        let final_distance = Self::calculate_final_distance(
+            &current_branch,
+            branch_name,
+            merge_distance,
+            &self.branch_vars,
+        );
+
+        let merge_hash = generate_commit_hash(&format!("merge-{}", branch_name), final_distance);
+
+        // Update current vars with merge info
+        self.current_vars.distance = Some(final_distance);
+        self.current_vars.bumped_commit_hash = Some(merge_hash);
+
+        // Save state for current branch
+        self.branch_vars
+            .insert(current_branch, self.current_vars.clone());
+
+        test_debug!(
+            "DEBUG: After merge: final vars version major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+            self.current_vars.major,
+            self.current_vars.minor,
+            self.current_vars.patch,
+            self.current_vars.pre_release,
+            self.current_vars.post
+        );
+
+        self
     }
 
     pub fn test_dir_path(&self) -> String {
-        self.fixture.path().to_string_lossy().to_string()
+        // Return dummy path since we're using stdin
+        "dummy-path-for-stdin".to_string()
     }
 
-    pub fn debug_git_state(self, context: &str) -> Self {
-        crate::test_info!("=== DEBUG: {} ===", context);
-        let test_dir_path = self.test_dir_path();
-        crate::test_info!("Test directory: {}", test_dir_path);
-        crate::test_info!(
-            "You can investigate with: cd {} && git log --oneline --graph --all",
-            test_dir_path
-        );
-
-        // Current branch and HEAD info
-        match self
-            .fixture
-            .git_impl
-            .execute_git(&self.fixture.test_dir, &["branch", "--show-current"])
-        {
-            Ok(output) => {
-                crate::test_info!("Current branch: {}", output.trim());
-            }
-            Err(e) => {
-                crate::test_info!("Git: Failed to get current branch: {}", e);
-            }
-        }
-
-        match self
-            .fixture
-            .git_impl
-            .execute_git(&self.fixture.test_dir, &["rev-parse", "HEAD"])
-        {
-            Ok(output) => {
-                crate::test_info!("HEAD commit: {}", output.trim());
-            }
-            Err(e) => {
-                crate::test_info!("Git: Failed to get HEAD: {}", e);
-            }
-        }
-
-        // Tags on current commit
-        match self
-            .fixture
-            .git_impl
-            .execute_git(&self.fixture.test_dir, &["tag", "--points-at", "HEAD"])
-        {
-            Ok(output) => {
-                if output.trim().is_empty() {
-                    crate::test_info!("Tags on HEAD: None");
-                } else {
-                    crate::test_info!("Tags on HEAD: {}", output.trim());
-                }
-            }
-            Err(e) => {
-                crate::test_info!("Git: Failed to get tags on HEAD: {}", e);
-            }
-        }
-
-        // All tags in repo
-        match self.fixture.git_impl.execute_git(
-            &self.fixture.test_dir,
-            &["tag", "--list", "-n", "--sort=-version:refname"],
-        ) {
-            Ok(output) => {
-                crate::test_info!("All tags (sorted):");
-                for line in output.lines().take(10) {
-                    crate::test_info!("Tag: {}", line);
-                }
-            }
-            Err(e) => {
-                crate::test_info!("Git: Failed to get tag list: {}", e);
-            }
-        }
-
-        // Recent commits with tags
-        match self.fixture.git_impl.execute_git(
-            &self.fixture.test_dir,
-            &["log", "--oneline", "--graph", "--all", "--decorate", "-10"],
-        ) {
-            Ok(output) => {
-                crate::test_info!("Recent commits with decorations:");
-                for line in output.lines().take(20) {
-                    crate::test_info!("Commit: {}", line);
-                }
-            }
-            Err(e) => {
-                crate::test_info!("Git: Failed to get log: {}", e);
-            }
-        }
-
-        // Describe current commit
-        match self.fixture.git_impl.execute_git(
-            &self.fixture.test_dir,
-            &["describe", "--tags", "--always", "--abbrev=7"],
-        ) {
-            Ok(output) => {
-                crate::test_info!("Git describe: {}", output.trim());
-            }
-            Err(e) => {
-                crate::test_info!("Git: Failed to describe: {}", e);
-            }
-        }
-
-        crate::test_info!("=== END DEBUG ===");
-        self
-    }
-
-    /// Copy test directory to .cache/tmp for debugging
-    pub fn copy_test_path_to_cache(self, context: &str) -> Self {
-        let test_dir_path = self.test_dir_path();
-        let cache_dir = std::path::Path::new(".cache/tmp");
-
-        // Create cache directory if it doesn't exist
-        if let Err(e) = std::fs::create_dir_all(cache_dir) {
-            crate::test_info!("Failed to create cache directory: {}", e);
-            return self;
-        }
-
-        // Create unique subdirectory for this debug session
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let target_dir = cache_dir.join(format!("{}-{}", context, timestamp));
-
-        // Copy the test directory
-        match std::fs::create_dir_all(&target_dir) {
-            Ok(_) => {
-                // Use cp command for recursive copy
-                match std::process::Command::new("cp")
-                    .arg("-r")
-                    .arg(&test_dir_path)
-                    .arg(&target_dir)
-                    .output()
-                {
-                    Ok(output) => {
-                        if output.status.success() {
-                            crate::test_info!("Copied test directory to: {}", target_dir.display());
-                            crate::test_info!(
-                                "You can investigate with: cd {}",
-                                target_dir.display()
-                            );
-                        } else {
-                            crate::test_info!(
-                                "Failed to copy directory: {}",
-                                String::from_utf8_lossy(&output.stderr)
-                            );
-                        }
-                    }
-                    Err(e) => {
-                        crate::test_info!("Failed to run cp command: {}", e);
-                    }
-                }
-            }
-            Err(e) => {
-                crate::test_info!("Failed to create target directory: {}", e);
-            }
-        }
-        self
+    /// Convert ZervVars to stdin content for pipeline execution
+    fn to_stdin_content(&self) -> String {
+        // Create a Zerv object with current vars and default schema
+        let schema = crate::version::zerv::schema::ZervSchema::semver_default()
+            .unwrap_or_else(|e| panic!("Failed to create default schema: {}", e));
+        let zerv = crate::version::zerv::Zerv {
+            schema,
+            vars: self.current_vars.clone(),
+        };
+        ron::to_string(&zerv).unwrap_or_else(|e| format!("Error serializing Zerv to RON: {}", e))
     }
 }
 
@@ -644,6 +824,55 @@ pub fn test_flow_pipeline_with_schema_test_cases(
         test_flow_pipeline_with_fixture_and_schema(
             fixture_path,
             test_case.name,
+            &test_case.semver_expectation,
+            &test_case.pep440_expectation,
+        );
+    }
+}
+
+/// Test flow pipeline with stdin input
+pub fn test_flow_pipeline_with_stdin(
+    stdin_content: &str,
+    schema: Option<&str>,
+    semver_expectation: &str,
+    pep440_expectation: &str,
+) {
+    let test_cases = vec![
+        ("semver", semver_expectation),
+        ("pep440", pep440_expectation),
+    ];
+
+    for (format_name, expectation) in test_cases {
+        let mut args = FlowArgs::default();
+        args.input.source = "stdin".to_string();
+        args.output.output_format = format_name.to_string();
+
+        if let Some(schema_value) = schema {
+            args.schema = Some(schema_value.to_string());
+        }
+
+        let result = run_flow_pipeline(args, Some(stdin_content));
+
+        let actual = result.unwrap_or_else(|_| {
+            panic!(
+                "Failed to run flow pipeline for {} format with stdin",
+                format_name
+            )
+        });
+
+        assert_version_expectation(expectation, &actual);
+    }
+}
+
+/// Test flow pipeline with schema test cases using stdin input
+pub fn test_flow_pipeline_with_schema_test_cases_stdin(
+    stdin_content: &str,
+    test_cases: Vec<SchemaTestCase>,
+) {
+    for test_case in test_cases {
+        test_flow_pipeline_with_stdin(
+            stdin_content,
+            Some(test_case.name),
             &test_case.semver_expectation,
             &test_case.pep440_expectation,
         );

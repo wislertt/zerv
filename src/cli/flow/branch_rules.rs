@@ -112,18 +112,20 @@ impl BranchRule {
 
         let remainder = &branch_name[prefix.len()..];
 
-        // Skip any non-numeric characters (like slash) at the beginning
-        let numeric_start: String = remainder
-            .chars()
-            .skip_while(|c| !c.is_numeric())
-            .take_while(|c| c.is_numeric())
-            .collect();
+        // Split the remainder by '/' and iterate through path segments
+        for segment in remainder.split('/') {
+            // Skip empty segments (e.g., leading slash)
+            if segment.is_empty() {
+                continue;
+            }
 
-        if numeric_start.is_empty() {
-            None
-        } else {
-            numeric_start.parse().ok()
+            // Check if the segment is purely numeric
+            if segment.chars().all(|c| c.is_numeric()) && !segment.is_empty() {
+                return segment.parse().ok();
+            }
         }
+
+        None
     }
 }
 
@@ -376,6 +378,23 @@ mod tests {
     #[case("hotfix/*", "hotfix/123", Some(123))]
     #[case("hotfix/*", "hotfix/abc", None)]
     #[case("release/*", "main", None)]
+    // Additional edge cases for deeper path segments
+    #[case("hotfix/*", "hotfix/1/2/3", Some(1))]
+    #[case("release/*", "release/99/feature/sub/branch", Some(99))]
+    #[case("release/*", "release/feature/99/sub/branch", Some(99))]
+    #[case("bugfix/*", "bugfix/42/fix/description", Some(42))]
+    #[case("feature/*", "feature/12345/ticket-description", Some(12345))]
+    // Edge cases with zero and leading zeros
+    #[case("patch/*", "patch/0", Some(0))]
+    #[case("patch/*", "patch/001/fix", Some(1))] // Leading zeros should be parsed as 1
+    #[case("release/*", "release/v1.2.3", None)] // Not purely numeric segment
+    #[case("release/*", "release/v1.2.3/1", Some(1))]
+    // Finds pure numeric segment later
+    // Edge cases with special characters - should now return None for mixed alphanumeric
+    #[case("release/*", "release/1-beta", None)]
+    #[case("hotfix/*", "hotfix/123_fix", None)]
+    // Edge cases with no numbers
+    #[case("feature/*", "feature/username", None)]
     fn test_branch_rule_number_extraction(
         #[case] pattern: &str,
         #[case] branch_name: &str,

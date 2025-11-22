@@ -101,7 +101,7 @@ impl ZervVars {
 
     /// Apply --clean flag (sets distance=None and dirty=false)
     fn apply_clean_flag(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
-        if args.overrides.clean {
+        if args.overrides.common.clean {
             self.distance = None;
             self.dirty = Some(false);
         }
@@ -111,7 +111,7 @@ impl ZervVars {
     /// Apply VCS-level overrides (distance, dirty, branch, commit_hash)
     fn apply_vcs_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Apply distance override
-        if let Some(distance) = args.overrides.distance {
+        if let Some(distance) = args.overrides.common.distance {
             self.distance = Some(distance as u64);
         }
 
@@ -121,17 +121,17 @@ impl ZervVars {
         }
 
         // Apply branch override
-        if let Some(ref bumped_branch) = args.overrides.bumped_branch {
+        if let Some(bumped_branch) = &args.overrides.common.bumped_branch {
             self.bumped_branch = Some(bumped_branch.clone());
         }
 
         // Apply commit hash override
-        if let Some(ref bumped_commit_hash) = args.overrides.bumped_commit_hash {
+        if let Some(bumped_commit_hash) = &args.overrides.common.bumped_commit_hash {
             self.bumped_commit_hash = Some(bumped_commit_hash.clone());
         }
 
         // Apply timestamp override
-        if let Some(bumped_timestamp) = args.overrides.bumped_timestamp {
+        if let Some(bumped_timestamp) = args.overrides.common.bumped_timestamp {
             self.bumped_timestamp = Some(bumped_timestamp as u64);
         }
 
@@ -141,7 +141,7 @@ impl ZervVars {
     /// Apply version-specific field overrides
     fn apply_tag_version_overrides(&mut self, args: &VersionArgs) -> Result<(), ZervError> {
         // Apply tag version override (parse and extract components)
-        if let Some(ref tag_version) = args.overrides.tag_version {
+        if let Some(tag_version) = &args.overrides.common.tag_version {
             // Use consolidated VersionObject parsing
             let version_object =
                 VersionObject::parse_with_format(tag_version, &args.input.input_format)?;
