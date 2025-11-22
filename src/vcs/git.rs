@@ -924,13 +924,41 @@ mod tests {
             .execute_git(&fixture.test_dir, &["tag", "--points-at", &debug_head])
             .expect("Failed to get tags at HEAD");
 
+        // Debug the internal logic: replicate get_latest_tag steps to see valid_tags and max_tag
+        let debug_latest_valid_tag = {
+            let tags_output = git_vcs
+                .get_merged_tags()
+                .expect("Failed to get merged tags");
+            match git_vcs
+                .find_latest_valid_version_tag(&tags_output, "auto")
+                .expect("Failed to find latest valid")
+            {
+                Some(tag) => tag,
+                None => "NONE".to_string(),
+            }
+        };
+        let debug_commit_hash = git_vcs
+            .get_commit_hash_from_tag(&debug_latest_valid_tag)
+            .expect("Failed to get commit hash");
+        let debug_tags_from_commit: Vec<String> = git_vcs
+            .get_all_tags_from_commit_hash(&debug_commit_hash)
+            .expect("Failed to get tags from commit");
+
+        // Replicate the filtering and max logic
+        let debug_valid_tags = GitUtils::filter_only_valid_tags(&debug_tags_from_commit, "auto")
+            .expect("Failed to filter valid tags");
+        let debug_max_tag =
+            GitUtils::find_max_version_tag(&debug_valid_tags).expect("Failed to find max version");
+
         assert_eq!(
             result,
             Some("v2.0.0".to_string()),
             "UBUNTU DEBUG: HEAD={}, v2.0.0={}, v3.0.0={}, result={:?}. \
              HEAD==v2.0.0={}, HEAD==v3.0.0={}. \
              Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0. \
-             Reachable tags: [{}]. Tags at HEAD: [{}]",
+             Reachable tags: [{}]. Tags at HEAD: [{}]. \
+             Internal logic: latest_valid_tag={}, commit_hash={}, tags_from_commit=[{}]. \
+             valid_tags={:?}, max_tag={:?}",
             debug_head,
             debug_v2_commit,
             debug_v3_commit,
@@ -946,7 +974,12 @@ mod tests {
                 .lines()
                 .filter(|l| !l.trim().is_empty())
                 .collect::<Vec<_>>()
-                .join(", ")
+                .join(", "),
+            debug_latest_valid_tag,
+            debug_commit_hash,
+            debug_tags_from_commit.join(", "),
+            debug_valid_tags,
+            debug_max_tag
         );
         // ==== DEBUG END ====
 
