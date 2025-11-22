@@ -203,32 +203,6 @@ impl GitVcs {
         VersionObject::parse_with_format(tag, format).is_ok()
     }
 
-    // /// Get all valid version tags pointing to the same commit as the given tag
-    // fn get_valid_tags_for_commit(&self, tag: &str, format: &str) -> Result<Vec<String>> {
-    //     let commit_hash = self.get_commit_hash_for_tag(tag)?;
-    //     let tags_on_commit = self.get_tags_pointing_at_commit(&commit_hash)?;
-
-    //     // Filter and return only valid version tags
-    //     Ok(tags_on_commit
-    //         .lines()
-    //         .map(|line| line.trim())
-    //         .filter(|trimmed_tag| !trimmed_tag.is_empty())
-    //         .filter(|trimmed_tag| self.is_valid_version_tag(trimmed_tag, format))
-    //         .map(|tag| tag.to_string())
-    //         .collect())
-    // }
-
-    // /// Get the commit hash for a given tag
-    // fn get_commit_hash_for_tag(&self, tag: &str) -> Result<String> {
-    //     match self.run_git_command(&["rev-list", "-n", "1", tag]) {
-    //         Ok(hash) => Ok(hash.trim().to_string()),
-    //         Err(_) => Err(ZervError::CommandFailed(format!(
-    //             "Failed to get commit hash for tag: {}",
-    //             tag
-    //         ))),
-    //     }
-    // }
-
     /// Get all tags pointing to a specific commit
     fn get_tags_pointing_at_commit(&self, commit_hash: &str) -> Result<String> {
         match self.run_git_command(&["tag", "--points-at", commit_hash]) {
@@ -908,91 +882,92 @@ mod tests {
         let v2_commit = v2_commit.trim();
         fixture = fixture.checkout(v2_commit);
 
-        // ====== DEBUG END ========
+        // ====== DEBUG START ========
 
-        // Debug information to understand Ubuntu vs other OS differences - BEFORE calling get_latest_tag
-        let current_head = fixture
-            .get_head_commit()
-            .expect("Failed to get current HEAD commit");
-        let v2_tag_commit = fixture
-            .git_impl
-            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
-            .expect("Failed to get v2.0.0 tag commit");
-        let v2_tag_commit = v2_tag_commit.trim();
-        let v3_tag_commit = fixture
-            .git_impl
-            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v3.0.0"])
-            .expect("Failed to get v3.0.0 tag commit");
-        let v3_tag_commit = v3_tag_commit.trim();
+        // // Debug information to understand Ubuntu vs other OS differences - BEFORE calling get_latest_tag
+        // let current_head = fixture
+        //     .get_head_commit()
+        //     .expect("Failed to get current HEAD commit");
+        // let v2_tag_commit = fixture
+        //     .git_impl
+        //     .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
+        //     .expect("Failed to get v2.0.0 tag commit");
+        // let v2_tag_commit = v2_tag_commit.trim();
+        // let v3_tag_commit = fixture
+        //     .git_impl
+        //     .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v3.0.0"])
+        //     .expect("Failed to get v3.0.0 tag commit");
+        // let v3_tag_commit = v3_tag_commit.trim();
 
-        // Check reachable tags from current HEAD (this is what get_latest_tag uses first)
-        let reachable_tags = fixture
-            .git_impl
-            .execute_git(
-                &fixture.test_dir,
-                &["tag", "--merged", "HEAD", "--sort=-committerdate"],
-            )
-            .expect("Failed to get reachable tags");
+        // // Check reachable tags from current HEAD (this is what get_latest_tag uses first)
+        // let reachable_tags = fixture
+        //     .git_impl
+        //     .execute_git(
+        //         &fixture.test_dir,
+        //         &["tag", "--merged", "HEAD", "--sort=-committerdate"],
+        //     )
+        //     .expect("Failed to get reachable tags");
 
-        // Check tags pointing at HEAD commit
-        let tags_at_head = fixture
-            .git_impl
-            .execute_git(
-                &fixture.test_dir,
-                &["tag", "--points-at", current_head.trim()],
-            )
-            .expect("Failed to get tags at HEAD");
+        // // Check tags pointing at HEAD commit
+        // let tags_at_head = fixture
+        //     .git_impl
+        //     .execute_git(
+        //         &fixture.test_dir,
+        //         &["tag", "--points-at", current_head.trim()],
+        //     )
+        //     .expect("Failed to get tags at HEAD");
 
-        eprintln!("=== DEBUG: Ubuntu Git behavior analysis (PRE get_latest_tag) ===");
-        eprintln!("Current HEAD commit: {}", current_head.trim());
-        eprintln!("v2.0.0 tag commit: {}", v2_tag_commit);
-        eprintln!("v3.0.0 tag commit: {}", v3_tag_commit);
-        eprintln!(
-            "HEAD == v2.0.0 commit: {}",
-            current_head.trim() == v2_tag_commit
-        );
-        eprintln!(
-            "HEAD == v3.0.0 commit: {}",
-            current_head.trim() == v3_tag_commit
-        );
-        eprintln!("Tags reachable from HEAD (sorted by -committerdate):");
-        for line in reachable_tags.lines() {
-            if !line.trim().is_empty() {
-                eprintln!("  {}", line.trim());
-            }
-        }
-        eprintln!("Tags pointing directly at HEAD:");
-        for line in tags_at_head.lines() {
-            if !line.trim().is_empty() {
-                eprintln!("  {}", line.trim());
-            }
-        }
-        eprintln!("=== END PRE DEBUG ===");
+        // eprintln!("=== DEBUG: Ubuntu Git behavior analysis (PRE get_latest_tag) ===");
+        // eprintln!("Current HEAD commit: {}", current_head.trim());
+        // eprintln!("v2.0.0 tag commit: {}", v2_tag_commit);
+        // eprintln!("v3.0.0 tag commit: {}", v3_tag_commit);
+        // eprintln!(
+        //     "HEAD == v2.0.0 commit: {}",
+        //     current_head.trim() == v2_tag_commit
+        // );
+        // eprintln!(
+        //     "HEAD == v3.0.0 commit: {}",
+        //     current_head.trim() == v3_tag_commit
+        // );
+        // eprintln!("Tags reachable from HEAD (sorted by -committerdate):");
+        // for line in reachable_tags.lines() {
+        //     if !line.trim().is_empty() {
+        //         eprintln!("  {}", line.trim());
+        //     }
+        // }
+        // eprintln!("Tags pointing directly at HEAD:");
+        // for line in tags_at_head.lines() {
+        //     if !line.trim().is_empty() {
+        //         eprintln!("  {}", line.trim());
+        //     }
+        // }
+        // eprintln!("=== END PRE DEBUG ===");
 
-        let result = git_vcs.get_latest_tag("auto")?;
+        // let result = git_vcs.get_latest_tag("auto")?;
 
-        eprintln!("=== DEBUG: POST get_latest_tag ===");
-        eprintln!("get_latest_tag result: {:?}", result);
-        eprintln!("Expected: Some(\"v2.0.0\")");
-        eprintln!("=== END DEBUG ===");
+        // eprintln!("=== DEBUG: POST get_latest_tag ===");
+        // eprintln!("get_latest_tag result: {:?}", result);
+        // eprintln!("Expected: Some(\"v2.0.0\")");
+        // eprintln!("=== END DEBUG ===");
 
-        assert_eq!(
-            result,
-            Some("v2.0.0".to_string()),
-            "DEBUG: HEAD={}, v2.0.0={}, v3.0.0={}, result={:?}. Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0. Ubuntu vs macOS/Windows difference analysis above.",
-            current_head.trim(),
-            v2_tag_commit,
-            v3_tag_commit,
-            result
-        );
-        // ====== DEBUG END ========
-
-        // Original assertion - commented out for debugging
         // assert_eq!(
         //     result,
         //     Some("v2.0.0".to_string()),
-        //     "Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0"
+        //     "DEBUG: HEAD={}, v2.0.0={}, v3.0.0={}, result={:?}. Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0. Ubuntu vs macOS/Windows difference analysis above.",
+        //     current_head.trim(),
+        //     v2_tag_commit,
+        //     v3_tag_commit,
+        //     result
         // );
+        // ====== DEBUG END ========
+
+        // Original assertion - commented out for debugging
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v2.0.0".to_string()),
+            "Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0"
+        );
 
         // Test 5: Old commit with high version tag
         let head_commit = fixture
