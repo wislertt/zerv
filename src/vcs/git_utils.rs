@@ -119,3 +119,158 @@ impl GitUtils {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::GitUtils;
+    use crate::version::VersionObject;
+
+    #[rstest]
+    // Basic semver case
+    #[case(
+        "semver",
+        vec![
+            "v1.0.0".to_string(),
+            "v1.0.1".to_string(),
+            "v2.0.0".to_string(),
+        ],
+        vec![
+            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+            ("v1.0.1".to_string(), VersionObject::parse_with_format("v1.0.1", "semver").unwrap()),
+            ("v2.0.0".to_string(), VersionObject::parse_with_format("v2.0.0", "semver").unwrap()),
+        ],
+        Some("v2.0.0".to_string()),
+    )]
+    // RC versions - should filter out PEP440 format and keep only SemVer majority
+    #[case(
+        "semver",
+        vec![
+            "v1.0.0".to_string(),
+            "v1.0.1".to_string(),
+            "v2.0.0-alpha.1".to_string(),
+            "1.0.0rc1".to_string(),
+            "1.1.0a1".to_string(),
+        ],
+        vec![
+            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+            ("v1.0.1".to_string(), VersionObject::parse_with_format("v1.0.1", "semver").unwrap()),
+            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_with_format("v2.0.0-alpha.1", "semver").unwrap()),
+        ],
+        Some("v2.0.0-alpha.1".to_string()),
+    )]
+    // Mixed formats with semver parsing - only semver tags parse successfully
+    #[case(
+        "semver",
+        vec![
+            "v1.0.0".to_string(),
+            "1.0.0rc1".to_string(),
+            "1.1.0a1".to_string(),
+            "1.2.0b2".to_string(),
+            "1.0.0rc2".to_string(),
+        ],
+        vec![
+            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+        ],
+        Some("v1.0.0".to_string()),
+    )]
+    // Auto format with mixed versions - tie goes to first tag's format (SemVer in this case)
+    #[case(
+        "auto",
+        vec![
+            "v1.0.0".to_string(),
+            "v1.1.0".to_string(),
+            "1.0.0rc1".to_string(),
+            "1.1.0a1".to_string(),
+            "1.2.0b2".to_string(),
+            "v2.0.0-alpha.1".to_string(),
+        ],
+        vec![
+            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "auto").unwrap()),
+            ("v1.1.0".to_string(), VersionObject::parse_with_format("v1.1.0", "auto").unwrap()),
+            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_with_format("v2.0.0-alpha.1", "auto").unwrap()),
+        ],
+        Some("v2.0.0-alpha.1".to_string()),
+    )]
+    // PEP440 format with complex versions
+    #[case(
+        "pep440",
+        vec![
+            "1.0.0".to_string(),
+            "1.0.0rc1".to_string(),
+            "1.1.0a1".to_string(),
+            "1.2.0b2".to_string(),
+            "2.0.0".to_string(),
+            "1.0.0rc2".to_string(),
+        ],
+        vec![
+            ("1.0.0".to_string(), VersionObject::parse_with_format("1.0.0", "pep440").unwrap()),
+            ("1.0.0rc1".to_string(), VersionObject::parse_with_format("1.0.0rc1", "pep440").unwrap()),
+            ("1.1.0a1".to_string(), VersionObject::parse_with_format("1.1.0a1", "pep440").unwrap()),
+            ("1.2.0b2".to_string(), VersionObject::parse_with_format("1.2.0b2", "pep440").unwrap()),
+            ("2.0.0".to_string(), VersionObject::parse_with_format("2.0.0", "pep440").unwrap()),
+            ("1.0.0rc2".to_string(), VersionObject::parse_with_format("1.0.0rc2", "pep440").unwrap()),
+        ],
+        Some("2.0.0".to_string()),
+    )]
+    // Tie breaker - first tag's format should win (SemVer in this case)
+    #[case(
+        "semver",
+        vec![
+            "v1.0.0".to_string(),
+            "1.0.0rc1".to_string(),
+        ],
+        vec![
+            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+        ],
+        Some("v1.0.0".to_string()),
+    )]
+    // Complex versions with post releases
+    #[case(
+        "semver",
+        vec![
+            "v1.0.1-rc.1.post.1".to_string(),
+            "v1.0.1-rc.1.post.2".to_string(),
+            "v1.0.0".to_string(),
+        ],
+        vec![
+            ("v1.0.1-rc.1.post.1".to_string(), VersionObject::parse_with_format("v1.0.1-rc.1.post.1", "semver").unwrap()),
+            ("v1.0.1-rc.1.post.2".to_string(), VersionObject::parse_with_format("v1.0.1-rc.1.post.2", "semver").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+        ],
+        Some("v1.0.1-rc.1.post.2".to_string()),
+    )]
+    // No valid tags - should return empty
+    #[case(
+        "semver",
+        vec![
+            "invalid".to_string(),
+            "not-a-version".to_string(),
+            "123abc".to_string(),
+        ],
+        vec![],
+        None,
+    )]
+    // Empty input
+    #[case(
+        "semver",
+        vec![],
+        vec![],
+        None,
+    )]
+    fn test_filter_only_valid_tags(
+        #[case] format: &str,
+        #[case] tags: Vec<String>,
+        #[case] expected_valid_tags: Vec<(String, VersionObject)>,
+        #[case] expected_max_version_tag: Option<String>,
+    ) {
+        let filtered_tags = GitUtils::filter_only_valid_tags(&tags, format).unwrap();
+
+        assert_eq!(filtered_tags, expected_valid_tags);
+
+        // Test find_max_version_tag with the filtered tags
+        let actual_max_version_tag = GitUtils::find_max_version_tag(&filtered_tags).unwrap();
+        assert_eq!(actual_max_version_tag, expected_max_version_tag);
+    }
+}

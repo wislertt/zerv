@@ -56,7 +56,7 @@ impl FlowArgs {
             .unwrap_or(post_modes::COMMIT)
         {
             post_modes::COMMIT => "{{ distance }}", // bump post by distance
-            post_modes::TAG => "1",                 // bump post by 1
+            post_modes::TAG => "{{ 1 }}",           // bump post by 1
             _ => unreachable!("Invalid post_mode should have been caught by validation"),
         };
         let template = self.build_pre_release_bump_template(content);

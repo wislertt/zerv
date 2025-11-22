@@ -13,12 +13,30 @@ pub fn run_flow_pipeline(args: FlowArgs, stdin_content: Option<&str>) -> Result<
 
     // Step 1: Get current state (no bumps)
     let current_zerv = args.get_current_zerv_object(stdin_content)?;
+    tracing::error!(
+        "[DEBUG] current_zerv.vars.post: {:?}",
+        current_zerv.vars.post
+    );
 
     // Step 2: Validate and apply branch rules using current state
     args.validate(&current_zerv)?;
+    tracing::error!(
+        "[DEBUG] args.branch_config.post_mode: {:?}",
+        args.branch_config.post_mode
+    );
+    tracing::error!("[DEBUG] args: {:?}", args);
 
     // Step 3: Create bumped version args
     let version_args = args.create_bumped_version_args(&current_zerv)?;
+
+    tracing::error!(
+        "version_args.overrides.post: {:?}",
+        version_args.overrides.post
+    );
+    tracing::error!(
+        "version_args.bumps.bump_post: {:?}",
+        version_args.bumps.bump_post
+    );
 
     // Step 4: Run version pipeline with stdin content
     let ron_output = run_version_pipeline(version_args, stdin_content)?;
@@ -26,12 +44,15 @@ pub fn run_flow_pipeline(args: FlowArgs, stdin_content: Option<&str>) -> Result<
     let zerv_object: Zerv = from_str(&ron_output)
         .map_err(|e| ZervError::InvalidFormat(format!("Failed to parse version output: {}", e)))?;
 
+    tracing::error!("[DEBUG] zerv_object.vars.post: {:?}", zerv_object.vars.post);
+
     let output = OutputFormatter::format_output(
         &zerv_object,
         &args.output.output_format,
         args.output.output_prefix.as_deref(),
         &args.output.output_template,
     )?;
+    tracing::error!("[DEBUG] output: {:?}", output);
 
     Ok(output)
 }

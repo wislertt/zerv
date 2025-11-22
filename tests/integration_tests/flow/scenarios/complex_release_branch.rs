@@ -46,12 +46,16 @@ fn test_complex_release_branch_abandonment() {
         .expect_version("1.0.1-rc.1.post.1", "1.0.1rc1.post1")
         .commit()
         .expect_version(
-            "1.0.1-rc.1.post.1+release.1.1.g{hex:7}",
-            "1.0.1rc1.post1+release.1.1.g{hex:7}",
+            "1.0.1-rc.1.post.2+release.1.1.g{hex:7}",
+            "1.0.1rc1.post2+release.1.1.g{hex:7}",
         )
         .create_tag("v1.0.1-rc.1.post.2")
         .expect_version("1.0.1-rc.1.post.2", "1.0.1rc1.post2")
         .commit()
+        .expect_version(
+            "1.0.1-rc.1.post.3+release.1.1.g{hex:7}",
+            "1.0.1rc1.post3+release.1.1.g{hex:7}",
+        )
         .copy_to_tmp("test_repo");
     // .delete_tmp("test_repo");
 

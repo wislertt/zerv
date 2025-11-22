@@ -9,8 +9,6 @@ use crate::error::{
 };
 
 pub mod git;
-#[cfg(test)]
-pub mod git_test;
 pub mod git_utils;
 pub mod vcs_data;
 
