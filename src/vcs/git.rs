@@ -138,41 +138,16 @@ impl GitVcs {
     /// Get latest version tag using enhanced algorithm
     fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
         let tags_output = self.get_merged_tags()?;
-        tracing::error!("[DEBUG]: Found tags_output: {:?}", tags_output);
-
         let latest_valid_version_tag =
             match self.find_latest_valid_version_tag(&tags_output, format)? {
                 Some(tag) => tag,
                 None => return Ok(None),
             };
-
-        tracing::error!(
-            "DEBUG: Found latest valid version tag: {}",
-            latest_valid_version_tag
-        );
-
         let commit_hash = self.get_commit_hash_from_tag(&latest_valid_version_tag)?;
-        tracing::error!(
-            "DEBUG: Commit hash for tag {}: {}",
-            latest_valid_version_tag,
-            commit_hash
-        );
-
         let tags = self.get_all_tags_from_commit_hash(&commit_hash)?;
-        tracing::error!(
-            "DEBUG: All tags pointing to commit {}: {:?}",
-            commit_hash,
-            tags
-        );
 
         let valid_tags = GitUtils::filter_only_valid_tags(&tags, format)?;
-        tracing::error!(
-            "DEBUG: Valid version tags with version objects: {:?}",
-            valid_tags
-        );
-
         let max_tag = GitUtils::find_max_version_tag(&valid_tags)?;
-        tracing::error!("[DEBUG]: Selected max version tag: {:?}", max_tag);
 
         Ok(max_tag)
     }
@@ -216,12 +191,10 @@ impl GitVcs {
             }
 
             if self.is_valid_version_tag(trimmed_tag, format) {
-                tracing::error!("[DEBUG]: Selected first valid tag: {}", trimmed_tag);
                 return Ok(Some(trimmed_tag.to_string())); // Return the first valid tag found
             }
         }
 
-        tracing::error!("[DEBUG] No valid version tags found in: {:?}", tags_output);
         Ok(None)
     }
 
