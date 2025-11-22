@@ -255,17 +255,120 @@ impl FlowTestScenario {
         self
     }
 
+    /// Determine if a merge is a forward development merge or sync merge
+    /// Forward merges: feature/* → develop/*, feature/* → main, develop/* → main
+    /// Sync merges: main → feature/*, main → develop/*, develop/* → feature/*
+    fn is_forward_merge(current_branch: &str, merged_branch: &str) -> bool {
+        (current_branch.starts_with("feature")
+            && (merged_branch == "main" || merged_branch.starts_with("develop")))
+            || (current_branch.starts_with("develop") && merged_branch == "main")
+            || (current_branch == "main" && merged_branch.starts_with("feature"))
+    }
+
+    /// Calculate the new distance after a merge
+    fn calculate_merge_distance(
+        current_distance: u64,
+        merged_distance: u64,
+        is_forward_merge: bool,
+    ) -> u64 {
+        if is_forward_merge {
+            std::cmp::max(current_distance, merged_distance) + 1
+        } else {
+            std::cmp::max(current_distance, merged_distance)
+        }
+    }
+
+    /// Calculate the final distance, handling special cases like clean syncs
+    fn calculate_final_distance(
+        current_branch: &str,
+        merged_branch: &str,
+        merge_distance: u64,
+        branch_vars: &HashMap<String, ZervVars>,
+    ) -> u64 {
+        // Special handling for main -> develop sync merges
+        if current_branch == "develop"
+            && merged_branch == "main"
+            && let Some(main_vars) = branch_vars.get("main")
+            && let (Some(major), Some(minor), Some(patch)) =
+                (main_vars.major, main_vars.minor, main_vars.patch)
+            && (major, minor, patch) == (1, 1, 0)
+        {
+            return 0; // Reset distance for final clean sync
+        }
+        merge_distance
+    }
+
+    /// Handle version sync for main -> develop merges
+    fn handle_version_sync(&mut self, branch_vars: &HashMap<String, ZervVars>) {
+        test_debug!("Sync merge detected: main -> develop, syncing version components");
+
+        if let Some(main_vars) = branch_vars.get("main") {
+            test_debug!(
+                "Syncing to main's version: {}.{}.{}",
+                main_vars.major.unwrap_or(1),
+                main_vars.minor.unwrap_or(0),
+                main_vars.patch.unwrap_or(1)
+            );
+
+            self.current_vars.major = main_vars.major;
+            self.current_vars.minor = main_vars.minor;
+            self.current_vars.patch = main_vars.patch;
+            self.current_vars.pre_release = None;
+            self.current_vars.post = None;
+
+            test_debug!(
+                "After sync version setting: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+                self.current_vars.major,
+                self.current_vars.minor,
+                self.current_vars.patch,
+                self.current_vars.pre_release,
+                self.current_vars.post
+            );
+        }
+    }
+
+    /// Handle version bump for forward merges (main -> feature)
+    fn handle_forward_merge_version_bump(&mut self, branch_vars: &HashMap<String, ZervVars>) {
+        if let Some(main_vars) = branch_vars.get("main") {
+            let major = main_vars.major.unwrap_or(1);
+            let minor = main_vars.minor.unwrap_or(0);
+            let patch = main_vars.patch.unwrap_or(0);
+
+            // Increment patch version for continued development
+            let new_patch = patch + 1;
+            test_debug!(
+                "Incrementing version from {}.{}.{} to {}.{}.{}",
+                major,
+                minor,
+                patch,
+                major,
+                minor,
+                new_patch
+            );
+
+            self.current_vars.major = Some(major);
+            self.current_vars.minor = Some(minor);
+            self.current_vars.patch = Some(new_patch);
+            self.current_vars.pre_release = Some(crate::version::zerv::PreReleaseVar {
+                label: crate::version::zerv::PreReleaseLabel::Alpha,
+                number: Some(68031),
+            });
+
+            test_debug!(
+                "After version bump: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
+                self.current_vars.major,
+                self.current_vars.minor,
+                self.current_vars.patch,
+                self.current_vars.pre_release,
+                self.current_vars.post
+            );
+        }
+    }
+
     pub fn merge_branch(mut self, branch_name: &str) -> Self {
         test_info!("Merging branch: {}", branch_name);
         let current_branch = self.get_current_branch();
-
-        // Determine if this is a forward development merge or sync merge
-        // Forward merges: feature/* → develop/*, feature/* → main, develop/* → main
-        // Sync merges: main → feature/*, main → develop/*, develop/* → feature/*
-        let is_forward_merge = (current_branch.starts_with("feature")
-            && (branch_name == "main" || branch_name.starts_with("develop")))
-            || (current_branch.starts_with("develop") && branch_name == "main")
-            || (current_branch == "main" && branch_name.starts_with("feature"));
+        let is_forward_merge = Self::is_forward_merge(&current_branch, branch_name);
 
         let current_distance = self.current_vars.distance.unwrap_or(0);
         let merged_distance = self
@@ -292,114 +395,27 @@ impl FlowTestScenario {
             self.current_vars.post
         );
 
-        // For forward development merges, increment max distance. For sync merges, just use max.
-        let new_distance = if is_forward_merge {
-            std::cmp::max(current_distance, merged_distance) + 1
-        } else {
-            std::cmp::max(current_distance, merged_distance)
-        };
-
-        // Special handling for sync merges (main -> develop)
-        // In GitFlow, when main is merged into develop, develop should sync with main's version
+        // Handle special version management cases
         if current_branch == "develop" && branch_name == "main" {
-            test_debug!("Sync merge detected: main -> develop, syncing version components");
-
-            // Get main's version from branch state
-            let main_vars = self.branch_vars.get("main");
-            if let Some(main_vars) = main_vars {
-                test_debug!(
-                    "Syncing to main's version: {}.{}.{}",
-                    main_vars.major.unwrap_or(1),
-                    main_vars.minor.unwrap_or(0),
-                    main_vars.patch.unwrap_or(1)
-                );
-
-                // Set develop branch to main's version and clear all development state
-                self.current_vars.major = main_vars.major;
-                self.current_vars.minor = main_vars.minor;
-                self.current_vars.patch = main_vars.patch;
-                self.current_vars.pre_release = None;
-                self.current_vars.post = None;
-
-                test_debug!(
-                    "After sync version setting: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
-                    self.current_vars.major,
-                    self.current_vars.minor,
-                    self.current_vars.patch,
-                    self.current_vars.pre_release,
-                    self.current_vars.post
-                );
-            }
-        }
-        // Special handling for forward merges in trunk-based development
-        // When a feature branch merges main, it should increment the patch version
-        else if is_forward_merge && branch_name == "main" && current_branch.starts_with("feature")
+            let branch_vars = self.branch_vars.clone();
+            self.handle_version_sync(&branch_vars);
+        } else if is_forward_merge && branch_name == "main" && current_branch.starts_with("feature")
         {
-            test_debug!(
-                "Forward merge detected: main -> {}, incrementing version",
-                current_branch
-            );
-
-            // Get main's version from branch state
-            if let Some(main_vars) = self.branch_vars.get("main") {
-                let major = main_vars.major.unwrap_or(1);
-                let minor = main_vars.minor.unwrap_or(0);
-                let patch = main_vars.patch.unwrap_or(0);
-
-                // Increment patch version for continued development
-                let new_patch = patch + 1;
-                test_debug!(
-                    "Incrementing version from {}.{}.{} to {}.{}.{}",
-                    major,
-                    minor,
-                    patch,
-                    major,
-                    minor,
-                    new_patch
-                );
-
-                self.current_vars.major = Some(major);
-                self.current_vars.minor = Some(minor);
-                self.current_vars.patch = Some(new_patch);
-                self.current_vars.pre_release = Some(crate::version::zerv::PreReleaseVar {
-                    label: crate::version::zerv::PreReleaseLabel::Alpha,
-                    number: Some(68031),
-                });
-
-                test_debug!(
-                    "After version bump: major={:?}, minor={:?}, patch={:?}, pre_release={:?}, post={:?}",
-                    self.current_vars.major,
-                    self.current_vars.minor,
-                    self.current_vars.patch,
-                    self.current_vars.pre_release,
-                    self.current_vars.post
-                );
-            }
+            let branch_vars = self.branch_vars.clone();
+            self.handle_forward_merge_version_bump(&branch_vars);
         }
 
-        let merge_hash = generate_commit_hash(&format!("merge-{}", branch_name), new_distance);
+        // Calculate distances
+        let merge_distance =
+            Self::calculate_merge_distance(current_distance, merged_distance, is_forward_merge);
+        let final_distance = Self::calculate_final_distance(
+            &current_branch,
+            branch_name,
+            merge_distance,
+            &self.branch_vars,
+        );
 
-        // For sync merges (main -> develop), check if we need to reset distance for clean version
-        let final_distance = if current_branch == "develop" && branch_name == "main" {
-            // Check if this is syncing to v1.1.0 (final release)
-            if let Some(main_vars) = self.branch_vars.get("main") {
-                if let (Some(major), Some(minor), Some(patch)) =
-                    (main_vars.major, main_vars.minor, main_vars.patch)
-                {
-                    if (major, minor, patch) == (1, 1, 0) {
-                        0 // Reset distance for final clean sync
-                    } else {
-                        new_distance // Keep distance for regular sync
-                    }
-                } else {
-                    new_distance
-                }
-            } else {
-                new_distance
-            }
-        } else {
-            new_distance
-        };
+        let merge_hash = generate_commit_hash(&format!("merge-{}", branch_name), final_distance);
 
         // Update current vars with merge info
         self.current_vars.distance = Some(final_distance);
