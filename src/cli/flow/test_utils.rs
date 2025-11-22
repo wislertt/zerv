@@ -437,56 +437,6 @@ impl FlowTestScenario {
         };
         ron::to_string(&zerv).unwrap_or_else(|e| format!("Error serializing Zerv to RON: {}", e))
     }
-
-    /// Simple debug method for stdin-based testing
-    pub fn debug_git_state(self, context: &str) -> Self {
-        crate::test_info!("=== DEBUG: {} ===", context);
-        crate::test_info!("Using stdin-based ZervVars (no Git operations)");
-
-        crate::test_info!(
-            "Version: major={:?}, minor={:?}, patch={:?}",
-            self.current_vars.major,
-            self.current_vars.minor,
-            self.current_vars.patch
-        );
-        crate::test_info!("Branch: {:?}", self.current_vars.bumped_branch);
-        crate::test_info!("Distance: {:?}", self.current_vars.distance);
-        crate::test_info!("Commit hash: {:?}", self.current_vars.bumped_commit_hash);
-        crate::test_info!("Dirty: {:?}", self.current_vars.dirty);
-        crate::test_info!("=== END DEBUG ===");
-        self
-    }
-
-    /// Simple debug method to save stdin content for debugging
-    pub fn copy_test_path_to_cache(self, _context: &str) -> Self {
-        let cache_dir = std::path::Path::new(".cache/tmp");
-
-        // Create cache directory if it doesn't exist
-        if let Err(e) = std::fs::create_dir_all(cache_dir) {
-            crate::test_info!("Failed to create cache directory: {}", e);
-            return self;
-        }
-
-        // Create unique filename for this debug session
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let target_file = cache_dir.join(format!("{}.ron", timestamp));
-
-        // Save stdin content to file
-        let stdin_content = self.to_stdin_content();
-        match std::fs::write(&target_file, stdin_content) {
-            Ok(_) => {
-                crate::test_info!("Saved stdin content to: {}", target_file.display());
-                crate::test_info!("You can investigate with: cat {}", target_file.display());
-            }
-            Err(e) => {
-                crate::test_info!("Failed to save stdin content: {}", e);
-            }
-        }
-        self
-    }
 }
 
 /// Creates comprehensive test cases for ALL standard-related schema constants

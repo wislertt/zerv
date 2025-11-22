@@ -263,6 +263,81 @@ gitGraph
     merge main id: "1.1.1-beta.1.post.1" tag: "sync release"
 ```
 
+### Complex Release Branch Management
+
+**Purpose**: Shows Zerv Flow handling complex release branch scenarios including branch abandonment and cascading release preparation.
+
+**Scenario Overview**:
+
+- Main branch has `v1.0.0`
+- Release branch `release/1` is created from main for next release preparation
+- `release/1` gets 3 commits but critical issues are discovered, leading to abandonment
+- Release branch `release/2` is created from the **second commit of release/1** (not from main)
+- `release/2` completes successfully and merges to main as `v1.1.0`
+
+**Key Zerv Flow behaviors demonstrated**:
+
+- **Release branch creation**: `release/*` branches use commit distance from their creation point
+- **Branch abandonment**: `release/1` shows incomplete release cycles with proper versioning throughout
+- **Selective branch creation**: `release/2` created from specific commit in `release/1` (not from main)
+- **Version isolation**: Each release branch maintains independent version progression
+- **RC pre-releases**: Both release branches use `rc` identifier for release candidates
+- **Post-release continuity**: Commit distances continue from branch creation points
+- **Clean release finalization**: Main branch maintains clean semantic versions on release
+
+```mermaid
+---
+config:
+  logLevel: 'debug'
+  theme: 'base'
+---
+gitGraph
+    %% Step 1: Initial state: main branch
+    commit id: "1.0.0"
+
+    %% Step 2: Create release/1 from main for next release preparation
+    branch release/1 order: 2
+    checkout release/1
+    commit id: "1.0.1-rc.1.post.1"
+    commit id: "1.0.1-rc.1.post.2"
+
+    %% Step 3: release/1 gets third commit, but critical issues discovered
+    %% First, create release/2 from the SECOND commit (before issues)
+    %% release/1 at commit 2: 1.0.1-rc.1.post.2, so release/2 continues from post.2
+    checkout release/1
+    branch release/2 order: 1
+    checkout release/2
+    commit id: "1.0.1-rc.2.post.3"
+
+    %% Now go back to release/1 and add the problematic third commit
+    checkout release/1
+    commit id: "1.0.1-rc.1.post.3" tag: "issues found"
+
+    %% Step 4: release/2 completes preparation successfully
+    checkout release/2
+    commit id: "1.0.1-rc.2.post.4"
+    commit id: "1.0.1-rc.2.post.5"
+
+    %% Step 5: Merge release/2 to main and release v1.1.0
+    %% Note: release/1 remains abandoned and never merged
+    checkout main
+    merge release/2 id: "1.1.0" tag: "released"
+```
+
+**Version progression details:**
+
+- **release/1**: `1.0.1-rc.1.post.1` → `1.0.1-rc.1.post.2` → `1.0.1-rc.1.post.3` (abandoned)
+- **release/2**: Created from `release/1`'s second commit (`1.0.1-rc.1.post.2`), continues as `1.0.1-rc.2.post.3` → `1.0.1-rc.2.post.4` → `1.0.1-rc.2.post.5`
+- **Main**: Clean progression `1.0.0` → `1.1.0` (only from successful `release/2` merge)
+
+**Key insights from this example:**
+
+1. **Branch isolation**: Each release branch maintains independent versioning regardless of parent/child relationships
+2. **Selective branching**: Zerv Flow correctly handles branches created from specific historical commits
+3. **Abandonment handling**: Unmerged branches don't affect final release versions on main
+4. **Cascade management**: Complex branching scenarios where releases feed into other releases are handled transparently
+5. **Clean main branch**: Main only receives versions from successfully merged releases, maintaining clean semantic versioning
+
 ## Scope and Limitations
 
 - **Scope**: Git state → semantic version mapping
