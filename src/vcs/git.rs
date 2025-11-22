@@ -1069,6 +1069,14 @@ mod tests {
             .execute_git(&fixture.test_dir, &["tag", "--points-at", &debug_head])
             .expect("Failed to get tags at HEAD");
 
+        // Debug: check what find_latest_valid_version_tag returns
+        let debug_tag_groups = git_vcs
+            .get_merged_tags()
+            .expect("Failed to get merged tags");
+        let debug_find_result = git_vcs
+            .find_latest_valid_version_tag(&debug_tag_groups, "auto")
+            .expect("Failed to find latest valid version tag");
+
         // Debug: reuse the working get_latest_tag method
         let debug_result = git_vcs
             .get_latest_tag("auto")
@@ -1082,6 +1090,7 @@ mod tests {
              Should return v2.0.0 when HEAD is at v2.0.0, not future v3.0.0. \
              RAW_GIT_OUTPUT: [{}]. \
              PARSED_TAGS: [{}]. Tags at HEAD: [{}]. \
+             find_latest_valid_version_tag result: {:?}. \
              get_latest_tag result: {:?}",
             debug_head,
             debug_v2_commit,
@@ -1096,6 +1105,7 @@ mod tests {
                 .filter(|l| !l.trim().is_empty())
                 .collect::<Vec<_>>()
                 .join(", "),
+            debug_find_result,
             debug_result
         );
         // ==== DEBUG END ====
