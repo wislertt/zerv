@@ -418,7 +418,7 @@ mod tests {
                         minor: Some("2".parse().unwrap()),
                         patch: Some("3".parse().unwrap()),
                         epoch: Some("0".parse().unwrap()),
-                        // post: Some("4".parse().unwrap()),
+                        post: Some("4".parse().unwrap()),
                         dev: Some("5".parse().unwrap()),
                         ..Default::default()
                     },

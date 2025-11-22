@@ -68,13 +68,22 @@ pub struct OverridesConfig {
     #[arg(long, help = "Override epoch number")]
     pub epoch: Option<Template<u32>>,
 
-    // TODO: implement later
-    // /// Override post number
-    // #[arg(long, help = "Override post number")]
-    // pub post: Option<Template<u32>>,
+    /// Override post number
+    #[arg(long, help = "Override post number")]
+    pub post: Option<Template<u32>>,
+
     /// Override dev number
     #[arg(long, help = "Override dev number")]
     pub dev: Option<Template<u32>>,
+}
+
+impl OverridesConfig {
+    /// Get post override value or default template
+    pub fn override_post(&self) -> Option<Template<u32>> {
+        self.post
+            .clone()
+            .or_else(|| Some(Template::new("{{ post }}".to_string())))
+    }
 }
 
 #[cfg(test)]
@@ -99,7 +108,7 @@ mod tests {
             assert!(config.minor.is_none());
             assert!(config.patch.is_none());
             assert!(config.epoch.is_none());
-            // assert!(config.post.is_none());
+            assert!(config.post.is_none());
             assert!(config.dev.is_none());
         }
     }

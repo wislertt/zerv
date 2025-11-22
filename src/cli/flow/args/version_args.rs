@@ -2,7 +2,6 @@ use ron::from_str;
 
 use super::FlowArgs;
 use crate::cli::common::args::OutputConfig;
-use crate::cli::utils::template::Template;
 use crate::cli::version::args::{
     BumpsConfig,
     MainConfig,
@@ -33,7 +32,7 @@ impl FlowArgs {
                 minor: self.overrides.minor.clone(),
                 patch: self.overrides.patch.clone(),
                 epoch: self.overrides.epoch.clone(),
-                post: Some(Template::new("{{ post }}".to_string())),
+                post: self.overrides.override_post(),
                 dev: self.overrides.dev.clone(),
                 ..Default::default()
             },
