@@ -89,26 +89,50 @@ impl TestScenario {
 
 #### assert_command (single command)
 
-1. Parse CLI command string into arguments
-2. Create `TestCommand` with appropriate stdin input (from fixture)
-3. Execute command and capture output
-4. Use existing pattern assertion system for validation
-5. Handle different output formats (semver, pep440, etc.)
+1. Use `TestCommand::run_with_stdin(command, stdin_content)` for execution
+2. Convert fixture to RON format using `to_stdin_content()` method (replicate from FlowTestScenario)
+3. Parse CLI command string using TestCommand's built-in `args_from_str()`
+4. Use existing `assert_version_expectation()` for pattern validation
+5. Return trimmed output string
 
 #### assert_commands (multiple commands/pipeline)
 
-1. Parse each command string into arguments
-2. Execute commands sequentially, piping output between commands
-3. Use `TestCommand` for first command with fixture stdin
-4. Use shell piping for subsequent commands
-5. Use existing pattern assertion system for final output validation
+1. **Note**: No piping examples found in codebase - this may be more complex than anticipated
+2. Consider implementing as sequential commands with output capture between commands
+3. Alternative: Focus on `assert_command` only for initial implementation
+4. Use shell piping approach: `"cmd1 | cmd2 | cmd3"` as single command string
 
 ### Fixture Management
 
 1. Use `ZervFixture` for creating Git state fixtures
 2. Use `ZervVarsFixture` for environment variables
-3. Convert fixture to stdin content for `TestCommand` input
-4. Ensure fixtures match scenarios described in README.md
+3. Convert fixture to stdin content using: `Zerv → RON` serialization (like FlowTestScenario::to_stdin_content())
+4. **Key insight**: Create RON string with default schema for TestCommand stdin input
+5. Ensure fixtures match scenarios described in README.md
+
+### Key Implementation Insights (from Research)
+
+1. **Stdin Content**: Replicate FlowTestScenario's private `to_stdin_content()` method:
+
+    ```rust
+    let schema = ZervSchema::semver_default().unwrap();
+    let zerv = Zerv { schema, vars: self.current_vars.clone() };
+    ron::to_string(&zerv).unwrap()
+    ```
+
+2. **TestCommand Usage**: Use established pattern from codebase:
+
+    ```rust
+    TestCommand::run_with_stdin("flow --output-format semver", zerv_ron)
+    ```
+
+3. **Pattern Assertion**: Reuse existing function directly:
+
+    ```rust
+    assert_version_expectation(expected_output, &actual_output)
+    ```
+
+4. **Command Parsing**: TestCommand's `args_from_str()` handles complex parsing automatically
 
 ## Success Criteria
 
