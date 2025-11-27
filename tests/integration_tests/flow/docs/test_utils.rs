@@ -208,12 +208,28 @@ impl TestScenario {
         self
     }
 
-    /// Assert that multiple CLI commands executed sequentially produce the expected output
-    /// For now, this treats commands as a single shell command string
+    /// Assert that multiple CLI commands executed as a pipeline produce the expected output
+    /// Executes commands sequentially, piping output of each command to stdin of the next
     pub fn assert_commands(&self, commands: &[&str], expected_output: &str) -> &Self {
-        // For simplicity, join commands with " | " to create a pipeline
-        // This can be enhanced later for more complex sequential execution
-        let piped_command = commands.join(" | ");
-        self.assert_command(&piped_command, expected_output)
+        if commands.is_empty() {
+            panic!("No commands provided to assert_commands");
+        }
+
+        // Start with stdin content from our scenario
+        let mut current_output = self.to_stdin_content();
+
+        // Execute all commands except the last one, piping output
+        for (i, command) in commands.iter().enumerate() {
+            if i == commands.len() - 1 {
+                // Last command: execute and assert output
+                let final_output = TestCommand::run_with_stdin(command, current_output.clone());
+                assert_version_expectation(expected_output, &final_output);
+            } else {
+                // Intermediate command: execute and capture output for next command
+                current_output = TestCommand::run_with_stdin(command, current_output);
+            }
+        }
+
+        self
     }
 }
