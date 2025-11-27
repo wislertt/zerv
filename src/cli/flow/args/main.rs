@@ -33,7 +33,31 @@ POST MODE OPTIONS:
   --post-mode <MODE>        Post calculation mode: commit (default), tag
 
 SCHEMA OPTIONS:
-  --schema <SCHEMA>         Schema variant for output components [default: standard] [possible values: standard, standard-no-context, standard-context, standard-base, standard-base-prerelease, standard-base-prerelease-post, standard-base-prerelease-post-dev]
+  --schema <SCHEMA>         Schema variant for output components [default: standard]
+
+Standard Schema Family (SemVer):
+  standard                        - Smart auto-detection based on repository state (clean/dirty/distance)
+  standard-base                   - 1.1.0
+  standard-base-prerelease        - 1.1.0-alpha.1
+  standard-base-prerelease-post   - 1.1.0-alpha.1.post.2
+  standard-base-prerelease-post-dev - 1.1.0-alpha.1.post.2.dev.1729924622
+  standard-base-context           - 1.1.0+main.2.a1b2c3d
+  standard-base-prerelease-context - 1.1.0-alpha.1+main.2.a1b2c3d
+  standard-base-prerelease-post-context - 1.1.0-alpha.1.post.2+main.2.a1b2c3d
+  standard-base-prerelease-post-dev-context - 1.1.0-alpha.1.post.2.dev.1729924622+main.2.a1b2c3d
+  standard-context                - Smart auto-detection with build context
+
+CalVer Schema Family:
+  calver                          - Smart auto-detection based on repository state (clean/dirty/distance)
+  calver-base                     - 2024.11.03
+  calver-base-prerelease          - 2024.11.03-alpha.1
+  calver-base-prerelease-post     - 2024.11.03-alpha.1.post.2
+  calver-base-prerelease-post-dev - 2024.11.03-alpha.1.post.2.dev.1729924622
+  calver-base-context             - 2024.11.03+main.2.a1b2c3d
+  calver-base-prerelease-context  - 2024.11.03-alpha.1+main.2.a1b2c3d
+  calver-base-prerelease-post-context - 2024.11.03-alpha.1.post.2+main.2.a1b2c3d
+  calver-base-prerelease-post-dev-context - 2024.11.03-alpha.1.post.2.dev.1729924622+main.2.a1b2c3d
+  calver-context                  - Smart auto-detection with build context
 
 VCS OVERRIDE OPTIONS:
   --tag-version <VERSION>   Override detected tag version (e.g., 'v2.0.0', '1.5.0-beta.1')
@@ -113,10 +137,35 @@ pub struct FlowArgs {
     )]
     pub hash_branch_len: u32,
 
-    /// Schema variant for output components [default: standard]
+    /// Schema preset name
     #[arg(
         long,
-        help = "Schema variant for output components [default: standard] [possible values: standard, standard-no-context, standard-context, standard-base, standard-base-prerelease, standard-base-prerelease-post, standard-base-prerelease-post-dev]"
+        help = "Schema preset name
+
+Standard Schema Family (SemVer):
+  standard                        - Smart auto-detection based on repository state (clean/dirty/distance)
+  standard-base                   - 1.1.0
+  standard-base-prerelease        - 1.1.0-alpha.1
+  standard-base-prerelease-post   - 1.1.0-alpha.1.post.2
+  standard-base-prerelease-post-dev - 1.1.0-alpha.1.post.2.dev.1729924622
+  standard-base-context           - 1.1.0+main.2.a1b2c3d
+  standard-base-prerelease-context - 1.1.0-alpha.1+main.2.a1b2c3d
+  standard-base-prerelease-post-context - 1.1.0-alpha.1.post.2+main.2.a1b2c3d
+  standard-base-prerelease-post-dev-context - 1.1.0-alpha.1.post.2.dev.1729924622+main.2.a1b2c3d
+  standard-context                - Smart auto-detection with build context
+
+CalVer Schema Family:
+  calver                          - Smart auto-detection based on repository state (clean/dirty/distance)
+  calver-base                     - 2024.11.03
+  calver-base-prerelease          - 2024.11.03-alpha.1
+  calver-base-prerelease-post     - 2024.11.03-alpha.1.post.2
+  calver-base-prerelease-post-dev - 2024.11.03-alpha.1.post.2.dev.1729924622
+  calver-base-context             - 2024.11.03+main.2.a1b2c3d
+  calver-base-prerelease-context  - 2024.11.03-alpha.1+main.2.a1b2c3d
+  calver-base-prerelease-post-context - 2024.11.03-alpha.1.post.2+main.2.a1b2c3d
+  calver-base-prerelease-post-dev-context - 2024.11.03-alpha.1.post.2.dev.1729924622+main.2.a1b2c3d
+  calver-context                  - Smart auto-detection with build context
+"
     )]
     pub schema: Option<String>,
 }

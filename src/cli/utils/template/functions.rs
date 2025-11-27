@@ -24,6 +24,7 @@ pub fn register_functions(tera: &mut Tera) -> Result<(), ZervError> {
     tera.register_function("hash", Box::new(hash_function));
     tera.register_function("hash_int", Box::new(hash_int_function));
     tera.register_function("prefix", Box::new(prefix_function));
+    tera.register_function("prefix_if", Box::new(prefix_if_function));
     tera.register_function("format_timestamp", Box::new(format_timestamp_function));
     Ok(())
 }
@@ -165,6 +166,28 @@ fn prefix_function(args: &std::collections::HashMap<String, Value>) -> Result<Va
     };
 
     Ok(Value::String(prefix.to_string()))
+}
+
+/// Add conditional prefix to string (only if string is not empty)
+/// Usage: {{ prefix_if(value, prefix="+") }}
+fn prefix_if_function(
+    args: &std::collections::HashMap<String, Value>,
+) -> Result<Value, tera::Error> {
+    let value = args
+        .get("value")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| tera::Error::msg("prefix_if function requires a 'value' parameter"))?;
+
+    let prefix = args
+        .get("prefix")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| tera::Error::msg("prefix_if function requires a 'prefix' parameter"))?;
+
+    if value.is_empty() {
+        Ok(Value::String("".to_string()))
+    } else {
+        Ok(Value::String(format!("{}{}", prefix, value)))
+    }
 }
 
 /// Format timestamp with customizable format
@@ -345,6 +368,56 @@ mod tests {
 
         let result = prefix_function(&args).unwrap();
         assert_eq!(result, Value::String("ver".to_string()));
+    }
+
+    #[test]
+    fn test_prefix_if_function_with_value() {
+        let mut args = HashMap::new();
+        args.insert("value".to_string(), Value::String("alpha.1".to_string()));
+        args.insert("prefix".to_string(), Value::String("-".to_string()));
+
+        let result = prefix_if_function(&args).unwrap();
+        assert_eq!(result, Value::String("-alpha.1".to_string()));
+    }
+
+    #[test]
+    fn test_prefix_if_function_with_empty_value() {
+        let mut args = HashMap::new();
+        args.insert("value".to_string(), Value::String("".to_string()));
+        args.insert("prefix".to_string(), Value::String("-".to_string()));
+
+        let result = prefix_if_function(&args).unwrap();
+        assert_eq!(result, Value::String("".to_string()));
+    }
+
+    #[test]
+    fn test_prefix_if_function_missing_value() {
+        let mut args = HashMap::new();
+        args.insert("prefix".to_string(), Value::String("-".to_string()));
+
+        let result = prefix_if_function(&args);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("'value' parameter")
+        );
+    }
+
+    #[test]
+    fn test_prefix_if_function_missing_prefix() {
+        let mut args = HashMap::new();
+        args.insert("value".to_string(), Value::String("test".to_string()));
+
+        let result = prefix_if_function(&args);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("'prefix' parameter")
+        );
     }
 
     #[test]

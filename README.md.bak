@@ -9,17 +9,41 @@
 
 # zerv
 
-**Automatic versioning for every commit** - Generate semantic versions from any commit across all branches, or dirty working directory, with seamless pre-release handling and flexible format support for any CI/CD workflow.
+Dynamic Versioning Cli
 
-## Quick Start
+## 🚧 Under Active Development 🚧
+
+**⚠️ This project is currently in active development and has not even reached alpha state. It is not usable right now and not recommended for any use.**
+
+## Installation
+
+### Quick Install (Recommended)
 
 ```bash
-# Install
-cargo install zerv
+# Install latest version
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash
 
-# Try automated versioning (current branch determines output)
-zerv flow
-# → 1.2.3-alpha.68031.post.1 (on feature branch)
-# → 1.3.0-beta.1.post.3 (on develop branch)
-# → 1.2.3 (on main branch)
+# Install specific version
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash -s v0.4.3
+
+# Or using environment variable
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | ZERV_VERSION=v0.4.3 bash
+```
+
+### Manual Download
+
+Download pre-built binaries from [GitHub Releases](https://github.com/wislertt/zerv/releases)
+
+### From Source (Cargo)
+
+```bash
+cargo install zerv
+```
+
+## Uninstall
+
+For Quick Install and Manual Download:
+
+```bash
+rm ~/.local/bin/zerv
 ```

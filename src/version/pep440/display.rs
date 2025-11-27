@@ -1,8 +1,13 @@
 use std::fmt;
 
-use super::core::PEP440;
+use super::core::{
+    DevLabel,
+    PEP440,
+    PostLabel,
+};
 use super::utils::LocalSegment;
 
+/// Format local version segments into a dot-separated string
 pub fn format_local_segments(segments: &[LocalSegment]) -> String {
     segments
         .iter()
@@ -14,52 +19,182 @@ pub fn format_local_segments(segments: &[LocalSegment]) -> String {
         .join(".")
 }
 
+/// Format release version (e.g., [1, 2, 3] -> "1.2.3")
+pub fn format_release_version(release: &[u32]) -> String {
+    release
+        .iter()
+        .map(|n| n.to_string())
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+/// Format epoch and release version (e.g., epoch=2, release=[1,2,3] -> "2!1.2.3" or "1.2.3" if epoch=0)
+pub fn format_epoch_and_release(epoch: u32, release: &[u32]) -> String {
+    let mut result = String::new();
+
+    // Add epoch if present
+    if epoch > 0 {
+        result.push_str(&format!("{}!", epoch));
+    }
+
+    // Add release version
+    result.push_str(&format_release_version(release));
+
+    result
+}
+
+/// PEP440 separator configuration for flexible version formatting
+pub struct PEP440Separators<'a> {
+    /// Release to Pre-release separator ("", ".", "-", "_")
+    /// Normalized: "" → "1.0.0a1"
+    /// Examples: "1.0.0-a1", "1.0.0.a1", "1.0.0_a1"
+    pub pre_separator: &'a str,
+
+    /// Pre-label to Pre-number separator ("", ".")
+    /// Normalized: "" → "a1"
+    /// Examples: "a.1"
+    pub pre_number_separator: &'a str,
+
+    /// Pre-release to Post-release separator (".", "-", "_")
+    /// Normalized: "." → "1.0.0a1.post1" (direct attachment to .post)
+    /// Examples: "1.0.0a1.post1", "1.0.0a1-post1", "1.0.0a1_post1"
+    pub post_separator: &'a str,
+
+    /// Post-label to Post-number separator ("", ".", "-", "_")
+    /// Normalized: "" → "1.0.0.post1"
+    /// Examples: "1.0.0.post.1"
+    pub post_number_separator: &'a str,
+
+    /// Post-release to Dev-release separator (".", "-", "_")
+    /// Normalized: "." → "1.0.0.post1.dev1" (direct attachment to .dev)
+    /// Examples: "1.0.0.post1.dev1", "1.0.0.post1-dev1", "1.0.0.post1_dev1"
+    pub dev_separator: &'a str,
+
+    /// Dev-label to Dev-number separator ("", ".", "-", "_")
+    /// Normalized: "" → "1.0.0.dev1"
+    /// Examples: "1.0.0.dev.1"
+    pub dev_number_separator: &'a str,
+}
+
+impl<'a> PEP440Separators<'a> {
+    /// Create normalized form separators
+    pub fn normalized() -> Self {
+        Self {
+            pre_separator: "",
+            pre_number_separator: "",
+            post_separator: ".", // .post1
+            post_number_separator: "",
+            dev_separator: ".", // .dev1
+            dev_number_separator: "",
+        }
+    }
+}
+
+/// Format just the pre-release section (alpha/beta/rc + post + dev) with configurable separators
+pub fn format_pre_release_section(
+    pre_label: Option<crate::version::zerv::PreReleaseLabel>,
+    pre_number: Option<u32>,
+    post_label: Option<PostLabel>,
+    post_number: Option<u32>,
+    dev_label: Option<DevLabel>,
+    dev_number: Option<u32>,
+    separators: &PEP440Separators<'_>,
+) -> String {
+    let mut result = String::new();
+
+    // Main pre-release (alpha/beta/rc)
+    if let Some(main_pre) = pre_label {
+        result.push_str(separators.pre_separator);
+        result.push_str(main_pre.as_str());
+
+        if let Some(number) = pre_number {
+            result.push_str(separators.pre_number_separator);
+            result.push_str(&number.to_string());
+        }
+    }
+
+    // Post-release (postN format with separator from PEP440)
+    if post_label.is_some() {
+        result.push_str(separators.post_separator);
+        result.push_str("post");
+        result.push_str(separators.post_number_separator);
+
+        if let Some(number) = post_number {
+            result.push_str(&number.to_string());
+        }
+    }
+
+    // Dev-release (devN format with separator from PEP440)
+    if dev_label.is_some() {
+        result.push_str(separators.dev_separator);
+        result.push_str("dev");
+        result.push_str(separators.dev_number_separator);
+
+        if let Some(number) = dev_number {
+            result.push_str(&number.to_string());
+        }
+    }
+
+    result
+}
+
+/// Format PEP440 version with configurable separators.
+#[allow(clippy::too_many_arguments)]
+pub fn format_pep440_with_separators(
+    epoch: u32,
+    release: &[u32],
+    pre_label: Option<crate::version::zerv::PreReleaseLabel>,
+    pre_number: Option<u32>,
+    post_label: Option<PostLabel>,
+    post_number: Option<u32>,
+    dev_label: Option<DevLabel>,
+    dev_number: Option<u32>,
+    local: Option<&[LocalSegment]>,
+    separators: &PEP440Separators<'_>,
+    local_separator: &str, // Always "+" for PEP440
+) -> String {
+    let mut result = format_epoch_and_release(epoch, release);
+
+    // Add pre-release section
+    let pre_release_section = format_pre_release_section(
+        pre_label,
+        pre_number,
+        post_label.clone(),
+        post_number,
+        dev_label.clone(),
+        dev_number,
+        separators,
+    );
+
+    if !pre_release_section.is_empty() {
+        result.push_str(&pre_release_section);
+    }
+
+    // Local version
+    if let Some(local) = local {
+        result.push_str(local_separator);
+        result.push_str(&format_local_segments(local));
+    }
+
+    result
+}
+
 impl fmt::Display for PEP440 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Epoch
-        if self.epoch > 0 {
-            write!(f, "{}!", self.epoch)?;
-        }
-
-        // Release
-        let release_str = self
-            .release
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<_>>()
-            .join(".");
-        write!(f, "{release_str}")?;
-
-        // Pre-release
-        if let Some(ref pre_label) = self.pre_label {
-            write!(f, "{}", pre_label.as_str())?;
-            if let Some(pre_number) = self.pre_number {
-                write!(f, "{pre_number}")?;
-            }
-        }
-
-        // Post-release
-        if let Some(ref post_label) = self.post_label {
-            write!(f, ".{}", post_label.as_str())?;
-            if let Some(post_number) = self.post_number {
-                write!(f, "{post_number}")?;
-            }
-        }
-
-        // Dev-release
-        if let Some(ref dev_label) = self.dev_label {
-            write!(f, ".{}", dev_label.as_str())?;
-            if let Some(dev_number) = self.dev_number {
-                write!(f, "{dev_number}")?;
-            }
-        }
-
-        // Local version
-        if let Some(ref local) = self.local {
-            write!(f, "+{}", format_local_segments(local))?;
-        }
-
-        Ok(())
+        let formatted = format_pep440_with_separators(
+            self.epoch,
+            &self.release,
+            self.pre_label,
+            self.pre_number,
+            self.post_label.clone(),
+            self.post_number,
+            self.dev_label.clone(),
+            self.dev_number,
+            self.local.as_deref(),
+            &PEP440Separators::normalized(),
+            "+",
+        );
+        write!(f, "{}", formatted)
     }
 }
 

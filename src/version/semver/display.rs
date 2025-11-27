@@ -8,21 +8,16 @@ use super::core::{
 
 impl fmt::Display for SemVer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)?;
-
-        if let Some(ref pre_release) = self.pre_release
-            && !pre_release.is_empty()
-        {
-            write!(f, "-{}", format_identifiers(pre_release))?;
-        }
-
-        if let Some(ref build_metadata) = self.build_metadata
-            && !build_metadata.is_empty()
-        {
-            write!(f, "+{}", format_build_metadata(build_metadata))?;
-        }
-
-        Ok(())
+        let formatted = format_semver_with_separators(
+            self.major,
+            self.minor,
+            self.patch,
+            self.pre_release.as_deref(),
+            self.build_metadata.as_deref(),
+            "-",
+            "+",
+        );
+        write!(f, "{}", formatted)
     }
 }
 
@@ -44,7 +39,13 @@ impl fmt::Display for BuildMetadata {
     }
 }
 
-fn format_identifiers(identifiers: &[PreReleaseIdentifier]) -> String {
+/// Format release version (e.g., 1, 2, 3 -> "1.2.3")
+pub fn format_release_version(major: u64, minor: u64, patch: u64) -> String {
+    format!("{}.{}.{}", major, minor, patch)
+}
+
+/// Format pre-release identifiers into a dot-separated string
+pub fn format_pre_release_identifiers(identifiers: &[PreReleaseIdentifier]) -> String {
     identifiers
         .iter()
         .map(|id| id.to_string())
@@ -52,12 +53,55 @@ fn format_identifiers(identifiers: &[PreReleaseIdentifier]) -> String {
         .join(".")
 }
 
-fn format_build_metadata(metadata: &[BuildMetadata]) -> String {
+/// Format build metadata into a dot-separated string
+pub fn format_build_metadata(metadata: &[BuildMetadata]) -> String {
     metadata
         .iter()
         .map(|meta| meta.to_string())
         .collect::<Vec<_>>()
         .join(".")
+}
+
+/// General function to format SemVer with custom separators
+pub fn format_semver_with_separators(
+    major: u64,
+    minor: u64,
+    patch: u64,
+    pre_release: Option<&[PreReleaseIdentifier]>,
+    build_metadata: Option<&[BuildMetadata]>,
+    pre_separator: &str,
+    build_separator: &str,
+) -> String {
+    let mut result = format_release_version(major, minor, patch);
+
+    // Add pre-release part with custom separator
+    if let Some(pre) = pre_release
+        && !pre.is_empty()
+    {
+        result.push_str(pre_separator);
+        result.push_str(&format_pre_release_identifiers(pre));
+    }
+
+    // Add build metadata part with custom separator
+    if let Some(build) = build_metadata
+        && !build.is_empty()
+    {
+        result.push_str(build_separator);
+        result.push_str(&format_build_metadata(build));
+    }
+
+    result
+}
+
+/// Format docker-compatible version (base-pre-release-build with hyphens)
+pub fn format_docker_version(
+    major: u64,
+    minor: u64,
+    patch: u64,
+    pre_release: Option<&[PreReleaseIdentifier]>,
+    build_metadata: Option<&[BuildMetadata]>,
+) -> String {
+    format_semver_with_separators(major, minor, patch, pre_release, build_metadata, "-", "-")
 }
 
 #[cfg(test)]
@@ -326,13 +370,13 @@ mod tests {
         #[test]
         fn test_format_identifiers_empty() {
             let identifiers = vec![];
-            assert_eq!(format_identifiers(&identifiers), "");
+            assert_eq!(format_pre_release_identifiers(&identifiers), "");
         }
 
         #[test]
         fn test_format_identifiers_single() {
             let identifiers = vec![PreReleaseIdentifier::Str("alpha".to_string())];
-            assert_eq!(format_identifiers(&identifiers), "alpha");
+            assert_eq!(format_pre_release_identifiers(&identifiers), "alpha");
         }
 
         #[test]
@@ -342,7 +386,10 @@ mod tests {
                 PreReleaseIdentifier::UInt(1),
                 PreReleaseIdentifier::Str("build".to_string()),
             ];
-            assert_eq!(format_identifiers(&identifiers), "alpha.1.build");
+            assert_eq!(
+                format_pre_release_identifiers(&identifiers),
+                "alpha.1.build"
+            );
         }
 
         #[test]

@@ -1,3 +1,10 @@
+// Import display functions for use in to_* methods
+use super::display::{
+    PEP440Separators,
+    format_epoch_and_release,
+    format_local_segments,
+    format_pre_release_section,
+};
 use super::utils::LocalSegment;
 use crate::version::zerv::PreReleaseLabel;
 
@@ -126,6 +133,34 @@ impl PEP440 {
                 *s = lowercase;
             }
         }
+    }
+
+    pub fn to_base_part(&self) -> String {
+        format_epoch_and_release(self.epoch, &self.release)
+    }
+
+    pub fn to_pre_release_part(&self) -> Option<String> {
+        let pre_release_section = format_pre_release_section(
+            self.pre_label,
+            self.pre_number,
+            self.post_label.clone(),
+            self.post_number,
+            self.dev_label.clone(),
+            self.dev_number,
+            &PEP440Separators::normalized(),
+        );
+
+        if pre_release_section.is_empty() {
+            None
+        } else {
+            Some(pre_release_section)
+        }
+    }
+
+    pub fn to_build_part(&self) -> Option<String> {
+        self.local
+            .as_ref()
+            .map(|local| format_local_segments(local))
     }
 }
 
@@ -562,5 +597,89 @@ mod tests {
             normalized, reparsed,
             "Normalized version should parse to same object"
         );
+    }
+
+    mod version_parts {
+        use super::*;
+        use crate::version::zerv::PreReleaseLabel;
+
+        #[test]
+        fn test_to_base_part_simple() {
+            let version = PEP440::new(vec![1, 2, 3]);
+            assert_eq!(version.to_base_part(), "1.2.3");
+        }
+
+        #[test]
+        fn test_to_base_part_with_epoch() {
+            let version = PEP440::new(vec![1, 2, 3]).with_epoch(2);
+            assert_eq!(version.to_base_part(), "2!1.2.3");
+        }
+
+        #[test]
+        fn test_to_base_part_single_release() {
+            let version = PEP440::new(vec![1]);
+            assert_eq!(version.to_base_part(), "1");
+        }
+
+        #[test]
+        fn test_to_pre_release_part_none() {
+            let version = PEP440::new(vec![1, 2, 3]);
+            assert_eq!(version.to_pre_release_part(), None);
+        }
+
+        #[test]
+        fn test_to_pre_release_part_alpha() {
+            let version =
+                PEP440::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Alpha, Some(1));
+            assert_eq!(version.to_pre_release_part(), Some("a1".to_string()));
+        }
+
+        #[test]
+        fn test_to_pre_release_part_beta_no_number() {
+            let version = PEP440::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Beta, None);
+            assert_eq!(version.to_pre_release_part(), Some("b".to_string()));
+        }
+
+        #[test]
+        fn test_to_pre_release_part_rc() {
+            let version = PEP440::new(vec![1, 2, 3]).with_pre_release(PreReleaseLabel::Rc, Some(2));
+            assert_eq!(version.to_pre_release_part(), Some("rc2".to_string()));
+        }
+
+        #[test]
+        fn test_to_build_part_none() {
+            let version = PEP440::new(vec![1, 2, 3]);
+            assert_eq!(version.to_build_part(), None);
+        }
+
+        #[test]
+        fn test_to_build_part_simple() {
+            let version = PEP440::new(vec![1, 2, 3]).with_local("ubuntu");
+            assert_eq!(version.to_build_part(), Some("ubuntu".to_string()));
+        }
+
+        #[test]
+        fn test_to_build_part_complex() {
+            let version = PEP440::new(vec![1, 2, 3]).with_local("ubuntu.20.04");
+            assert_eq!(version.to_build_part(), Some("ubuntu.20.4".to_string()));
+        }
+
+        #[test]
+        fn test_to_build_part_with_numbers() {
+            let version = PEP440::new(vec![1, 2, 3]).with_local("build.123");
+            assert_eq!(version.to_build_part(), Some("build.123".to_string()));
+        }
+
+        #[test]
+        fn test_complex_version_all_parts() {
+            let version = PEP440::new(vec![1, 2, 3])
+                .with_epoch(1)
+                .with_pre_release(PreReleaseLabel::Alpha, Some(1))
+                .with_local("ubuntu.20.04");
+
+            assert_eq!(version.to_base_part(), "1!1.2.3");
+            assert_eq!(version.to_pre_release_part(), Some("a1".to_string()));
+            assert_eq!(version.to_build_part(), Some("ubuntu.20.4".to_string()));
+        }
     }
 }

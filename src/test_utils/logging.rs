@@ -9,6 +9,9 @@
 //! use zerv::test_utils::logging::{test_debug, test_info, test_error, test_warn};
 //!
 //! fn test_function() {
+//!     let result = "success";
+//!     let error = "connection timeout";
+//!
 //!     test_debug!("Starting test setup");
 //!     test_info!("Test result: {}", result);
 //!     test_error!("Test failed: {}", error);

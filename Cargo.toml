@@ -13,7 +13,7 @@ homepage = "https://github.com/wislertt/zerv"
 readme = "README.md"
 keywords = ["cli", "versioning", "git", "semver"]
 categories = ["command-line-utilities", "development-tools::build-utils", "config", "parsing"]
-rust-version = "1.89"
+rust-version = "1.91"
 exclude = [
   "/.github/",
   "/scripts/",

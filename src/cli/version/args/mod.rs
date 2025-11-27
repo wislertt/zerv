@@ -36,48 +36,8 @@ use validation::Validation;
 #[command(about = "Generate version from VCS data")]
 #[command(
     long_about = "Generate version strings from version control system data using configurable schemas.
-
-INPUT SOURCES:
-  --source git     Extract version data from git repository (default)
-  --source stdin   Read Zerv RON format from stdin for piping workflows
-
-OUTPUT FORMATS:
-  --output-format semver   Semantic Versioning format (default)
-  --output-format pep440   Python PEP440 format
-  --output-format zerv     Zerv RON format for piping
-
-VCS OVERRIDES:
-  Override detected VCS values for testing and simulation:
-  --tag-version <TAG>      Override detected tag version
-  --distance <NUM>         Override distance from tag
-  --dirty                  Override dirty state to true
-  --no-dirty               Override dirty state to false
-  --clean                  Force clean state (distance=0, dirty=false)
-  --current-branch <NAME>  Override branch name
-  --commit-hash <HASH>     Override commit hash
-
-EXAMPLES:
-  # Basic version generation
-  zerv version
-
-  # Generate PEP440 format with calver schema
-  zerv version --output-format pep440 --schema calver
-
-  # Override VCS values for testing
-  zerv version --tag-version v2.0.0 --distance 5 --dirty
-  zerv version --tag-version v2.0.0 --distance 5 --no-dirty
-
-  # Force clean release state
-  zerv version --clean
-
-  # Use in different directory
-  zerv version -C /path/to/repo
-
-  # Pipe between commands with full data preservation
-  zerv version --output-format zerv | zerv version --source stdin --schema calver
-
-  # Parse specific input format
-  zerv version --tag-version 2.0.0-alpha.1 --input-format semver"
+Supports multiple input sources (git, stdin), output formats (semver, pep440, zerv), and VCS overrides
+for testing and CI/CD workflows."
 )]
 #[derive(Debug)]
 pub struct VersionArgs {

@@ -19,6 +19,14 @@ pub struct SemVer {
     pub build_metadata: Option<Vec<BuildMetadata>>,
 }
 
+// Import display functions for use in to_* methods
+use super::display::{
+    format_build_metadata,
+    format_docker_version,
+    format_pre_release_identifiers,
+    format_release_version,
+};
+
 impl SemVer {
     pub fn new(major: u64, minor: u64, patch: u64) -> Self {
         Self {
@@ -46,6 +54,32 @@ impl SemVer {
 
     pub fn is_stable(&self) -> bool {
         !self.is_pre_release()
+    }
+
+    pub fn to_base_part(&self) -> String {
+        format_release_version(self.major, self.minor, self.patch)
+    }
+
+    pub fn to_pre_release_part(&self) -> Option<String> {
+        self.pre_release
+            .as_ref()
+            .map(|pr| format_pre_release_identifiers(pr))
+    }
+
+    pub fn to_build_part(&self) -> Option<String> {
+        self.build_metadata
+            .as_ref()
+            .map(|bm| format_build_metadata(bm))
+    }
+
+    pub fn to_docker_format(&self) -> String {
+        format_docker_version(
+            self.major,
+            self.minor,
+            self.patch,
+            self.pre_release.as_ref().map(|pr| pr.as_ref()),
+            self.build_metadata.as_ref().map(|bm| bm.as_ref()),
+        )
     }
 }
 
@@ -312,6 +346,102 @@ mod tests {
             assert_eq!(version.build_metadata, Some(build_metadata));
             assert!(version.is_pre_release());
             assert!(!version.is_stable());
+        }
+
+        mod version_parts {
+            use super::*;
+
+            #[test]
+            fn test_to_base_part() {
+                let version = SemVer::new(1, 2, 3);
+                assert_eq!(version.to_base_part(), "1.2.3");
+            }
+
+            #[test]
+            fn test_to_pre_release_part_none() {
+                let version = SemVer::new(1, 2, 3);
+                assert_eq!(version.to_pre_release_part(), None);
+            }
+
+            #[test]
+            fn test_to_pre_release_part_simple() {
+                let version = SemVer::new(1, 2, 3)
+                    .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())]);
+                assert_eq!(version.to_pre_release_part(), Some("alpha".to_string()));
+            }
+
+            #[test]
+            fn test_to_pre_release_part_complex() {
+                let version = SemVer::new(1, 2, 3).with_pre_release(vec![
+                    PreReleaseIdentifier::Str("alpha".to_string()),
+                    PreReleaseIdentifier::UInt(1),
+                ]);
+                assert_eq!(version.to_pre_release_part(), Some("alpha.1".to_string()));
+            }
+
+            #[test]
+            fn test_to_build_part_none() {
+                let version = SemVer::new(1, 2, 3);
+                assert_eq!(version.to_build_part(), None);
+            }
+
+            #[test]
+            fn test_to_build_part_simple() {
+                let version = SemVer::new(1, 2, 3)
+                    .with_build_metadata(vec![BuildMetadata::Str("build".to_string())]);
+                assert_eq!(version.to_build_part(), Some("build".to_string()));
+            }
+
+            #[test]
+            fn test_to_build_part_complex() {
+                let version = SemVer::new(1, 2, 3).with_build_metadata(vec![
+                    BuildMetadata::Str("commit".to_string()),
+                    BuildMetadata::UInt(123),
+                ]);
+                assert_eq!(version.to_build_part(), Some("commit.123".to_string()));
+            }
+
+            #[test]
+            fn test_to_docker_format_base_only() {
+                let version = SemVer::new(1, 2, 3);
+                assert_eq!(version.to_docker_format(), "1.2.3");
+            }
+
+            #[test]
+            fn test_to_docker_format_with_pre_release() {
+                let version = SemVer::new(1, 2, 3)
+                    .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())]);
+                assert_eq!(version.to_docker_format(), "1.2.3-alpha");
+            }
+
+            #[test]
+            fn test_to_docker_format_with_build() {
+                let version = SemVer::new(1, 2, 3)
+                    .with_build_metadata(vec![BuildMetadata::Str("build".to_string())]);
+                assert_eq!(version.to_docker_format(), "1.2.3-build");
+            }
+
+            #[test]
+            fn test_to_docker_format_with_both() {
+                let version = SemVer::new(1, 2, 3)
+                    .with_pre_release(vec![PreReleaseIdentifier::Str("alpha".to_string())])
+                    .with_build_metadata(vec![BuildMetadata::Str("build".to_string())]);
+                assert_eq!(version.to_docker_format(), "1.2.3-alpha-build");
+            }
+
+            #[test]
+            fn test_to_docker_format_complex() {
+                let version = SemVer::new(1, 2, 3)
+                    .with_pre_release(vec![
+                        PreReleaseIdentifier::Str("alpha".to_string()),
+                        PreReleaseIdentifier::UInt(1),
+                    ])
+                    .with_build_metadata(vec![
+                        BuildMetadata::Str("commit".to_string()),
+                        BuildMetadata::UInt(456),
+                    ]);
+                assert_eq!(version.to_docker_format(), "1.2.3-alpha.1-commit.456");
+            }
         }
     }
 }
