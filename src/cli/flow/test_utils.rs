@@ -229,24 +229,7 @@ impl FlowTestScenario {
         // Update current vars with commit info
         self.current_vars.distance = Some(current_distance);
         self.current_vars.bumped_commit_hash = Some(commit_hash);
-
-        // For release branches, commits should be dirty (representing release candidates in development)
-        // This enables the .dev.{timestamp:now} suffix for release versions
-        let is_release_branch = branch_name.starts_with("release/");
-        self.current_vars.dirty = Some(is_release_branch);
-
-        // Set bumped_timestamp for release branches to enable .dev.{timestamp:now} suffix
-        if is_release_branch {
-            use std::time::{
-                SystemTime,
-                UNIX_EPOCH,
-            };
-            let current_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards")
-                .as_secs();
-            self.current_vars.bumped_timestamp = Some(current_time);
-        }
+        self.current_vars.dirty = Some(false); // Commits create clean working directories
 
         // Save state for current branch
         self.branch_vars
