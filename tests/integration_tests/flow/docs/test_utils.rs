@@ -200,7 +200,7 @@ impl TestScenario {
 
     /// Assert that a single CLI command produces the expected output
     /// Supports pattern matching like {hex:7}, {timestamp}, etc.
-    pub fn assert_command(&self, command: &str, expected_output: &str) -> &Self {
+    pub fn assert_command(self, command: &str, expected_output: &str) -> Self {
         let stdin_content = self.to_stdin_content();
         let actual_output = TestCommand::run_with_stdin(command, stdin_content);
 
@@ -210,7 +210,7 @@ impl TestScenario {
 
     /// Assert that multiple CLI commands executed as a pipeline produce the expected output
     /// Executes commands sequentially, piping output of each command to stdin of the next
-    pub fn assert_commands(&self, commands: &[&str], expected_output: &str) -> &Self {
+    pub fn assert_commands(self, commands: &[&str], expected_output: &str) -> Self {
         if commands.is_empty() {
             panic!("No commands provided to assert_commands");
         }
