@@ -19,7 +19,9 @@ cargo install zerv
 
 # Try automated versioning (current branch determines output)
 zerv flow
-# → 1.2.3-alpha.68031.post.1 (on feature branch)
-# → 1.3.0-beta.1.post.3 (on develop branch)
-# → 1.2.3 (on main branch)
+# → 1.0.0 (on main branch with tag v1.0.0)
+# → 1.0.1-alpha.59394.post.1+feature.new.auth.1.g4e9af24 (on feature branch)
+# → 1.0.1-beta.1.post.3+develop.3.gf297dd0 (on develop branch)
 ```
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_documentation_examples -->
