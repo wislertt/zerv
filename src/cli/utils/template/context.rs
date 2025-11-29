@@ -12,6 +12,9 @@ pub struct ZervTemplateContext {
     pub patch: Option<u64>,
     pub epoch: Option<u64>,
 
+    // Current timestamp
+    pub current_timestamp: u64,
+
     // Metadata fields
     pub post: Option<u64>,
     pub dev: Option<u64>,
@@ -82,6 +85,7 @@ impl ZervTemplateContext {
             minor: vars.minor,
             patch: vars.patch,
             epoch: vars.epoch,
+            current_timestamp: chrono::Utc::now().timestamp() as u64,
             post: vars.post,
             dev: vars.dev,
             pre_release: vars.pre_release.as_ref().map(|pr| {
@@ -160,6 +164,13 @@ mod tests {
         assert_eq!(context.pep440_obj.base_part, "1.2.3");
         assert_eq!(context.pep440_obj.pre_release_part, None);
         assert_eq!(context.pep440_obj.build_part, None);
+
+        // Test current timestamp is within 1 minute from now
+        let now = chrono::Utc::now().timestamp() as u64;
+        assert!(
+            now.abs_diff(context.current_timestamp) < 60,
+            "Current timestamp should be within 1 minute from now"
+        );
     }
 
     #[test]

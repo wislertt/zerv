@@ -71,7 +71,7 @@ impl FlowArgs {
         } else {
             "{% if dirty %}"
         };
-        let content = "{{ bumped_timestamp }}";
+        let content = "{{ current_timestamp }}";
         let else_part = "{% else %}None{% endif %}";
         let template = format!("{}{}{}", if_part, content, else_part);
         Some(Some(Template::new(template)))
@@ -254,7 +254,7 @@ mod tests {
 
             assert_eq!(
                 template.as_str(),
-                "{% if dirty %}{{ bumped_timestamp }}{% else %}None{% endif %}"
+                "{% if dirty %}{{ current_timestamp }}{% else %}None{% endif %}"
             );
         }
     }

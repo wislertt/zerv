@@ -439,15 +439,15 @@ mod tests {
             .checkout("release/1")
             .commit()
             .expect_version(
-                "1.0.1-rc.1.post.1+release.1.1.g{hex:7}",
-                "1.0.1rc1.post1+release.1.1.g{hex:7}",
+                "1.0.1-rc.1.post.1.dev.{timestamp}+release.1.1.g{hex:7}",
+                "1.0.1rc1.post1.dev{timestamp}+release.1.1.g{hex:7}",
             )
             .create_tag("v1.0.1-rc.1.post.1")
             .expect_version("1.0.1-rc.1.post.1", "1.0.1rc1.post1")
             .commit()
             .expect_version(
-                "1.0.1-rc.1.post.2+release.1.1.g{hex:7}",
-                "1.0.1rc1.post2+release.1.1.g{hex:7}",
+                "1.0.1-rc.1.post.2.dev.{timestamp}+release.1.1.g{hex:7}",
+                "1.0.1rc1.post2.dev{timestamp}+release.1.1.g{hex:7}",
             )
             .create_tag("v1.0.1-rc.1.post.2")
             .expect_version("1.0.1-rc.1.post.2", "1.0.1rc1.post2");
@@ -459,15 +459,15 @@ mod tests {
             .checkout("release/2")
             .commit()
             .expect_version(
-                "1.0.1-rc.2.post.3+release.2.1.g{hex:7}",
-                "1.0.1rc2.post3+release.2.1.g{hex:7}",
+                "1.0.1-rc.2.post.3.dev.{timestamp}+release.2.1.g{hex:7}",
+                "1.0.1rc2.post3.dev{timestamp}+release.2.1.g{hex:7}",
             )
             .create_tag("v1.0.1-rc.2.post.3")
             .expect_version("1.0.1-rc.2.post.3", "1.0.1rc2.post3")
             .commit()
             .expect_version(
-                "1.0.1-rc.2.post.4+release.2.1.g{hex:7}",
-                "1.0.1rc2.post4+release.2.1.g{hex:7}",
+                "1.0.1-rc.2.post.4.dev.{timestamp}+release.2.1.g{hex:7}",
+                "1.0.1rc2.post4.dev{timestamp}+release.2.1.g{hex:7}",
             )
             .create_tag("v1.0.1-rc.2.post.4")
             .expect_version("1.0.1-rc.2.post.4", "1.0.1rc2.post4");
@@ -479,8 +479,8 @@ mod tests {
             .expect_version("1.0.1-rc.1.post.2", "1.0.1rc1.post2")
             .commit()
             .expect_version(
-                "1.0.1-rc.1.post.3+release.1.1.g{hex:7}",
-                "1.0.1rc1.post3+release.1.1.g{hex:7}",
+                "1.0.1-rc.1.post.3.dev.{timestamp}+release.1.1.g{hex:7}",
+                "1.0.1rc1.post3.dev{timestamp}+release.1.1.g{hex:7}",
             )
             .create_tag("v1.0.1-rc.1.post.3")
             .expect_version("1.0.1-rc.1.post.3", "1.0.1rc1.post3");
@@ -492,8 +492,8 @@ mod tests {
             .expect_version("1.0.1-rc.2.post.4", "1.0.1rc2.post4")
             .commit()
             .expect_version(
-                "1.0.1-rc.2.post.5+release.2.1.g{hex:7}",
-                "1.0.1rc2.post5+release.2.1.g{hex:7}",
+                "1.0.1-rc.2.post.5.dev.{timestamp}+release.2.1.g{hex:7}",
+                "1.0.1rc2.post5.dev{timestamp}+release.2.1.g{hex:7}",
             )
             .create_tag("v1.0.1-rc.2.post.5")
             .expect_version("1.0.1-rc.2.post.5", "1.0.1rc2.post5");
