@@ -260,7 +260,7 @@ gitGraph
     checkout release/1
     commit id: "1.0.2-rc.1.post.1"
     commit id: "1.0.2-rc.1.post.2"
-    commit type:REVERSE id: "1.0.2-rc.1.post.2.dev.{timestamp}" tag: "uncommitted"
+    commit type:REVERSE id: "1.0.2-rc.1.post.3.dev.{timestamp}" tag: "uncommitted"
     commit id: "1.0.2-rc.1.post.3"
 
     checkout main
@@ -269,7 +269,7 @@ gitGraph
 
     %% Step 11: Sync develop with release and prepare for next cycle
     checkout develop
-    merge main id: "1.1.0" tag: "sync release"
+    merge main id: "1.1.1-beta.1.post.1" tag: "sync release"
 ```
 
 **Key behaviors demonstrated**:
