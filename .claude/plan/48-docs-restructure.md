@@ -52,11 +52,14 @@
         - **CI/CD Integration**: Complements semantic release with branch-based pre-releases and full override control
     - **Purpose**: Clear distinction between flexible (version) vs automated (flow) approaches
 
-4. **Usage Examples** ⏳ - Copy-paste examples by command
+4. **Usage Examples** 🚧 - Copy-paste examples by command
     - **Content**:
-        - **zerv flow**: Automated branch-based versions with 5 main capability areas:
+        - **zerv flow**: Automated branch-based versions with comprehensive documentation:
+            - ✅ **Core Principles**: 4 fundamental design principles
+            - ✅ **Version Format Explained**: Structure, components, and variations with examples
+            - ✅ **Pre-release Resolution Strategy**: Branch patterns, post-release logic, distance modes
             - **Workflow Examples** (3 real-world scenarios with diagrams):
-                - Trunk-Based Development: Parallel features, nested branches, sync scenarios
+                - ✅ Trunk-Based Development: Parallel features, nested branches, sync scenarios
                 - GitFlow: develop/feature/hotfix/release branches with proper pre-release mapping
                 - Complex Release Management: Branch abandonment, cascading releases
                 - **DIAGRAMS**: Copy mermaid diagrams from `.claude/plan/32-zerv-flow-implementation-plan.md`
