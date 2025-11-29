@@ -38,16 +38,16 @@ impl FlowArgs {
         current_dirty: Option<bool>,
         current_distance: Option<u64>,
     ) -> bool {
-        if self.overrides.common.dirty == false && self.overrides.common.no_dirty == false {
+        if !self.overrides.common.dirty && !self.overrides.common.no_dirty {
             if self.post_mode() == post_modes::TAG
                 && (current_dirty == Some(true) || current_distance.unwrap_or(0) > 0)
             {
-                return true;
+                true
             } else {
-                return self.overrides.common.dirty;
+                self.overrides.common.dirty
             }
         } else {
-            return self.overrides.common.dirty;
+            self.overrides.common.dirty
         }
     }
 
