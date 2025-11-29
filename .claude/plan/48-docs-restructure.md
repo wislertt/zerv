@@ -60,7 +60,7 @@
             - ✅ **Pre-release Resolution Strategy**: Branch patterns, post-release logic, distance modes
             - **Workflow Examples** (3 real-world scenarios with diagrams):
                 - ✅ Trunk-Based Development: Parallel features, nested branches, sync scenarios
-                - GitFlow: develop/feature/hotfix/release branches with proper pre-release mapping
+                - ✅ GitFlow: develop/feature/hotfix/release branches with proper pre-release mapping
                 - Complex Release Management: Branch abandonment, cascading releases
                 - **DIAGRAMS**: Copy mermaid diagrams from `.claude/plan/32-zerv-flow-implementation-plan.md`
             - **Schema Variants**: 10+ standard schema presets only (no CalVer support)
