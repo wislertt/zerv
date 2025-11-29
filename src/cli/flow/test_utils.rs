@@ -240,18 +240,7 @@ impl FlowTestScenario {
 
     pub fn make_dirty(mut self) -> Self {
         test_info!("Making working directory dirty");
-        use std::time::{
-            SystemTime,
-            UNIX_EPOCH,
-        };
-        let current_time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
-
         self.current_vars.dirty = Some(true);
-        self.current_vars.bumped_timestamp = Some(current_time);
-
         self
     }
 
