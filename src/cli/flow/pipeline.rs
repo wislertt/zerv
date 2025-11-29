@@ -19,11 +19,7 @@ pub fn run_flow_pipeline(args: FlowArgs, stdin_content: Option<&str>) -> Result<
 
     // Step 3: Create bumped version args
     let version_args = args.create_bumped_version_args(&current_zerv)?;
-    tracing::error!(
-        "version_args.overrides.common.dirty: {:?}",
-        version_args.overrides.common.dirty
-    );
-    tracing::error!(" version_args.main.schema: {:?}", version_args.main.schema);
+
     // Step 4: Run version pipeline with stdin content
     let ron_output = run_version_pipeline(version_args, stdin_content)?;
 
@@ -390,26 +386,36 @@ mod tests {
             .checkout("release/1")
             .commit()
             .expect_version(
-                "1.0.2-rc.1.post.1+release.1.6.g{hex:7}",
-                "1.0.2rc1.post1+release.1.6.g{hex:7}",
+                "1.0.2-rc.1.post.1.dev.{timestamp:now}+release.1.6.g{hex:7}",
+                "1.0.2rc1.post1.dev{timestamp:now}+release.1.6.g{hex:7}",
             )
             .create_tag("1.0.2-rc.1.post.1")
             .expect_version("1.0.2-rc.1.post.1", "1.0.2rc1.post1")
             .commit()
             .expect_version(
-                "1.0.2-rc.1.post.2+release.1.1.g{hex:7}",
-                "1.0.2rc1.post2+release.1.1.g{hex:7}",
-            )
-            .make_dirty()
-            .expect_version(
                 "1.0.2-rc.1.post.2.dev.{timestamp:now}+release.1.1.g{hex:7}",
                 "1.0.2rc1.post2.dev{timestamp:now}+release.1.1.g{hex:7}",
             )
+            .create_tag("1.0.2-rc.1.post.2")
+            .expect_version("1.0.2-rc.1.post.2", "1.0.2rc1.post2")
+            .make_dirty()
+            .expect_version(
+                "1.0.2-rc.1.post.3.dev.{timestamp:now}+release.1.0.g{hex:7}",
+                "1.0.2rc1.post3.dev{timestamp:now}+release.1.0.g{hex:7}",
+            )
             .commit()
             .expect_version(
-                "1.0.2-rc.1.post.2.dev.{timestamp:now}+release.1.2.g{hex:7}",
-                "1.0.2rc1.post2.dev{timestamp:now}+release.1.2.g{hex:7}",
-            );
+                "1.0.2-rc.1.post.3.dev.{timestamp:now}+release.1.1.g{hex:7}",
+                "1.0.2rc1.post3.dev{timestamp:now}+release.1.1.g{hex:7}",
+            )
+            .make_dirty()
+            .expect_version(
+                "1.0.2-rc.1.post.3.dev.{timestamp:now}+release.1.1.g{hex:7}",
+                "1.0.2rc1.post3.dev{timestamp:now}+release.1.1.g{hex:7}",
+            )
+            .commit()
+            .create_tag("1.0.2-rc.1.post.3")
+            .expect_version("1.0.2-rc.1.post.3", "1.0.2rc1.post3");
 
         // TODO: fix this bug. we should get dev timestamp
         // .expect_version(

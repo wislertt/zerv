@@ -74,7 +74,6 @@ impl FlowArgs {
         let content = "{{ bumped_timestamp }}";
         let else_part = "{% else %}None{% endif %}";
         let template = format!("{}{}{}", if_part, content, else_part);
-        tracing::error!("template: {:?}", template);
         Some(Some(Template::new(template)))
     }
 }
