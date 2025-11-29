@@ -27,3 +27,11 @@ zerv flow
 ```
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_documentation_examples -->
+
+## Key Features
+
+- **zerv version**: Flexible, configurable version generation with full control
+- **zerv flow**: Opinionated, automated pre-release management based on Git branches
+- **Smart Schema System**: Auto-detects clean releases, pre-releases, and build context
+- **Multiple Formats**: SemVer, PEP440 (Python), CalVer, custom schemas
+- **CI/CD Integration**: Complements semantic release with branch-based pre-releases and full override control

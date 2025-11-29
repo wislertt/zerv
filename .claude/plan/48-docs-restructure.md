@@ -21,37 +21,38 @@
 
 #### README.md Table of Contents
 
-1. **Hero Section** - Above the fold content
+1. **Hero Section** ✅ - Above the fold content
     - **Content**: Clear one-liner, key benefit statement
     - **Purpose**: Immediate value proposition
 
-2. **Quick Start** - Install and run in 60 seconds
+2. **Quick Start** ✅ - Install and run in 60 seconds
     - **Content**:
 
         ```bash
         # Install
         cargo install zerv
 
-        # Try automated version (current branch determines output)
+        # Try automated versioning (current branch determines output)
         zerv flow
-        # → 1.2.3-alpha.5 (on feature branch)
-        # → 1.3.0-beta.1 (on develop branch)
-        # → 1.2.3 (on main branch)
+        # → 1.0.0 (on main branch with tag v1.0.0)
+        # → 1.0.1-rc.1.post.3 (on release branch with pre-release tag)
+        # → 1.0.1-beta.1.post.3+develop.3.gf297dd0 (on develop branch)
+        # → 1.0.1-alpha.59394.post.1+feature.new.auth.1.g4e9af24 (on feature branch)
+        # → 1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a (on dirty feature branch)
         ```
 
     - **Purpose**: Get users running code immediately to see value
 
-3. **Key Features** - 6 bullet points maximum
+3. **Key Features** ✅ - 5 concise bullet points (reduced from 6 to avoid redundancy)
     - **Content**:
         - **zerv version**: Flexible, configurable version generation with full control
         - **zerv flow**: Opinionated, automated pre-release management based on Git branches
-        - Smart Schema System: Auto-detects clean releases, pre-releases, and build context
-        - Multiple Formats: SemVer, PEP440 (Python), CalVer, custom schemas
-        - CI/CD Ready: Override capabilities and pipeline-friendly output formats
-        - Zero Config: Works out of the box with sensible defaults
+        - **Smart Schema System**: Auto-detects clean releases, pre-releases, and build context
+        - **Multiple Formats**: SemVer, PEP440 (Python), CalVer, custom schemas
+        - **CI/CD Integration**: Complements semantic release with branch-based pre-releases and full override control
     - **Purpose**: Clear distinction between flexible (version) vs automated (flow) approaches
 
-4. **Usage Examples** - Copy-paste examples by command
+4. **Usage Examples** ⏳ - Copy-paste examples by command
     - **Content**:
         - **zerv flow**: Automated branch-based versions with 5 main capability areas:
             - **Workflow Examples** (3 real-world scenarios with diagrams):
@@ -76,11 +77,11 @@
             - Pipeline chaining examples (e.g., `zerv version --output-format zerv | zerv version --source stdin --schema calver`)
     - **Purpose**: Practical examples organized by command for easy reference
 
-5. **Installation** - Simple, cargo-focused
+5. **Installation** ⏳ - Simple, cargo-focused
     - **Content**: Cargo install command, manual download link
     - **Purpose**: Quick installation path
 
-6. **Links** - Point to comprehensive docs
+6. **Links** ⏳ - Point to comprehensive docs
     - **Content**: Link to docs/llms.md, CLI help command
     - **Purpose**: Path to detailed information
 
@@ -195,11 +196,10 @@ tests/integration_tests/flow/docs/
 
 ### Remaining Implementation Tasks:
 
-1. **Key Features Section** - Implement 6 bullet points highlighting core capabilities
-2. **Usage Examples** - Organize by command with practical examples and workflow diagrams
-3. **Installation Section** - Simple cargo-focused installation instructions
-4. **Links Section** - Point to comprehensive docs and CLI help
-5. **docs/llms.md** - Create symlink to README.md for comprehensive reference
+1. **Usage Examples** - Organize by command with practical examples and workflow diagrams
+2. **Installation Section** - Simple cargo-focused installation instructions
+3. **Links Section** - Point to comprehensive docs and CLI help
+4. **docs/llms.md** - Create symlink to README.md for comprehensive reference
 
 ### Diagram Integration:
 
