@@ -67,7 +67,7 @@ impl FlowArgs {
 
     pub fn bump_dev(&self) -> Option<Option<Template<u32>>> {
         let if_part = if self.post_mode() == post_modes::TAG {
-            "{% if dirty or distance > 0 %}"
+            "{% if dirty or distance %}"
         } else {
             "{% if dirty %}"
         };
