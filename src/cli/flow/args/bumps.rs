@@ -1,8 +1,15 @@
 use super::FlowArgs;
 use crate::cli::utils::template::Template;
 use crate::utils::constants::post_modes;
-
 impl FlowArgs {
+    /// Get the post mode for the branch configuration
+    pub fn post_mode(&self) -> &str {
+        self.branch_config
+            .post_mode
+            .as_deref()
+            .unwrap_or(post_modes::COMMIT)
+    }
+
     pub fn build_patch_bump_template(&self, content: &str) -> String {
         let if_part = "{% if not pre_release and (dirty or distance) %}";
         let else_part = "{% else %}None{% endif %}";
@@ -49,12 +56,7 @@ impl FlowArgs {
     }
 
     pub fn bump_post(&self) -> Option<Option<Template<u32>>> {
-        let content = match self
-            .branch_config
-            .post_mode
-            .as_deref()
-            .unwrap_or(post_modes::COMMIT)
-        {
+        let content = match self.post_mode() {
             post_modes::COMMIT => "{{ distance }}", // bump post by distance
             post_modes::TAG => "1",                 // bump post by 1
             _ => unreachable!("Invalid post_mode should have been caught by validation"),
@@ -64,10 +66,15 @@ impl FlowArgs {
     }
 
     pub fn bump_dev(&self) -> Option<Option<Template<u32>>> {
-        let if_part = "{% if dirty %}";
+        let if_part = if self.post_mode() == post_modes::TAG {
+            "{% if dirty or distance > 0 %}"
+        } else {
+            "{% if dirty %}"
+        };
         let content = "{{ bumped_timestamp }}";
         let else_part = "{% else %}None{% endif %}";
         let template = format!("{}{}{}", if_part, content, else_part);
+        tracing::error!("template: {:?}", template);
         Some(Some(Template::new(template)))
     }
 }

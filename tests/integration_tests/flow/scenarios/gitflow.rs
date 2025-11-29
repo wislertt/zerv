@@ -145,7 +145,12 @@ fn test_gitflow_development_flow() {
             "1.0.2-rc.1.post.2.dev.{timestamp:now}+release.1.1.g{hex:7}",
             "1.0.2rc1.post2.dev{timestamp:now}+release.1.1.g{hex:7}",
         )
-        .commit();
+        .commit()
+        .expect_version(
+            "1.0.2-rc.1.post.2.dev.{timestamp:now}+release.1.2.g{hex:7}",
+            "1.0.2rc1.post2.dev{timestamp:now}+release.1.2.g{hex:7}",
+        );
+
     // TODO: fix this bug. we should get dev timestamp
     // .expect_version(
     //     "1.0.2-rc.1.post.2.dev.{timestamp:now}+release.1.2.g{hex:7}",

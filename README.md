@@ -269,7 +269,7 @@ gitGraph
 
     %% Step 11: Sync develop with release and prepare for next cycle
     checkout develop
-    merge main id: "1.1.1-beta.1.post.1" tag: "sync release"
+    merge main id: "1.1.0" tag: "sync release"
 ```
 
 **Key behaviors demonstrated**:
