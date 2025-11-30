@@ -101,7 +101,7 @@ fn test_complex_release_branch_abandonment() {
         .expect_version("1.1.0", "1.1.0");
 
     // Verify release/1 remains abandoned (never merged)
-    test_info!("Step 7: Verify release/1 remains abandoned");
+    test_info!("Verify release/1 remains abandoned");
     let scenario = scenario
         .checkout("release/1")
         .expect_version("1.0.1-rc.1.post.3", "1.0.1rc1.post3");

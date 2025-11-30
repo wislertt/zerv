@@ -282,3 +282,62 @@ gitGraph
 - **Branch synchronization**: Develop branch syncs with main releases
 
 <!-- Corresponding test: tests/integration_tests/flow/scenarios/gitflow.rs:test_gitflow_development_flow -->
+
+##### Complex Release Management
+
+**Purpose**: Complex release branch scenarios including branch abandonment and cascading release preparation.
+
+**Scenario**: Main branch with `v1.0.0`, release branch preparation with critical issues leading to abandonment, and selective branch creation for successful release.
+
+```mermaid
+---
+config:
+  logLevel: 'debug'
+  theme: 'base'
+---
+gitGraph
+    %% Step 1: Initial state: main branch with v1.0.0 tag
+    commit id: "1.0.0" tag: "v1.0.0"
+
+    %% Step 2: Create release/1 from main for next release preparation
+    branch release/1 order: 2
+    checkout release/1
+    commit id: "1.0.1-rc.1.post.1"
+    commit id: "1.0.1-rc.1.post.2"
+
+    %% Step 3: Create release/2 from the second commit of release/1 (before issues)
+    %% release/1 at this point: 1.0.1-rc.1.post.2, so release/2 continues from there
+    checkout release/1
+    branch release/2 order: 1
+    checkout release/2
+    commit id: "1.0.1-rc.2.post.3"
+
+    %% Step 4: Go back to release/1 and add the problematic third commit (issues found)
+    checkout release/1
+    commit id: "1.0.1-rc.1.post.3" tag: "issues found"
+
+    %% Step 5: release/2 completes preparation successfully
+    checkout release/2
+    commit id: "1.0.1-rc.2.post.4"
+
+    %% Step 6: Merge release/2 to main and release v1.1.0
+    checkout main
+    merge release/2 id: "1.1.0" tag: "v1.1.0"
+
+```
+
+**Version progression details**:
+
+- **release/1**: `1.0.1-rc.1.post.1` → `1.0.1-rc.1.post.2` → `1.0.1-rc.1.post.3` (abandoned)
+- **release/2**: Created from `release/1`'s second commit (`1.0.1-rc.1.post.2`), continues as `1.0.1-rc.2.post.3` → `1.0.1-rc.2.post.4`
+- **Main**: Clean progression `1.0.0` → `1.1.0` (only from successful `release/2` merge)
+
+**Key behaviors demonstrated**:
+
+- **Branch isolation**: Each release branch maintains independent versioning regardless of parent/child relationships
+- **Selective branching**: Zerv Flow correctly handles branches created from specific historical commits
+- **Abandonment handling**: Unmerged branches don't affect final release versions on main
+- **Cascade management**: Complex branching scenarios where releases feed into other releases are handled transparently
+- **Clean main branch**: Main only receives versions from successfully merged releases, maintaining clean semantic versioning
+
+<!-- Corresponding test: tests/integration_tests/flow/scenarios/complex_release_branch.rs:test_complex_release_branch_abandonment -->

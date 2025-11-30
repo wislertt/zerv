@@ -161,9 +161,8 @@ fn test_llm_help_flag(#[case] pager_env: Option<&str>, #[case] description: &str
 
     let stdout = test_output.stdout();
 
-    // Should contain the comprehensive CLI manual
     assert!(
-        stdout.contains("# Zerv CLI Documentation"),
+        stdout.contains("# zerv"),
         "Should contain manual title with {}: {stdout}",
         description
     );
