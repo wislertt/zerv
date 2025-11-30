@@ -341,3 +341,55 @@ gitGraph
 - **Clean main branch**: Main only receives versions from successfully merged releases, maintaining clean semantic versioning
 
 <!-- Corresponding test: tests/integration_tests/flow/scenarios/complex_release_branch.rs:test_complex_release_branch_abandonment -->
+
+#### Schema Variants: 10+ Standard Schema Presets
+
+**Purpose**: Complete control over version generation with 20+ schema presets and extensive customization options.
+
+**Schema Selection Examples**:
+
+```bash
+zerv flow --source stdin --schema standard-base
+# → 1.0.0
+
+zerv flow --source stdin --schema standard-base-context
+# → 1.0.0+{timestamp}
+
+zerv flow --source stdin --schema standard-base-prerelease
+# → 1.0.1-rc.1
+
+zerv flow --source stdin --schema standard-base-prerelease-context
+# → 1.0.1-rc.1+{timestamp}
+
+zerv flow --source stdin --schema standard-base-prerelease-post
+# → 1.0.1-rc.1.post.3
+
+zerv flow --source stdin --schema standard-base-prerelease-post-context
+# → 1.0.1-rc.1.post.3+develop.3.gf297dd0+{timestamp}
+
+zerv flow --source stdin --schema standard-base-prerelease-post-dev
+# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash}
+
+zerv flow --source stdin --schema standard-base-prerelease-post-dev-context
+# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash}+{timestamp}
+
+zerv flow --source stdin --schema standard
+# → 1.0.0 (clean main/release)
+# → 1.0.1-rc.1 (release branch - no distance)
+# → 1.0.1-beta.1.post.3+develop.3.gf297dd0 (develop branch - distance)
+# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash} (dirty feature)
+
+zerv flow --source stdin --schema standard-no-context
+# → 1.0.0 (clean main/release)
+# → 1.0.1-rc.1 (release branch - no distance)
+# → 1.0.1-beta.1.post.3 (develop branch - distance)
+# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash} (dirty feature)
+
+zerv flow --source stdin --schema standard-context
+# → 1.0.0+{timestamp} (clean main/release)
+# → 1.0.1-rc.1+{timestamp} (release branch - no distance)
+# → 1.0.1-beta.1.post.3+develop.3.gf297dd0+{timestamp} (develop branch - distance)
+# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash}+{timestamp} (dirty feature)
+```
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/schema_variants.rs:test_schema_variants_documentation_examples -->
