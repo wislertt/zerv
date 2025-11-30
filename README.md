@@ -396,29 +396,51 @@ zerv flow --source stdin --schema standard-context
 
 #### Branch Rules: Configurable Pattern Matching
 
-.... TODO ..... add more detail
+**Purpose**: Map branch names to pre-release labels, numbers, and post modes for automated version generation.
+
+**Default GitFlow Rules**:
+
+```ron
+[
+    (pattern: "develop", pre_release_label: beta, pre_release_num: 1, post_mode: commit),
+    (pattern: "release/*", pre_release_label: rc, post_mode: tag)
+]
+```
+
+**Pattern Matching**:
+
+- **Exact**: `"develop"` matches only `"develop"`
+- **Wildcard**: `"release/*"` matches `"release/1"`, `"release/42"`, `"release/1/feature"`, etc.
+- **Number extraction**:
+    - With numbers: `release/1` → `rc.1`, `release/1/feature` → `rc.1`
+    - Without numbers: `release/feature` → `rc.<hash-id>` (fallback to hash-based identification)
+- **Other branches**: `*`, `feature/*`, `hotfix/*`, `bugfix/*`, etc. → `alpha.<hash-id>` (fallback to hash-based identification)
 
 **Examples**:
 
 ```bash
+# Default GitFlow behavior
 zerv flow
-# → 1.0.1-rc.1.post.1+release.1.do.something.1.g{hex:7} (release branch - test case 1)
-
-zerv flow
+# → 1.0.1-rc.1.post.1+release.1.do.something.1.g{hex:7} (release/1/do-something branch - test case 1)
 # → 1.0.1-beta.1.post.1+develop.1.g{hex:7} (develop branch - test case 2)
-
-zerv flow
 # → 1.0.1-alpha.10192.post.1+branch.name.1.g{hex:7} (feature branch - test case 3)
+# → 1.0.1-rc.48993.post.1+release.do.something.1.g{{hex:7}} (release/do-something branch - test case 4)
 
-
-# Using custom branch rules
+# Custom branch rules
 zerv flow --branch-rules '[
     (pattern: "staging", pre_release_label: rc, pre_release_num: 1, post_mode: commit),
     (pattern: "qa/*", pre_release_label: beta, post_mode: tag)
 ]'
-# → ...... (staging branch - test case 4)
-# → ...... (qa branch - test case 5)
-# → ...... (feature branch - test case 6)
+# → 1.0.1-rc.1.post.1+staging.1.g{hex:7} (staging branch - test case 5)
+# → 1.0.1-beta.123.post.1+qa.123.1.g{hex:7} (qa branch - test case 6)
+# → 1.0.1-alpha.20460.post.1+feature.new.feature.1.g{hex:7} (feature branch - test case 7)
 ```
+
+**Configuration**:
+
+- **`pattern`**: Branch name (exact) or wildcard (`/*`)
+- **`pre_release_label`**: `alpha`, `beta`, or `rc`
+- **`pre_release_num`**: Explicit number (exact) or extracted (wildcard)
+- **`post_mode`**: `commit` (count commits) or `tag` (count tags)
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/branch_rules.rs:test_branch_rules_documentation_examples -->
