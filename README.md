@@ -350,46 +350,46 @@ gitGraph
 
 ```bash
 zerv flow --source stdin --schema standard-base
-# → 1.0.0
+# → 1.0.1 (test case 1)
 
 zerv flow --source stdin --schema standard-base-context
-# → 1.0.0+{timestamp}
+# → 1.0.1+branch.name.g{hex:7} (test case 2)
 
 zerv flow --source stdin --schema standard-base-prerelease
-# → 1.0.1-rc.1
+# → 1.0.1-alpha.10192 (test case 3)
 
 zerv flow --source stdin --schema standard-base-prerelease-context
-# → 1.0.1-rc.1+{timestamp}
+# → 1.0.1-alpha.10192+branch.name.1.g{hex:7} (test case 4)
 
 zerv flow --source stdin --schema standard-base-prerelease-post
-# → 1.0.1-rc.1.post.3
+# → 1.0.1-alpha.10192.post.1 (test case 5)
 
 zerv flow --source stdin --schema standard-base-prerelease-post-context
-# → 1.0.1-rc.1.post.3+develop.3.gf297dd0+{timestamp}
+# → 1.0.1-alpha.10192.post.1+branch.name.1.g{hex:7} (test case 6)
 
 zerv flow --source stdin --schema standard-base-prerelease-post-dev
-# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash}
+# → 1.0.1-alpha.10192.post.1.dev.{timestamp} (test case 7)
 
 zerv flow --source stdin --schema standard-base-prerelease-post-dev-context
-# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash}+{timestamp}
+# → 1.0.1-alpha.10192.post.1.dev.{timestamp}+branch.name.1.g{hex:7} (test case 8)
 
 zerv flow --source stdin --schema standard
-# → 1.0.0 (clean main/release)
-# → 1.0.1-rc.1 (release branch - no distance)
-# → 1.0.1-beta.1.post.3+develop.3.gf297dd0 (develop branch - distance)
-# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash} (dirty feature)
+# → 1.0.0 (clean main - test case 9)
+# → 1.0.1-rc.1 (release branch - test case 10)
+# → 1.0.1-alpha.10192.post.1+branch.name.1.g{hex:7} (feature branch - test case 11)
+# → 1.0.1-alpha.10192.post.1.dev.{timestamp}+branch.name.1.g{hex:7} (dirty feature branch - test case 12)
 
 zerv flow --source stdin --schema standard-no-context
-# → 1.0.0 (clean main/release)
-# → 1.0.1-rc.1 (release branch - no distance)
-# → 1.0.1-beta.1.post.3 (develop branch - distance)
-# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash} (dirty feature)
+# → 1.0.0 (clean main - test case 13)
+# → 1.0.1-rc.1 (release branch - test case 14)
+# → 1.0.1-alpha.10192.post.1 (feature branch - test case 15)
+# → 1.0.1-alpha.10192.post.1.dev.{timestamp} (dirty feature branch - test case 16)
 
 zerv flow --source stdin --schema standard-context
-# → 1.0.0+{timestamp} (clean main/release)
-# → 1.0.1-rc.1+{timestamp} (release branch - no distance)
-# → 1.0.1-beta.1.post.3+develop.3.gf297dd0+{timestamp} (develop branch - distance)
-# → 1.0.1-alpha.59394.post.1.dev.{timestamp}+feature.auth.1.g{hash}+{timestamp} (dirty feature)
+# → 1.0.0+main.g{hex:7} (clean main - test case 17)
+# → 1.0.1-rc.1+release.1.do.something.g{hex:7} (release branch - test case 18)
+# → 1.0.1-alpha.10192.post.1+branch.name.1.g{hex:7} (feature branch - test case 19)
+# → 1.0.1-alpha.10192.post.1.dev.{timestamp}+branch.name.1.g{hex:7} (dirty feature branch - test case 20)
 ```
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/schema_variants.rs:test_schema_variants_documentation_examples -->
