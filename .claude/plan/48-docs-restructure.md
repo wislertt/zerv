@@ -64,7 +64,7 @@
                 - ✅ Complex Release Management: Branch abandonment, cascading releases
                 - **DIAGRAMS**: Copy mermaid diagrams from `.claude/plan/32-zerv-flow-implementation-plan.md`
             - ✅ **Schema Variants**: 10+ standard schema presets only (no CalVer support)
-            - **Branch Rules**: Configurable pattern matching (default GitFlow) for pre-release automation
+            - ✅ **Branch Rules**: Configurable pattern matching (default GitFlow) for pre-release automation
             - **Pre-release Control**: Labels (alpha/beta/rc), numbers, hash-based identification
             - **Post Mode Options**: Tag distance vs commit distance calculation modes
         - **zerv version**: Manual control with 4 main capability areas:

@@ -444,3 +444,46 @@ zerv flow --branch-rules '[
 - **`post_mode`**: `commit` (count commits) or `tag` (count tags)
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/branch_rules.rs:test_branch_rules_documentation_examples -->
+
+#### Pre-release Control & Post Mode Options
+
+**--pre-release-label**: Pre-release identifier (`alpha`, `beta`, `rc`)
+
+**--pre-release-num**: Optional explicit pre-release number (integer, defaults to branch extraction or hash-based)
+
+**--post-mode**: Distance calculation method
+
+- **`commit`**: Count commits since last tag (ideal for development branches)
+- **`tag`**: Increment by 1 for each new tag (ideal for release candidates)
+
+**Examples**:
+
+```bash
+# Explicit pre-release control
+zerv flow --pre-release-label rc --pre-release-num 3
+# → 1.0.1-rc.3.post.5+custom.branch.5.g{hex:7}
+
+# Number extraction from branch name
+zerv flow --pre-release-label rc
+# → 1.0.1-rc.42.post.1+release.42.1.g{hex:7}
+
+# Hash-based identification (fallback)
+zerv flow --pre-release-label alpha
+# → 1.0.1-alpha.11477.post.3+hotfix.critical.3.g{hex:7}
+
+# Post mode control
+zerv flow --pre-release-label beta --pre-release-num 2 --post-mode commit
+# → 1.0.1-beta.2.post.3+test.branch.3.g{hex:7}
+
+# Dirty state with manual control
+zerv flow --pre-release-label beta --pre-release-num 5
+# → 1.0.1-beta.5.post.4.dev.1729924622+feature.auth.4.g{hex:7}
+```
+
+**Example Breakdown**: `1.0.1-alpha.12345.post.3.dev.1729924622`
+
+- `alpha.12345` → Pre-release label and hash-based identification
+- `post.3` → 3 commits from reference point
+- `dev.1729924622` → Uncommitted changes timestamp
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/pre_release_control.rs:test_pre_release_control_and_post_mode_examples -->
