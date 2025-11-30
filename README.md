@@ -393,3 +393,32 @@ zerv flow --source stdin --schema standard-context
 ```
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/schema_variants.rs:test_schema_variants_documentation_examples -->
+
+#### Branch Rules: Configurable Pattern Matching
+
+.... TODO ..... add more detail
+
+**Examples**:
+
+```bash
+zerv flow
+# → 1.0.1-rc.1.post.1+release.1.do.something.1.g{hex:7} (release branch - test case 1)
+
+zerv flow
+# → 1.0.1-beta.1.post.1+develop.1.g{hex:7} (develop branch - test case 2)
+
+zerv flow
+# → 1.0.1-alpha.10192.post.1+branch.name.1.g{hex:7} (feature branch - test case 3)
+
+
+# Using custom branch rules
+zerv flow --branch-rules '[
+    (pattern: "staging", pre_release_label: rc, pre_release_num: 1, post_mode: commit),
+    (pattern: "qa/*", pre_release_label: beta, post_mode: tag)
+]'
+# → ...... (staging branch - test case 4)
+# → ...... (qa branch - test case 5)
+# → ...... (feature branch - test case 6)
+```
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/branch_rules.rs:test_branch_rules_documentation_examples -->
