@@ -119,6 +119,30 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 
 ---
 
+## 📝 Documentation Standards
+
+### Test-Driven Documentation
+
+**MANDATORY - All code examples in documentation must have corresponding tests**
+
+1. ✅ **Every code example** in README.md and other docs must be backed by tests
+2. ✅ **Add reference comments**: `<!-- Corresponding test: path/to/test.rs:test_function -->`
+3. ✅ **Exact matching**: Documentation examples must exactly match test output
+4. ✅ **Realistic values**: Use actual commit hashes, not `{hex}` placeholders
+5. ✅ **Coordinated updates**: Update tests first, then documentation to match
+
+### Reference Comment Format
+
+```html
+<!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_documentation_examples -->
+```
+
+**For detailed documentation maintenance guidelines:**
+
+@.claude/ref/documentation-maintenance.md
+
+---
+
 ## 🧪 Testing Standards
 
 ### Quick Reference

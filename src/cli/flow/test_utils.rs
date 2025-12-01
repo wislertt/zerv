@@ -229,7 +229,7 @@ impl FlowTestScenario {
         // Update current vars with commit info
         self.current_vars.distance = Some(current_distance);
         self.current_vars.bumped_commit_hash = Some(commit_hash);
-        self.current_vars.dirty = Some(false); // commits clean working directory
+        self.current_vars.dirty = Some(false); // Commits create clean working directories
 
         // Save state for current branch
         self.branch_vars
@@ -240,18 +240,7 @@ impl FlowTestScenario {
 
     pub fn make_dirty(mut self) -> Self {
         test_info!("Making working directory dirty");
-        use std::time::{
-            SystemTime,
-            UNIX_EPOCH,
-        };
-        let current_time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
-
         self.current_vars.dirty = Some(true);
-        self.current_vars.bumped_timestamp = Some(current_time);
-
         self
     }
 

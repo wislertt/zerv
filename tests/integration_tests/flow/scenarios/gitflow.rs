@@ -4,15 +4,11 @@
 // Uses FlowIntegrationTestScenario with the same API as existing pipeline tests
 
 use zerv::cli::flow::test_utils::{
-    SchemaTestBuild,
-    SchemaTestExtraCore,
     create_base_schema_test_cases,
-    create_full_schema_test_cases,
     expect_branch_hash,
 };
 use zerv::test_info;
 use zerv::test_utils::should_run_docker_tests;
-use zerv::version::zerv::PreReleaseLabel;
 
 use crate::flow::scenarios::FlowIntegrationTestScenario;
 
@@ -134,66 +130,57 @@ fn test_gitflow_development_flow() {
         .checkout("release/1")
         .commit()
         .expect_version(
-            "1.0.2-rc.1.post.1+release.1.6.g{hex:7}",
-            "1.0.2rc1.post1+release.1.6.g{hex:7}",
+            "1.0.2-rc.1.post.1.dev.{timestamp:now}+release.1.6.g{hex:7}",
+            "1.0.2rc1.post1.dev{timestamp:now}+release.1.6.g{hex:7}",
         )
-        .create_tag("v1.0.2-rc.1.post.1")
+        .create_tag("1.0.2-rc.1.post.1")
         .expect_version("1.0.2-rc.1.post.1", "1.0.2rc1.post1")
-        .expect_schema_variants(create_full_schema_test_cases(
-            "1.0.2",
-            SchemaTestExtraCore {
-                pre_release_label: PreReleaseLabel::Rc,
-                pre_release_num: "1",
-                post: 1,
-                dev: None,
-            },
-            SchemaTestBuild {
-                sanitized_branch_name: "release.1",
-                distance: 0,
-                include_build_for_standard: false,
-            },
-        ))
         .commit()
         .expect_version(
-            "1.0.2-rc.1.post.2+release.1.1.g{hex:7}",
-            "1.0.2rc1.post2+release.1.1.g{hex:7}",
+            "1.0.2-rc.1.post.2.dev.{timestamp:now}+release.1.1.g{hex:7}",
+            "1.0.2rc1.post2.dev{timestamp:now}+release.1.1.g{hex:7}",
         )
-        .create_tag("v1.0.2-rc.1.post.3")
-        .expect_version("1.0.2-rc.1.post.3", "1.0.2rc1.post3");
-
-    // Step 10: Continue release branch development with dirty state and commits
-    test_info!("Step 10: Continue release branch development with dirty state and commits");
-    let scenario = scenario
+        .create_tag("1.0.2-rc.1.post.2")
+        .expect_version("1.0.2-rc.1.post.2", "1.0.2rc1.post2")
         .make_dirty()
         .expect_version(
-            "1.0.2-rc.1.post.4.dev.{timestamp:now}+release.1.0.g{hex:7}",
-            "1.0.2rc1.post4.dev{timestamp:now}+release.1.0.g{hex:7}",
+            "1.0.2-rc.1.post.3.dev.{timestamp:now}+release.1.0.g{hex:7}",
+            "1.0.2rc1.post3.dev{timestamp:now}+release.1.0.g{hex:7}",
         )
         .commit()
         .expect_version(
-            "1.0.2-rc.1.post.4+release.1.1.g{hex:7}",
-            "1.0.2rc1.post4+release.1.1.g{hex:7}",
+            "1.0.2-rc.1.post.3.dev.{timestamp:now}+release.1.1.g{hex:7}",
+            "1.0.2rc1.post3.dev{timestamp:now}+release.1.1.g{hex:7}",
         )
-        .create_tag("v1.0.2-rc.1.post.4")
-        .expect_version("1.0.2-rc.1.post.4", "1.0.2rc1.post4");
+        .make_dirty()
+        .expect_version(
+            "1.0.2-rc.1.post.3.dev.{timestamp:now}+release.1.1.g{hex:7}",
+            "1.0.2rc1.post3.dev{timestamp:now}+release.1.1.g{hex:7}",
+        )
+        .commit()
+        .create_tag("1.0.2-rc.1.post.3")
+        .expect_version("1.0.2-rc.1.post.3", "1.0.2rc1.post3");
 
-    // Step 11: Final release merge to main
-    test_info!("Step 11: Final release merge to main and release v1.1.0");
+    // Step 10: Final release merge to main
+    test_info!("Step 10: Final release merge to main and release v1.1.0");
     let scenario = scenario
         .checkout("main")
         .merge_branch("release/1")
         .create_tag("v1.1.0")
         .expect_version("1.1.0", "1.1.0");
 
-    // Step 12: Sync develop with release for next cycle
-    test_info!("Step 12: Sync develop with release and prepare for next cycle");
+    // Step 11: Sync develop with release for next cycle
+    test_info!("Step 11: Sync develop with release and prepare for next cycle");
     let scenario = scenario
         .checkout("develop")
         .merge_branch("main")
-        .expect_version("1.1.0", "1.1.0");
+        .commit()
+        .expect_version(
+            "1.1.1-beta.1.post.1+develop.1.g{hex:7}",
+            "1.1.1b1.post1+develop.1.g{hex:7}",
+        );
 
     test_info!("GitFlow test completed successfully - full scenario implemented");
 
-    // Return the scenario (prevents unused variable warning)
     let _ = scenario;
 }

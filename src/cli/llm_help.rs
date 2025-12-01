@@ -86,11 +86,10 @@ mod tests {
             "Buffer should contain the manual content in tests"
         );
 
-        // Verify the content starts with expected markdown
         let content = String::from_utf8(buffer).expect("Content should be valid UTF-8");
         assert!(
-            content.starts_with("# Zerv CLI Documentation"),
-            "Content should start with the manual title"
+            content.contains("# zerv"),
+            "Content should contain the manual title (README.md or legacy format)"
         );
     }
 
@@ -103,30 +102,30 @@ mod tests {
 
     #[test]
     fn test_display_llm_help_contains_expected_content() {
-        // Test that the manual contains expected content
+        // Test that the manual contains expected content (now symlinked to README.md)
         let content = LLMS_MD;
 
-        // Check for key sections that should be in the manual
+        // Check for key sections that are in the README.md
         assert!(
             content.contains("Quick Start"),
             "Should contain Quick Start section"
         );
         assert!(
-            content.contains("Commands"),
-            "Should contain Commands section"
+            content.contains("Key Features"),
+            "Should contain Key Features section"
         );
         assert!(
-            content.contains("Examples"),
-            "Should contain Examples section"
+            content.contains("Usage Examples"),
+            "Should contain Usage Examples section"
         );
     }
 
     #[test]
     fn test_llms_md_constant_exists() {
-        // Verify the embedded manual contains the expected content
+        // Verify the embedded manual contains the expected content (now symlinked to README.md)
         assert!(
-            LLMS_MD.contains("# Zerv CLI Documentation"),
-            "LLMS_MD should contain the manual title"
+            LLMS_MD.contains("# zerv") || LLMS_MD.contains("# Zerv CLI Documentation"),
+            "LLMS_MD should contain the manual title (README.md or legacy format)"
         );
     }
 

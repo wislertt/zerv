@@ -1,6 +1,6 @@
 # Documentation Restructure Plan
 
-**Status**: Planned
+**Status**: In Progress
 **Priority**: High
 **Context**: Ready for first publish, need docs restructuring for human vs LLM audiences
 
@@ -21,46 +21,50 @@
 
 #### README.md Table of Contents
 
-1. **Hero Section** - Above the fold content
+1. **Hero Section** ✅ - Above the fold content
     - **Content**: Clear one-liner, key benefit statement
     - **Purpose**: Immediate value proposition
 
-2. **Quick Start** - Install and run in 60 seconds
+2. **Quick Start** ✅ - Install and run in 60 seconds
     - **Content**:
 
         ```bash
         # Install
         cargo install zerv
 
-        # Try automated version (current branch determines output)
+        # Try automated versioning (current branch determines output)
         zerv flow
-        # → 1.2.3-alpha.5 (on feature branch)
-        # → 1.3.0-beta.1 (on develop branch)
-        # → 1.2.3 (on main branch)
+        # → 1.0.0 (on main branch with tag v1.0.0)
+        # → 1.0.1-rc.1.post.3 (on release branch with pre-release tag)
+        # → 1.0.1-beta.1.post.3+develop.3.gf297dd0 (on develop branch)
+        # → 1.0.1-alpha.59394.post.1+feature.new.auth.1.g4e9af24 (on feature branch)
+        # → 1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a (on dirty feature branch)
         ```
 
     - **Purpose**: Get users running code immediately to see value
 
-3. **Key Features** - 6 bullet points maximum
+3. **Key Features** ✅ - 5 concise bullet points (reduced from 6 to avoid redundancy)
     - **Content**:
         - **zerv version**: Flexible, configurable version generation with full control
         - **zerv flow**: Opinionated, automated pre-release management based on Git branches
-        - Smart Schema System: Auto-detects clean releases, pre-releases, and build context
-        - Multiple Formats: SemVer, PEP440 (Python), CalVer, custom schemas
-        - CI/CD Ready: Override capabilities and pipeline-friendly output formats
-        - Zero Config: Works out of the box with sensible defaults
+        - **Smart Schema System**: Auto-detects clean releases, pre-releases, and build context
+        - **Multiple Formats**: SemVer, PEP440 (Python), CalVer, custom schemas
+        - **CI/CD Integration**: Complements semantic release with branch-based pre-releases and full override control
     - **Purpose**: Clear distinction between flexible (version) vs automated (flow) approaches
 
-4. **Usage Examples** - Copy-paste examples by command
+4. **Usage Examples** 🚧 - Copy-paste examples by command
     - **Content**:
-        - **zerv flow**: Automated branch-based versions with 5 main capability areas:
+        - **zerv flow**: Automated branch-based versions with comprehensive documentation:
+            - ✅ **Core Principles**: 4 fundamental design principles
+            - ✅ **Version Format Explained**: Structure, components, and variations with examples
+            - ✅ **Pre-release Resolution Strategy**: Branch patterns, post-release logic, distance modes
             - **Workflow Examples** (3 real-world scenarios with diagrams):
-                - Trunk-Based Development: Parallel features, nested branches, sync scenarios
-                - GitFlow: develop/feature/hotfix/release branches with proper pre-release mapping
-                - Complex Release Management: Branch abandonment, cascading releases
+                - ✅ Trunk-Based Development: Parallel features, nested branches, sync scenarios
+                - ✅ GitFlow: develop/feature/hotfix/release branches with proper pre-release mapping
+                - ✅ Complex Release Management: Branch abandonment, cascading releases
                 - **DIAGRAMS**: Copy mermaid diagrams from `.claude/plan/32-zerv-flow-implementation-plan.md`
-            - **Schema Variants**: 10+ standard schema presets only (no CalVer support)
-            - **Branch Rules**: Configurable pattern matching (default GitFlow) for pre-release automation
+            - ✅ **Schema Variants**: 10+ standard schema presets only (no CalVer support)
+            - ✅ **Branch Rules**: Configurable pattern matching (default GitFlow) for pre-release automation
             - **Pre-release Control**: Labels (alpha/beta/rc), numbers, hash-based identification
             - **Post Mode Options**: Tag distance vs commit distance calculation modes
         - **zerv version**: Manual control with 4 main capability areas:
@@ -76,11 +80,11 @@
             - Pipeline chaining examples (e.g., `zerv version --output-format zerv | zerv version --source stdin --schema calver`)
     - **Purpose**: Practical examples organized by command for easy reference
 
-5. **Installation** - Simple, cargo-focused
+5. **Installation** ⏳ - Simple, cargo-focused
     - **Content**: Cargo install command, manual download link
     - **Purpose**: Quick installation path
 
-6. **Links** - Point to comprehensive docs
+6. **Links** ⏳ - Point to comprehensive docs
     - **Content**: Link to docs/llms.md, CLI help command
     - **Purpose**: Path to detailed information
 
@@ -127,8 +131,60 @@
 - No information loss from existing documentation
 - Both files serve their distinct audiences effectively
 
+## Implementation Notes
+
+### 📝 Documentation Maintenance Process Established
+
+**Corresponding Test Guidelines**:
+Every code example in documentation must have a corresponding test with reference comment:
+
+```html
+<!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_documentation_examples -->
+```
+
+**Working Process**:
+
+1. **Test First**: Write comprehensive test for documentation example
+2. **Document Second**: Add example to documentation with exact output
+3. **Add Reference**: Include corresponding test comment for maintainability
+4. **Validate**: Ensure examples exactly match test outputs
+5. **Coordinated Updates**: Update tests first, then documentation to match
+
+**Infrastructure in Place**:
+
+- ✅ **TestScenario**: Chainable test framework with CLI command execution
+- ✅ **Pattern Assertion System**: `{hex:7}`, `{timestamp:now}`, `{regex:pattern}` support
+- ✅ **Documentation Standards**: Comprehensive guidelines in `.claude/ref/documentation-maintenance.md`
+- ✅ **Maintenance Comments**: Professional "Corresponding test:" format
+
+**File Structure**:
+
+```
+tests/integration_tests/flow/docs/
+├── mod.rs
+├── test_utils.rs     # TestScenario implementation
+├── quick_start.rs   # Quick Start documentation tests
+└── tmp.rs           # assert_commands functionality (temporary)
+```
+
+## Next Steps
+
+### Remaining Implementation Tasks:
+
+1. **Usage Examples** - Organize by command with practical examples and workflow diagrams
+2. **Installation Section** - Simple cargo-focused installation instructions
+3. **Links Section** - Point to comprehensive docs and CLI help
+4. **docs/llms.md** - Create symlink to README.md for comprehensive reference
+
+### Diagram Integration:
+
+- **Copy mermaid diagrams** from `.claude/plan/32-zerv-flow-implementation-plan.md`
+- **Include 3 workflow diagrams**: Trunk-Based, GitFlow, Complex Release Management
+- **Essential for**: Showing real Git scenarios and zerv flow capabilities
+
 ## Notes
 
 - This is a consolidation effort - we're reducing doc surface area while improving coverage
 - AUTO.md remains as auto-generated CLI reference
+- Test-driven documentation ensures examples always stay accurate
 - Future: Consider more scalable documentation approach if needed
