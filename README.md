@@ -421,19 +421,19 @@ zerv flow --source stdin --schema standard-context
 ```bash
 # Default GitFlow behavior
 zerv flow
-# → 1.0.1-rc.1.post.1+release.1.do.something.1.g{hex:7} (release/1/do-something branch - test case 1)
-# → 1.0.1-beta.1.post.1+develop.1.g{hex:7} (develop branch - test case 2)
-# → 1.0.1-alpha.10192.post.1+branch.name.1.g{hex:7} (feature branch - test case 3)
-# → 1.0.1-rc.48993.post.1+release.do.something.1.g{{hex:7}} (release/do-something branch - test case 4)
+# → 1.0.1-rc.1.post.1+release.1.do.something.1.g3a2b1c4 (release/1/do-something branch - test case 1)
+# → 1.0.1-beta.1.post.1+develop.1.g8f7e6d5 (develop branch - test case 2)
+# → 1.0.1-alpha.10192.post.1+branch.name.1.g9d8c7b6 (feature branch - test case 3)
+# → 1.0.1-rc.48993.post.1+release.do.something.1.g5e4f3a2 (release/do-something branch - test case 4)
 
 # Custom branch rules
 zerv flow --branch-rules '[
     (pattern: "staging", pre_release_label: rc, pre_release_num: 1, post_mode: commit),
     (pattern: "qa/*", pre_release_label: beta, post_mode: tag)
 ]'
-# → 1.0.1-rc.1.post.1+staging.1.g{hex:7} (staging branch - test case 5)
-# → 1.0.1-beta.123.post.1+qa.123.1.g{hex:7} (qa branch - test case 6)
-# → 1.0.1-alpha.20460.post.1+feature.new.feature.1.g{hex:7} (feature branch - test case 7)
+# → 1.0.1-rc.1.post.1+staging.1.g2c3d4e5 (staging branch - test case 5)
+# → 1.0.1-beta.123.post.1+qa.123.1.g7b8c9d0 (qa branch - test case 6)
+# → 1.0.1-alpha.20460.post.1+feature.new.feature.1.g1d2e3f4 (feature branch - test case 7)
 ```
 
 **Configuration**:
@@ -455,25 +455,25 @@ zerv flow --tag-version "v2.1.0-beta.1"           # Override tag version
 # → 2.1.0
 
 zerv flow --distance 42                           # Override distance from tag
-# → 1.0.1-alpha.{hash}.post.42+branch.name.42.g{hex:7}
+# → 1.0.1-alpha.60124.post.42+feature.test.42.g8f4e3a2
 
 zerv flow --dirty                                 # Force dirty=true
-# → 1.0.1-alpha.{hash}.dev.{timestamp}+branch.name.g{hex:7}
+# → 1.0.1-alpha.18373.dev.1729927845+feature.dirty.ga1b2c3d
 
 zerv flow --no-dirty                              # Force dirty=false
-# → 1.0.1-alpha.{hash}.post.1+branch.name.1.g{hex:7}
+# → 1.0.0+feature.clean.g4d5e6f7
 
 zerv flow --clean                                 # Force clean state (distance=0, dirty=false)
-# → 1.0.0+branch.name.g{hex:7}
+# → 1.0.0+feature.clean.force.g8a9b0c1
 
 zerv flow --bumped-branch "release/42"           # Override branch name
-# → 1.0.1-rc.42.post.1+release.42.1.g{hex:7}
+# → 1.0.1-rc.42.post.1+release.42.1.g2c3d4e5
 
 zerv flow --bumped-commit-hash "a1b2c3d"         # Override commit hash
-# → 1.0.1-alpha.{hash}.post.1+branch.name.1.a1b2c3d
+# → 1.0.1-alpha.48498.post.1+feature.hash.1.a1b2c3d
 
 zerv flow --bumped-timestamp 1729924622          # Override timestamp
-# → 1.0.1-alpha.{hash}.post.1.dev.{timestamp}+branch.name.1.g{hex:7}
+# → 1.0.1-alpha.18321.dev.1764598322+feature.timestamp.g7f8e9a0
 
 # Version Component Overrides
 zerv flow --major 2                              # Override major
@@ -489,17 +489,17 @@ zerv flow --epoch 1                              # Override epoch
 # → 1.0.0-epoch.1
 
 zerv flow --post 7                               # Override post
-# → 1.0.1-alpha.{hash}.post.1+branch.name.1.g{hex:7} (post affects build context)
+# → 1.0.1-alpha.15355.post.8+feature.post.1.g6b7c8d9 (post affects build context)
 
 # Pre-release Controls
 zerv flow --pre-release-label rc                  # Set pre-release type
-# → 1.0.1-rc.{hash}.post.1+branch.name.1.g{hex:7}
+# → 1.0.1-rc.10180.post.1+feature.pr.label.1.g3d4e5f6
 
 zerv flow --pre-release-num 3                    # Set pre-release number
-# → 1.0.1-alpha.3.post.1+branch.name.1.g{hex:7}
+# → 1.0.1-alpha.3.post.1+feature.pr.num.1.g9a0b1c2
 
 zerv flow --post-mode commit                     # Set distance calculation method
-# → 1.0.1-alpha.{hash}.post.1+branch.name.1.g{hex:7}
+# → 1.0.1-alpha.17003.post.1+feature.post.mode.1.g1d2e3f4
 ```
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/override_controls.rs:test_individual_override_options -->
@@ -509,7 +509,7 @@ zerv flow --post-mode commit                     # Set distance calculation meth
 ```bash
 # VCS overrides
 zerv flow --tag-version "v2.0.0" --distance 5 --bumped-branch "release/candidate"
-# → 2.0.1-rc.{hash}.post.1+release.candidate.5.g{hex:7}
+# → 2.0.1-rc.71808.post.1+release.candidate.5.gb2c3d4e
 
 # Version component overrides
 zerv flow --major 2 --minor 5 --patch 3
@@ -517,15 +517,15 @@ zerv flow --major 2 --minor 5 --patch 3
 
 # Mixed overrides: VCS + version components
 zerv flow --distance 3 --major 2 --minor 1
-# → 2.1.1-alpha.{hash}.post.3+branch.name.3.g{hex:7}
+# → 2.1.1-alpha.60124.post.3+feature.test.3.g8f4e3a2
 
 # Clean release with overrides
 zerv flow --clean --major 2 --minor 0 --patch 0
-# → 2.0.0+branch.name.g{hex:7}
+# → 2.0.0+feature.clean.force.g8a9b0c1
 
 # Complex multi-override scenario
 zerv flow --tag-version "v1.5.0-rc.1" --bumped-commit-hash "f4a8b9c" --major 1 --minor 6
-# → 1.6.0-alpha.{hash}.post.2+dev.branch.2.f4a8b9c
+# → 1.6.0-alpha.11178.post.2+dev.branch.2.f4a8b9c
 
 # Template support for dynamic values
 zerv flow --major "{{env:MAJOR_VERSION}}" --patch "{{env:BUILD_NUMBER}}"
