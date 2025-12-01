@@ -526,12 +526,6 @@ zerv flow --clean --major 2 --minor 0 --patch 0
 # Complex multi-override scenario
 zerv flow --tag-version "v1.5.0-rc.1" --bumped-commit-hash "f4a8b9c" --major 1 --minor 6
 # → 1.6.0-alpha.11178.post.2+dev.branch.2.f4a8b9c
-
-# Template support for dynamic values
-zerv flow --major "{{env:MAJOR_VERSION}}" --patch "{{env:BUILD_NUMBER}}"
-# → 2.123.0 (using environment variables)
 ```
-
-**Template Support**: Version component overrides support `{{template_syntax}}` for environment variables, configuration, and git metadata.
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/override_controls.rs:test_override_controls_documentation_examples -->
