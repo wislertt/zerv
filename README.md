@@ -445,45 +445,93 @@ zerv flow --branch-rules '[
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/branch_rules.rs:test_branch_rules_documentation_examples -->
 
-#### Pre-release Control & Post Mode Options
+#### Override Controls: Complete Version Customization
 
-**--pre-release-label**: Pre-release identifier (`alpha`, `beta`, `rc`)
-
-**--pre-release-num**: Optional explicit pre-release number (integer, defaults to branch extraction or hash-based)
-
-**--post-mode**: Distance calculation method
-
-- **`commit`**: Count commits since last tag (ideal for development branches)
-- **`tag`**: Increment by 1 for each new tag (ideal for release candidates)
-
-**Examples**:
+**Override Options**: VCS, version components, and pre-release controls
 
 ```bash
-# Explicit pre-release control
-zerv flow --pre-release-label rc --pre-release-num 3
-# → 1.0.1-rc.3.post.5+custom.branch.5.g{hex:7}
+# VCS Overrides
+zerv flow --tag-version "v2.1.0-beta.1"           # Override tag version
+# → 2.1.0
 
-# Number extraction from branch name
-zerv flow --pre-release-label rc
+zerv flow --distance 42                           # Override distance from tag
+# → 1.0.1-alpha.{hash}.post.42+branch.name.42.g{hex:7}
+
+zerv flow --dirty                                 # Force dirty=true
+# → 1.0.1-alpha.{hash}.dev.{timestamp}+branch.name.g{hex:7}
+
+zerv flow --no-dirty                              # Force dirty=false
+# → 1.0.1-alpha.{hash}.post.1+branch.name.1.g{hex:7}
+
+zerv flow --clean                                 # Force clean state (distance=0, dirty=false)
+# → 1.0.0+branch.name.g{hex:7}
+
+zerv flow --bumped-branch "release/42"           # Override branch name
 # → 1.0.1-rc.42.post.1+release.42.1.g{hex:7}
 
-# Hash-based identification (fallback)
-zerv flow --pre-release-label alpha
-# → 1.0.1-alpha.11477.post.3+hotfix.critical.3.g{hex:7}
+zerv flow --bumped-commit-hash "a1b2c3d"         # Override commit hash
+# → 1.0.1-alpha.{hash}.post.1+branch.name.1.a1b2c3d
 
-# Post mode control
-zerv flow --pre-release-label beta --pre-release-num 2 --post-mode commit
-# → 1.0.1-beta.2.post.3+test.branch.3.g{hex:7}
+zerv flow --bumped-timestamp 1729924622          # Override timestamp
+# → 1.0.1-alpha.{hash}.post.1.dev.{timestamp}+branch.name.1.g{hex:7}
 
-# Dirty state with manual control
-zerv flow --pre-release-label beta --pre-release-num 5
-# → 1.0.1-beta.5.post.4.dev.1729924622+feature.auth.4.g{hex:7}
+# Version Component Overrides
+zerv flow --major 2                              # Override major
+# → 2.0.0
+
+zerv flow --minor 5                              # Override minor
+# → 1.5.0
+
+zerv flow --patch 3                              # Override patch
+# → 1.0.3
+
+zerv flow --epoch 1                              # Override epoch
+# → 1.0.0-epoch.1
+
+zerv flow --post 7                               # Override post
+# → 1.0.1-alpha.{hash}.post.1+branch.name.1.g{hex:7} (post affects build context)
+
+# Pre-release Controls
+zerv flow --pre-release-label rc                  # Set pre-release type
+# → 1.0.1-rc.{hash}.post.1+branch.name.1.g{hex:7}
+
+zerv flow --pre-release-num 3                    # Set pre-release number
+# → 1.0.1-alpha.3.post.1+branch.name.1.g{hex:7}
+
+zerv flow --post-mode commit                     # Set distance calculation method
+# → 1.0.1-alpha.{hash}.post.1+branch.name.1.g{hex:7}
 ```
 
-**Example Breakdown**: `1.0.1-alpha.12345.post.3.dev.1729924622`
+<!-- Corresponding test: tests/integration_tests/flow/docs/override_controls.rs:test_individual_override_options -->
 
-- `alpha.12345` → Pre-release label and hash-based identification
-- `post.3` → 3 commits from reference point
-- `dev.1729924622` → Uncommitted changes timestamp
+**Usage Examples**:
 
-<!-- Corresponding test: tests/integration_tests/flow/docs/pre_release_control.rs:test_pre_release_control_and_post_mode_examples -->
+```bash
+# VCS overrides
+zerv flow --tag-version "v2.0.0" --distance 5 --bumped-branch "release/candidate"
+# → 2.0.1-rc.{hash}.post.1+release.candidate.5.g{hex:7}
+
+# Version component overrides
+zerv flow --major 2 --minor 5 --patch 3
+# → 2.5.3
+
+# Mixed overrides: VCS + version components
+zerv flow --distance 3 --major 2 --minor 1
+# → 2.1.1-alpha.{hash}.post.3+branch.name.3.g{hex:7}
+
+# Clean release with overrides
+zerv flow --clean --major 2 --minor 0 --patch 0
+# → 2.0.0+branch.name.g{hex:7}
+
+# Complex multi-override scenario
+zerv flow --tag-version "v1.5.0-rc.1" --bumped-commit-hash "f4a8b9c" --major 1 --minor 6
+# → 1.6.0-alpha.{hash}.post.2+dev.branch.2.f4a8b9c
+
+# Template support for dynamic values
+zerv flow --major "{{env:MAJOR_VERSION}}" --patch "{{env:BUILD_NUMBER}}"
+# → 2.123.0 (using environment variables)
+```
+
+**Template Support**: Version component overrides support `{{template_syntax}}` for environment variables, configuration, and git metadata.
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/override_controls.rs:test_override_controls_documentation_examples -->
