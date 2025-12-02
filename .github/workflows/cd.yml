@@ -19,7 +19,7 @@ jobs:
             new_release_published: ${{ steps.set-outputs.outputs.published }}
         steps:
             - name: Checkout
-              uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
               with:
                   fetch-depth: 0
 
@@ -97,7 +97,7 @@ jobs:
                       asset_name: zerv-windows-arm64.exe
 
         steps:
-            - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+            - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
             - uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e # stable
               with:
@@ -139,7 +139,7 @@ jobs:
         needs: [versioning, release-bin]
         if: needs.versioning.outputs.new_release_published == 'true'
         steps:
-            - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+            - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
             - uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e # stable
               with:
