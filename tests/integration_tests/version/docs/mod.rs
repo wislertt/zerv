@@ -3,3 +3,4 @@
 
 pub mod schema_variants;
 pub mod vcs_overrides;
+pub mod version_bumping;

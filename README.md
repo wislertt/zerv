@@ -564,7 +564,26 @@ zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_cor
 
 zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[str("build.id")])'
 # → 1.0.0+build.id (test case 7)
+
+zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[var(PreRelease), var(Post), var(Dev)], build:[var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)])'
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 8, equivalent to standard-base-prerelease-post-dev-context)
+
+zerv version --schema-ron '(core:[var(ts("YYYY")), var(ts("MM")), var(ts("DD"))], extra_core:[var(PreRelease), var(Post), var(Dev)], build:[var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)])'
+# → 2025.12.4-0.alpha.1.post.5.dev.123+branch.name.1.g{hex:7} (test case 9, equivalent to calver-base-prerelease-post-dev-context)
 ```
+
+**Schema Architecture**: All schemas resolve to the internal `ZervSchema` struct with three required components:
+
+- **`core`**: Primary version components (e.g., `[Major, Minor, Patch]` for SemVer)
+- **`extra_core`**: Additional version components (e.g., pre-release, post-release, dev)
+- **`build`**: Build metadata components (e.g., commit hash, branch name, build info)
+
+**Schema Resolution**: Preset schemas (`standard-base`, `calver-*`, etc.) are predefined `ZervSchema` objects that adapt based on repository state. RON schemas are parsed from text into the same `ZervSchema` structure, providing identical functionality with custom definitions.
+
+**Examples**:
+
+- Test case 8: RON schema equivalent to `standard-base-prerelease-post-dev-context` (test case 4)
+- Test case 9: RON schema equivalent to `calver-base-prerelease-post-dev-context` (test case 5), demonstrating date formatting with `var(ts("YYYY"))`
 
 #### VCS Overrides: Override tag version, distance, dirty state, branch, commit data
 
@@ -585,3 +604,32 @@ zerv version --bumped-branch "release/42"
 ```
 
 <!-- Corresponding test: tests/integration_tests/version/docs/vcs_overrides.rs:test_zerv_version_vcs_overrides_documentation_examples -->
+
+#### Version Bumping: Field-based bumps (major/minor/patch) and schema-based bumps
+
+**Purpose**: Increment version components using field-based or schema-based strategies.
+
+```bash
+zerv version --bump-major
+# → 2.0.0 (test case 1)
+
+zerv version --bump-minor
+# → 1.1.0 (test case 2)
+
+zerv version --bump-patch
+# → 1.0.1 (test case 3)
+
+zerv version --bump-major --bump-minor
+# → 2.1.0 (test case 4)
+
+zerv version --bump-core 0
+# → 2.0.0 (test case 5, schema-based bump targeting core component index 0/major)
+
+zerv version --bump-major --bump-minor --bump-patch
+# → 2.1.1 (test case 6)
+
+zerv version --bump-major 2
+# → 3.0.0 (test case 7)
+```
+
+<!-- Corresponding test: tests/integration_tests/version/docs/version_bumping.rs:test_zerv_version_version_bumping_documentation_examples -->

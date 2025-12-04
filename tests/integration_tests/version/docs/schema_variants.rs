@@ -58,5 +58,17 @@ fn test_zerv_version_schema_variants_documentation_examples() {
         "1.0.0+build.id",
     );
 
+    // Test case 8: Custom RON schema - equivalent to standard-base-prerelease-post-dev-context
+    dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "version --source stdin --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[var(PreRelease), var(Post), var(Dev)], build:[var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)])'",
+        "1.0.0-alpha.1.post.5.dev.123+branch.name.1.g{hex:7}",
+    );
+
+    // Test case 9: Custom RON schema - equivalent to calver-base-prerelease-post-dev-context
+    dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "version --source stdin --schema-ron '(core:[var(ts(\"YYYY\")), var(ts(\"MM\")), var(ts(\"DD\")), var(Patch)], extra_core:[var(PreRelease), var(Post), var(Dev)], build:[var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)])'",
+        &format!("{}-0.alpha.1.post.5.dev.123+branch.name.1.g{{hex:7}}", current_date),
+    );
+
     _ = dirty_feature_branch_scenario;
 }
