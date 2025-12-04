@@ -565,10 +565,18 @@ zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_cor
 zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[str("build.id")])'
 # → 1.0.0+build.id (test case 7)
 
-zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[var(PreRelease), var(Post), var(Dev)], build:[var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)])'
+zerv version --schema-ron '(
+    core: [var(Major), var(Minor), var(Patch)],
+    extra_core: [var(PreRelease), var(Post), var(Dev)],
+    build: [var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)]
+)'
 # → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 8, equivalent to standard-base-prerelease-post-dev-context)
 
-zerv version --schema-ron '(core:[var(ts("YYYY")), var(ts("MM")), var(ts("DD"))], extra_core:[var(PreRelease), var(Post), var(Dev)], build:[var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)])'
+zerv version --schema-ron '(
+    core: [var(ts("YYYY")), var(ts("MM")), var(ts("DD"))],
+    extra_core: [var(PreRelease), var(Post), var(Dev)],
+    build: [var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)]
+)'
 # → 2025.12.4-0.alpha.1.post.5.dev.123+branch.name.1.g{hex:7} (test case 9, equivalent to calver-base-prerelease-post-dev-context)
 ```
 
