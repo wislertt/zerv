@@ -349,43 +349,43 @@ gitGraph
 **Schema Selection Examples**:
 
 ```bash
-zerv flow --source stdin --schema standard-base
+zerv flow --schema standard-base
 # → 1.0.1 (test case 1)
 
-zerv flow --source stdin --schema standard-base-context
+zerv flow --schema standard-base-context
 # → 1.0.1+branch.name.g4e9af24 (test case 2)
 
-zerv flow --source stdin --schema standard-base-prerelease
+zerv flow --schema standard-base-prerelease
 # → 1.0.1-alpha.10192 (test case 3)
 
-zerv flow --source stdin --schema standard-base-prerelease-context
+zerv flow --schema standard-base-prerelease-context
 # → 1.0.1-alpha.10192+branch.name.1.g4e9af24 (test case 4)
 
-zerv flow --source stdin --schema standard-base-prerelease-post
+zerv flow --schema standard-base-prerelease-post
 # → 1.0.1-alpha.10192.post.1 (test case 5)
 
-zerv flow --source stdin --schema standard-base-prerelease-post-context
+zerv flow --schema standard-base-prerelease-post-context
 # → 1.0.1-alpha.10192.post.1+branch.name.1.g4e9af24 (test case 6)
 
-zerv flow --source stdin --schema standard-base-prerelease-post-dev
+zerv flow --schema standard-base-prerelease-post-dev
 # → 1.0.1-alpha.10192.post.1.dev.1764382150 (test case 7)
 
-zerv flow --source stdin --schema standard-base-prerelease-post-dev-context
+zerv flow --schema standard-base-prerelease-post-dev-context
 # → 1.0.1-alpha.10192.post.1.dev.1764382150+branch.name.1.g4e9af24 (test case 8)
 
-zerv flow --source stdin --schema standard
+zerv flow --schema standard
 # → 1.0.0 (clean main - test case 9)
 # → 1.0.1-rc.1 (release branch - test case 10)
 # → 1.0.1-alpha.10192.post.1+branch.name.1.g4e9af24 (feature branch - test case 11)
 # → 1.0.1-alpha.10192.post.1.dev.1764382150+branch.name.1.g4e9af24 (dirty feature branch - test case 12)
 
-zerv flow --source stdin --schema standard-no-context
+zerv flow --schema standard-no-context
 # → 1.0.0 (clean main - test case 13)
 # → 1.0.1-rc.1 (release branch - test case 14)
 # → 1.0.1-alpha.10192.post.1 (feature branch - test case 15)
 # → 1.0.1-alpha.10192.post.1.dev.1764382150 (dirty feature branch - test case 16)
 
-zerv flow --source stdin --schema standard-context
+zerv flow --schema standard-context
 # → 1.0.0+main.g4e9af24 (clean main - test case 17)
 # → 1.0.1-rc.1+release.1.do.something.g4e9af24 (release branch - test case 18)
 # → 1.0.1-alpha.10192.post.1+branch.name.1.g4e9af24 (feature branch - test case 19)
@@ -529,3 +529,28 @@ zerv flow --tag-version "v1.5.0-rc.1" --bumped-commit-hash "f4a8b9c" --major 1 -
 ```
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/override_controls.rs:test_override_controls_documentation_examples -->
+
+### zerv version: Manual control with 4 main capability areas
+
+**Purpose**: Complete manual control over version generation with flexible schema variants and granular customization options.
+
+**Note**: Unlike `zerv flow`, `zerv version` generates versions as-is without opinionated auto-bumping logic. It does not automatically increment post-counts based on commits or tags, nor does it derive pre-release labels and numbers from branch patterns. This is general-purpose version generation without opinionated logic.
+
+#### Schema Variants: 20+ presets (standard, calver families) and custom RON schemas
+
+**Purpose**: Choose from 20+ predefined version schemas or create custom RON-based schemas for complete format control.
+
+**Schema Selection Examples**:
+
+```bash
+zerv version --schema standard-base
+# → 1.0.0 (test case 1)
+
+zerv version --schema standard-base-context
+# → 1.0.0+branch.name.1.g4e9af24 (test case 2)
+
+zerv version --schema standard-base-prerelease
+# → 1.0.0-alpha.1 (test case 3)
+```
+
+<!-- Corresponding test: tests/integration_tests/version/docs/schema_variants.rs:test_zerv_version_schema_variants_documentation_examples -->
