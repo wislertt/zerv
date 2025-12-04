@@ -557,6 +557,13 @@ zerv version --schema standard-base-prerelease-post-dev-context
 
 zerv version --schema calver-base-prerelease-post-dev-context
 # → 2025.12.4-0.alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 5)
+
+# Custom RON Schemas
+zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[])'
+# → 1.0.0 (test case 6)
+
+zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[str("build.id")])'
+# → 1.0.0+build.id (test case 7)
 ```
 
 <!-- Corresponding test: tests/integration_tests/version/docs/schema_variants.rs:test_zerv_version_schema_variants_documentation_examples -->

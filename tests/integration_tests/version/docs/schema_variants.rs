@@ -46,5 +46,17 @@ fn test_zerv_version_schema_variants_documentation_examples() {
         ),
     );
 
+    // Test case 6: Custom RON schema - simple major.minor.patch format
+    dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "version --source stdin --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[])'",
+        "1.0.0",
+    );
+
+    // Test case 7: Custom RON schema - with build info
+    dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "version --source stdin --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[str(\"build.id\")])'",
+        "1.0.0+build.id",
+    );
+
     _ = dirty_feature_branch_scenario;
 }
