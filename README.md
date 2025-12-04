@@ -566,4 +566,22 @@ zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_cor
 # → 1.0.0+build.id (test case 7)
 ```
 
-<!-- Corresponding test: tests/integration_tests/version/docs/schema_variants.rs:test_zerv_version_schema_variants_documentation_examples -->
+#### VCS Overrides: Override tag version, distance, dirty state, branch, commit data
+
+**Purpose**: Override any VCS (Version Control System) detected values for complete control over version components.
+
+```bash
+zerv version --tag-version "v2.1.0-beta.1"
+# → 2.1.0-beta.1+branch.name.1.g4e9af24 (test case 1)
+
+zerv version --distance 42
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.42.g8f4e3a2 (test case 2)
+
+zerv version --dirty
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 3)
+
+zerv version --bumped-branch "release/42"
+# → 1.0.0-alpha.1.post.5.dev.123+release.42.1.g4e9af24 (test case 4)
+```
+
+<!-- Corresponding test: tests/integration_tests/version/docs/vcs_overrides.rs:test_zerv_version_vcs_overrides_documentation_examples -->
