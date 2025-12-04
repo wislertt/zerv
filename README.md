@@ -551,6 +551,12 @@ zerv version --schema standard-base-context
 
 zerv version --schema standard-base-prerelease
 # → 1.0.0-alpha.1 (test case 3)
+
+zerv version --schema standard-base-prerelease-post-dev-context
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 4)
+
+zerv version --schema calver-base-prerelease-post-dev-context
+# → 2025.12.4-0.alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 5)
 ```
 
 <!-- Corresponding test: tests/integration_tests/version/docs/schema_variants.rs:test_zerv_version_schema_variants_documentation_examples -->
