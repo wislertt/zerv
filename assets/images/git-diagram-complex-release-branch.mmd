@@ -1,0 +1,33 @@
+---
+config:
+  logLevel: 'debug'
+  theme: 'base'
+---
+gitGraph
+    %% Step 1: Initial state: main branch with v1.0.0 tag
+    commit id: "1.0.0" tag: "v1.0.0"
+
+    %% Step 2: Create release/1 from main for next release preparation
+    branch release/1 order: 2
+    checkout release/1
+    commit id: "1.0.1-rc.1.post.1"
+    commit id: "1.0.1-rc.1.post.2"
+
+    %% Step 3: Create release/2 from the second commit of release/1 (before issues)
+    %% release/1 at this point: 1.0.1-rc.1.post.2, so release/2 continues from there
+    checkout release/1
+    branch release/2 order: 1
+    checkout release/2
+    commit id: "1.0.1-rc.2.post.3"
+
+    %% Step 4: Go back to release/1 and add the problematic third commit (issues found)
+    checkout release/1
+    commit id: "1.0.1-rc.1.post.3" tag: "issues found"
+
+    %% Step 5: release/2 completes preparation successfully
+    checkout release/2
+    commit id: "1.0.1-rc.2.post.4"
+
+    %% Step 6: Merge release/2 to main and release v1.1.0
+    checkout main
+    merge release/2 id: "1.1.0" tag: "v1.1.0"

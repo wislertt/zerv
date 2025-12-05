@@ -136,6 +136,8 @@ This section demonstrates how Zerv Flow works across different branching strateg
 
 **Scenario**: Development from `v1.0.0` with parallel feature branches, synchronization, and nested development.
 
+ <!-- MERMAID_START: git-diagram-trunk-based-development.mmd -->
+
 ```mermaid
 ---
 config:
@@ -197,6 +199,8 @@ gitGraph
     merge feature-2 id: "1.1.0" tag: "feature-2 released"
 ```
 
+<!-- MERMAID_END -->
+
 **Key behaviors demonstrated**:
 
 - **Parallel development**: `feature-1` and `feature-2` get unique hash IDs (`42954`, `68031`)
@@ -212,6 +216,8 @@ gitGraph
 **Purpose**: GitFlow methodology with proper pre-release type mapping and merge patterns.
 
 **Scenario**: Main branch with `v1.0.0`, develop branch integration, feature development, hotfix emergency flow, and release preparation.
+
+<!-- MERMAID_START: git-diagram-gitflow-development-flow.mmd -->
 
 ```mermaid
 ---
@@ -272,6 +278,8 @@ gitGraph
     merge main id: "1.1.1-beta.1.post.1" tag: "sync release"
 ```
 
+<!-- MERMAID_END -->
+
 **Key behaviors demonstrated**:
 
 - **Beta pre-releases**: Develop branch uses `beta` for integration builds
@@ -288,6 +296,8 @@ gitGraph
 **Purpose**: Complex release branch scenarios including branch abandonment and cascading release preparation.
 
 **Scenario**: Main branch with `v1.0.0`, release branch preparation with critical issues leading to abandonment, and selective branch creation for successful release.
+
+<!-- MERMAID_START: git-diagram-complex-release-branch.mmd -->
 
 ```mermaid
 ---
@@ -325,6 +335,8 @@ gitGraph
     merge release/2 id: "1.1.0" tag: "v1.1.0"
 
 ```
+
+<!-- MERMAID_END -->
 
 **Version progression details**:
 
