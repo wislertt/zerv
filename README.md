@@ -792,7 +792,13 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples -->
 
-##### Available Template Variables
+##### Template System: Advanced custom formatting
+
+**Purpose**: Complete control over version output using Tera templating with extensive variables, functions, and logical operations.
+
+**Note**: Zerv uses the [Tera templating engine](https://keats.github.io/tera/docs/), which provides powerful template features including conditionals, loops, filters, and custom functions.
+
+###### Available Template Variables
 
 **Core Version Fields**:
 
@@ -834,7 +840,7 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 - `pep440` - Full PEP440 string
 - `current_timestamp` - Current Unix timestamp
 
-##### Custom Template Functions
+###### Custom Template Functions
 
 **String Manipulation**:
 

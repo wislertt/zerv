@@ -120,7 +120,7 @@ fn test_io_documentation_examples() {
 
     // Test case 15
     let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
-        "flow --source stdin --output-template \"Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre: {{ pre_release.label_code | default(value='rc') }}, Hash: {{ bumped_commit_hash_short }}\"",
+        "flow --source stdin --output-template \"Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre: {{ pre_release.label_code | default(value='release') }}, Hash: {{ bumped_commit_hash_short }}\"",
         "Release: v1.0.1, Pre: a, Hash: g{hex:7}",
     );
 

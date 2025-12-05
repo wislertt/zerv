@@ -73,7 +73,7 @@
             - ✅ **Version Bumping**: Field-based bumps (major/minor/patch) and schema-based bumps
             - ✅ **Component Overrides**: Fine-grained control over individual version components
         - ✅ **zerv check**: Version validation for different formats
-        - **Input/Output & Piping**: Shared capabilities for both zerv version and zerv flow:
+        - ✅ **Input/Output & Piping**: Shared capabilities for both zerv version and zerv flow:
             - Source options: git, stdin
             - Output formats: semver, pep440, zerv
             - Template customization and prefix support
