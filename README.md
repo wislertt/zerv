@@ -886,10 +886,10 @@ cargo install zerv
 curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash
 
 # Install specific version
-curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash -s v0.7.81
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash -s v0.7.82
 
 # Or using environment variable
-curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | ZERV_VERSION=v0.7.81 bash
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | ZERV_VERSION=v0.7.82 bash
 ```
 
 ### Manual Download
