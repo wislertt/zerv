@@ -349,43 +349,43 @@ gitGraph
 **Schema Selection Examples**:
 
 ```bash
-zerv flow --source stdin --schema standard-base
+zerv flow --schema standard-base
 # → 1.0.1 (test case 1)
 
-zerv flow --source stdin --schema standard-base-context
+zerv flow --schema standard-base-context
 # → 1.0.1+branch.name.g4e9af24 (test case 2)
 
-zerv flow --source stdin --schema standard-base-prerelease
+zerv flow --schema standard-base-prerelease
 # → 1.0.1-alpha.10192 (test case 3)
 
-zerv flow --source stdin --schema standard-base-prerelease-context
+zerv flow --schema standard-base-prerelease-context
 # → 1.0.1-alpha.10192+branch.name.1.g4e9af24 (test case 4)
 
-zerv flow --source stdin --schema standard-base-prerelease-post
+zerv flow --schema standard-base-prerelease-post
 # → 1.0.1-alpha.10192.post.1 (test case 5)
 
-zerv flow --source stdin --schema standard-base-prerelease-post-context
+zerv flow --schema standard-base-prerelease-post-context
 # → 1.0.1-alpha.10192.post.1+branch.name.1.g4e9af24 (test case 6)
 
-zerv flow --source stdin --schema standard-base-prerelease-post-dev
+zerv flow --schema standard-base-prerelease-post-dev
 # → 1.0.1-alpha.10192.post.1.dev.1764382150 (test case 7)
 
-zerv flow --source stdin --schema standard-base-prerelease-post-dev-context
+zerv flow --schema standard-base-prerelease-post-dev-context
 # → 1.0.1-alpha.10192.post.1.dev.1764382150+branch.name.1.g4e9af24 (test case 8)
 
-zerv flow --source stdin --schema standard
+zerv flow --schema standard
 # → 1.0.0 (clean main - test case 9)
 # → 1.0.1-rc.1 (release branch - test case 10)
 # → 1.0.1-alpha.10192.post.1+branch.name.1.g4e9af24 (feature branch - test case 11)
 # → 1.0.1-alpha.10192.post.1.dev.1764382150+branch.name.1.g4e9af24 (dirty feature branch - test case 12)
 
-zerv flow --source stdin --schema standard-no-context
+zerv flow --schema standard-no-context
 # → 1.0.0 (clean main - test case 13)
 # → 1.0.1-rc.1 (release branch - test case 14)
 # → 1.0.1-alpha.10192.post.1 (feature branch - test case 15)
 # → 1.0.1-alpha.10192.post.1.dev.1764382150 (dirty feature branch - test case 16)
 
-zerv flow --source stdin --schema standard-context
+zerv flow --schema standard-context
 # → 1.0.0+main.g4e9af24 (clean main - test case 17)
 # → 1.0.1-rc.1+release.1.do.something.g4e9af24 (release branch - test case 18)
 # → 1.0.1-alpha.10192.post.1+branch.name.1.g4e9af24 (feature branch - test case 19)
@@ -421,19 +421,19 @@ zerv flow --source stdin --schema standard-context
 ```bash
 # Default GitFlow behavior
 zerv flow
-# → 1.0.1-rc.1.post.1+release.1.do.something.1.g{hex:7} (release/1/do-something branch - test case 1)
-# → 1.0.1-beta.1.post.1+develop.1.g{hex:7} (develop branch - test case 2)
-# → 1.0.1-alpha.10192.post.1+branch.name.1.g{hex:7} (feature branch - test case 3)
-# → 1.0.1-rc.48993.post.1+release.do.something.1.g{{hex:7}} (release/do-something branch - test case 4)
+# → 1.0.1-rc.1.post.1+release.1.do.something.1.g3a2b1c4 (release/1/do-something branch - test case 1)
+# → 1.0.1-beta.1.post.1+develop.1.g8f7e6d5 (develop branch - test case 2)
+# → 1.0.1-alpha.10192.post.1+branch.name.1.g9d8c7b6 (feature branch - test case 3)
+# → 1.0.1-rc.48993.post.1+release.do.something.1.g5e4f3a2 (release/do-something branch - test case 4)
 
 # Custom branch rules
 zerv flow --branch-rules '[
     (pattern: "staging", pre_release_label: rc, pre_release_num: 1, post_mode: commit),
     (pattern: "qa/*", pre_release_label: beta, post_mode: tag)
 ]'
-# → 1.0.1-rc.1.post.1+staging.1.g{hex:7} (staging branch - test case 5)
-# → 1.0.1-beta.123.post.1+qa.123.1.g{hex:7} (qa branch - test case 6)
-# → 1.0.1-alpha.20460.post.1+feature.new.feature.1.g{hex:7} (feature branch - test case 7)
+# → 1.0.1-rc.1.post.1+staging.1.g2c3d4e5 (staging branch - test case 5)
+# → 1.0.1-beta.123.post.1+qa.123.1.g7b8c9d0 (qa branch - test case 6)
+# → 1.0.1-alpha.20460.post.1+feature.new.feature.1.g1d2e3f4 (feature branch - test case 7)
 ```
 
 **Configuration**:
@@ -445,45 +445,199 @@ zerv flow --branch-rules '[
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/branch_rules.rs:test_branch_rules_documentation_examples -->
 
-#### Pre-release Control & Post Mode Options
+#### Override Controls: Complete Version Customization
 
-**--pre-release-label**: Pre-release identifier (`alpha`, `beta`, `rc`)
+**Override Options**: VCS, version components, and pre-release controls
 
-**--pre-release-num**: Optional explicit pre-release number (integer, defaults to branch extraction or hash-based)
+```bash
+# VCS Overrides
+zerv flow --tag-version "v2.1.0-beta.1"           # Override tag version
+# → 2.1.0
 
-**--post-mode**: Distance calculation method
+zerv flow --distance 42                           # Override distance from tag
+# → 1.0.1-alpha.60124.post.42+feature.test.42.g8f4e3a2
 
-- **`commit`**: Count commits since last tag (ideal for development branches)
-- **`tag`**: Increment by 1 for each new tag (ideal for release candidates)
+zerv flow --dirty                                 # Force dirty=true
+# → 1.0.1-alpha.18373.dev.1729927845+feature.dirty.ga1b2c3d
+
+zerv flow --no-dirty                              # Force dirty=false
+# → 1.0.0+feature.clean.g4d5e6f7
+
+zerv flow --clean                                 # Force clean state (distance=0, dirty=false)
+# → 1.0.0+feature.clean.force.g8a9b0c1
+
+zerv flow --bumped-branch "release/42"           # Override branch name
+# → 1.0.1-rc.42.post.1+release.42.1.g2c3d4e5
+
+zerv flow --bumped-commit-hash "a1b2c3d"         # Override commit hash
+# → 1.0.1-alpha.48498.post.1+feature.hash.1.a1b2c3d
+
+zerv flow --bumped-timestamp 1729924622          # Override timestamp
+# → 1.0.1-alpha.18321.dev.1764598322+feature.timestamp.g7f8e9a0
+
+# Version Component Overrides
+zerv flow --major 2                              # Override major
+# → 2.0.0
+
+zerv flow --minor 5                              # Override minor
+# → 1.5.0
+
+zerv flow --patch 3                              # Override patch
+# → 1.0.3
+
+zerv flow --epoch 1                              # Override epoch
+# → 1.0.0-epoch.1
+
+zerv flow --post 7                               # Override post
+# → 1.0.1-alpha.15355.post.8+feature.post.1.g6b7c8d9 (post affects build context)
+
+# Pre-release Controls
+zerv flow --pre-release-label rc                  # Set pre-release type
+# → 1.0.1-rc.10180.post.1+feature.pr.label.1.g3d4e5f6
+
+zerv flow --pre-release-num 3                    # Set pre-release number
+# → 1.0.1-alpha.3.post.1+feature.pr.num.1.g9a0b1c2
+
+zerv flow --post-mode commit                     # Set distance calculation method
+# → 1.0.1-alpha.17003.post.1+feature.post.mode.1.g1d2e3f4
+```
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/override_controls.rs:test_individual_override_options -->
+
+**Usage Examples**:
+
+```bash
+# VCS overrides
+zerv flow --tag-version "v2.0.0" --distance 5 --bumped-branch "release/candidate"
+# → 2.0.1-rc.71808.post.1+release.candidate.5.gb2c3d4e
+
+# Version component overrides
+zerv flow --major 2 --minor 5 --patch 3
+# → 2.5.3
+
+# Mixed overrides: VCS + version components
+zerv flow --distance 3 --major 2 --minor 1
+# → 2.1.1-alpha.60124.post.3+feature.test.3.g8f4e3a2
+
+# Clean release with overrides
+zerv flow --clean --major 2 --minor 0 --patch 0
+# → 2.0.0+feature.clean.force.g8a9b0c1
+
+# Complex multi-override scenario
+zerv flow --tag-version "v1.5.0-rc.1" --bumped-commit-hash "f4a8b9c" --major 1 --minor 6
+# → 1.6.0-alpha.11178.post.2+dev.branch.2.f4a8b9c
+```
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/override_controls.rs:test_override_controls_documentation_examples -->
+
+### zerv version: Manual control with 4 main capability areas
+
+**Purpose**: Complete manual control over version generation with flexible schema variants and granular customization options.
+
+**Note**: Unlike `zerv flow`, `zerv version` generates versions as-is without opinionated auto-bumping logic. It does not automatically increment post-counts based on commits or tags, nor does it derive pre-release labels and numbers from branch patterns. This is general-purpose version generation without opinionated logic.
+
+#### Schema Variants: 20+ presets (standard, calver families) and custom RON schemas
+
+**Purpose**: Choose from 20+ predefined version schemas or create custom RON-based schemas for complete format control.
+
+**Schema Selection Examples**:
+
+```bash
+zerv version --schema standard-base
+# → 1.0.0 (test case 1)
+
+zerv version --schema standard-base-context
+# → 1.0.0+branch.name.1.g4e9af24 (test case 2)
+
+zerv version --schema standard-base-prerelease
+# → 1.0.0-alpha.1 (test case 3)
+
+zerv version --schema standard-base-prerelease-post-dev-context
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 4)
+
+zerv version --schema calver-base-prerelease-post-dev-context
+# → 2025.12.4-0.alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 5)
+
+# Custom RON Schemas
+zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[])'
+# → 1.0.0 (test case 6)
+
+zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[str("build.id")])'
+# → 1.0.0+build.id (test case 7)
+
+zerv version --schema-ron '(
+    core: [var(Major), var(Minor), var(Patch)],
+    extra_core: [var(PreRelease), var(Post), var(Dev)],
+    build: [var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)]
+)'
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 8, equivalent to standard-base-prerelease-post-dev-context)
+
+zerv version --schema-ron '(
+    core: [var(ts("YYYY")), var(ts("MM")), var(ts("DD"))],
+    extra_core: [var(PreRelease), var(Post), var(Dev)],
+    build: [var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)]
+)'
+# → 2025.12.4-0.alpha.1.post.5.dev.123+branch.name.1.g{hex:7} (test case 9, equivalent to calver-base-prerelease-post-dev-context)
+```
+
+**Schema Architecture**: All schemas resolve to the internal `ZervSchema` struct with three required components:
+
+- **`core`**: Primary version components (e.g., `[Major, Minor, Patch]` for SemVer)
+- **`extra_core`**: Additional version components (e.g., pre-release, post-release, dev)
+- **`build`**: Build metadata components (e.g., commit hash, branch name, build info)
+
+**Schema Resolution**: Preset schemas (`standard-base`, `calver-*`, etc.) are predefined `ZervSchema` objects that adapt based on repository state. RON schemas are parsed from text into the same `ZervSchema` structure, providing identical functionality with custom definitions.
 
 **Examples**:
 
+- Test case 8: RON schema equivalent to `standard-base-prerelease-post-dev-context` (test case 4)
+- Test case 9: RON schema equivalent to `calver-base-prerelease-post-dev-context` (test case 5), demonstrating date formatting with `var(ts("YYYY"))`
+
+#### VCS Overrides: Override tag version, distance, dirty state, branch, commit data
+
+**Purpose**: Override any VCS (Version Control System) detected values for complete control over version components.
+
 ```bash
-# Explicit pre-release control
-zerv flow --pre-release-label rc --pre-release-num 3
-# → 1.0.1-rc.3.post.5+custom.branch.5.g{hex:7}
+zerv version --tag-version "v2.1.0-beta.1"
+# → 2.1.0-beta.1+branch.name.1.g4e9af24 (test case 1)
 
-# Number extraction from branch name
-zerv flow --pre-release-label rc
-# → 1.0.1-rc.42.post.1+release.42.1.g{hex:7}
+zerv version --distance 42
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.42.g8f4e3a2 (test case 2)
 
-# Hash-based identification (fallback)
-zerv flow --pre-release-label alpha
-# → 1.0.1-alpha.11477.post.3+hotfix.critical.3.g{hex:7}
+zerv version --dirty
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 3)
 
-# Post mode control
-zerv flow --pre-release-label beta --pre-release-num 2 --post-mode commit
-# → 1.0.1-beta.2.post.3+test.branch.3.g{hex:7}
-
-# Dirty state with manual control
-zerv flow --pre-release-label beta --pre-release-num 5
-# → 1.0.1-beta.5.post.4.dev.1729924622+feature.auth.4.g{hex:7}
+zerv version --bumped-branch "release/42"
+# → 1.0.0-alpha.1.post.5.dev.123+release.42.1.g4e9af24 (test case 4)
 ```
 
-**Example Breakdown**: `1.0.1-alpha.12345.post.3.dev.1729924622`
+<!-- Corresponding test: tests/integration_tests/version/docs/vcs_overrides.rs:test_zerv_version_vcs_overrides_documentation_examples -->
 
-- `alpha.12345` → Pre-release label and hash-based identification
-- `post.3` → 3 commits from reference point
-- `dev.1729924622` → Uncommitted changes timestamp
+#### Version Bumping: Field-based bumps (major/minor/patch) and schema-based bumps
 
-<!-- Corresponding test: tests/integration_tests/flow/docs/pre_release_control.rs:test_pre_release_control_and_post_mode_examples -->
+**Purpose**: Increment version components using field-based or schema-based strategies.
+
+```bash
+zerv version --bump-major
+# → 2.0.0 (test case 1)
+
+zerv version --bump-minor
+# → 1.1.0 (test case 2)
+
+zerv version --bump-patch
+# → 1.0.1 (test case 3)
+
+zerv version --bump-major --bump-minor
+# → 2.1.0 (test case 4)
+
+zerv version --bump-core 0
+# → 2.0.0 (test case 5, schema-based bump targeting core component index 0/major)
+
+zerv version --bump-major --bump-minor --bump-patch
+# → 2.1.1 (test case 6)
+
+zerv version --bump-major 2
+# → 3.0.0 (test case 7)
+```
+
+<!-- Corresponding test: tests/integration_tests/version/docs/version_bumping.rs:test_zerv_version_version_bumping_documentation_examples -->

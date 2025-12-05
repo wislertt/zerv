@@ -65,12 +65,12 @@
                 - **DIAGRAMS**: Copy mermaid diagrams from `.claude/plan/32-zerv-flow-implementation-plan.md`
             - ✅ **Schema Variants**: 10+ standard schema presets only (no CalVer support)
             - ✅ **Branch Rules**: Configurable pattern matching (default GitFlow) for pre-release automation
-            - **Pre-release Control**: Labels (alpha/beta/rc), numbers, hash-based identification
-            - **Post Mode Options**: Tag distance vs commit distance calculation modes
+            - ✅ **Pre-release Control**: Labels (alpha/beta/rc), numbers, hash-based identification
+            - ✅ **Post Mode Options**: Tag distance vs commit distance calculation modes
         - **zerv version**: Manual control with 4 main capability areas:
-            - **Schema Variants**: 20+ presets (standard, calver families) and custom RON schemas
-            - **VCS Overrides**: Override tag version, distance, dirty state, branch, commit data
-            - **Version Bumping**: Field-based bumps (major/minor/patch) and schema-based bumps
+            - ✅ **Schema Variants**: 20+ presets (standard, calver families) and custom RON schemas
+            - ✅ **VCS Overrides**: Override tag version, distance, dirty state, branch, commit data
+            - ✅ **Version Bumping**: Field-based bumps (major/minor/patch) and schema-based bumps
             - **Component Overrides**: Fine-grained control over individual version components
         - **zerv check**: Version validation for different formats
         - **Input/Output & Piping**: Shared capabilities for both zerv version and zerv flow:
@@ -150,12 +150,68 @@ Every code example in documentation must have a corresponding test with referenc
 4. **Validate**: Ensure examples exactly match test outputs
 5. **Coordinated Updates**: Update tests first, then documentation to match
 
+### 🚨 Critical Implementation Patterns & Pitfalls
+
+**BRANCH HASH PATTERNS - AVOID REGEX FALLBACKS**:
+
+❌ **WRONG**: Using `{regex:\\d+}` for branch hashes
+
+```rust
+// BAD - This is lazy and unpredictable
+"1.0.1-alpha.{regex:\\d+}.post.1+feature.test.1.g{hex:7}"
+```
+
+✅ **CORRECT**: Use `expect_branch_hash()` for predictable hash generation
+
+```rust
+// GOOD - Use actual hash values from expect_branch_hash()
+let feature_test_hash = expect_branch_hash("feature/test", 5, "60124");
+assert_command(
+    "flow --source stdin --distance 42",
+    &format!(
+        "1.0.1-alpha.{}.post.42+feature.test.42.g{{hex:7}}",
+        feature_test_hash
+    ),
+);
+```
+
+**GIT COMMIT HASH PATTERNS**:
+
+- ✅ **For generated commits**: Use `g{{hex:7}}` in format strings
+- ✅ **For manual overrides**: Use exact hash (e.g., `.a1b2c3d` without `g` prefix)
+
+**LOOK AT EXISTING EXAMPLES FIRST**:
+
+Before writing new tests, study these reference files:
+
+1. **Branch Hash Examples**: `tests/integration_tests/flow/docs/quick_start.rs` - Shows proper `expect_branch_hash()` usage
+2. **Hash Generation**: `src/cli/flow/test_utils.rs` - Understanding hash calculation
+3. **Existing Override Tests**: `tests/integration_tests/flow/docs/override_controls.rs` - Working examples of all patterns
+4. **Branch Rules**: `tests/integration_tests/flow/docs/branch_rules.rs` - Shows `release/` branch number extraction vs hash fallback
+
+**COMMON PITFALLS TO AVOID**:
+
+1. **Never use `{regex:\\d+}`** - Always use `expect_branch_hash()` for predictable results
+2. **Don't guess hash values** - Run the test first to get actual hash, then update expected value
+3. **Don't mix hash patterns** - Consistently use either numeric hashes or `{{hex:7}}` format
+4. **Don't assume override behavior** - Test actual behavior, don't rely on assumptions
+5. **Always check branch patterns** - `release/42` → `rc.42` (number extraction) vs `release/candidate` → `rc.{hash}` (hash fallback)
+
+**WORKFLOW FOR NEW DOCUMENTATION EXAMPLES**:
+
+1. **Study existing patterns** in `tests/integration_tests/flow/docs/`
+2. **Run the actual command** to see real output before writing test
+3. **Get the actual hash** using `expect_branch_hash("branch-name", 5, "12345")`
+4. **Match the test assertion pattern** exactly from existing working examples
+5. **Use realistic hex values** in documentation (e.g., `ga1b2c3d`, `g8f7e6d5`)
+
 **Infrastructure in Place**:
 
 - ✅ **TestScenario**: Chainable test framework with CLI command execution
 - ✅ **Pattern Assertion System**: `{hex:7}`, `{timestamp:now}`, `{regex:pattern}` support
 - ✅ **Documentation Standards**: Comprehensive guidelines in `.claude/ref/documentation-maintenance.md`
 - ✅ **Maintenance Comments**: Professional "Corresponding test:" format
+- ✅ **Hash Generation**: `expect_branch_hash()` for predictable branch hash generation
 
 **File Structure**:
 
@@ -163,7 +219,9 @@ Every code example in documentation must have a corresponding test with referenc
 tests/integration_tests/flow/docs/
 ├── mod.rs
 ├── test_utils.rs     # TestScenario implementation
-├── quick_start.rs   # Quick Start documentation tests
+├── quick_start.rs   # Quick Start documentation tests (BEST PATTERN REFERENCE)
+├── branch_rules.rs   # Branch pattern and hash examples
+├── override_controls.rs  # Override examples with proper hash patterns
 └── tmp.rs           # assert_commands functionality (temporary)
 ```
 
