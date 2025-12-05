@@ -106,7 +106,7 @@ fn test_io_documentation_examples() {
     // Test case 12
     let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
         "flow --source stdin --output-template \"{% if distance %}{{ distance }} commits since {% if last_timestamp %}{{ format_timestamp(value=last_timestamp, format='%Y-%m-%d') }}{% else %}beginning{% endif %}{% else %}Exact tag{% endif %}\"",
-        "1 commits since beginning",
+        &format!("1 commits since {}", Utc::now().format("%Y-%m-%d")),
     );
 
     // Test case 13

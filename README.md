@@ -774,7 +774,7 @@ zerv flow --output-template "Version: {{ semver_obj.docker }}, Branch: {{ bumped
 # (test case 11)
 
 zerv flow --output-template "{% if distance %}{{ distance }} commits since {% if last_timestamp %}{{ format_timestamp(value=last_timestamp, format='%Y-%m-%d') }}{% else %}beginning{% endif %}{% else %}Exact tag{% endif %}"
-# → 1 commits since beginning
+# → 1 commits since 2025-12-05
 # (test case 12)
 
 zerv flow --output-template "App-{{ major }}{{ minor }}{{ patch }}{% if pre_release %}-{{ pre_release.label }}{% endif %}{% if dirty %}-SNAPSHOT{% endif %}-{{ hash(value=bumped_branch, length=4) }}"
