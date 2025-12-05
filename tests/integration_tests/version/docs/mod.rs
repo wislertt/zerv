@@ -5,3 +5,4 @@ pub mod component_overrides;
 pub mod schema_variants;
 pub mod vcs_overrides;
 pub mod version_bumping;
+pub mod version_validation;

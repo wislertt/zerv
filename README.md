@@ -671,3 +671,36 @@ zerv version --schema-ron '(
 ```
 
 <!-- Corresponding test: tests/integration_tests/version/docs/component_overrides.rs:test_zerv_version_component_overrides_documentation_examples -->
+
+#### Version Check: Validate version strings for different formats
+
+**Purpose**: Validate that version strings conform to specific format requirements with support for multiple version standards.
+
+```bash
+# Check complex SemVer format validation
+zerv check --format semver 1.0.0-rc.1.something.complex+something.complex
+# → Version: 1.0.0-rc.1.something.complex+something.complex
+#   ✓ Valid SemVer format (test case 1)
+
+# Check PEP440 format validation with build metadata
+zerv check --format pep440 1.0.0a2.post5.dev3+something.complex
+# → Version: 1.0.0a2.post5.dev3+something.complex
+#   ✓ Valid PEP440 format (test case 2)
+
+# Check PEP440 format validation with normalization
+zerv check --format pep440 1.0.0-alpha.2.post.5.dev.3+something.complex
+# → Version: 1.0.0-alpha.2.post.5.dev.3+something.complex
+#   ✓ Valid PEP440 format (normalized: 1.0.0a2.post5.dev3+something.complex) (test case 3)
+
+# Invalid version handling (fails with exit code 1)
+zerv check --format semver invalid
+# → Error: Invalid version: invalid - Invalid SemVer format (test case 4)
+
+# Auto-detect and validate multiple formats
+zerv check 2.1.0-beta.1
+# → Version: 2.1.0-beta.1
+#   ✓ Valid PEP440 format (normalized: 2.1.0b1)
+#   ✓ Valid SemVer format (test case 5)
+```
+
+<!-- Corresponding test: tests/integration_tests/version/docs/version_validation.rs:test_zerv_check_documentation_examples -->
