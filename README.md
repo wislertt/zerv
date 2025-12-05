@@ -662,7 +662,11 @@ zerv version --schema standard-base-prerelease-post-dev-context --epoch 1 --post
 # → 1.0.0-epoch.1.post.7.dev.456+branch.name.1.g{hex:7} (test case 3)
 
 # Custom variables in schema-ron (requires schema-ron)
-zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[var(custom("build_id")), var(custom("environment"))])' --custom '{"build_id": "prod-123", "environment": "staging"}'
+zerv version --schema-ron '(
+    core: [var(Major), var(Minor), var(Patch)],
+    extra_core: [],
+    build: [var(custom("build_id")), var(custom("environment"))]
+)' --custom '{"build_id": "prod-123", "environment": "staging"}'
 # → 1.0.0+prod.123.staging (test case 4)
 ```
 

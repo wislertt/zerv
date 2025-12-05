@@ -35,7 +35,11 @@ fn test_zerv_version_component_overrides_documentation_examples() {
 
     // Test case 4: Custom variables override with schema-ron
     let scenario = scenario.assert_command(
-        "version --source stdin --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[var(custom(\"build_id\")), var(custom(\"environment\"))])' --custom '{\"build_id\": \"prod-123\", \"environment\": \"staging\"}'",
+        "version --source stdin --schema-ron '(
+            core: [var(Major), var(Minor), var(Patch)],
+            extra_core: [],
+            build: [var(custom(\"build_id\")), var(custom(\"environment\"))]
+        )' --custom '{\"build_id\": \"prod-123\", \"environment\": \"staging\"}'",
         "1.0.0+prod.123.staging",
     );
 
