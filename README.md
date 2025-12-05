@@ -741,27 +741,27 @@ zerv flow --source git --output-format zerv | zerv version --source stdin --majo
 # (test case 3)
 
 zerv flow --output-format pep440
-# 0.7.82a98327.post3.dev1764902466+dev.3.gdae3495
+# 1.0.1a10192.post1.dev1764382150+branch.name.1.g4e9af24
 # (test case 4)
 
 zerv flow --output-format semver
-# 0.7.82-alpha.98327.post.3.dev.1764902466+dev.3.gdae3495
+# 1.0.1-alpha.10192.post.1.dev.1764902466+branch.name.1.g4e9af24
 # (test case 5)
 
 zerv flow --output-prefix v --output-format semver
-# v0.7.82-alpha.98327.post.3.dev.1764902466+dev.3.gdae3495
+# v1.0.1-alpha.10192.post.1.dev.1764902466+branch.name.1.g4e9af24
 # (test case 6)
 
 zerv flow --output-template "app:{{ major }}.{{ minor }}.{{ patch }}"
-# app:0.7.82
+# app:1.0.1
 # (test case 7)
 
 zerv flow --output-template "{{ semver_obj.docker }}"
-# 0.7.82-alpha.98327.post.3.dev.1764902466-dev.3.gdae3495
+# 1.0.1-alpha.10192.post.1.dev.1764902466-branch.name.1.g4e9af24
 # (test case 8)
 
 zerv flow --output-template "{{ semver_obj.base_part }}++{{ semver_obj.pre_release_part }}++{{ semver_obj.build_part }}"
-# 0.7.82++alpha.98327.post.3.dev.1764902466++dev.3.gdae3495
+# 1.0.1++alpha.10192.post.1.dev.1764902466++branch.name.1.g4e9af24
 # (test case 9)
 ```
 

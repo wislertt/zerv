@@ -197,6 +197,23 @@ impl TestScenario {
         self
     }
 
+    /// Assert that a single CLI command output contains all expected substrings
+    /// Used for checking key components in complex outputs like RON format
+    pub fn assert_command_contains(self, command: &str, expected_substrings: &[&str]) -> Self {
+        let stdin_content = self.to_stdin_content();
+        let actual_output = TestCommand::run_with_stdin(command, stdin_content);
+
+        for substring in expected_substrings {
+            assert!(
+                actual_output.contains(substring),
+                "Expected output to contain '{}', but it did not.\nActual output:\n{}",
+                substring,
+                actual_output
+            );
+        }
+        self
+    }
+
     /// Assert that multiple CLI commands executed as a pipeline produce the expected output
     /// Executes commands sequentially, piping output of each command to stdin of the next
     pub fn assert_commands(self, commands: &[&str], expected_output: &str) -> Self {
