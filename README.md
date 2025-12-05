@@ -811,7 +811,7 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 - `pre_release.label` - Pre-release type ("alpha", "beta", "rc")
 - `pre_release.number` - Pre-release number
 - `pre_release.label_code` - Short code ("a", "b", "rc")
-- `pre_release.label_pep440` - PEP440 format
+- `pre_release.label_pep440` - PEP440 format ("a", "b", "rc")
 
 **VCS/Metadata Fields**:
 
@@ -822,6 +822,7 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 - `bumped_commit_hash_short` - Short commit hash
 - `bumped_timestamp` - Commit timestamp
 - `last_commit_hash` - Last tag commit hash
+- `last_commit_hash_short` - Short last tag commit hash
 - `last_timestamp` - Last tag timestamp
 
 **Parsed Version Objects**:
@@ -853,5 +854,7 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 
 - `hash(value, length=7)` - Generate hex hash
 - `hash_int(value, length=7, allow_leading_zero=false)` - Numeric hash
-- `format_timestamp(timestamp, format="%Y-%m-%d")` - Format timestamp
-- `format_timestamp(timestamp, format="compact_date")` - "20231230"
+- `format_timestamp(value=timestamp, format="%Y-%m-%d")` - Format timestamp
+- `format_timestamp(value=timestamp, format="compact_date")` - "20231230"
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_template_documentation_examples -->

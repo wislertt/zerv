@@ -1,5 +1,8 @@
 // use zerv::cli::flow::test_utils::expect_branch_hash;
 
+use chrono::Utc;
+use rstest::rstest;
+
 use crate::integration_tests::flow::docs::test_utils::TestScenario;
 // use crate::util::TestCommand;
 
@@ -125,4 +128,88 @@ fn test_io_documentation_examples() {
     );
 
     _ = dirty_feature_branch_scenario;
+}
+
+// -   `distance` - Commits from reference point
+// -   `dirty` - Working directory dirty state
+// -   `bumped_branch` - Branch name
+// -   `bumped_commit_hash` - Full commit hash
+// -   `bumped_commit_hash_short` - Short commit hash
+// -   `bumped_timestamp` - Commit timestamp
+// -   `last_commit_hash` - Last tag commit hash
+// -   `last_timestamp` - Last tag timestamp
+
+#[rstest]
+// Core Version Fields
+#[case("{{ major }}", "1")]
+#[case("{{ minor }}", "0")]
+#[case("{{ patch }}", "1")]
+#[case("{{ epoch }}", "5")]
+#[case("{{ post }}", "1")]
+#[case("{{ dev }}", "{timestamp:now}")]
+// Pre-release Context
+#[case("{{ pre_release }}", "[object]")]
+#[case("{{ pre_release.label }}", "alpha")]
+#[case("{{ pre_release.number }}", "10192")]
+#[case("{{ pre_release.label_code }}", "a")]
+#[case("{{ pre_release.label_pep440 }}", "a")]
+// VCS/Metadata Fields
+#[case("{{ distance }}", "1")]
+#[case("{{ dirty }}", "true")]
+#[case("{{ bumped_branch }}", "branch-name")]
+#[case("{{ bumped_commit_hash }}", "g{hex:40}")]
+#[case("{{ bumped_commit_hash_short }}", "g{hex:7}")]
+#[case("{{ last_commit_hash }}", "g{hex:40}")]
+#[case("{{ last_commit_hash_short }}", "g{hex:7}")]
+#[case("{{ last_timestamp }}", "{timestamp:now}")]
+// // Parsed Version Objects - SemVer
+// #[case("{{ semver_obj.base_part }}", "1.0.1")]
+// #[case(
+//     "{{ semver_obj.docker }}",
+//     "1.0.1-alpha.10192.post.1.dev{timestamp:now}-branch.name.1.g{hex:7}"
+// )]
+// // Parsed Version Objects - PEP440
+// #[case("{{ pep440_obj.base_part }}", "1.0.1")]
+// // Formatted Versions
+// #[case(
+//     "{{ semver }}",
+//     "1.0.1-alpha.10192.post.1.dev{timestamp:now}+branch.name.1.g{hex:7}"
+// )]
+// #[case(
+//     "{{ pep440 }}",
+//     "1.0.1a10192.post1.dev{timestamp:now}+branch.name.1.g{hex:7}"
+// )]
+// // Custom Template Functions - String Manipulation
+// #[case("{{ sanitize(value=bumped_branch, preset='dotted') }}", "branch.name")]
+// #[case("{{ hash(value=bumped_branch, length=4) }}", "{hex:4}")]
+// Custom Template Functions - Hashing & Formatting
+#[case(
+    "{{ format_timestamp(value=current_timestamp, format='%Y-%m-%d') }}",
+    Utc::now().format("%Y-%m-%d").to_string()
+)]
+#[case(
+    "{{ format_timestamp(value=current_timestamp, format='compact_date') }}",
+    Utc::now().format("%Y%m%d").to_string()
+)]
+fn test_template_documentation_examples(
+    #[case] output_template: &str,
+    #[case] expected_output: String,
+) {
+    let branch_name = "branch-name".to_string();
+    // let branch_name_hash = expect_branch_hash(&branch_name, 5, "10192");
+    let dirty_feature_branch_scenario = TestScenario::new()
+        .expect("Failed to create test scenario")
+        .create_tag("v1.0.0-epoch.5")
+        .create_branch(&branch_name)
+        .checkout(&branch_name)
+        .commit()
+        .make_dirty();
+
+    let _ = dirty_feature_branch_scenario.assert_command(
+        &format!(
+            "flow --source stdin --output-template \"{}\"",
+            output_template
+        ),
+        &expected_output,
+    );
 }
