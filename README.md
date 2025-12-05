@@ -858,3 +858,41 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 - `format_timestamp(value=timestamp, format="compact_date")` - "20231230"
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_template_documentation_examples -->
+
+## Installation
+
+### Cargo Install (Recommended)
+
+```bash
+cargo install zerv
+```
+
+### Installation Script
+
+```bash
+# Install latest version
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash
+
+# Install specific version
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash -s v0.7.81
+
+# Or using environment variable
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | ZERV_VERSION=v0.7.81 bash
+```
+
+### Manual Download
+
+Download pre-built binaries from [GitHub Releases](https://github.com/wislertt/zerv/releases)
+
+### Uninstall
+
+For Quick Install and Manual Download:
+
+```bash
+rm ~/.local/bin/zerv
+```
+
+## Links
+
+- **Comprehensive Documentation**: [docs/llms.md](docs/llms.md) - Complete reference for all Zerv capabilities
+- **CLI Help**: `zerv --help`, `zerv flow --help`, `zerv version --help` - Detailed command-line reference
