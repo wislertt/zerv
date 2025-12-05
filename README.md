@@ -704,3 +704,65 @@ zerv check 2.1.0-beta.1
 ```
 
 <!-- Corresponding test: tests/integration_tests/version/docs/version_validation.rs:test_zerv_check_documentation_examples -->
+
+#### Input/Output & Piping: Shared capabilities for both commands
+
+**Purpose**: Flexible input handling and output formatting with pipeline support for both `zerv version` and `zerv flow` commands.
+
+```bash
+# Source options - Use Git VCS or stdin for version data
+zerv flow --source git
+# → 1.0.1-alpha.10192.post.1.dev.1764382150+branch.name.1.g4e9af24 (VCS auto-detection)
+# (test case 1)
+
+# zerv RON format - Internal/debugging output and intermediate representation
+# Used as stdin input for zerv version and zerv flow commands
+zerv flow --output-format zerv
+# → (
+#     schema: (
+#         core: [var(Major), var(Minor), var(Patch)],
+#         extra_core: [var(Epoch), var(PreRelease), ...],
+#         build: [var(BumpedBranch), var(Distance), ...]
+#     ),
+#     vars: (
+#         major: Some(1), minor: Some(0), patch: Some(1),
+#         pre_release: Some((label: Alpha, number: Some(123))),
+#         bumped_branch: Some("feature-branch"),
+#         bumped_commit_hash: Some("gabc123def"),
+#         ...
+#     )
+#   )
+# (test case 2)
+
+# Pipeline chaining - Multiple transformations
+# Note: Upstream command must output --output-format zerv for stdin piping to work
+zerv flow --source git --output-format zerv | zerv version --source stdin --major 4 --output-format semver
+# → 4.0.1-alpha.10192.post.1.dev.1764382150+branch.name.1.g4e9af24
+# (test case 3)
+
+zerv flow --output-format pep440
+# 0.7.82a98327.post3.dev1764902466+dev.3.gdae3495
+# (test case 4)
+
+zerv flow --output-format semver
+# 0.7.82-alpha.98327.post.3.dev.1764902466+dev.3.gdae3495
+# (test case 5)
+
+zerv flow --output-prefix v --output-format semver
+# v0.7.82-alpha.98327.post.3.dev.1764902466+dev.3.gdae3495
+# (test case 6)
+
+zerv flow --output-template "app:{{ major }}.{{ minor }}.{{ patch }}"
+# app:0.7.82
+# (test case 7)
+
+zerv flow --output-template "{{ semver_obj.docker }}"
+# 0.7.82-alpha.98327.post.3.dev.1764902466-dev.3.gdae3495
+# (test case 8)
+
+zerv flow --output-template "{{ semver_obj.base_part }}++{{ semver_obj.pre_release_part }}++{{ semver_obj.build_part }}"
+# 0.7.82++alpha.98327.post.3.dev.1764902466++dev.3.gdae3495
+# (test case 9)
+```
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples -->

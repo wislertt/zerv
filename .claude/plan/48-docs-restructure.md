@@ -54,7 +54,7 @@
 
 4. **Usage Examples** 🚧 - Copy-paste examples by command
     - **Content**:
-        - **zerv flow**: Automated branch-based versions with comprehensive documentation:
+        - ✅ **zerv flow**: Automated branch-based versions with comprehensive documentation:
             - ✅ **Core Principles**: 4 fundamental design principles
             - ✅ **Version Format Explained**: Structure, components, and variations with examples
             - ✅ **Pre-release Resolution Strategy**: Branch patterns, post-release logic, distance modes
@@ -67,12 +67,12 @@
             - ✅ **Branch Rules**: Configurable pattern matching (default GitFlow) for pre-release automation
             - ✅ **Pre-release Control**: Labels (alpha/beta/rc), numbers, hash-based identification
             - ✅ **Post Mode Options**: Tag distance vs commit distance calculation modes
-        - **zerv version**: Manual control with 4 main capability areas:
+        - ✅ **zerv version**: Manual control with 4 main capability areas:
             - ✅ **Schema Variants**: 20+ presets (standard, calver families) and custom RON schemas
             - ✅ **VCS Overrides**: Override tag version, distance, dirty state, branch, commit data
             - ✅ **Version Bumping**: Field-based bumps (major/minor/patch) and schema-based bumps
             - ✅ **Component Overrides**: Fine-grained control over individual version components
-        - **zerv check**: Version validation for different formats
+        - ✅ **zerv check**: Version validation for different formats
         - **Input/Output & Piping**: Shared capabilities for both zerv version and zerv flow:
             - Source options: git, stdin
             - Output formats: semver, pep440, zerv
