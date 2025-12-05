@@ -763,6 +763,89 @@ zerv flow --output-template "{{ semver_obj.docker }}"
 zerv flow --output-template "{{ semver_obj.base_part }}++{{ semver_obj.pre_release_part }}++{{ semver_obj.build_part }}"
 # 1.0.1++alpha.10192.post.1.dev.1764902466++branch.name.1.g4e9af24
 # (test case 9)
+
+# Comprehensive template examples
+zerv flow --output-template "Build: {{ major }}.{{ minor }}.{{ patch }}-{{ pre_release.label | default(value='release') }}{% if pre_release.number %}{{ pre_release.number }}{% endif %} ({{ bumped_branch }}@{{ bumped_commit_hash_short }})"
+# → Build: 1.0.1-alpha59394 (feature.new.auth@g4e9af24)
+# (test case 10)
+
+zerv flow --output-template "Version: {{ semver_obj.docker }}, Branch: {{ bumped_branch | upper }}, Clean: {% if dirty %}No{% else %}Yes{% endif %}"
+# → Version: 1.0.1-alpha.59394.post.1.dev.1764382150-branch.name.1.g54c499a, Branch: DIRTY.FEATURE.WORK, Clean: No
+# (test case 11)
+
+zerv flow --output-template "{% if distance %}{{ distance }} commits since {% if last_timestamp %}{{ format_timestamp(value=last_timestamp, format='%Y-%m-%d') }}{% else %}beginning{% endif %}{% else %}Exact tag{% endif %}"
+# → 1 commits since beginning
+# (test case 12)
+
+zerv flow --output-template "App-{{ major }}{{ minor }}{{ patch }}{% if pre_release %}-{{ pre_release.label }}{% endif %}{% if dirty %}-SNAPSHOT{% endif %}-{{ hash(value=bumped_branch, length=4) }}"
+# → App-101-alpha-SNAPSHOT-a1b2
+# (test case 13)
+
+zerv flow --output-template "PEP440: {{ pep440 }}"
+# → PEP440: 1.0.1a10192.post1.dev1764909598+branch.name.1.g4e9af24
+# (test case 14)
+
+zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre: {{ pre_release.label_code | default(value='release') }}, Hash: {{ bumped_commit_hash_short }}"
+# → Release: v1.0.1, Pre: a, Hash: g4e9af24
+# (test case 15)
 ```
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples -->
+
+##### Available Template Variables
+
+**Core Version Fields**:
+
+- `major`, `minor`, `patch` - Version numbers
+- `epoch` - Epoch version (optional)
+- `post`, `dev` - Post-release and dev identifiers
+
+**Pre-release Context**:
+
+- `pre_release.label` - Pre-release type ("alpha", "beta", "rc")
+- `pre_release.number` - Pre-release number
+- `pre_release.label_code` - Short code ("a", "b", "rc")
+- `pre_release.label_pep440` - PEP440 format
+
+**VCS/Metadata Fields**:
+
+- `distance` - Commits from reference point
+- `dirty` - Working directory dirty state
+- `bumped_branch` - Branch name
+- `bumped_commit_hash` - Full commit hash
+- `bumped_commit_hash_short` - Short commit hash
+- `bumped_timestamp` - Commit timestamp
+- `last_commit_hash` - Last tag commit hash
+- `last_timestamp` - Last tag timestamp
+
+**Parsed Version Objects**:
+
+- `semver_obj.base_part` - "1.2.3"
+- `semver_obj.pre_release_part` - "alpha.1.post.3.dev.5"
+- `semver_obj.build_part` - "build.456"
+- `semver_obj.docker` - "1.2.3-alpha.1-build.456"
+- `pep440_obj.base_part` - "1.2.3"
+- `pep440_obj.pre_release_part` - "a1.post3.dev5"
+- `pep440_obj.build_part` - "build.456"
+
+**Formatted Versions**:
+
+- `semver` - Full SemVer string
+- `pep440` - Full PEP440 string
+- `current_timestamp` - Current Unix timestamp
+
+##### Custom Template Functions
+
+**String Manipulation**:
+
+- `sanitize(value, preset="dotted")` - Sanitize with presets: "semver", "pep440", "uint"
+- `sanitize(value, separator="-", lowercase=true, max_length=10)` - Custom sanitization
+- `prefix(value, length=10)` - Extract first N characters
+- `prefix_if(value, prefix="+")` - Add prefix only if value not empty
+
+**Hashing & Formatting**:
+
+- `hash(value, length=7)` - Generate hex hash
+- `hash_int(value, length=7, allow_leading_zero=false)` - Numeric hash
+- `format_timestamp(timestamp, format="%Y-%m-%d")` - Format timestamp
+- `format_timestamp(timestamp, format="compact_date")` - "20231230"

@@ -88,5 +88,41 @@ fn test_io_documentation_examples() {
         "1.0.1++alpha.10192.post.1.dev.{timestamp:now}++branch.name.1.g{hex:7}",
     );
 
+    // Test case 10
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "flow --source stdin --output-template \"Build: {{ major }}.{{ minor }}.{{ patch }}-{{ pre_release.label | default(value='release') }}{% if pre_release.number %}{{ pre_release.number }}{% endif %} ({{ bumped_branch }}@{{ bumped_commit_hash_short }})\"",
+        "Build: 1.0.1-alpha10192 (branch-name@g{hex:7})",
+    );
+
+    // Test case 11
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "flow --source stdin --output-template \"Version: {{ semver_obj.docker }}, Branch: {{ bumped_branch | upper }}, Clean: {% if dirty %}No{% else %}Yes{% endif %}\"",
+        "Version: 1.0.1-alpha.10192.post.1.dev.{timestamp:now}-branch.name.1.g{hex:7}, Branch: BRANCH-NAME, Clean: No",
+    );
+
+    // Test case 12
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "flow --source stdin --output-template \"{% if distance %}{{ distance }} commits since {% if last_timestamp %}{{ format_timestamp(value=last_timestamp, format='%Y-%m-%d') }}{% else %}beginning{% endif %}{% else %}Exact tag{% endif %}\"",
+        "1 commits since beginning",
+    );
+
+    // Test case 13
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "flow --source stdin --output-template \"App-{{ major }}{{ minor }}{{ patch }}{% if pre_release %}-{{ pre_release.label }}{% endif %}{% if dirty %}-SNAPSHOT{% endif %}-{{ hash(value=bumped_branch, length=4) }}\"",
+        "App-101-alpha-SNAPSHOT-{hex:4}",
+    );
+
+    // Test case 14
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "flow --source stdin --output-template \"PEP440: {{ pep440 }}\"",
+        "PEP440: 1.0.1a10192.post1.dev{timestamp:now}+branch.name.1.g{hex:7}",
+    );
+
+    // Test case 15
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_command(
+        "flow --source stdin --output-template \"Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre: {{ pre_release.label_code | default(value='rc') }}, Hash: {{ bumped_commit_hash_short }}\"",
+        "Release: v1.0.1, Pre: a, Hash: g{hex:7}",
+    );
+
     _ = dirty_feature_branch_scenario;
 }
