@@ -2,6 +2,7 @@
 // Tests that ensure the documentation examples work as expected
 
 pub mod branch_rules;
+pub mod io;
 pub mod override_controls;
 pub mod quick_start;
 pub mod schema_variants;

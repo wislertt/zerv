@@ -53,20 +53,33 @@ impl TestScenario {
 
     /// Generate a deterministic commit hash
     fn generate_commit_hash(branch_name: &str, distance: u64) -> String {
-        // Create a simple deterministic hash
-        let combined = format!("{}-{}", branch_name, distance);
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{
             Hash,
             Hasher,
         };
 
-        let mut hasher = DefaultHasher::new();
-        combined.hash(&mut hasher);
+        // Generate multiple hash values to create a 20-byte (40 hex char) hash
+        let mut hash_bytes = Vec::new();
 
-        // Create a 7-character hex hash
-        let hash_val = hasher.finish() & 0x0fffffff; // Get lower 28 bits for 7 hex chars
-        format!("g{:07x}", hash_val)
+        // Hash different combinations to get more entropy
+        for i in 0..5 {
+            let mut hasher = DefaultHasher::new();
+            format!("{}-{}-{}", branch_name, distance, i).hash(&mut hasher);
+            let hash_val = hasher.finish();
+            hash_bytes.extend_from_slice(&hash_val.to_le_bytes());
+        }
+
+        // Take first 20 bytes (160 bits) which gives 40 hex chars
+        let hash_20_bytes: Vec<u8> = hash_bytes.into_iter().take(20).collect();
+
+        // Convert to hex string
+        let mut hex_string = String::with_capacity(40);
+        for byte in hash_20_bytes {
+            hex_string.push_str(&format!("{:02x}", byte));
+        }
+
+        format!("g{}", hex_string)
     }
 
     /// Create a tag by parsing it and setting version in vars
@@ -84,11 +97,18 @@ impl TestScenario {
         // Set branch and commit info for the tag
         let current_branch = self.get_current_branch();
         let commit_hash = Self::generate_commit_hash(&current_branch, 0); // Tags have distance 0
+        let last_commit_hash = Self::generate_commit_hash(&current_branch, 0); // Same commit hash for tag
+        let current_timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
         vars_fixture = vars_fixture
             .with_bumped_branch(current_branch.clone())
             // NOTE: Tags should NOT have distance set - distance:None for clean releases
             .with_bumped_commit_hash(commit_hash) // Tags have commit hash
+            .with_last_commit_hash(last_commit_hash) // Tag commit hash
+            .with_last_timestamp(current_timestamp) // Tag timestamp
             .with_dirty(false); // Tags are clean
 
         self.current_vars = vars_fixture.build();
@@ -194,6 +214,23 @@ impl TestScenario {
         let actual_output = TestCommand::run_with_stdin(command, stdin_content);
 
         assert_version_expectation(expected_output, &actual_output);
+        self
+    }
+
+    /// Assert that a single CLI command output contains all expected substrings
+    /// Used for checking key components in complex outputs like RON format
+    pub fn assert_command_contains(self, command: &str, expected_substrings: &[&str]) -> Self {
+        let stdin_content = self.to_stdin_content();
+        let actual_output = TestCommand::run_with_stdin(command, stdin_content);
+
+        for substring in expected_substrings {
+            assert!(
+                actual_output.contains(substring),
+                "Expected output to contain '{}', but it did not.\nActual output:\n{}",
+                substring,
+                actual_output
+            );
+        }
         self
     }
 

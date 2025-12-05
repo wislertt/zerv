@@ -136,6 +136,8 @@ This section demonstrates how Zerv Flow works across different branching strateg
 
 **Scenario**: Development from `v1.0.0` with parallel feature branches, synchronization, and nested development.
 
+ <!-- MERMAID_START: git-diagram-trunk-based-development.mmd -->
+
 ```mermaid
 ---
 config:
@@ -197,6 +199,8 @@ gitGraph
     merge feature-2 id: "1.1.0" tag: "feature-2 released"
 ```
 
+<!-- MERMAID_END -->
+
 **Key behaviors demonstrated**:
 
 - **Parallel development**: `feature-1` and `feature-2` get unique hash IDs (`42954`, `68031`)
@@ -212,6 +216,8 @@ gitGraph
 **Purpose**: GitFlow methodology with proper pre-release type mapping and merge patterns.
 
 **Scenario**: Main branch with `v1.0.0`, develop branch integration, feature development, hotfix emergency flow, and release preparation.
+
+<!-- MERMAID_START: git-diagram-gitflow-development-flow.mmd -->
 
 ```mermaid
 ---
@@ -272,6 +278,8 @@ gitGraph
     merge main id: "1.1.1-beta.1.post.1" tag: "sync release"
 ```
 
+<!-- MERMAID_END -->
+
 **Key behaviors demonstrated**:
 
 - **Beta pre-releases**: Develop branch uses `beta` for integration builds
@@ -288,6 +296,8 @@ gitGraph
 **Purpose**: Complex release branch scenarios including branch abandonment and cascading release preparation.
 
 **Scenario**: Main branch with `v1.0.0`, release branch preparation with critical issues leading to abandonment, and selective branch creation for successful release.
+
+<!-- MERMAID_START: git-diagram-complex-release-branch.mmd -->
 
 ```mermaid
 ---
@@ -325,6 +335,8 @@ gitGraph
     merge release/2 id: "1.1.0" tag: "v1.1.0"
 
 ```
+
+<!-- MERMAID_END -->
 
 **Version progression details**:
 
@@ -641,3 +653,258 @@ zerv version --bump-major 2
 ```
 
 <!-- Corresponding test: tests/integration_tests/version/docs/version_bumping.rs:test_zerv_version_version_bumping_documentation_examples -->
+
+#### Component Overrides: Fine-grained control over individual version components
+
+**Purpose**: Override specific version components while preserving all other detected values for precise version control.
+
+**Override Categories**: Individual components, pre-release controls, and custom variables
+
+```bash
+# Version component overrides (major, minor, patch)
+zerv version --major 2 --minor 5
+# → 2.5.0+branch.name.1.g{hex:7} (test case 1)
+
+# Pre-release component overrides (label and number)
+zerv version --schema standard-base-prerelease-post-context --pre-release-label rc --pre-release-num 3
+# → 1.0.0-rc.3+branch.name.1.g{hex:7} (test case 2)
+
+# Additional component overrides (epoch, post, dev)
+zerv version --schema standard-base-prerelease-post-dev-context --epoch 1 --post 7 --dev 456
+# → 1.0.0-epoch.1.post.7.dev.456+branch.name.1.g{hex:7} (test case 3)
+
+# Custom variables in schema-ron (requires schema-ron)
+zerv version --schema-ron '(
+    core: [var(Major), var(Minor), var(Patch)],
+    extra_core: [],
+    build: [var(custom("build_id")), var(custom("environment"))]
+)' --custom '{"build_id": "prod-123", "environment": "staging"}'
+# → 1.0.0+prod.123.staging (test case 4)
+```
+
+<!-- Corresponding test: tests/integration_tests/version/docs/component_overrides.rs:test_zerv_version_component_overrides_documentation_examples -->
+
+#### Version Check: Validate version strings for different formats
+
+**Purpose**: Validate that version strings conform to specific format requirements with support for multiple version standards.
+
+```bash
+# Check complex SemVer format validation
+zerv check --format semver 1.0.0-rc.1.something.complex+something.complex
+# → Version: 1.0.0-rc.1.something.complex+something.complex
+#   ✓ Valid SemVer format (test case 1)
+
+# Check PEP440 format validation with build metadata
+zerv check --format pep440 1.0.0a2.post5.dev3+something.complex
+# → Version: 1.0.0a2.post5.dev3+something.complex
+#   ✓ Valid PEP440 format (test case 2)
+
+# Check PEP440 format validation with normalization
+zerv check --format pep440 1.0.0-alpha.2.post.5.dev.3+something.complex
+# → Version: 1.0.0-alpha.2.post.5.dev.3+something.complex
+#   ✓ Valid PEP440 format (normalized: 1.0.0a2.post5.dev3+something.complex) (test case 3)
+
+# Invalid version handling (fails with exit code 1)
+zerv check --format semver invalid
+# → Error: Invalid version: invalid - Invalid SemVer format (test case 4)
+
+# Auto-detect and validate multiple formats
+zerv check 2.1.0-beta.1
+# → Version: 2.1.0-beta.1
+#   ✓ Valid PEP440 format (normalized: 2.1.0b1)
+#   ✓ Valid SemVer format (test case 5)
+```
+
+<!-- Corresponding test: tests/integration_tests/version/docs/version_validation.rs:test_zerv_check_documentation_examples -->
+
+#### Input/Output & Piping: Shared capabilities for both commands
+
+**Purpose**: Flexible input handling and output formatting with pipeline support for both `zerv version` and `zerv flow` commands.
+
+```bash
+# Source options - Use Git VCS or stdin for version data
+zerv flow --source git
+# → 1.0.1-alpha.10192.post.1.dev.1764382150+branch.name.1.g4e9af24 (VCS auto-detection)
+# (test case 1)
+
+# zerv RON format - Internal/debugging output and intermediate representation
+# Used as stdin input for zerv version and zerv flow commands
+zerv flow --output-format zerv
+# → (
+#     schema: (
+#         core: [var(Major), var(Minor), var(Patch)],
+#         extra_core: [var(Epoch), var(PreRelease), ...],
+#         build: [var(BumpedBranch), var(Distance), ...]
+#     ),
+#     vars: (
+#         major: Some(1), minor: Some(0), patch: Some(1),
+#         pre_release: Some((label: Alpha, number: Some(123))),
+#         bumped_branch: Some("feature-branch"),
+#         bumped_commit_hash: Some("gabc123def"),
+#         ...
+#     )
+#   )
+# (test case 2)
+
+# Pipeline chaining - Multiple transformations
+# Note: Upstream command must output --output-format zerv for stdin piping to work
+zerv flow --source git --output-format zerv | zerv version --source stdin --major 4 --output-format semver
+# → 4.0.1-alpha.10192.post.1.dev.1764382150+branch.name.1.g4e9af24
+# (test case 3)
+
+zerv flow --output-format pep440
+# 1.0.1a10192.post1.dev1764382150+branch.name.1.g4e9af24
+# (test case 4)
+
+zerv flow --output-format semver
+# 1.0.1-alpha.10192.post.1.dev.1764902466+branch.name.1.g4e9af24
+# (test case 5)
+
+zerv flow --output-prefix v --output-format semver
+# v1.0.1-alpha.10192.post.1.dev.1764902466+branch.name.1.g4e9af24
+# (test case 6)
+
+zerv flow --output-template "app:{{ major }}.{{ minor }}.{{ patch }}"
+# app:1.0.1
+# (test case 7)
+
+zerv flow --output-template "{{ semver_obj.docker }}"
+# 1.0.1-alpha.10192.post.1.dev.1764902466-branch.name.1.g4e9af24
+# (test case 8)
+
+zerv flow --output-template "{{ semver_obj.base_part }}++{{ semver_obj.pre_release_part }}++{{ semver_obj.build_part }}"
+# 1.0.1++alpha.10192.post.1.dev.1764902466++branch.name.1.g4e9af24
+# (test case 9)
+
+# Comprehensive template examples
+zerv flow --output-template "Build: {{ major }}.{{ minor }}.{{ patch }}-{{ pre_release.label | default(value='release') }}{% if pre_release.number %}{{ pre_release.number }}{% endif %} ({{ bumped_branch }}@{{ bumped_commit_hash_short }})"
+# → Build: 1.0.1-alpha59394 (feature.new.auth@g4e9af24)
+# (test case 10)
+
+zerv flow --output-template "Version: {{ semver_obj.docker }}, Branch: {{ bumped_branch | upper }}, Clean: {% if dirty %}No{% else %}Yes{% endif %}"
+# → Version: 1.0.1-alpha.59394.post.1.dev.1764382150-branch.name.1.g54c499a, Branch: DIRTY.FEATURE.WORK, Clean: No
+# (test case 11)
+
+zerv flow --output-template "{% if distance %}{{ distance }} commits since {% if last_timestamp %}{{ format_timestamp(value=last_timestamp, format='%Y-%m-%d') }}{% else %}beginning{% endif %}{% else %}Exact tag{% endif %}"
+# → 1 commits since 2025-12-05
+# (test case 12)
+
+zerv flow --output-template "App-{{ major }}{{ minor }}{{ patch }}{% if pre_release %}-{{ pre_release.label }}{% endif %}{% if dirty %}-SNAPSHOT{% endif %}-{{ hash(value=bumped_branch, length=4) }}"
+# → App-101-alpha-SNAPSHOT-a1b2
+# (test case 13)
+
+zerv flow --output-template "PEP440: {{ pep440 }}"
+# → PEP440: 1.0.1a10192.post1.dev1764909598+branch.name.1.g4e9af24
+# (test case 14)
+
+zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre: {{ pre_release.label_code | default(value='release') }}, Hash: {{ bumped_commit_hash_short }}"
+# → Release: v1.0.1, Pre: a, Hash: g4e9af24
+# (test case 15)
+```
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples -->
+
+##### Template System: Advanced custom formatting
+
+**Purpose**: Complete control over version output using Tera templating with extensive variables, functions, and logical operations.
+
+**Note**: Zerv uses the [Tera templating engine](https://keats.github.io/tera/docs/), which provides powerful template features including conditionals, loops, filters, and custom functions.
+
+###### Available Template Variables
+
+**Core Version Fields**:
+
+- `major`, `minor`, `patch` - Version numbers
+- `epoch` - Epoch version (optional)
+- `post`, `dev` - Post-release and dev identifiers
+
+**Pre-release Context**:
+
+- `pre_release.label` - Pre-release type ("alpha", "beta", "rc")
+- `pre_release.number` - Pre-release number
+- `pre_release.label_code` - Short code ("a", "b", "rc")
+- `pre_release.label_pep440` - PEP440 format ("a", "b", "rc")
+
+**VCS/Metadata Fields**:
+
+- `distance` - Commits from reference point
+- `dirty` - Working directory dirty state
+- `bumped_branch` - Branch name
+- `bumped_commit_hash` - Full commit hash
+- `bumped_commit_hash_short` - Short commit hash
+- `bumped_timestamp` - Commit timestamp
+- `last_commit_hash` - Last tag commit hash
+- `last_commit_hash_short` - Short last tag commit hash
+- `last_timestamp` - Last tag timestamp
+
+**Parsed Version Objects**:
+
+- `semver_obj.base_part` - "1.2.3"
+- `semver_obj.pre_release_part` - "alpha.1.post.3.dev.5"
+- `semver_obj.build_part` - "build.456"
+- `semver_obj.docker` - "1.2.3-alpha.1-build.456"
+- `pep440_obj.base_part` - "1.2.3"
+- `pep440_obj.pre_release_part` - "a1.post3.dev5"
+- `pep440_obj.build_part` - "build.456"
+
+**Formatted Versions**:
+
+- `semver` - Full SemVer string
+- `pep440` - Full PEP440 string
+- `current_timestamp` - Current Unix timestamp
+
+###### Custom Template Functions
+
+**String Manipulation**:
+
+- `sanitize(value=variable, preset='dotted')` - Sanitize with presets: "semver", "pep440", "uint"
+- `sanitize(value=variable, separator='-', lowercase=true, max_length=10)` - Custom sanitization
+- `prefix(value=variable, length=10)` - Extract first N characters
+- `prefix_if(value=variable, prefix="+")` - Add prefix only if value not empty
+
+**Hashing & Formatting**:
+
+- `hash(value=variable, length=7)` - Generate hex hash
+- `hash_int(value=variable, length=7, allow_leading_zero=false)` - Numeric hash
+- `format_timestamp(value=timestamp, format="%Y-%m-%d")` - Format timestamp "2023-12-30"
+- `format_timestamp(value=timestamp, format="compact_date")` - "20231230"
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_template_documentation_examples -->
+
+## Installation
+
+### Cargo Install (Recommended)
+
+```bash
+cargo install zerv
+```
+
+### Installation Script
+
+```bash
+# Install latest version
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash
+
+# Install specific version
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash -s v0.7.81
+
+# Or using environment variable
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | ZERV_VERSION=v0.7.81 bash
+```
+
+### Manual Download
+
+Download pre-built binaries from [GitHub Releases](https://github.com/wislertt/zerv/releases)
+
+### Uninstall
+
+For Quick Install and Manual Download:
+
+```bash
+rm ~/.local/bin/zerv
+```
+
+## Links
+
+- **Comprehensive Documentation**: [docs/llms.md](docs/llms.md) - Complete reference for all Zerv capabilities
+- **CLI Help**: `zerv --help`, `zerv flow --help`, `zerv version --help` - Detailed command-line reference
