@@ -845,16 +845,16 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 
 **String Manipulation**:
 
-- `sanitize(value, preset="dotted")` - Sanitize with presets: "semver", "pep440", "uint"
-- `sanitize(value, separator="-", lowercase=true, max_length=10)` - Custom sanitization
-- `prefix(value, length=10)` - Extract first N characters
-- `prefix_if(value, prefix="+")` - Add prefix only if value not empty
+- `sanitize(value=variable, preset='dotted')` - Sanitize with presets: "semver", "pep440", "uint"
+- `sanitize(value=variable, separator='-', lowercase=true, max_length=10)` - Custom sanitization
+- `prefix(value=variable, length=10)` - Extract first N characters
+- `prefix_if(value=variable, prefix="+")` - Add prefix only if value not empty
 
 **Hashing & Formatting**:
 
-- `hash(value, length=7)` - Generate hex hash
-- `hash_int(value, length=7, allow_leading_zero=false)` - Numeric hash
-- `format_timestamp(value=timestamp, format="%Y-%m-%d")` - Format timestamp
+- `hash(value=variable, length=7)` - Generate hex hash
+- `hash_int(value=variable, length=7, allow_leading_zero=false)` - Numeric hash
+- `format_timestamp(value=timestamp, format="%Y-%m-%d")` - Format timestamp "2023-12-30"
 - `format_timestamp(value=timestamp, format="compact_date")` - "20231230"
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_template_documentation_examples -->

@@ -130,15 +130,6 @@ fn test_io_documentation_examples() {
     _ = dirty_feature_branch_scenario;
 }
 
-// -   `distance` - Commits from reference point
-// -   `dirty` - Working directory dirty state
-// -   `bumped_branch` - Branch name
-// -   `bumped_commit_hash` - Full commit hash
-// -   `bumped_commit_hash_short` - Short commit hash
-// -   `bumped_timestamp` - Commit timestamp
-// -   `last_commit_hash` - Last tag commit hash
-// -   `last_timestamp` - Last tag timestamp
-
 #[rstest]
 // Core Version Fields
 #[case("{{ major }}", "1")]
@@ -162,27 +153,42 @@ fn test_io_documentation_examples() {
 #[case("{{ last_commit_hash }}", "g{hex:40}")]
 #[case("{{ last_commit_hash_short }}", "g{hex:7}")]
 #[case("{{ last_timestamp }}", "{timestamp:now}")]
-// // Parsed Version Objects - SemVer
-// #[case("{{ semver_obj.base_part }}", "1.0.1")]
-// #[case(
-//     "{{ semver_obj.docker }}",
-//     "1.0.1-alpha.10192.post.1.dev{timestamp:now}-branch.name.1.g{hex:7}"
-// )]
-// // Parsed Version Objects - PEP440
-// #[case("{{ pep440_obj.base_part }}", "1.0.1")]
-// // Formatted Versions
-// #[case(
-//     "{{ semver }}",
-//     "1.0.1-alpha.10192.post.1.dev{timestamp:now}+branch.name.1.g{hex:7}"
-// )]
-// #[case(
-//     "{{ pep440 }}",
-//     "1.0.1a10192.post1.dev{timestamp:now}+branch.name.1.g{hex:7}"
-// )]
-// // Custom Template Functions - String Manipulation
-// #[case("{{ sanitize(value=bumped_branch, preset='dotted') }}", "branch.name")]
-// #[case("{{ hash(value=bumped_branch, length=4) }}", "{hex:4}")]
+// Parsed Version Objects
+#[case("{{ semver_obj.base_part }}", "1.0.1")]
+#[case(
+    "{{ semver_obj.pre_release_part }}",
+    "epoch.5.alpha.10192.post.1.dev.{timestamp:now}"
+)]
+#[case("{{ semver_obj.build_part }}", "branch.name.1.g{hex:7}")]
+#[case(
+    "{{ semver_obj.docker }}",
+    "1.0.1-epoch.5.alpha.10192.post.1.dev.{timestamp:now}-branch.name.1.g{hex:7}"
+)]
+#[case("{{ pep440_obj.base_part }}", "5!1.0.1")]
+#[case("{{ pep440_obj.pre_release_part }}", "a10192.post1.dev{timestamp:now}")]
+#[case("{{ pep440_obj.build_part }}", "branch.name.1.g{hex:7}")]
+// Formatted Versions
+#[case(
+    "{{ semver }}",
+    "1.0.1-epoch.5.alpha.10192.post.1.dev.{timestamp:now}+branch.name.1.g{hex:7}"
+)]
+#[case(
+    "{{ pep440 }}",
+    "5!1.0.1a10192.post1.dev{timestamp:now}+branch.name.1.g{hex:7}"
+)]
+#[case("{{ current_timestamp }}", "{timestamp:now}")]
+// Custom Template Functions - String Manipulation
+#[case("{{ sanitize(value=bumped_branch, preset='dotted') }}", "branch.name")]
+#[case(
+    "{{ sanitize(value=bumped_branch, separator='*', lowercase=true, max_length=10) }}",
+    "branch*nam"
+)]
+#[case("{{ prefix(value=bumped_branch, length=2) }}", "br")]
+#[case("{{ prefix_if(value=bumped_branch, prefix='+') }}", "+branch-name")]
+#[case("{{ prefix_if(value='', prefix='+') }}", "")]
 // Custom Template Functions - Hashing & Formatting
+#[case("{{ hash(value=bumped_branch, length=7) }}", "8d721e2")]
+#[case("{{ hash_int(value=bumped_branch, length=7) }}", "1019224")]
 #[case(
     "{{ format_timestamp(value=current_timestamp, format='%Y-%m-%d') }}",
     Utc::now().format("%Y-%m-%d").to_string()
