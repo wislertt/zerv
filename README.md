@@ -641,3 +641,29 @@ zerv version --bump-major 2
 ```
 
 <!-- Corresponding test: tests/integration_tests/version/docs/version_bumping.rs:test_zerv_version_version_bumping_documentation_examples -->
+
+#### Component Overrides: Fine-grained control over individual version components
+
+**Purpose**: Override specific version components while preserving all other detected values for precise version control.
+
+**Override Categories**: Individual components, pre-release controls, and custom variables
+
+```bash
+# Version component overrides (major, minor, patch)
+zerv version --major 2 --minor 5
+# → 2.5.0+branch.name.1.g{hex:7} (test case 1)
+
+# Pre-release component overrides (label and number)
+zerv version --schema standard-base-prerelease-post-context --pre-release-label rc --pre-release-num 3
+# → 1.0.0-rc.3+branch.name.1.g{hex:7} (test case 2)
+
+# Additional component overrides (epoch, post, dev)
+zerv version --schema standard-base-prerelease-post-dev-context --epoch 1 --post 7 --dev 456
+# → 1.0.0-epoch.1.post.7.dev.456+branch.name.1.g{hex:7} (test case 3)
+
+# Custom variables in schema-ron (requires schema-ron)
+zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[var(custom("build_id")), var(custom("environment"))])' --custom '{"build_id": "prod-123", "environment": "staging"}'
+# → 1.0.0+prod.123.staging (test case 4)
+```
+
+<!-- Corresponding test: tests/integration_tests/version/docs/component_overrides.rs:test_zerv_version_component_overrides_documentation_examples -->

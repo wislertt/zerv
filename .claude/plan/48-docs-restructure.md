@@ -71,7 +71,7 @@
             - ✅ **Schema Variants**: 20+ presets (standard, calver families) and custom RON schemas
             - ✅ **VCS Overrides**: Override tag version, distance, dirty state, branch, commit data
             - ✅ **Version Bumping**: Field-based bumps (major/minor/patch) and schema-based bumps
-            - **Component Overrides**: Fine-grained control over individual version components
+            - ✅ **Component Overrides**: Fine-grained control over individual version components
         - **zerv check**: Version validation for different formats
         - **Input/Output & Piping**: Shared capabilities for both zerv version and zerv flow:
             - Source options: git, stdin
