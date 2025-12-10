@@ -19,7 +19,7 @@ impl FlowArgs {
         VersionArgs {
             input: self.input.clone(),
             output: OutputConfig::zerv(),
-            main: MainConfig::from_schema(self.schema.clone()),
+            main: MainConfig::from_schema_and_ron(self.schema.clone(), self.schema_ron.clone()),
             overrides: OverridesConfig {
                 common: {
                     let mut common_config = self.overrides.common.clone();

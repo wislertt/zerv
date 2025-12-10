@@ -58,8 +58,17 @@ pub struct BranchRules {
 impl BranchRule {
     /// Validate the branch rule configuration
     pub fn validate(&self) -> Result<(), ZervError> {
-        // Wildcard patterns (ending with /*) must not have explicit pre_release_num
-        if self.pattern.ends_with("/*") && self.pre_release_num.is_some() {
+        // Universal wildcard pattern "*" must not have explicit pre_release_num
+        if self.pattern == "*" && self.pre_release_num.is_some() {
+            return Err(ZervError::ConflictingOptions(format!(
+                "Branch rule with universal wildcard pattern '{}' cannot have explicit pre_release_num. \
+                Use None to extract number from branch name dynamically.",
+                self.pattern
+            )));
+        }
+
+        // Other wildcard patterns (ending with /*) must not have explicit pre_release_num
+        if self.pattern.ends_with("/*") && self.pattern != "*" && self.pre_release_num.is_some() {
             return Err(ZervError::ConflictingOptions(format!(
                 "Branch rule with wildcard pattern '{}' cannot have explicit pre_release_num. \
                 Use None to extract number from branch name dynamically.",
@@ -67,8 +76,8 @@ impl BranchRule {
             )));
         }
 
-        // Exact patterns (not ending with /*) must have pre_release_num specified
-        if !self.pattern.ends_with("/*") && self.pre_release_num.is_none() {
+        // Exact patterns (not wildcard) must have pre_release_num specified
+        if !self.pattern.ends_with("/*") && self.pattern != "*" && self.pre_release_num.is_none() {
             return Err(ZervError::ConflictingOptions(format!(
                 "Branch rule with exact pattern '{}' must have explicit pre_release_num. \
                 Specify pre_release_num: Some(N) or use wildcard pattern '{}/N' for dynamic extraction.",
@@ -101,31 +110,27 @@ impl BranchRule {
 
     /// Extract number from branch pattern (e.g., "release/1" -> "1" when pattern is "release/*")
     fn extract_branch_number(&self, branch_name: &str) -> Option<u32> {
+        if self.pattern == "*" {
+            return self.find_first_numeric_segment(branch_name);
+        }
+
         if !self.pattern.ends_with("/*") {
             return None;
         }
 
-        let prefix = &self.pattern[..self.pattern.len() - 2]; // Remove "/*"
+        let prefix = &self.pattern[..self.pattern.len() - 2];
         if !branch_name.starts_with(prefix) || branch_name.len() == prefix.len() {
             return None;
         }
 
         let remainder = &branch_name[prefix.len()..];
+        self.find_first_numeric_segment(remainder)
+    }
 
-        // Split the remainder by '/' and iterate through path segments
-        for segment in remainder.split('/') {
-            // Skip empty segments (e.g., leading slash)
-            if segment.is_empty() {
-                continue;
-            }
-
-            // Check if the segment is purely numeric
-            if segment.chars().all(|c| c.is_numeric()) && !segment.is_empty() {
-                return segment.parse().ok();
-            }
-        }
-
-        None
+    fn find_first_numeric_segment(&self, path: &str) -> Option<u32> {
+        path.split('/')
+            .find(|segment| !segment.is_empty() && segment.chars().all(|c| c.is_ascii_digit()))
+            .and_then(|segment| segment.parse().ok())
     }
 }
 
@@ -168,6 +173,12 @@ impl BranchRules {
                 pre_release_label: PreReleaseLabel::Rc,
                 pre_release_num: None, // Extract from branch name
                 post_mode: PostMode::Tag,
+            },
+            BranchRule {
+                pattern: "*".to_string(),
+                pre_release_label: PreReleaseLabel::Alpha,
+                pre_release_num: None, // Extract from branch name
+                post_mode: PostMode::Commit,
             },
         ];
         Self::new(rules).expect("Default branch rules should be valid")
@@ -216,8 +227,11 @@ impl fmt::Display for BranchRules {
 impl BranchRule {
     /// Check if this rule matches the given branch name
     pub fn matches(&self, branch: &str) -> bool {
-        if self.pattern.ends_with("/*") {
-            // Wildcard pattern: "release/*" matches "release/1", "release/feature-name"
+        if self.pattern == "*" {
+            // Universal wildcard: matches any non-empty branch name
+            !branch.is_empty()
+        } else if self.pattern.ends_with("/*") {
+            // Regular wildcard pattern: "release/*" matches branches
             let prefix = &self.pattern[..self.pattern.len() - 2];
             branch.starts_with(prefix) && branch.len() > prefix.len()
         } else {
@@ -355,6 +369,12 @@ mod tests {
     #[case("hotfix/*", "hotfix/123", true)]
     #[case("hotfix/*", "hotfix/urgent-fix", true)]
     #[case("hotfix/*", "hotfix", false)]
+    // Test for pattern "*" (universal wildcard)
+    #[case("*", "any-branch", true)]
+    #[case("*", "1234/test", true)]
+    #[case("*", "feature/test", true)]
+    #[case("*", "main", true)]
+    #[case("*", "", false)] // Empty string should not match
     fn test_branch_rule_wildcard_match(
         #[case] pattern: &str,
         #[case] branch: &str,
@@ -395,6 +415,14 @@ mod tests {
     #[case("hotfix/*", "hotfix/123_fix", None)]
     // Edge cases with no numbers
     #[case("feature/*", "feature/username", None)]
+    // Test for pattern "*" (universal wildcard)
+    #[case("*", "1234/test-sth", Some(1234))]
+    #[case("*", "xxxx/1234/test-sth", Some(1234))]
+    #[case("*", "999", Some(999))]
+    #[case("*", "no-numbers", None)]
+    #[case("*", "abc123def456", None)] // Not separated by '/', should be None
+    #[case("*", "v1.2.3", None)] // Not pure numeric segment
+    #[case("*", "1/2/3", Some(1))] // First numeric segment
     fn test_branch_rule_number_extraction(
         #[case] pattern: &str,
         #[case] branch_name: &str,
@@ -424,11 +452,38 @@ mod tests {
     }
 
     #[test]
+    fn test_branch_rule_universal_wildcard() {
+        let rule = BranchRule {
+            pattern: "*".to_string(),
+            pre_release_label: PreReleaseLabel::Alpha,
+            pre_release_num: None, // Should extract from branch
+            post_mode: PostMode::Commit,
+        };
+
+        // Should match any non-empty branch name
+        assert!(rule.matches("feature/test"));
+        assert!(rule.matches("1234/fix"));
+        assert!(rule.matches("main"));
+        assert!(rule.matches("hotfix"));
+        assert!(!rule.matches(""));
+
+        // Should extract first numeric segment
+        assert_eq!(rule.resolve_pre_release_num("1234/test-sth"), Some(1234));
+        assert_eq!(
+            rule.resolve_pre_release_num("xxxx/1234/test-sth"),
+            Some(1234)
+        );
+        assert_eq!(rule.resolve_pre_release_num("999"), Some(999));
+        assert_eq!(rule.resolve_pre_release_num("no-numbers"), None);
+        assert_eq!(rule.resolve_pre_release_num("abc123def456"), None); // Not separated by '/'
+    }
+
+    #[test]
     fn test_branch_rules_default() {
         let rules = BranchRules::default_rules();
 
-        // Should have exactly 2 default rules
-        assert_eq!(rules.rules.len(), 2);
+        // Should have exactly 3 default rules
+        assert_eq!(rules.rules.len(), 3);
 
         // Check develop rule
         let develop_rule = rules.find_rule("develop").unwrap();
@@ -441,6 +496,12 @@ mod tests {
         assert_eq!(release_rule.pre_release_label, PreReleaseLabel::Rc);
         assert_eq!(release_rule.pre_release_num, None);
         assert_eq!(release_rule.post_mode, PostMode::Tag);
+
+        // Check universal wildcard rule
+        let universal_rule = rules.find_rule("any-branch").unwrap();
+        assert_eq!(universal_rule.pre_release_label, PreReleaseLabel::Alpha);
+        assert_eq!(universal_rule.pre_release_num, None);
+        assert_eq!(universal_rule.post_mode, PostMode::Commit);
     }
 
     #[test]
@@ -458,6 +519,27 @@ mod tests {
         match result.unwrap_err() {
             ZervError::ConflictingOptions(msg) => {
                 assert!(msg.contains("wildcard pattern"));
+                assert!(msg.contains("cannot have explicit pre_release_num"));
+            }
+            _ => panic!("Expected ConflictingOptions error"),
+        }
+    }
+
+    #[test]
+    fn test_branch_rule_validation_universal_wildcard_with_explicit_num() {
+        let invalid_rule = BranchRule {
+            pattern: "*".to_string(),
+            pre_release_label: PreReleaseLabel::Rc,
+            pre_release_num: Some(1), // This should be invalid for universal wildcard pattern
+            post_mode: PostMode::Tag,
+        };
+
+        // Validation should fail
+        let result = invalid_rule.validate();
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ZervError::ConflictingOptions(msg) => {
+                assert!(msg.contains("universal wildcard pattern"));
                 assert!(msg.contains("cannot have explicit pre_release_num"));
             }
             _ => panic!("Expected ConflictingOptions error"),
@@ -501,7 +583,7 @@ mod tests {
         let rules = BranchRules::default_rules();
 
         // Should create successfully (panic if invalid)
-        assert_eq!(rules.rules.len(), 2);
+        assert_eq!(rules.rules.len(), 3);
 
         // Default rules should be valid
         for rule in &rules.rules {
@@ -519,10 +601,10 @@ mod tests {
         assert_eq!(develop_args.pre_release_num, Some(1));
         assert_eq!(develop_args.post_mode, PostMode::Commit);
 
-        // Unmapped branch should use defaults
+        // Unmapped branch should now use universal wildcard rule
         let feature_args = rules.resolve_for_branch(Some("feature/auth"));
         assert_eq!(feature_args.pre_release_label, PreReleaseLabel::Alpha);
-        assert_eq!(feature_args.pre_release_num, None); // FlowArgs will handle generation
+        assert_eq!(feature_args.pre_release_num, None); // Will extract from branch name
         assert_eq!(feature_args.post_mode, PostMode::Commit);
 
         // None branch name should use defaults
@@ -680,7 +762,9 @@ mod tests {
         let develop_rule = r#"(pattern:"develop",pre_release_label:beta,pre_release_num:Some(1),post_mode:commit)"#;
         let release_rule =
             r#"(pattern:"release/*",pre_release_label:rc,pre_release_num:None,post_mode:tag)"#;
-        let expected = format!("[{},{}]", develop_rule, release_rule);
+        let universal_rule =
+            r#"(pattern:"*",pre_release_label:alpha,pre_release_num:None,post_mode:commit)"#;
+        let expected = format!("[{},{},{}]", develop_rule, release_rule, universal_rule);
 
         assert_eq!(display_output, expected);
     }
