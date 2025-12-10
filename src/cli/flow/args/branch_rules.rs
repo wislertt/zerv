@@ -175,6 +175,13 @@ mod tests {
                     .find_rule("release/1")
                     .is_some()
             );
+            // Should have universal wildcard rule
+            assert!(
+                args.branch_config
+                    .branch_rules
+                    .find_rule("any-branch")
+                    .is_some()
+            );
         }
 
         #[test]

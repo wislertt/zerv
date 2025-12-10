@@ -174,6 +174,12 @@ impl BranchRules {
                 pre_release_num: None, // Extract from branch name
                 post_mode: PostMode::Tag,
             },
+            BranchRule {
+                pattern: "*".to_string(),
+                pre_release_label: PreReleaseLabel::Alpha,
+                pre_release_num: None, // Extract from branch name
+                post_mode: PostMode::Commit,
+            },
         ];
         Self::new(rules).expect("Default branch rules should be valid")
     }
@@ -476,8 +482,8 @@ mod tests {
     fn test_branch_rules_default() {
         let rules = BranchRules::default_rules();
 
-        // Should have exactly 2 default rules
-        assert_eq!(rules.rules.len(), 2);
+        // Should have exactly 3 default rules
+        assert_eq!(rules.rules.len(), 3);
 
         // Check develop rule
         let develop_rule = rules.find_rule("develop").unwrap();
@@ -490,6 +496,12 @@ mod tests {
         assert_eq!(release_rule.pre_release_label, PreReleaseLabel::Rc);
         assert_eq!(release_rule.pre_release_num, None);
         assert_eq!(release_rule.post_mode, PostMode::Tag);
+
+        // Check universal wildcard rule
+        let universal_rule = rules.find_rule("any-branch").unwrap();
+        assert_eq!(universal_rule.pre_release_label, PreReleaseLabel::Alpha);
+        assert_eq!(universal_rule.pre_release_num, None);
+        assert_eq!(universal_rule.post_mode, PostMode::Commit);
     }
 
     #[test]
@@ -571,7 +583,7 @@ mod tests {
         let rules = BranchRules::default_rules();
 
         // Should create successfully (panic if invalid)
-        assert_eq!(rules.rules.len(), 2);
+        assert_eq!(rules.rules.len(), 3);
 
         // Default rules should be valid
         for rule in &rules.rules {
@@ -589,10 +601,10 @@ mod tests {
         assert_eq!(develop_args.pre_release_num, Some(1));
         assert_eq!(develop_args.post_mode, PostMode::Commit);
 
-        // Unmapped branch should use defaults
+        // Unmapped branch should now use universal wildcard rule
         let feature_args = rules.resolve_for_branch(Some("feature/auth"));
         assert_eq!(feature_args.pre_release_label, PreReleaseLabel::Alpha);
-        assert_eq!(feature_args.pre_release_num, None); // FlowArgs will handle generation
+        assert_eq!(feature_args.pre_release_num, None); // Will extract from branch name
         assert_eq!(feature_args.post_mode, PostMode::Commit);
 
         // None branch name should use defaults
@@ -750,7 +762,9 @@ mod tests {
         let develop_rule = r#"(pattern:"develop",pre_release_label:beta,pre_release_num:Some(1),post_mode:commit)"#;
         let release_rule =
             r#"(pattern:"release/*",pre_release_label:rc,pre_release_num:None,post_mode:tag)"#;
-        let expected = format!("[{},{}]", develop_rule, release_rule);
+        let universal_rule =
+            r#"(pattern:"*",pre_release_label:alpha,pre_release_num:None,post_mode:commit)"#;
+        let expected = format!("[{},{},{}]", develop_rule, release_rule, universal_rule);
 
         assert_eq!(display_output, expected);
     }
