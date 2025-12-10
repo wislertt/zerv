@@ -153,21 +153,13 @@ Standard Schema Family (SemVer):
   standard-base-prerelease-post-context - 1.1.0-alpha.1.post.2+main.2.a1b2c3d
   standard-base-prerelease-post-dev-context - 1.1.0-alpha.1.post.2.dev.1729924622+main.2.a1b2c3d
   standard-context                - Smart auto-detection with build context
-
-CalVer Schema Family:
-  calver                          - Smart auto-detection based on repository state (clean/dirty/distance)
-  calver-base                     - 2024.11.03
-  calver-base-prerelease          - 2024.11.03-alpha.1
-  calver-base-prerelease-post     - 2024.11.03-alpha.1.post.2
-  calver-base-prerelease-post-dev - 2024.11.03-alpha.1.post.2.dev.1729924622
-  calver-base-context             - 2024.11.03+main.2.a1b2c3d
-  calver-base-prerelease-context  - 2024.11.03-alpha.1+main.2.a1b2c3d
-  calver-base-prerelease-post-context - 2024.11.03-alpha.1.post.2+main.2.a1b2c3d
-  calver-base-prerelease-post-dev-context - 2024.11.03-alpha.1.post.2.dev.1729924622+main.2.a1b2c3d
-  calver-context                  - Smart auto-detection with build context
 "
     )]
     pub schema: Option<String>,
+
+    /// Custom RON schema definition
+    #[arg(long, help = "Custom schema in RON format")]
+    pub schema_ron: Option<String>,
 }
 
 impl Default for FlowArgs {
@@ -179,6 +171,7 @@ impl Default for FlowArgs {
             overrides: OverridesConfig::default(),
             hash_branch_len: 5,
             schema: None,
+            schema_ron: None,
         }
     }
 }
@@ -213,6 +206,7 @@ mod tests {
             assert!(args.branch_config.pre_release_num.is_none());
             assert_eq!(args.branch_config.post_mode, None);
             assert!(args.schema.is_none()); // Default is None (will use standard schema)
+            assert!(args.schema_ron.is_none()); // Default is None
             assert!(args.overrides.common.bumped_branch.is_none()); // Default is None (use detected branch)
         }
 
@@ -245,6 +239,19 @@ mod tests {
             assert_eq!(args.input.source, "git");
             assert_eq!(args.output.output_format, "zerv");
             assert_eq!(args.output.output_prefix, Some("v".to_string()));
+            assert!(args.validate(&mock_zerv()).is_ok());
+        }
+
+        #[test]
+        fn test_flow_args_with_schema_ron() {
+            let ron_schema = "core: [{var: \"major\"}]";
+            let mut args = FlowArgs {
+                schema: None,
+                schema_ron: Some(ron_schema.to_string()),
+                ..FlowArgs::default()
+            };
+            assert!(args.schema.is_none());
+            assert_eq!(args.schema_ron, Some(ron_schema.to_string()));
             assert!(args.validate(&mock_zerv()).is_ok());
         }
     }

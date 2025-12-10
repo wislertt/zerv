@@ -44,12 +44,9 @@ CalVer Schema Family:
 }
 
 impl MainConfig {
-    /// Create MainConfig from schema name
-    pub fn from_schema(schema: Option<String>) -> Self {
-        Self {
-            schema,
-            schema_ron: None,
-        }
+    /// Create MainConfig from schema name and schema_ron
+    pub fn from_schema_and_ron(schema: Option<String>, schema_ron: Option<String>) -> Self {
+        Self { schema, schema_ron }
     }
 }
 
@@ -65,17 +62,36 @@ mod tests {
     }
 
     #[test]
-    fn test_main_config_from_schema() {
-        let config = MainConfig::from_schema(Some("standard".to_string()));
+    fn test_main_config_from_schema_and_ron() {
+        let config = MainConfig::from_schema_and_ron(Some("standard".to_string()), None);
         assert_eq!(config.schema, Some("standard".to_string()));
         assert!(config.schema_ron.is_none());
     }
 
     #[test]
-    fn test_main_config_from_schema_none() {
-        let config = MainConfig::from_schema(None);
+    fn test_main_config_from_schema_and_ron_none() {
+        let config = MainConfig::from_schema_and_ron(None, None);
         assert!(config.schema.is_none());
         assert!(config.schema_ron.is_none());
+    }
+
+    #[test]
+    fn test_main_config_from_schema_and_ron_with_ron() {
+        let ron_schema = "core: [{var: \"major\"}]";
+        let config = MainConfig::from_schema_and_ron(None, Some(ron_schema.to_string()));
+        assert!(config.schema.is_none());
+        assert_eq!(config.schema_ron, Some(ron_schema.to_string()));
+    }
+
+    #[test]
+    fn test_main_config_from_schema_and_ron_both() {
+        let ron_schema = "core: [{var: \"major\"}]";
+        let config = MainConfig::from_schema_and_ron(
+            Some("calver".to_string()),
+            Some(ron_schema.to_string()),
+        );
+        assert_eq!(config.schema, Some("calver".to_string()));
+        assert_eq!(config.schema_ron, Some(ron_schema.to_string()));
     }
 
     #[test]
