@@ -110,49 +110,27 @@ impl BranchRule {
 
     /// Extract number from branch pattern (e.g., "release/1" -> "1" when pattern is "release/*")
     fn extract_branch_number(&self, branch_name: &str) -> Option<u32> {
-        // Special case: pattern "*" (universal wildcard)
         if self.pattern == "*" {
-            // Split the entire branch name and look for the first numeric segment
-            for segment in branch_name.split('/') {
-                // Skip empty segments (e.g., leading slash)
-                if segment.is_empty() {
-                    continue;
-                }
-
-                // Check if the segment is purely numeric
-                if segment.chars().all(|c| c.is_numeric()) && !segment.is_empty() {
-                    return segment.parse().ok();
-                }
-            }
-            return None;
+            return self.find_first_numeric_segment(branch_name);
         }
 
-        // Handle regular wildcard patterns (ending with /*)
         if !self.pattern.ends_with("/*") {
             return None;
         }
 
-        let prefix = &self.pattern[..self.pattern.len() - 2]; // Remove "/*"
+        let prefix = &self.pattern[..self.pattern.len() - 2];
         if !branch_name.starts_with(prefix) || branch_name.len() == prefix.len() {
             return None;
         }
 
         let remainder = &branch_name[prefix.len()..];
+        self.find_first_numeric_segment(remainder)
+    }
 
-        // Split the remainder by '/' and iterate through path segments
-        for segment in remainder.split('/') {
-            // Skip empty segments (e.g., leading slash)
-            if segment.is_empty() {
-                continue;
-            }
-
-            // Check if the segment is purely numeric
-            if segment.chars().all(|c| c.is_numeric()) && !segment.is_empty() {
-                return segment.parse().ok();
-            }
-        }
-
-        None
+    fn find_first_numeric_segment(&self, path: &str) -> Option<u32> {
+        path.split('/')
+            .find(|segment| !segment.is_empty() && segment.chars().all(|c| c.is_ascii_digit()))
+            .and_then(|segment| segment.parse().ok())
     }
 }
 
