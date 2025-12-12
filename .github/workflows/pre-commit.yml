@@ -1,8 +1,7 @@
-name: ci
+name: pre-commit
 
 on:
-    pull_request:
-        types: [opened, synchronize, reopened]
+    workflow_call:
 
 jobs:
     pre-commit:

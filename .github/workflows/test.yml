@@ -1,11 +1,12 @@
-name: ci
+name: test
 
 on:
-    push:
-        branches:
-            - main
-    pull_request:
-        types: [opened, synchronize, reopened]
+    workflow_call:
+        secrets:
+            SONAR_TOKEN:
+                required: true
+            CODECOV_TOKEN:
+                required: true
 
 jobs:
     test:
