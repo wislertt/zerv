@@ -1,0 +1,94 @@
+name: unlock
+
+on:
+    workflow_call:
+        inputs:
+            key:
+                description: "Key to unlock (e.g., dev, staging, prod)"
+                required: true
+                type: string
+            key_owner:
+                description: "Owner to validate against when unlocking (optional, unlocks for any if not provided)"
+                required: false
+                type: string
+            fail_if_owner_mismatch:
+                description: "Whether to fail the workflow if owner doesn't match (default: true)"
+                required: false
+                type: boolean
+                default: true
+            job_name:
+                description: "Custom name for the unlock job"
+                required: false
+                type: string
+
+permissions:
+    contents: write
+
+jobs:
+    unlock:
+        name: ${{ inputs.job_name || 'unlock' }}
+        runs-on: ubuntu-latest
+        steps:
+            - uses: github/lock@v3.0.1
+              id: check-lock
+              with:
+                  mode: "check"
+                  environment: ${{ inputs.key }}
+
+            - name: Check ownership before unlock
+              id: check-unlock
+              shell: bash
+              run: |
+                  KEY="${{ inputs.key }}"
+                  LOCK_REASON="${{ steps.check-lock.outputs.reason }}"
+                  LOCKED="${{ steps.check-lock.outputs.locked }}"
+                  UNLOCK_OWNER="${{ inputs.key_owner }}"
+                  echo "Key: $KEY"
+                  echo "Locked: $LOCKED"
+                  echo "Lock reason: $LOCK_REASON"
+                  echo "Unlock owner provided: $UNLOCK_OWNER"
+                  if [ "$LOCKED" != "true" ]; then
+                      echo "✓ Key is not locked"
+                      echo "should_unlock=true" >> $GITHUB_OUTPUT
+                  elif [ -z "$UNLOCK_OWNER" ]; then
+                      echo "✓ No owner validation required, unlocking"
+                      echo "should_unlock=true" >> $GITHUB_OUTPUT
+                  else
+                      echo "Lock exists, validating owner..."
+                      LOCK_OWNER=$(echo "$LOCK_REASON" | grep -o 'owner:[^,]*' | cut -d: -f2 || true)
+                      echo "Lock owner: $LOCK_OWNER"
+                      echo "Requested unlock by: $UNLOCK_OWNER"
+                      if [ "$LOCK_OWNER" = "$UNLOCK_OWNER" ]; then
+                          echo "✓ Owner matches, unlocking"
+                          echo "should_unlock=true" >> $GITHUB_OUTPUT
+                      else
+                          echo "✗ Owner mismatch, cannot unlock"
+                          echo "should_unlock=false" >> $GITHUB_OUTPUT
+
+                          if [ "${{ inputs.fail_if_owner_mismatch }}" = "true" ]; then
+                              echo "::error::Cannot unlock key '$KEY' - owned by $LOCK_OWNER, unlock requested by $UNLOCK_OWNER"
+                              exit 1
+                          else
+                              echo "::warning::Cannot unlock key '$KEY' - owned by $LOCK_OWNER, unlock requested by $UNLOCK_OWNER"
+                          fi
+                      fi
+                  fi
+
+            - uses: github/lock@v3.0.1
+              id: unlock
+              with:
+                  mode: "unlock"
+                  environment: ${{ inputs.key }}
+              if: steps.check-unlock.outputs.should_unlock == 'true'
+
+            - name: Final unlock status
+              if: always()
+              run: |
+                  echo "=== Unlock Result ==="
+                  echo "Key: ${{ inputs.key }}"
+                  echo "Status: ${{ steps.unlock.outcome }}"
+                  if [ "${{ steps.check-unlock.outputs.should_unlock }}" = "true" ]; then
+                      echo "Unlock: successful"
+                  else
+                      echo "Unlock: failed"
+                  fi
