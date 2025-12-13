@@ -55,8 +55,8 @@ jobs:
     release-bin:
         name: release-bin-github-${{ matrix.name }}
         runs-on: ${{ matrix.os }}
-        needs: versioning
-        if: needs.versioning.outputs.new_release_published == 'true'
+        needs: semantic-release
+        if: needs.semantic-release.outputs.published == 'true'
         strategy:
             fail-fast: false
             matrix:
@@ -108,14 +108,15 @@ jobs:
                   echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
             - name: Update Cargo.toml version
-              run: |
-                  echo "Updating version to ${{ needs.versioning.outputs.new_release_version }}"
-                  if [[ "$RUNNER_OS" == "macOS" ]]; then
-                      sed -i '' "s/^version = \".*\"/version = \"${{ needs.versioning.outputs.new_release_version }}\"/" Cargo.toml
-                  else
-                      sed -i "s/^version = \".*\"/version = \"${{ needs.versioning.outputs.new_release_version }}\"/" Cargo.toml
-                  fi
               shell: bash
+              run: |
+                  VERSION="${{ needs.semantic-release.outputs.version }}"
+                  echo "Updating version to $VERSION"
+                  if [[ "$RUNNER_OS" == "macOS" ]]; then
+                      sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+                  else
+                      sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+                  fi
 
             - name: Build binary
               run: cargo build --release --target ${{ matrix.target }}
@@ -126,14 +127,14 @@ jobs:
                   repo_token: ${{ secrets.GITHUB_TOKEN }}
                   file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
                   asset_name: ${{ matrix.asset_name }}
-                  tag: v${{ needs.versioning.outputs.new_release_version }}
+                  tag: v${{ needs.semantic-release.outputs.version }}
                   overwrite: true
 
     release-crates:
         name: release-crates
         runs-on: ubuntu-latest
-        needs: [versioning, release-bin]
-        if: needs.versioning.outputs.new_release_published == 'true'
+        needs: [semantic-release, release-bin]
+        if: needs.semantic-release.outputs.published == 'true'
         steps:
             - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
@@ -143,8 +144,9 @@ jobs:
 
             - name: Update Cargo.toml version
               run: |
-                  echo "Updating version to ${{ needs.versioning.outputs.new_release_version }}"
-                  sed -i "s/^version = \".*\"/version = \"${{ needs.versioning.outputs.new_release_version }}\"/" Cargo.toml
+                  VERSION="${{ needs.semantic-release.outputs.version }}"
+                  echo "Updating version to $VERSION"
+                  sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
 
             - name: Release to crates.io
               run: |
