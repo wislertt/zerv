@@ -11,61 +11,21 @@ pub struct GitUtils;
 
 impl GitUtils {
     /// Filter valid tags and return Vec<(tag_string, version_object)> with consistent format
-    // TODO: ======= FIX THIS NOW =======
     pub fn filter_only_valid_tags(
         tags: &[String],
         format: &str,
     ) -> Result<Vec<(String, VersionObject)>> {
-        let mut valid_tags = Vec::new();
-        let mut format_counts = std::collections::HashMap::new();
-
-        // First pass: collect all valid tags and count formats
-        for tag in tags {
-            if let Ok(version_obj) = VersionObject::parse_with_format(tag, format) {
-                let format_type = Self::get_format_type(&version_obj);
-                *format_counts.entry(format_type).or_insert(0) += 1;
-                valid_tags.push((tag.clone(), version_obj));
-            }
+        // Handle empty list case - return empty vector instead of error
+        if tags.is_empty() {
+            return Ok(Vec::new());
         }
 
-        if valid_tags.is_empty() {
-            return Ok(valid_tags);
+        // Use parse_with_format_batch to handle parsing and format consistency
+        match VersionObject::parse_with_format_batch(tags, format) {
+            Ok(result) => Ok(result),
+            // Convert errors to empty vector for backward compatibility
+            Err(_) => Ok(Vec::new()),
         }
-
-        // Determine target format
-        let target_format = if format_counts.len() == 1 {
-            // Only one format, use it
-            format_counts.keys().next().unwrap().clone()
-        } else {
-            // Multiple formats, find majority or use first tag's format
-            let max_count = format_counts.values().max().unwrap();
-            let majority_formats: Vec<_> = format_counts
-                .iter()
-                .filter_map(|(format, count)| {
-                    if *count == *max_count {
-                        Some(format.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-            if majority_formats.len() == 1 {
-                majority_formats[0].clone()
-            } else {
-                // Tie: use first tag's format
-                Self::get_format_type(&valid_tags[0].1)
-            }
-        };
-
-        tracing::debug!("DEBUG: Format counts: {:?}", format_counts);
-        tracing::debug!("DEBUG: Target format: {:?}", target_format);
-
-        // Second pass: filter to only target format
-        Ok(valid_tags
-            .into_iter()
-            .filter(|(_, version_obj)| Self::get_format_type(version_obj) == target_format)
-            .collect())
     }
 
     /// Find max version tag by comparing version objects
@@ -176,7 +136,7 @@ mod tests {
         ],
         Some("v1.0.0".to_string()),
     )]
-    // Auto format with mixed versions - tie goes to first tag's format (SemVer in this case)
+    // Auto format with mixed versions - PEP440 wins majority (6 vs 3)
     #[case(
         "auto",
         vec![
@@ -188,9 +148,12 @@ mod tests {
             "v2.0.0-alpha.1".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "auto").unwrap()),
-            ("v1.1.0".to_string(), VersionObject::parse_with_format("v1.1.0", "auto").unwrap()),
-            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_with_format("v2.0.0-alpha.1", "auto").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "pep440").unwrap()),
+            ("v1.1.0".to_string(), VersionObject::parse_with_format("v1.1.0", "pep440").unwrap()),
+            ("1.0.0rc1".to_string(), VersionObject::parse_with_format("1.0.0rc1", "pep440").unwrap()),
+            ("1.1.0a1".to_string(), VersionObject::parse_with_format("1.1.0a1", "pep440").unwrap()),
+            ("1.2.0b2".to_string(), VersionObject::parse_with_format("1.2.0b2", "pep440").unwrap()),
+            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_with_format("v2.0.0-alpha.1", "pep440").unwrap()),
         ],
         Some("v2.0.0-alpha.1".to_string()),
     )]
