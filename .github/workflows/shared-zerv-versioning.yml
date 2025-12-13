@@ -45,12 +45,21 @@ on:
                 type: string
                 required: false
                 description: "JSON object mapping output names to zerv output formats"
-                default: '{"semver": "semver", "pep440": "pep440"}'
+                default: >-
+                    {
+                        "semver": "semver",
+                        "pep440": "pep440"
+                    }
             output_templates:
                 type: string
                 required: false
                 description: "JSON object mapping output names to zerv output templates (without quotes)"
-                default: '{"docker_tag": "{{ semver_obj.docker }}"}'
+                default: >-
+                    {
+                        "docker_tag": "{{ semver_obj.docker }}",
+                        "v_semver_major": "v{{ major }}",
+                        "v_semver_major_minor": "v{{ major }}.{{ minor }}"
+                    }
             custom_outputs:
                 type: string
                 required: false
