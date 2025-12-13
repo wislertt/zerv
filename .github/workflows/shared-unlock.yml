@@ -29,7 +29,7 @@ jobs:
         name: ${{ inputs.job_name || 'unlock' }}
         runs-on: ubuntu-latest
         steps:
-            - uses: github/lock@v3.0.1
+            - uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: check-lock
               with:
                   mode: "check"
@@ -74,7 +74,7 @@ jobs:
                       fi
                   fi
 
-            - uses: github/lock@v3.0.1
+            - uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: unlock
               with:
                   mode: "unlock"

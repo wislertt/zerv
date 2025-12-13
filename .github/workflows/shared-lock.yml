@@ -90,7 +90,7 @@ jobs:
 
             # Check lock state
             - name: Get lock state
-              uses: github/lock@v3.0.1
+              uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: get-lock-state
               with:
                   mode: "check"
@@ -118,7 +118,7 @@ jobs:
               if: steps.check-lock.outputs.should_proceed == 'true'
 
             - name: Lock
-              uses: github/lock@v3.0.1
+              uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: lock
               with:
                   mode: "lock"
@@ -134,7 +134,7 @@ jobs:
 
             # Recheck lock state after lock
             - name: Get lock state for recheck
-              uses: github/lock@v3.0.1
+              uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: get-lock-state-for-recheck
               with:
                   mode: "check"
