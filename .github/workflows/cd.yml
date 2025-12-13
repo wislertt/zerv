@@ -14,50 +14,27 @@ jobs:
     # ====================================================
     # Versioning and Release
     # ====================================================
-    versioning:
-        name: versioning
-        runs-on: ubuntu-latest
-        outputs:
-            new_release_version: ${{ steps.set-outputs.outputs.version }}
-            new_release_published: ${{ steps.set-outputs.outputs.published }}
-        steps:
-            - name: Checkout
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-              with:
-                  fetch-depth: 0
+    semantic-release:
+        name: semantic-release
+        uses: ./.github/workflows/shared-semantic-release.yml
+        with:
+            allowed_workflow_dispatch_branches: '["main"]'
+            fail_on_invalid_workflow_dispatch_ref: true
 
-            - name: Check existing release
-              id: check-release
-              run: |
-                  CURRENT_SHA=$(git rev-parse HEAD)
-                  EXISTING_TAG=$(git tag --points-at $CURRENT_SHA | grep '^v' | head -1)
-                  if [ -n "$EXISTING_TAG" ]; then
-                      echo "existing_tag=$EXISTING_TAG" >> $GITHUB_OUTPUT
-                      echo "existing_version=${EXISTING_TAG#v}" >> $GITHUB_OUTPUT
-                      echo "has_existing=true" >> $GITHUB_OUTPUT
-                  else
-                      echo "has_existing=false" >> $GITHUB_OUTPUT
-                  fi
+    zerv-versioning:
+        needs: semantic-release
+        if: needs.semantic-release.outputs.is_valid_semantic_release == 'true'
+        uses: ./.github/workflows/shared-zerv-versioning.yml
 
-            - id: release
-              name: Release
-              if: steps.check-release.outputs.has_existing == 'false'
-              uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Set outputs
-              id: set-outputs
-              run: |
-                  if [ "${{ steps.check-release.outputs.has_existing }}" == "true" ]; then
-                      echo "version=${{ steps.check-release.outputs.existing_version }}" >> $GITHUB_OUTPUT
-                      echo "published=true" >> $GITHUB_OUTPUT
-                      echo "Using existing release: ${{ steps.check-release.outputs.existing_version }}"
-                  else
-                      echo "version=${{ steps.release.outputs.new_release_version }}" >> $GITHUB_OUTPUT
-                      echo "published=${{ steps.release.outputs.new_release_published }}" >> $GITHUB_OUTPUT
-                      echo "New release: ${{ steps.release.outputs.new_release_version }}"
-                  fi
+    create-version-prefix-tags:
+        needs: zerv-versioning
+        uses: ./.github/workflows/shared-create-tags.yml
+        with:
+            tags: >-
+                [
+                  "${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver_major }}",
+                  "${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver_major_minor }}"
+                ]
 
     # ====================================================
     # Test and Lint
