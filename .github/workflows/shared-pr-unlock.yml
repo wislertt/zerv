@@ -1,0 +1,84 @@
+name: shared-pr-unlock
+
+on:
+    workflow_call:
+        inputs:
+            environments:
+                type: string
+                required: true
+                description: "JSON array of environment codes"
+                # Example input: '["d", "n", "p"]'
+            deploy_label_prefix:
+                type: string
+                required: true
+                description: "Prefix for deploy labels"
+                # Example input: "deploy-"
+
+permissions:
+    contents: write
+
+jobs:
+    unlock-all-on-close:
+        if: github.event.action == 'closed'
+        strategy:
+            fail-fast: false
+            matrix:
+                env: ${{ fromJson(inputs.environments) }}
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: ${{ matrix.env }}
+            key_owner: refs/pull/${{ github.event.number }}/merge
+            fail_if_owner_mismatch: false
+            job_name: unlock-${{ matrix.env }}
+
+    check-deploy-labels:
+        if: github.event.action == 'unlabeled'
+        uses: ./.github/workflows/shared-check-pr-labels-with-prefix.yml
+        with:
+            prefix: "${{ inputs.deploy_label_prefix }}"
+
+    get-missing-deploy-labels:
+        needs: check-deploy-labels
+        runs-on: ubuntu-latest
+        outputs:
+            missing_envs: ${{ steps.check-missing.outputs.missing_envs }}
+        steps:
+            - name: Check which environments to unlock
+              id: check-missing
+              run: |
+                  LABELS='${{ needs.check-deploy-labels.outputs.labels }}'
+                  LABEL_PREFIX="${{ inputs.deploy_label_prefix }}"
+                  MISSING_ENVS=()
+
+                  # Use jq to parse the environments array and iterate
+                  for ENV in $(echo '${{ inputs.environments }}' | jq -r '.[]'); do
+                      if ! echo "$LABELS" | jq -e "has(\"${LABEL_PREFIX}${ENV}\")" > /dev/null 2>&1; then
+                          MISSING_ENVS+=("$ENV")
+                          echo "Missing ${LABEL_PREFIX}${ENV} label"
+                      fi
+                  done
+
+                  # Convert array to JSON array
+                  ENV_ARRAY=$(printf '%s\n' "${MISSING_ENVS[@]}" | jq -R . | jq -s .)
+                  echo "Environments to unlock: $ENV_ARRAY"
+
+                  # Output as GitHub Actions variable
+                  {
+                      echo "missing_envs<<EOF"
+                      echo "$ENV_ARRAY"
+                      echo "EOF"
+                  } >> $GITHUB_OUTPUT
+
+    unlock-on-unlabel:
+        needs: get-missing-deploy-labels
+        if: needs.get-missing-deploy-labels.outputs.missing_envs != '[]'
+        strategy:
+            fail-fast: false
+            matrix:
+                env: ${{ fromJson(needs.get-missing-deploy-labels.outputs.missing_envs) }}
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: ${{ matrix.env }}
+            key_owner: ${{ github.ref }}
+            fail_if_owner_mismatch: false
+            job_name: unlock-${{ matrix.env }}

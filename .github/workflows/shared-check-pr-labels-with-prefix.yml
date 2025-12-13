@@ -1,0 +1,52 @@
+name: check-pr-labels-with-prefix
+
+on:
+    workflow_call:
+        inputs:
+            labels:
+                description: "JSON string of labels from the pull request"
+                required: false
+                type: string
+                default: ${{ toJSON(github.event.pull_request.labels) }}
+            prefix:
+                description: 'Label prefix to filter (e.g., "deploy-", "test-", "run-")'
+                required: false
+                default: ""
+                type: string
+        outputs:
+            labels:
+                description: "JSON object with labels matching the prefix"
+                value: ${{ jobs.check-pr-labels-with-prefix.outputs.labels }}
+
+jobs:
+    check-pr-labels-with-prefix:
+        runs-on: ubuntu-latest
+        # Example outputs:
+        # - With prefix "deploy-": {"deploy-d": {full label object}, "deploy-n1": {full label object}}
+        outputs:
+            labels: ${{ steps.filter.outputs.filtered-labels }}
+        steps:
+            - name: Filter labels by prefix
+              id: filter
+              run: |
+                  PREFIX="${{ inputs.prefix }}"
+
+                  # Use jq to filter labels by prefix (empty prefix returns all labels)
+                  JSON_RESULT=$(echo '${{ inputs.labels }}' | \
+                    jq --arg prefix "$PREFIX" \
+                    'map(select(.name | startswith($prefix))) |
+                     map({(.name): .}) |
+                     reduce .[] as $item ({}; . + $item)')
+
+                  # Ensure JSON_RESULT is never empty - default to {} if empty
+                  if [ -z "$JSON_RESULT" ] || [ "$JSON_RESULT" = "null" ]; then
+                    JSON_RESULT="{}"
+                  fi
+
+                  # Use <<< to pass the JSON as a single line to avoid file command issues
+                  {
+                    echo "filtered-labels<<EOF"
+                    echo "$JSON_RESULT"
+                    echo "EOF"
+                  } >> $GITHUB_OUTPUT
+                  echo "Labels result: $JSON_RESULT"

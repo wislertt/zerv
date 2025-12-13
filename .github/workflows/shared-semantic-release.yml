@@ -1,0 +1,164 @@
+name: semantic-release
+
+on:
+    workflow_call:
+        inputs:
+            allowed_workflow_dispatch_branches:
+                description: "Comma-separated list of branches allowed for workflow dispatch"
+                required: false
+                default: '["main"]'
+                type: string
+            fail_on_invalid_workflow_dispatch_ref:
+                description: "Whether to fail the workflow when the ref is invalid (only applies to workflow_dispatch)"
+                required: false
+                default: false
+                type: boolean
+
+        outputs:
+            version:
+                description: "The determined version"
+                value: ${{ jobs.semantic-release.outputs.new_release_version }}
+            published:
+                description: "Whether a new release was published"
+                value: ${{ jobs.semantic-release.outputs.new_release_published }}
+            is_valid_semantic_release:
+                description: "Whether semantic-release job was executed successfully (regardless of whether it published a release)"
+                value: ${{ jobs.semantic-release.result == 'success' }}
+
+permissions:
+    contents: write
+    issues: write
+    pull-requests: write
+
+jobs:
+    validate-ref-for-workflow-dispatch:
+        name: validate-ref-for-workflow-dispatch
+        runs-on: ubuntu-latest
+        if: github.event_name == 'workflow_dispatch'
+        outputs:
+            is_valid: ${{ steps.check-ref.outputs.is_valid }}
+            tag_version: ${{ steps.check-ref.outputs.tag_version }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              with:
+                  fetch-depth: 0
+
+            - name: Validate ref (tag or branch)
+              id: check-ref
+              run: |
+                  set -euo pipefail
+
+                  # Extract ref name without prefix
+                  REF="${{ github.ref }}"
+                  REF_TYPE="${REF%%/*}"  # Get 'refs' part
+                  REF_SOURCE="${REF#*/}"  # Remove 'refs/'
+                  REF_KIND="${REF_SOURCE%%/*}"  # Get 'tags' or 'heads'
+                  REF_NAME="${REF_SOURCE#*/}"  # Get actual name
+
+                  echo "Ref type: $REF_KIND"
+                  echo "Ref name: $REF_NAME"
+
+                  # Initialize outputs
+                  IS_VALID=false
+                  TAG_VERSION=""
+
+                  if [[ "$REF_KIND" == "tags" ]]; then
+                      echo "Validating tag: $REF_NAME"
+
+                      # Check semver format: v1.2.3
+                      if [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                          echo "✓ Valid semver tag"
+                          IS_VALID=true
+                          TAG_VERSION="${REF_NAME#v}"  # Remove 'v' prefix
+                      else
+                          echo "✗ Invalid tag format. Expected: v1.2.3"
+                      fi
+
+                  elif [[ "$REF_KIND" == "heads" ]]; then
+                      echo "Checking branch: $REF_NAME"
+
+                      # Parse allowed branches from JSON
+                      mapfile -t ALLOWED_BRANCHES < <(echo '${{ inputs.allowed_workflow_dispatch_branches }}' | jq -r '.[]')
+
+                      # Check if branch matches any allowed pattern
+                      for pattern in "${ALLOWED_BRANCHES[@]}"; do
+                          if [[ "$REF_NAME" == $pattern ]]; then
+                              echo "✓ Branch matches pattern: $pattern"
+                              IS_VALID=true
+                              break
+                          fi
+                      done
+
+                      if [[ "$IS_VALID" != "true" ]]; then
+                          echo "✗ Branch not in allowed list"
+                          echo "Allowed patterns: $(IFS=', '; echo "${ALLOWED_BRANCHES[*]}")"
+                      fi
+                  else
+                      echo "✗ Unknown ref type: $REF_KIND"
+                  fi
+
+                  # Set outputs
+                  echo "is_valid=$IS_VALID" >> $GITHUB_OUTPUT
+                  echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+
+                  # Fail if requested and ref is invalid
+                  if [[ "${{ inputs.fail_on_invalid_workflow_dispatch_ref }}" == "true" && "$IS_VALID" != "true" ]]; then
+                      echo "::error::Invalid ref detected and fail_on_invalid_workflow_dispatch_ref is enabled"
+                      exit 1
+                  fi
+
+    semantic-release:
+        name: semantic-release
+        needs: validate-ref-for-workflow-dispatch
+        if: always() && (github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && needs.validate-ref-for-workflow-dispatch.outputs.is_valid == 'true'))
+        runs-on: ubuntu-latest
+        outputs:
+            new_release_version: ${{ steps.determine-version.outputs.version }}
+            new_release_published: ${{ steps.determine-version.outputs.published }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              with:
+                  fetch-depth: 0
+
+            - id: release
+              name: Release
+              uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Determine version from release or tag
+              id: determine-version
+              run: |
+                  # Set the published status
+                  PUBLISHED="${{ steps.release.outputs.new_release_published }}"
+                  echo "published=$PUBLISHED" >> $GITHUB_OUTPUT
+
+                  # Check if new release was published
+                  if [ "$PUBLISHED" == "false" ]; then
+                      # Get the current commit SHA
+                      CURRENT_SHA=$(git rev-parse HEAD)
+                      # Find the tag that points to this commit and starts with 'v'
+                      EXISTING_TAG=$(git tag --points-at $CURRENT_SHA | grep '^v' | head -1)
+                      if [ -n "$EXISTING_TAG" ]; then
+                          # Use the existing tag version (remove 'v' prefix)
+                          VERSION=${EXISTING_TAG#v}
+                          echo "version=$VERSION" >> $GITHUB_OUTPUT
+                          echo "Using existing tag: $EXISTING_TAG"
+                      else
+                          # No tag found, this is an error case
+                          echo "::error::No existing tag found on commit and no new release published"
+                          echo "::error::This commit must have a tag starting with 'v'"
+                          exit 1
+                      fi
+                  else
+                      # Use the new release version
+                      echo "version=${{ steps.release.outputs.new_release_version }}" >> $GITHUB_OUTPUT
+                      echo "New release: ${{ steps.release.outputs.new_release_version }}"
+                  fi
+
+            - name: Display outputs
+              run: |
+                  echo "Version: ${{ steps.determine-version.outputs.version }}"
+                  echo "Published: ${{ steps.determine-version.outputs.published }}"

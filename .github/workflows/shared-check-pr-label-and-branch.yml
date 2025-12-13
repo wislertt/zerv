@@ -1,0 +1,94 @@
+name: check-pr-label-and-branch
+
+on:
+    workflow_call:
+        inputs:
+            labels:
+                required: false
+                type: string
+                description: "JSON string of labels from the pull request"
+                default: ${{ toJSON(github.event.pull_request.labels) }}
+            target_label:
+                required: true
+                type: string
+                description: "Target label to check for in the PR"
+            branch_prefix:
+                required: false
+                type: string
+                description: "Required prefix for the branch name"
+                default: ""
+        outputs:
+            is_valid:
+                value: ${{ jobs.check-pr-label-and-branch.outputs.is_valid }}
+            has_label:
+                value: ${{ jobs.check-pr-label-and-branch.outputs.has_label }}
+            is_valid_branch:
+                value: ${{ jobs.check-pr-label-and-branch.outputs.is_valid_branch }}
+
+jobs:
+    check-pr-label-and-branch:
+        name: check-pr-label-and-branch
+        runs-on: ubuntu-latest
+        outputs:
+            is_valid: ${{ steps.check.outputs.is_valid }}
+            has_label: ${{ steps.check.outputs.has_label }}
+            is_valid_branch: ${{ steps.check.outputs.is_valid_branch }}
+        steps:
+            - name: Check for label and branch prefix
+              id: check
+              run: |
+                  TARGET_LABEL="${{ inputs.target_label }}"
+                  BRANCH_PREFIX="${{ inputs.branch_prefix }}"
+                  CURRENT_BRANCH="${{ github.head_ref }}"
+
+                  echo "Checking for label: $TARGET_LABEL"
+                  echo "Required branch prefix: $BRANCH_PREFIX"
+                  echo "Current branch: $CURRENT_BRANCH"
+                  echo "Input labels: ${{ inputs.labels }}"
+
+                  # Check if branch has the required prefix
+                  if [ -n "$BRANCH_PREFIX" ]; then
+                    if [[ "$CURRENT_BRANCH" == "$BRANCH_PREFIX"* ]]; then
+                      echo "✅ Branch prefix matches"
+                      HAS_BRANCH_PREFIX=true
+                    else
+                      echo "❌ Branch prefix does not match"
+                      HAS_BRANCH_PREFIX=false
+                    fi
+                  else
+                    echo "ℹ️ No branch prefix requirement"
+                    HAS_BRANCH_PREFIX=true
+                  fi
+
+                  # Use jq to check if the label exists in the labels array
+                  HAS_LABEL=$(echo '${{ inputs.labels }}' | \
+                    jq --arg target "$TARGET_LABEL" \
+                    '[.[] | select(.name == $target)] | length > 0')
+
+                  echo "Has label: $HAS_LABEL"
+
+                  # Output individual condition results
+                  echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
+                  echo "is_valid_branch=$HAS_BRANCH_PREFIX" >> $GITHUB_OUTPUT
+
+                  # Both conditions must be true
+                  if [ "$HAS_LABEL" = "true" ] && [ "$HAS_BRANCH_PREFIX" = "true" ]; then
+                    echo "is_valid=true" >> $GITHUB_OUTPUT
+                    echo "✅ Both label '$TARGET_LABEL' and branch prefix '$BRANCH_PREFIX' found"
+                  else
+                    echo "is_valid=false" >> $GITHUB_OUTPUT
+                    if [ "$HAS_LABEL" != "true" ]; then
+                      echo "❌ Label '$TARGET_LABEL' not found"
+                    else
+                      echo "✅ Label '$TARGET_LABEL' found"
+                    fi
+                    if [ "$HAS_BRANCH_PREFIX" != "true" ]; then
+                      echo "❌ Branch prefix '$BRANCH_PREFIX' not found"
+                    else
+                      echo "✅ Branch prefix '$BRANCH_PREFIX' found"
+                    fi
+                  fi
+
+            - name: Display Validation Result
+              run: |
+                  echo "Validation result: ${{ steps.check.outputs.is_valid }}"

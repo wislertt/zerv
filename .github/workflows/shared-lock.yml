@@ -1,0 +1,163 @@
+name: lock
+
+on:
+    workflow_call:
+        inputs:
+            key:
+                description: "Key to lock (e.g., dev, staging, prod)"
+                required: true
+                type: string
+            key_owner:
+                description: "Key owner identifier (e.g., PR number, SHA, run ID)"
+                required: true
+                type: string
+            job_name:
+                description: "Custom name for the lock job"
+                required: false
+                type: string
+
+permissions:
+    contents: write
+
+jobs:
+    lock:
+        name: ${{ inputs.job_name || 'lock' }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Define lock check function
+              shell: bash
+              run: |
+                  # Define reusable function for lock ownership checking
+                  cat << 'EOF' > lock_check_function.sh
+                  check_lock() {
+                      # Parse named parameters
+                      while [[ "$#" -gt 0 ]]; do
+                          case $1 in
+                              --key) key="$2"; shift ;;
+                              --key-owner) key_owner="$2"; shift ;;
+                              --lock-reason) lock_reason="$2"; shift ;;
+                              --locked) locked="$2"; shift ;;
+                              --require-owned) require_owned="$2"; shift ;;
+                              *) echo "Unknown parameter passed: $1"; return 1 ;;
+                          esac
+                          shift
+                      done
+
+                      echo "Key: $key"
+                      echo "Key owner: $key_owner"
+                      echo "Lock reason: $lock_reason"
+                      echo "Locked: $locked"
+
+                      local should_proceed=false
+                      local is_owned_by_us=false
+
+                      if [ "$locked" = "true" ]; then
+                          echo "Lock exists, checking owner..."
+                          local lock_owner=$(echo "$lock_reason" | grep -o 'owner:[^,]*' | cut -d: -f2 || true)
+                          echo "Lock owner: $lock_owner"
+                          echo "Current owner: $key_owner"
+                          if [ "$lock_owner" = "$key_owner" ]; then
+                              echo "✓ Lock is held by this owner"
+                              should_proceed=true
+                              is_owned_by_us=true
+                          elif [ -z "$lock_owner" ]; then
+                              echo "✓ Lock is available (no owner)"
+                              should_proceed=true
+                              is_owned_by_us=false
+                          else
+                              echo "✗ Lock is held by $lock_owner"
+                              should_proceed=false
+                              is_owned_by_us=false
+                              echo "::error::Key '$key' is locked by $lock_owner"
+                              return 1
+                          fi
+                      else
+                          echo "✓ Key is not locked"
+                          should_proceed=true
+                          is_owned_by_us=false
+                      fi
+
+                      echo "should_proceed=$should_proceed" >> $GITHUB_OUTPUT
+                      echo "is_owned_by_us=$is_owned_by_us" >> $GITHUB_OUTPUT
+
+                      # Validate ownership requirement if specified
+                      if [ "$require_owned" = "true" ] && [ "$is_owned_by_us" != "true" ]; then
+                          echo "::error::Lock ownership is required but not achieved"
+                          return 1
+                      fi
+                  }
+                  EOF
+
+            # Check lock state
+            - name: Get lock state
+              uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
+              id: get-lock-state
+              with:
+                  mode: "check"
+                  environment: ${{ inputs.key }}
+
+            - name: Check lock state
+              id: check-lock
+              shell: bash
+              run: |
+                  source ./lock_check_function.sh
+                  check_lock \
+                      --key "${{ inputs.key }}" \
+                      --key-owner "${{ inputs.key_owner }}" \
+                      --lock-reason "${{ steps.get-lock-state.outputs.reason }}" \
+                      --locked "${{ steps.get-lock-state.outputs.locked }}"
+
+            # Lock
+            - name: Prepare lock reason
+              id: lock-reason
+              run: |
+                  # Simple reason with owner information
+                  REASON="owner:${{ inputs.key_owner }}"
+                  echo "Lock reason: $REASON"
+                  echo "reason=$REASON" >> $GITHUB_OUTPUT
+              if: steps.check-lock.outputs.should_proceed == 'true'
+
+            - name: Lock
+              uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
+              id: lock
+              with:
+                  mode: "lock"
+                  environment: ${{ inputs.key }}
+                  reason: ${{ steps.lock-reason.outputs.reason }}
+              if: steps.check-lock.outputs.should_proceed == 'true'
+
+            - name: Wait for lock to propagate
+              shell: bash
+              run: |
+                  echo "Waiting for lock to propagate..."
+                  sleep 1
+
+            # Recheck lock state after lock
+            - name: Get lock state for recheck
+              uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
+              id: get-lock-state-for-recheck
+              with:
+                  mode: "check"
+                  environment: ${{ inputs.key }}
+
+            - name: Recheck lock state
+              id: recheck-lock
+              shell: bash
+              if: steps.lock.outcome == 'success'
+              run: |
+                  source ./lock_check_function.sh
+                  check_lock \
+                      --key "${{ inputs.key }}" \
+                      --key-owner "${{ inputs.key_owner }}" \
+                      --lock-reason "${{ steps.get-lock-state-for-recheck.outputs.reason }}" \
+                      --locked "${{ steps.get-lock-state-for-recheck.outputs.locked }}" \
+                      --require-owned true
+
+            - name: Final lock status
+              if: always()
+              run: |
+                  echo "=== Lock Result ==="
+                  echo "Key: ${{ inputs.key }}"
+                  echo "Owner: ${{ inputs.key_owner }}"
+                  echo "Status: ${{ steps.lock.outcome }}"
+                  echo "Verified ownership: ${{ steps.recheck-lock.outputs.is_owned_by_us || 'N/A' }}"
