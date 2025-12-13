@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use crate::error::ZervError;
-use crate::utils::constants::formats;
 use crate::version::{
     PEP440,
     SemVer,
@@ -74,60 +73,43 @@ impl VersionObject {
             ));
         }
 
-        // Count successful parses for each format
-        let mut semver_count = 0;
-        let mut pep440_count = 0;
-
-        // First pass: count parses for each format
+        // Parse with SemVer
+        let mut semver_results = Vec::new();
         for version_str in version_strings {
-            if SemVer::from_str(version_str).is_ok() {
-                semver_count += 1;
-            } else if PEP440::from_str(version_str).is_ok() {
-                pep440_count += 1;
+            if let Ok(semver) = SemVer::from_str(version_str) {
+                semver_results.push((version_str.clone(), VersionObject::SemVer(semver)));
             }
         }
 
-        // If nothing can be parsed, return error
-        if semver_count == 0 && pep440_count == 0 {
+        // Parse with PEP440
+        let mut pep440_results = Vec::new();
+        for version_str in version_strings {
+            if let Ok(pep440) = PEP440::from_str(version_str) {
+                pep440_results.push((version_str.clone(), VersionObject::PEP440(pep440)));
+            }
+        }
+
+        // Create list of results
+        let all_results = vec![semver_results, pep440_results];
+
+        // Find max length
+        let max_len = all_results.iter().map(|r| r.len()).max().unwrap_or(0);
+
+        // If no format could parse any strings, return error
+        if max_len == 0 {
             return Err(ZervError::InvalidVersion(
-                "No version strings could be parsed as SemVer or PEP440".to_string(),
+                "No version strings could be parsed as any supported format".to_string(),
             ));
         }
 
-        // Choose format based on counts (SemVer wins ties)
-        let preferred_format = if semver_count >= pep440_count {
-            formats::SEMVER
-        } else {
-            formats::PEP440
-        };
-
-        // Second pass: parse all strings using the preferred format ONLY
-        let mut results = Vec::new();
-        for version_str in version_strings {
-            let parsed = match preferred_format {
-                formats::SEMVER => {
-                    if let Ok(semver) = SemVer::from_str(version_str) {
-                        Some(VersionObject::SemVer(semver))
-                    } else {
-                        None // Skip if can't parse as SemVer
-                    }
-                }
-                formats::PEP440 => {
-                    if let Ok(pep440) = PEP440::from_str(version_str) {
-                        Some(VersionObject::PEP440(pep440))
-                    } else {
-                        None // Skip if can't parse as PEP440
-                    }
-                }
-                _ => unreachable!(), // We only use SEMVER or PEP440
-            };
-
-            if let Some(version_obj) = parsed {
-                results.push((version_str.clone(), version_obj));
+        // Return the first result with max length (SemVer wins ties since it's first)
+        for results in all_results {
+            if results.len() == max_len {
+                return Ok(results);
             }
         }
 
-        Ok(results)
+        unreachable!()
     }
 }
 
@@ -199,14 +181,14 @@ mod tests {
     }
 
     #[rstest]
-    #[case::semver_majority(
+    #[case::pep440_majority(
         vec!["1.0.0", "2.1.3", "3.0.0-alpha.1", "1.2.3a1", "4.5.6"],
         vec![
-            ("1.0.0", VersionObject::SemVer(SemVer::from_str("1.0.0").unwrap())),
-            ("2.1.3", VersionObject::SemVer(SemVer::from_str("2.1.3").unwrap())),
-            ("3.0.0-alpha.1", VersionObject::SemVer(SemVer::from_str("3.0.0-alpha.1").unwrap())),
-            ("4.5.6", VersionObject::SemVer(SemVer::from_str("4.5.6").unwrap())),
-            // "1.2.3a1" is filtered out because it can't be parsed as SemVer
+            ("1.0.0", VersionObject::PEP440(PEP440::from_str("1.0.0").unwrap())),
+            ("2.1.3", VersionObject::PEP440(PEP440::from_str("2.1.3").unwrap())),
+            ("3.0.0-alpha.1", VersionObject::PEP440(PEP440::from_str("3.0.0-alpha.1").unwrap())),
+            ("1.2.3a1", VersionObject::PEP440(PEP440::from_str("1.2.3a1").unwrap())),
+            ("4.5.6", VersionObject::PEP440(PEP440::from_str("4.5.6").unwrap())),
         ]
     )]
     #[case::pep440_majority(
@@ -219,11 +201,11 @@ mod tests {
             ("3.4.5a0", VersionObject::PEP440(PEP440::from_str("3.4.5a0").unwrap())),
         ]
     )]
-    #[case::tie_semver_wins(
+    #[case::pep440_majority(
         vec!["1.0.0", "1.2.3a1"],
         vec![
-            ("1.0.0", VersionObject::SemVer(SemVer::from_str("1.0.0").unwrap())),
-            // "1.2.3a1" is filtered out because SemVer wins the tie and it can't be parsed as SemVer
+            ("1.0.0", VersionObject::PEP440(PEP440::from_str("1.0.0").unwrap())),
+            ("1.2.3a1", VersionObject::PEP440(PEP440::from_str("1.2.3a1").unwrap())),
         ]
     )]
     #[case::all_semver(
