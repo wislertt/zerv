@@ -181,7 +181,17 @@ mod tests {
     }
 
     #[rstest]
-    #[case::pep440_majority(
+    #[case::semver_wins_with_prerelease(
+        vec!["1.0.0", "2.1.3-alpha.unusual-keyword", "3.0.0-beta.2.build123", "1.2.3a1", "4.5.6-rc.1.custom.build"],
+        vec![
+            ("1.0.0", VersionObject::SemVer(SemVer::from_str("1.0.0").unwrap())),
+            ("2.1.3-alpha.unusual-keyword", VersionObject::SemVer(SemVer::from_str("2.1.3-alpha.unusual-keyword").unwrap())),
+            ("3.0.0-beta.2.build123", VersionObject::SemVer(SemVer::from_str("3.0.0-beta.2.build123").unwrap())),
+            ("4.5.6-rc.1.custom.build", VersionObject::SemVer(SemVer::from_str("4.5.6-rc.1.custom.build").unwrap())),
+            // "1.2.3a1" can't be parsed as SemVer, only PEP440
+        ]
+    )]
+    #[case::pep440_majority_with_alpha_numeric(
         vec!["1.0.0", "2.1.3", "3.0.0-alpha.1", "1.2.3a1", "4.5.6"],
         vec![
             ("1.0.0", VersionObject::PEP440(PEP440::from_str("1.0.0").unwrap())),
