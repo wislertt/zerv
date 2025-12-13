@@ -130,7 +130,7 @@ jobs:
               shell: bash
               run: |
                   echo "Waiting for lock to propagate..."
-                  sleep 1
+                  sleep 2
 
             # Recheck lock state after lock
             - name: Get lock state for recheck
