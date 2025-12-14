@@ -83,42 +83,48 @@ impl VersionObject {
             ));
         }
 
-        match format_str.to_lowercase().as_str() {
+        let format = format_str.to_lowercase();
+        match format.as_str() {
             "auto" => Self::parse_auto_detect_batch(version_strings),
-            format_str => {
-                let mut results = Vec::new();
-
-                for version_str in version_strings {
-                    match format_str {
-                        "semver" => {
-                            if let Ok(semver) = SemVer::from_str(version_str) {
-                                results.push((version_str.clone(), VersionObject::SemVer(semver)));
-                            }
-                        }
-                        "pep440" => {
-                            if let Ok(pep440) = PEP440::from_str(version_str) {
-                                results.push((version_str.clone(), VersionObject::PEP440(pep440)));
-                            }
-                        }
-                        _ => {
-                            return Err(ZervError::UnknownFormat(format!(
-                                "Unknown input format '{}'. Supported formats: semver, pep440, auto",
-                                format_str
-                            )));
-                        }
-                    }
-                }
-
-                if results.is_empty() {
-                    return Err(ZervError::InvalidVersion(format!(
-                        "No version strings could be parsed as {} format",
-                        format_str
-                    )));
-                }
-
-                Ok(results)
-            }
+            "semver" | "pep440" => Self::_parse_with_known_format_batch(version_strings, &format),
+            _ => Err(ZervError::UnknownFormat(format!(
+                "Unknown input format '{}'. Supported formats: semver, pep440, auto",
+                format_str
+            ))),
         }
+    }
+
+    /// Parse a batch of version strings using a known, valid format
+    /// (private helper - format is assumed to be validated and cannot be "auto")
+    fn _parse_with_known_format_batch(
+        version_strings: &[String],
+        format_str: &str,
+    ) -> Result<Vec<(String, VersionObject)>, ZervError> {
+        // Safety check - this helper should never be called with "auto"
+        if format_str == "auto" {
+            return Err(ZervError::InvalidArgument(
+                "Internal error: _parse_with_known_format_batch called with 'auto' format"
+                    .to_string(),
+            ));
+        }
+
+        let results: Vec<(String, VersionObject)> = version_strings
+            .iter()
+            .filter_map(|version_str| {
+                Self::parse_with_format(version_str, format_str)
+                    .ok()
+                    .map(|version_obj| (version_str.clone(), version_obj))
+            })
+            .collect();
+
+        if results.is_empty() {
+            return Err(ZervError::InvalidVersion(format!(
+                "No version strings could be parsed as {} format",
+                format_str
+            )));
+        }
+
+        Ok(results)
     }
 
     /// Auto-detect version format for a list of version strings

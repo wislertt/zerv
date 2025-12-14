@@ -16,11 +16,24 @@ impl GitUtils {
             return Ok(None);
         }
 
+        // Check that all tags are of the same type (all SemVer or all PEP440)
+        if valid_tags.len() > 1 {
+            let first_type = std::mem::discriminant(&valid_tags[0].1);
+            for (_, version_obj) in valid_tags.iter().skip(1) {
+                if std::mem::discriminant(version_obj) != first_type {
+                    return Err(ZervError::InvalidArgument(
+                        "All version objects must be of the same type (all SemVer or all PEP440)"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+
         // Find the maximum version using custom comparison
         let max_tag = valid_tags
             .iter()
             .max_by(|(_, a), (_, b)| {
-                // This should not fail since filter_only_valid_tags ensures same format
+                // This should not fail since all types are now verified to be the same
                 Self::compare_version_objects(a, b).unwrap_or(std::cmp::Ordering::Equal)
             })
             .map(|(tag, _)| tag.clone());
