@@ -101,11 +101,41 @@ jobs:
 
             - name: Install zerv
               run: |
-                  if [ -n "${{ inputs.zerv_version }}" ]; then
-                      cargo install zerv --version ${{ inputs.zerv_version }} || true
+                  # Get currently installed version (if any)
+                  if command -v zerv >/dev/null 2>&1; then
+                      CURRENT_VERSION=$(zerv --version | awk '{print $2}')
                   else
-                      cargo install zerv || true
+                      CURRENT_VERSION=""
                   fi
+
+                  # Get latest version from crates.io
+                  LATEST_VERSION=$(cargo search zerv --limit 1 | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+
+                  # Input version (may be empty)
+                  REQUIRED_VERSION="${{ inputs.zerv_version }}"
+
+                  echo "Current zerv version : ${CURRENT_VERSION:-none}"
+                  echo "Latest zerv version  : $LATEST_VERSION"
+                  echo "Required version     : ${REQUIRED_VERSION:-latest}"
+
+                  if [ -z "$REQUIRED_VERSION" ]; then
+                    # No input version → use latest
+                    if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+                        echo "Installing latest zerv ($LATEST_VERSION)"
+                        cargo install zerv --version "$LATEST_VERSION" --force
+                    else
+                        echo "zerv is already up to date"
+                    fi
+                  else
+                    # Input version provided
+                    if [ "$CURRENT_VERSION" != "$REQUIRED_VERSION" ]; then
+                        echo "Installing required zerv version ($REQUIRED_VERSION)"
+                        cargo install zerv --version "$REQUIRED_VERSION" --force
+                    else
+                        echo "Required zerv version already installed"
+                    fi
+                  fi
+
                   zerv --version
 
             - name: Generate Zerv RON
