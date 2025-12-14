@@ -28,11 +28,16 @@ jobs:
         steps:
             - name: Filter labels by prefix
               id: filter
+              env:
+                  LABELS_JSON: ${{ inputs.labels }}
               run: |
                   PREFIX="${{ inputs.prefix }}"
 
+                  echo "Prefix: $PREFIX"
+                  echo "Input labels: $LABELS_JSON"
+
                   # Use jq to filter labels by prefix (empty prefix returns all labels)
-                  JSON_RESULT=$(echo '${{ inputs.labels }}' | \
+                  JSON_RESULT=$(echo "$LABELS_JSON" | \
                     jq --arg prefix "$PREFIX" \
                     'map(select(.name | startswith($prefix))) |
                      map({(.name): .}) |
@@ -49,4 +54,7 @@ jobs:
                     echo "$JSON_RESULT"
                     echo "EOF"
                   } >> $GITHUB_OUTPUT
-                  echo "Labels result: $JSON_RESULT"
+
+            - name: Display Filter Result
+              run: |
+                  echo "Filtered labels: ${{ steps.filter.outputs.filtered-labels }}"

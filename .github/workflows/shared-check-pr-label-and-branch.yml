@@ -35,6 +35,8 @@ jobs:
             is_valid_branch: ${{ steps.check.outputs.is_valid_branch }}
         steps:
             - name: Check for label and branch prefix
+              env:
+                  LABELS_JSON: ${{ inputs.labels }}
               id: check
               run: |
                   TARGET_LABEL="${{ inputs.target_label }}"
@@ -44,7 +46,7 @@ jobs:
                   echo "Checking for label: $TARGET_LABEL"
                   echo "Required branch prefix: $BRANCH_PREFIX"
                   echo "Current branch: $CURRENT_BRANCH"
-                  echo "Input labels: ${{ inputs.labels }}"
+                  echo "Input labels: $LABELS_JSON"
 
                   # Check if branch has the required prefix
                   if [ -n "$BRANCH_PREFIX" ]; then
@@ -61,7 +63,7 @@ jobs:
                   fi
 
                   # Use jq to check if the label exists in the labels array
-                  HAS_LABEL=$(echo '${{ inputs.labels }}' | \
+                  HAS_LABEL=$(echo "$LABELS_JSON" | \
                     jq --arg target "$TARGET_LABEL" \
                     '[.[] | select(.name == $target)] | length > 0')
 
@@ -92,3 +94,5 @@ jobs:
             - name: Display Validation Result
               run: |
                   echo "Validation result: ${{ steps.check.outputs.is_valid }}"
+                  echo "Has label: ${{ steps.check.outputs.has_label }}"
+                  echo "Is valid branch: ${{ steps.check.outputs.is_valid_branch }}"
