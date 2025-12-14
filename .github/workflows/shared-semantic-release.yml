@@ -15,10 +15,10 @@ on:
                 type: boolean
 
         outputs:
-            version:
+            new_release_version:
                 description: "The determined version"
                 value: ${{ jobs.semantic-release.outputs.new_release_version }}
-            published:
+            new_release_published:
                 description: "Whether a new release was published"
                 value: ${{ jobs.semantic-release.outputs.new_release_published }}
             is_valid_semantic_release:
@@ -114,8 +114,8 @@ jobs:
         if: always() && (github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && needs.validate-ref-for-workflow-dispatch.outputs.is_valid == 'true'))
         runs-on: ubuntu-latest
         outputs:
-            new_release_version: ${{ steps.determine-version.outputs.version }}
-            new_release_published: ${{ steps.determine-version.outputs.published }}
+            new_release_version: ${{ steps.determine-version.outputs.new_release_version }}
+            new_release_published: ${{ steps.determine-version.outputs.new_release_published }}
         steps:
             - name: Checkout
               uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -132,19 +132,19 @@ jobs:
               id: determine-version
               run: |
                   # Set the published status
-                  PUBLISHED="${{ steps.release.outputs.new_release_published }}"
-                  echo "published=$PUBLISHED" >> $GITHUB_OUTPUT
+                  NEW_RELEASE_PUBLISHED="${{ steps.release.outputs.new_release_published }}"
+                  echo "new_release_published=$NEW_RELEASE_PUBLISHED" >> $GITHUB_OUTPUT
 
                   # Check if new release was published
-                  if [ "$PUBLISHED" == "false" ]; then
+                  if [ "$NEW_RELEASE_PUBLISHED" == "false" ]; then
                       # Get the current commit SHA
                       CURRENT_SHA=$(git rev-parse HEAD)
                       # Find the tag that points to this commit and starts with 'v'
                       EXISTING_TAG=$(git tag --points-at $CURRENT_SHA | grep '^v' | head -1)
                       if [ -n "$EXISTING_TAG" ]; then
                           # Use the existing tag version (remove 'v' prefix)
-                          VERSION=${EXISTING_TAG#v}
-                          echo "version=$VERSION" >> $GITHUB_OUTPUT
+                          NEW_RELEASE_VERSION=${EXISTING_TAG#v}
+                          echo "new_release_version=$NEW_RELEASE_VERSION" >> $GITHUB_OUTPUT
                           echo "Using existing tag: $EXISTING_TAG"
                       else
                           # No tag found, this is an error case
@@ -154,11 +154,11 @@ jobs:
                       fi
                   else
                       # Use the new release version
-                      echo "version=${{ steps.release.outputs.new_release_version }}" >> $GITHUB_OUTPUT
+                      echo "new_release_version=${{ steps.release.outputs.new_release_version }}" >> $GITHUB_OUTPUT
                       echo "New release: ${{ steps.release.outputs.new_release_version }}"
                   fi
 
             - name: Display outputs
               run: |
-                  echo "Version: ${{ steps.determine-version.outputs.version }}"
-                  echo "Published: ${{ steps.determine-version.outputs.published }}"
+                  echo "Version: ${{ steps.determine-version.outputs.new_release_version }}"
+                  echo "Published: ${{ steps.determine-version.outputs.new_release_published }}"
