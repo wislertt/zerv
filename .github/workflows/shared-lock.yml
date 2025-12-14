@@ -15,6 +15,16 @@ on:
                 description: "Custom name for the lock job"
                 required: false
                 type: string
+            check_owner_after_lock:
+                description: "Whether to check lock ownership after acquiring lock (check-lock-check pattern)"
+                required: false
+                type: boolean
+                default: true
+            delay_check_owner_after_lock_in_sec:
+                description: "Delay in seconds before checking lock ownership after acquiring lock"
+                required: false
+                type: number
+                default: 5
 
 permissions:
     contents: write
@@ -128,14 +138,16 @@ jobs:
 
             - name: Wait for lock to propagate
               shell: bash
+              if: inputs.check_owner_after_lock
               run: |
                   echo "Waiting for lock to propagate..."
-                  sleep 2
+                  sleep ${{ inputs.delay_check_owner_after_lock_in_sec }}
 
             # Recheck lock state after lock
             - name: Get lock state for recheck
               uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: get-lock-state-for-recheck
+              if: inputs.check_owner_after_lock
               with:
                   mode: "check"
                   environment: ${{ inputs.key }}
@@ -143,7 +155,7 @@ jobs:
             - name: Recheck lock state
               id: recheck-lock
               shell: bash
-              if: steps.lock.outcome == 'success'
+              if: steps.lock.outcome == 'success' && inputs.check_owner_after_lock
               run: |
                   source ./lock_check_function.sh
                   check_lock \
