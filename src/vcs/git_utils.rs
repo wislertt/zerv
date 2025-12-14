@@ -1,34 +1,16 @@
-// Git utility functions and helper methods
-
 use crate::error::{
     Result,
     ZervError,
 };
 use crate::version::VersionObject;
 
-/// Git utility functions for version tag processing
 pub struct GitUtils;
 
 impl GitUtils {
-    /// Filter valid tags and return Vec<(tag_string, version_object)> with consistent format
-    pub fn filter_only_valid_tags(
-        tags: &[String],
-        format: &str,
-    ) -> Result<Vec<(String, VersionObject)>> {
-        // Handle empty list case - return empty vector instead of error
-        if tags.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // Use parse_with_format_batch to handle parsing and format consistency
-        match VersionObject::parse_with_format_batch(tags, format) {
-            Ok(result) => Ok(result),
-            // Convert errors to empty vector for backward compatibility
-            Err(_) => Ok(Vec::new()),
-        }
+    pub fn filter_only_valid_tags(tags: &[String], format: &str) -> Vec<(String, VersionObject)> {
+        VersionObject::parse_with_format_batch(tags, format).unwrap_or_default()
     }
 
-    /// Find max version tag by comparing version objects
     pub fn find_max_version_tag(valid_tags: &[(String, VersionObject)]) -> Result<Option<String>> {
         if valid_tags.is_empty() {
             return Ok(None);
@@ -46,7 +28,6 @@ impl GitUtils {
         Ok(max_tag)
     }
 
-    /// Get format type string for a VersionObject
     pub fn get_format_type(version_obj: &VersionObject) -> String {
         match version_obj {
             VersionObject::SemVer(_) => "semver".to_string(),
@@ -54,12 +35,10 @@ impl GitUtils {
         }
     }
 
-    /// Compare two VersionObjects for ordering
     pub fn compare_version_objects(
         a: &VersionObject,
         b: &VersionObject,
     ) -> Result<std::cmp::Ordering> {
-        // Check if they're the same type first
         if std::mem::discriminant(a) == std::mem::discriminant(b) {
             match (a, b) {
                 (VersionObject::SemVer(a_sem), VersionObject::SemVer(b_sem)) => {
@@ -98,9 +77,9 @@ mod tests {
             "v2.0.0".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
-            ("v1.0.1".to_string(), VersionObject::parse_with_format("v1.0.1", "semver").unwrap()),
-            ("v2.0.0".to_string(), VersionObject::parse_with_format("v2.0.0", "semver").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
+            ("v1.0.1".to_string(), VersionObject::parse_semver("v1.0.1").unwrap()),
+            ("v2.0.0".to_string(), VersionObject::parse_semver("v2.0.0").unwrap()),
         ],
         Some("v2.0.0".to_string()),
     )]
@@ -115,9 +94,9 @@ mod tests {
             "1.1.0a1".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
-            ("v1.0.1".to_string(), VersionObject::parse_with_format("v1.0.1", "semver").unwrap()),
-            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_with_format("v2.0.0-alpha.1", "semver").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
+            ("v1.0.1".to_string(), VersionObject::parse_semver("v1.0.1").unwrap()),
+            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_semver("v2.0.0-alpha.1").unwrap()),
         ],
         Some("v2.0.0-alpha.1".to_string()),
     )]
@@ -132,7 +111,7 @@ mod tests {
             "1.0.0rc2".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
         ],
         Some("v1.0.0".to_string()),
     )]
@@ -148,12 +127,12 @@ mod tests {
             "v2.0.0-alpha.1".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "pep440").unwrap()),
-            ("v1.1.0".to_string(), VersionObject::parse_with_format("v1.1.0", "pep440").unwrap()),
-            ("1.0.0rc1".to_string(), VersionObject::parse_with_format("1.0.0rc1", "pep440").unwrap()),
-            ("1.1.0a1".to_string(), VersionObject::parse_with_format("1.1.0a1", "pep440").unwrap()),
-            ("1.2.0b2".to_string(), VersionObject::parse_with_format("1.2.0b2", "pep440").unwrap()),
-            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_with_format("v2.0.0-alpha.1", "pep440").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_pep440("v1.0.0").unwrap()),
+            ("v1.1.0".to_string(), VersionObject::parse_pep440("v1.1.0").unwrap()),
+            ("1.0.0rc1".to_string(), VersionObject::parse_pep440("1.0.0rc1").unwrap()),
+            ("1.1.0a1".to_string(), VersionObject::parse_pep440("1.1.0a1").unwrap()),
+            ("1.2.0b2".to_string(), VersionObject::parse_pep440("1.2.0b2").unwrap()),
+            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_pep440("v2.0.0-alpha.1").unwrap()),
         ],
         Some("v2.0.0-alpha.1".to_string()),
     )]
@@ -169,12 +148,12 @@ mod tests {
             "1.0.0rc2".to_string(),
         ],
         vec![
-            ("1.0.0".to_string(), VersionObject::parse_with_format("1.0.0", "pep440").unwrap()),
-            ("1.0.0rc1".to_string(), VersionObject::parse_with_format("1.0.0rc1", "pep440").unwrap()),
-            ("1.1.0a1".to_string(), VersionObject::parse_with_format("1.1.0a1", "pep440").unwrap()),
-            ("1.2.0b2".to_string(), VersionObject::parse_with_format("1.2.0b2", "pep440").unwrap()),
-            ("2.0.0".to_string(), VersionObject::parse_with_format("2.0.0", "pep440").unwrap()),
-            ("1.0.0rc2".to_string(), VersionObject::parse_with_format("1.0.0rc2", "pep440").unwrap()),
+            ("1.0.0".to_string(), VersionObject::parse_pep440("1.0.0").unwrap()),
+            ("1.0.0rc1".to_string(), VersionObject::parse_pep440("1.0.0rc1").unwrap()),
+            ("1.1.0a1".to_string(), VersionObject::parse_pep440("1.1.0a1").unwrap()),
+            ("1.2.0b2".to_string(), VersionObject::parse_pep440("1.2.0b2").unwrap()),
+            ("2.0.0".to_string(), VersionObject::parse_pep440("2.0.0").unwrap()),
+            ("1.0.0rc2".to_string(), VersionObject::parse_pep440("1.0.0rc2").unwrap()),
         ],
         Some("2.0.0".to_string()),
     )]
@@ -186,7 +165,7 @@ mod tests {
             "1.0.0rc1".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
         ],
         Some("v1.0.0".to_string()),
     )]
@@ -199,11 +178,94 @@ mod tests {
             "v1.0.0".to_string(),
         ],
         vec![
-            ("v1.0.1-rc.1.post.1".to_string(), VersionObject::parse_with_format("v1.0.1-rc.1.post.1", "semver").unwrap()),
-            ("v1.0.1-rc.1.post.2".to_string(), VersionObject::parse_with_format("v1.0.1-rc.1.post.2", "semver").unwrap()),
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+            ("v1.0.1-rc.1.post.1".to_string(), VersionObject::parse_semver("v1.0.1-rc.1.post.1").unwrap()),
+            ("v1.0.1-rc.1.post.2".to_string(), VersionObject::parse_semver("v1.0.1-rc.1.post.2").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
         ],
         Some("v1.0.1-rc.1.post.2".to_string()),
+    )]
+    // Realistic tags with prefix
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+        ],
+        vec![
+            ("v1".to_string(), VersionObject::parse_pep440("v1").unwrap()),
+            ("v1.2".to_string(), VersionObject::parse_pep440("v1.2").unwrap()),
+            ("v1.2.3".to_string(), VersionObject::parse_pep440("v1.2.3").unwrap()),
+        ],
+        Some("v1.2.3".to_string()),
+    )]
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+            "v1.2.3-alpha.1.post.1.semver".to_string(),
+            "v1.2.3-alpha.2.post.1.semver".to_string(),
+        ],
+        vec![
+            ("v1.2.3".to_string(), VersionObject::parse_semver("v1.2.3").unwrap()),
+            ("v1.2.3-alpha.1.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.1.post.1.semver").unwrap()),
+            ("v1.2.3-alpha.2.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.2.post.1.semver").unwrap()),
+        ],
+        Some("v1.2.3".to_string()),
+    )]
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+            "v1.2.3-alpha.1.post.1.semver".to_string(),
+            "v1.2.3-alpha.2.post.1.semver".to_string(),
+            "v1.2.3-alpha.3.post.1.semver".to_string(),
+        ],
+        vec![
+            ("v1.2.3".to_string(), VersionObject::parse_semver("v1.2.3").unwrap()),
+            ("v1.2.3-alpha.1.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.1.post.1.semver").unwrap()),
+            ("v1.2.3-alpha.2.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.2.post.1.semver").unwrap()),
+            ("v1.2.3-alpha.3.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.3.post.1.semver").unwrap()),
+        ],
+        Some("v1.2.3".to_string()),
+    )]
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+            "v1.2.4-alpha.1.post.1.semver".to_string(),
+            "v1.2.4-alpha.2.post.1.semver".to_string(),
+            "v1.2.4-alpha.3.post.1.semver".to_string(),
+        ],
+        vec![
+            ("v1.2.3".to_string(), VersionObject::parse_semver("v1.2.3").unwrap()),
+            ("v1.2.4-alpha.1.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.1.post.1.semver").unwrap()),
+            ("v1.2.4-alpha.2.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.2.post.1.semver").unwrap()),
+            ("v1.2.4-alpha.3.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.3.post.1.semver").unwrap()),
+        ],
+        Some("v1.2.4-alpha.3.post.1.semver".to_string()),
+    )]
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+            "v1.2.4-alpha.1.post.1.semver".to_string(),
+            "v1.2.4-alpha.2.post.1.semver".to_string(),
+        ],
+        vec![
+            ("v1.2.3".to_string(), VersionObject::parse_semver("v1.2.3").unwrap()),
+            ("v1.2.4-alpha.1.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.1.post.1.semver").unwrap()),
+            ("v1.2.4-alpha.2.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.2.post.1.semver").unwrap()),
+        ],
+        Some("v1.2.4-alpha.2.post.1.semver".to_string()),
     )]
     // No valid tags - should return empty
     #[case(
@@ -229,7 +291,7 @@ mod tests {
         #[case] expected_valid_tags: Vec<(String, VersionObject)>,
         #[case] expected_max_version_tag: Option<String>,
     ) {
-        let filtered_tags = GitUtils::filter_only_valid_tags(&tags, format).unwrap();
+        let filtered_tags = GitUtils::filter_only_valid_tags(&tags, format);
 
         assert_eq!(filtered_tags, expected_valid_tags);
 
