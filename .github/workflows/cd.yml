@@ -55,7 +55,7 @@ jobs:
     release-bin:
         name: release-bin-github-${{ matrix.name }}
         runs-on: ${{ matrix.os }}
-        needs: semantic-release
+        needs: zerv-versioning
         strategy:
             fail-fast: false
             matrix:
@@ -109,7 +109,7 @@ jobs:
             - name: Update Cargo.toml version
               shell: bash
               run: |
-                  VERSION="${{ needs.semantic-release.outputs.version }}"
+                  VERSION="${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}"
                   echo "Updating version to $VERSION"
                   if [[ "$RUNNER_OS" == "macOS" ]]; then
                       sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
@@ -126,13 +126,13 @@ jobs:
                   repo_token: ${{ secrets.GITHUB_TOKEN }}
                   file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
                   asset_name: ${{ matrix.asset_name }}
-                  tag: v${{ needs.semantic-release.outputs.version }}
+                  tag: ${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver }}
                   overwrite: true
 
     release-crates:
         name: release-crates
         runs-on: ubuntu-latest
-        needs: [semantic-release, release-bin]
+        needs: [zerv-versioning, release-bin]
         steps:
             - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
@@ -142,7 +142,7 @@ jobs:
 
             - name: Update Cargo.toml version
               run: |
-                  VERSION="${{ needs.semantic-release.outputs.version }}"
+                  VERSION="${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}"
                   echo "Updating version to $VERSION"
                   sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
 
