@@ -94,9 +94,8 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-zerv-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
                   restore-keys: |
-                      cargo-zerv-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                       cargo-zerv-${{ runner.os }}-
 
             - name: Install zerv
@@ -280,4 +279,4 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-zerv-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
