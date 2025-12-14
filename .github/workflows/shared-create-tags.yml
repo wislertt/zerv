@@ -17,11 +17,17 @@ jobs:
         steps:
             - name: Checkout repository
               uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              with:
+                  fetch-depth: 0
 
             - name: Create or move tags and push
               run: |
                   git config --local user.email "github-actions[bot]@users.noreply.github.com"
                   git config --local user.name "github-actions[bot]"
+
+                  # Handle both pull request and push events
+                  COMMIT_HASH="${{ github.event.pull_request.head.sha || github.sha }}
+                  git checkout $COMMIT_HASH
 
                   # Parse JSON array of tags
                   TAGS='${{ inputs.tags }}'
