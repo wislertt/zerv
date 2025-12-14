@@ -1,11 +1,8 @@
-// Flow workflow scenario integration tests
-
 pub mod complex_release_branch;
 pub mod gitflow;
 pub mod test_utils;
 pub mod trunk_based;
 
-// Re-export test utilities for easy access
 pub use test_utils::{
     FlowIntegrationTestScenario,
     FlowTestResult,

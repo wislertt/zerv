@@ -42,6 +42,16 @@ impl VersionObject {
         }
     }
 
+    /// Parse version string as SemVer format
+    pub fn parse_semver(version: &str) -> Result<Self, ZervError> {
+        Self::parse_with_format(version, "semver")
+    }
+
+    /// Parse version string as PEP440 format
+    pub fn parse_pep440(version: &str) -> Result<Self, ZervError> {
+        Self::parse_with_format(version, "pep440")
+    }
+
     /// Auto-detect version format (try SemVer first, then PEP440)
     fn parse_auto_detect(version_str: &str) -> Result<Self, ZervError> {
         // Try SemVer first
@@ -57,6 +67,117 @@ impl VersionObject {
         Err(ZervError::InvalidVersion(format!(
             "Version '{version_str}' is not valid SemVer or PEP440 format"
         )))
+    }
+
+    /// Parse version strings with specified format
+    ///
+    /// Returns a vector of tuples containing the original version string and the parsed VersionObject.
+    /// The format is determined by the format_str parameter.
+    pub fn parse_with_format_batch(
+        version_strings: &[String],
+        format_str: &str,
+    ) -> Result<Vec<(String, VersionObject)>, ZervError> {
+        if version_strings.is_empty() {
+            return Err(ZervError::InvalidArgument(
+                "Version list cannot be empty".to_string(),
+            ));
+        }
+
+        let format = format_str.to_lowercase();
+        match format.as_str() {
+            "auto" => Self::parse_auto_detect_batch(version_strings),
+            "semver" | "pep440" => Self::_parse_with_known_format_batch(version_strings, &format),
+            _ => Err(ZervError::UnknownFormat(format!(
+                "Unknown input format '{}'. Supported formats: semver, pep440, auto",
+                format_str
+            ))),
+        }
+    }
+
+    /// Parse a batch of version strings using a known, valid format
+    /// (private helper - format is assumed to be validated and cannot be "auto")
+    fn _parse_with_known_format_batch(
+        version_strings: &[String],
+        format_str: &str,
+    ) -> Result<Vec<(String, VersionObject)>, ZervError> {
+        // Safety check - this helper should never be called with "auto"
+        if format_str == "auto" {
+            return Err(ZervError::InvalidArgument(
+                "Internal error: _parse_with_known_format_batch called with 'auto' format"
+                    .to_string(),
+            ));
+        }
+
+        let results: Vec<(String, VersionObject)> = version_strings
+            .iter()
+            .filter_map(|version_str| {
+                Self::parse_with_format(version_str, format_str)
+                    .ok()
+                    .map(|version_obj| (version_str.clone(), version_obj))
+            })
+            .collect();
+
+        if results.is_empty() {
+            return Err(ZervError::InvalidVersion(format!(
+                "No version strings could be parsed as {} format",
+                format_str
+            )));
+        }
+
+        Ok(results)
+    }
+
+    /// Auto-detect version format for a list of version strings
+    ///
+    /// Returns a vector of tuples containing the original version string and the parsed VersionObject.
+    /// The format is determined by majority vote - whichever format can parse more strings wins.
+    /// In case of a tie, SemVer is preferred.
+    pub fn parse_auto_detect_batch(
+        version_strings: &[String],
+    ) -> Result<Vec<(String, VersionObject)>, ZervError> {
+        if version_strings.is_empty() {
+            return Err(ZervError::InvalidArgument(
+                "Version list cannot be empty".to_string(),
+            ));
+        }
+
+        // Parse with SemVer
+        let mut semver_results = Vec::new();
+        for version_str in version_strings {
+            if let Ok(semver) = SemVer::from_str(version_str) {
+                semver_results.push((version_str.clone(), VersionObject::SemVer(semver)));
+            }
+        }
+
+        // Parse with PEP440
+        let mut pep440_results = Vec::new();
+        for version_str in version_strings {
+            if let Ok(pep440) = PEP440::from_str(version_str) {
+                pep440_results.push((version_str.clone(), VersionObject::PEP440(pep440)));
+            }
+        }
+
+        // Create list of results
+        let all_results = vec![semver_results, pep440_results];
+
+        // Find max length
+        let max_len = all_results.iter().map(|r| r.len()).max().unwrap_or(0);
+
+        // If no format could parse any strings, return error
+        if max_len == 0 {
+            return Err(ZervError::InvalidVersion(
+                "No version strings could be parsed as any supported format".to_string(),
+            ));
+        }
+
+        // Return the first result with max length (SemVer wins ties since it's first)
+        for results in all_results {
+            if results.len() == max_len {
+                return Ok(results);
+            }
+        }
+
+        unreachable!()
     }
 }
 
@@ -125,5 +246,260 @@ mod tests {
 
         assert_eq!(semver.format_str(), "semver");
         assert_eq!(pep440.format_str(), "pep440");
+    }
+
+    #[rstest]
+    #[case::semver_wins_with_prerelease(
+        vec!["1.0.0", "2.1.3-alpha.unusual-keyword", "3.0.0-beta.2.build123", "1.2.3a1", "4.5.6-rc.1.custom.build"],
+        vec![
+            ("1.0.0", VersionObject::parse_with_format("1.0.0", "semver").unwrap()),
+            ("2.1.3-alpha.unusual-keyword", VersionObject::parse_with_format("2.1.3-alpha.unusual-keyword", "semver").unwrap()),
+            ("3.0.0-beta.2.build123", VersionObject::parse_with_format("3.0.0-beta.2.build123", "semver").unwrap()),
+            ("4.5.6-rc.1.custom.build", VersionObject::parse_with_format("4.5.6-rc.1.custom.build", "semver").unwrap()),
+            // "1.2.3a1" can't be parsed as SemVer, only PEP440
+        ]
+    )]
+    #[case::pep440_majority_with_alpha_numeric(
+        vec!["1.0.0", "2.1.3", "3.0.0-alpha.1", "1.2.3a1", "4.5.6"],
+        vec![
+            ("1.0.0", VersionObject::parse_with_format("1.0.0", "pep440").unwrap()),
+            ("2.1.3", VersionObject::parse_with_format("2.1.3", "pep440").unwrap()),
+            ("3.0.0-alpha.1", VersionObject::parse_with_format("3.0.0-alpha.1", "pep440").unwrap()),
+            ("1.2.3a1", VersionObject::parse_with_format("1.2.3a1", "pep440").unwrap()),
+            ("4.5.6", VersionObject::parse_with_format("4.5.6", "pep440").unwrap()),
+        ]
+    )]
+    #[case::pep440_majority(
+        vec!["1.2.3a1", "2.0.0b2", "1.0.0rc1", "1.2.3", "3.4.5a0"],
+        vec![
+            ("1.2.3a1", VersionObject::parse_with_format("1.2.3a1", "pep440").unwrap()),
+            ("2.0.0b2", VersionObject::parse_with_format("2.0.0b2", "pep440").unwrap()),
+            ("1.0.0rc1", VersionObject::parse_with_format("1.0.0rc1", "pep440").unwrap()),
+            ("1.2.3", VersionObject::parse_with_format("1.2.3", "pep440").unwrap()),
+            ("3.4.5a0", VersionObject::parse_with_format("3.4.5a0", "pep440").unwrap()),
+        ]
+    )]
+    #[case::pep440_majority(
+        vec!["1.0.0", "1.2.3a1"],
+        vec![
+            ("1.0.0", VersionObject::parse_with_format("1.0.0", "pep440").unwrap()),
+            ("1.2.3a1", VersionObject::parse_with_format("1.2.3a1", "pep440").unwrap()),
+        ]
+    )]
+    #[case::all_semver(
+        vec!["1.0.0", "2.0.0", "3.0.0"],
+        vec![
+            ("1.0.0", VersionObject::parse_with_format("1.0.0", "semver").unwrap()),
+            ("2.0.0", VersionObject::parse_with_format("2.0.0", "semver").unwrap()),
+            ("3.0.0", VersionObject::parse_with_format("3.0.0", "semver").unwrap()),
+        ]
+    )]
+    #[case::all_pep440(
+        vec!["1.0.0a1", "2.0.0b2", "3.0.0rc1"],
+        vec![
+            ("1.0.0a1", VersionObject::parse_with_format("1.0.0a1", "pep440").unwrap()),
+            ("2.0.0b2", VersionObject::parse_with_format("2.0.0b2", "pep440").unwrap()),
+            ("3.0.0rc1", VersionObject::parse_with_format("3.0.0rc1", "pep440").unwrap()),
+        ]
+    )]
+    #[case::all_pep440(
+        vec!["v0", "v0.7", "v0.7.84"],
+        vec![
+            ("v0", VersionObject::parse_with_format("v0", "pep440").unwrap()),
+            ("v0.7", VersionObject::parse_with_format("v0.7", "pep440").unwrap()),
+            ("v0.7.84", VersionObject::parse_with_format("v0.7.84", "pep440").unwrap()),
+        ]
+    )]
+    fn test_parse_auto_detect_batch_majority(
+        #[case] versions: Vec<&str>,
+        #[case] expected: Vec<(&str, VersionObject)>,
+    ) {
+        let version_strings: Vec<String> = versions.into_iter().map(|s| s.to_string()).collect();
+        let result = VersionObject::parse_auto_detect_batch(&version_strings).unwrap();
+
+        // Convert expected to the actual format (String, VersionObject)
+        let expected_formatted: Vec<(String, VersionObject)> = expected
+            .into_iter()
+            .map(|(version_str, version_obj)| (version_str.to_string(), version_obj))
+            .collect();
+
+        assert_eq!(result, expected_formatted);
+    }
+
+    #[test]
+    fn test_parse_auto_detect_batch_empty_list() {
+        let versions = vec![];
+        let result = VersionObject::parse_auto_detect_batch(&versions);
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::InvalidArgument(_)));
+        assert!(error.to_string().contains("Version list cannot be empty"));
+    }
+
+    #[test]
+    fn test_parse_auto_detect_batch_no_valid_versions() {
+        let versions = vec![
+            "completely-invalid".to_string(),
+            "not-a-version".to_string(),
+            "123.456.789.abc".to_string(),
+        ];
+
+        let result = VersionObject::parse_auto_detect_batch(&versions);
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::InvalidVersion(_)));
+        assert!(
+            error
+                .to_string()
+                .contains("No version strings could be parsed")
+        );
+    }
+
+    #[rstest]
+    #[case::semver_format(
+        vec!["1.0.0", "2.1.3", "3.0.0-alpha.1", "4.5.6-rc.1"],
+        "semver",
+        vec![
+            ("1.0.0", VersionObject::parse_semver("1.0.0").unwrap()),
+            ("2.1.3", VersionObject::parse_semver("2.1.3").unwrap()),
+            ("3.0.0-alpha.1", VersionObject::parse_semver("3.0.0-alpha.1").unwrap()),
+            ("4.5.6-rc.1", VersionObject::parse_semver("4.5.6-rc.1").unwrap()),
+        ]
+    )]
+    #[case::semver_format(
+        vec!["1.0.0", "2.1.3", "3.0.0-alpha.1", "4.5.6-rc.1",  "4.5.6a1"],
+        "semver",
+        vec![
+            ("1.0.0", VersionObject::parse_semver("1.0.0").unwrap()),
+            ("2.1.3", VersionObject::parse_semver("2.1.3").unwrap()),
+            ("3.0.0-alpha.1", VersionObject::parse_semver("3.0.0-alpha.1").unwrap()),
+            ("4.5.6-rc.1", VersionObject::parse_semver("4.5.6-rc.1").unwrap()),
+        ]
+    )]
+    #[case::pep440_format(
+        vec!["1.0.0a1", "2.0.0b2", "3.0.0rc1", "1.2.3"],
+        "pep440",
+        vec![
+            ("1.0.0a1", VersionObject::parse_pep440("1.0.0a1").unwrap()),
+            ("2.0.0b2", VersionObject::parse_pep440("2.0.0b2").unwrap()),
+            ("3.0.0rc1", VersionObject::parse_pep440("3.0.0rc1").unwrap()),
+            ("1.2.3", VersionObject::parse_pep440("1.2.3").unwrap()),
+        ]
+    )]
+    #[case::pep440_format(
+        vec!["1.0.0a1", "2.0.0b2", "3.0.0rc1", "1.2.3", "1.2.3-this.is.semver"],
+        "pep440",
+        vec![
+            ("1.0.0a1", VersionObject::parse_pep440("1.0.0a1").unwrap()),
+            ("2.0.0b2", VersionObject::parse_pep440("2.0.0b2").unwrap()),
+            ("3.0.0rc1", VersionObject::parse_pep440("3.0.0rc1").unwrap()),
+            ("1.2.3", VersionObject::parse_pep440("1.2.3").unwrap()),
+        ]
+    )]
+    #[case::auto_format(
+        vec!["1.0.0", "2.1.3", "1.2.3a1"],
+        "auto",
+        vec![
+            ("1.0.0", VersionObject::parse_pep440("1.0.0").unwrap()),
+            ("2.1.3", VersionObject::parse_pep440("2.1.3").unwrap()),
+            ("1.2.3a1", VersionObject::parse_pep440("1.2.3a1").unwrap()),
+        ]
+    )]
+    fn test_parse_with_format_batch(
+        #[case] versions: Vec<&str>,
+        #[case] format: &str,
+        #[case] expected: Vec<(&str, VersionObject)>,
+    ) {
+        let version_strings: Vec<String> = versions.into_iter().map(|s| s.to_string()).collect();
+        let result = VersionObject::parse_with_format_batch(&version_strings, format).unwrap();
+
+        // Convert expected to the actual format (String, VersionObject)
+        let expected_formatted: Vec<(String, VersionObject)> = expected
+            .into_iter()
+            .map(|(version_str, version_obj)| (version_str.to_string(), version_obj))
+            .collect();
+
+        assert_eq!(result, expected_formatted);
+    }
+
+    #[test]
+    fn test_parse_with_format_batch_empty_list() {
+        let versions = vec![];
+        let result = VersionObject::parse_with_format_batch(&versions, "semver");
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::InvalidArgument(_)));
+        assert!(error.to_string().contains("Version list cannot be empty"));
+    }
+
+    #[rstest]
+    #[case("unknown", "Unknown input format")]
+    #[case("invalid", "Unknown input format")]
+    fn test_parse_with_format_batch_invalid_format(
+        #[case] format: &str,
+        #[case] expected_error: &str,
+    ) {
+        let versions = vec!["1.0.0".to_string(), "2.0.0".to_string()];
+        let error = VersionObject::parse_with_format_batch(&versions, format).unwrap_err();
+        assert!(error.to_string().contains(expected_error));
+    }
+
+    #[test]
+    fn test_parse_with_format_batch_no_valid_versions_for_format() {
+        let versions = vec![
+            "1.2.3a1".to_string(),
+            "2.0.0b2".to_string(),
+            "3.0.0rc1".to_string(),
+        ];
+
+        let result = VersionObject::parse_with_format_batch(&versions, "semver");
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(matches!(error, ZervError::InvalidVersion(_)));
+        assert!(
+            error
+                .to_string()
+                .contains("No version strings could be parsed as semver format")
+        );
+    }
+
+    #[test]
+    fn test_parse_semver() {
+        // Valid SemVer
+        let result = VersionObject::parse_semver("1.0.0");
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), VersionObject::SemVer(_)));
+
+        // Invalid SemVer
+        let result = VersionObject::parse_semver("1.0.0a1");
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid SemVer format")
+        );
+    }
+
+    #[test]
+    fn test_parse_pep440() {
+        // Valid PEP440
+        let result = VersionObject::parse_pep440("1.0.0a1");
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), VersionObject::PEP440(_)));
+
+        // Invalid PEP440
+        let result = VersionObject::parse_pep440("1.0.0-invalid");
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid PEP440 format")
+        );
     }
 }

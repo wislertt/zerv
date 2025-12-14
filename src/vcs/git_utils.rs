@@ -1,83 +1,39 @@
-// Git utility functions and helper methods
-
 use crate::error::{
     Result,
     ZervError,
 };
 use crate::version::VersionObject;
 
-/// Git utility functions for version tag processing
 pub struct GitUtils;
 
 impl GitUtils {
-    /// Filter valid tags and return Vec<(tag_string, version_object)> with consistent format
-    pub fn filter_only_valid_tags(
-        tags: &[String],
-        format: &str,
-    ) -> Result<Vec<(String, VersionObject)>> {
-        let mut valid_tags = Vec::new();
-        let mut format_counts = std::collections::HashMap::new();
-
-        // First pass: collect all valid tags and count formats
-        for tag in tags {
-            if let Ok(version_obj) = VersionObject::parse_with_format(tag, format) {
-                let format_type = Self::get_format_type(&version_obj);
-                *format_counts.entry(format_type).or_insert(0) += 1;
-                valid_tags.push((tag.clone(), version_obj));
-            }
-        }
-
-        if valid_tags.is_empty() {
-            return Ok(valid_tags);
-        }
-
-        // Determine target format
-        let target_format = if format_counts.len() == 1 {
-            // Only one format, use it
-            format_counts.keys().next().unwrap().clone()
-        } else {
-            // Multiple formats, find majority or use first tag's format
-            let max_count = format_counts.values().max().unwrap();
-            let majority_formats: Vec<_> = format_counts
-                .iter()
-                .filter_map(|(format, count)| {
-                    if *count == *max_count {
-                        Some(format.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-            if majority_formats.len() == 1 {
-                majority_formats[0].clone()
-            } else {
-                // Tie: use first tag's format
-                Self::get_format_type(&valid_tags[0].1)
-            }
-        };
-
-        tracing::debug!("DEBUG: Format counts: {:?}", format_counts);
-        tracing::debug!("DEBUG: Target format: {:?}", target_format);
-
-        // Second pass: filter to only target format
-        Ok(valid_tags
-            .into_iter()
-            .filter(|(_, version_obj)| Self::get_format_type(version_obj) == target_format)
-            .collect())
+    pub fn filter_only_valid_tags(tags: &[String], format: &str) -> Vec<(String, VersionObject)> {
+        VersionObject::parse_with_format_batch(tags, format).unwrap_or_default()
     }
 
-    /// Find max version tag by comparing version objects
     pub fn find_max_version_tag(valid_tags: &[(String, VersionObject)]) -> Result<Option<String>> {
         if valid_tags.is_empty() {
             return Ok(None);
+        }
+
+        // Check that all tags are of the same type (all SemVer or all PEP440)
+        if valid_tags.len() > 1 {
+            let first_type = std::mem::discriminant(&valid_tags[0].1);
+            for (_, version_obj) in valid_tags.iter().skip(1) {
+                if std::mem::discriminant(version_obj) != first_type {
+                    return Err(ZervError::InvalidArgument(
+                        "All version objects must be of the same type (all SemVer or all PEP440)"
+                            .to_string(),
+                    ));
+                }
+            }
         }
 
         // Find the maximum version using custom comparison
         let max_tag = valid_tags
             .iter()
             .max_by(|(_, a), (_, b)| {
-                // This should not fail since filter_only_valid_tags ensures same format
+                // This should not fail since all types are now verified to be the same
                 Self::compare_version_objects(a, b).unwrap_or(std::cmp::Ordering::Equal)
             })
             .map(|(tag, _)| tag.clone());
@@ -85,7 +41,6 @@ impl GitUtils {
         Ok(max_tag)
     }
 
-    /// Get format type string for a VersionObject
     pub fn get_format_type(version_obj: &VersionObject) -> String {
         match version_obj {
             VersionObject::SemVer(_) => "semver".to_string(),
@@ -93,12 +48,10 @@ impl GitUtils {
         }
     }
 
-    /// Compare two VersionObjects for ordering
     pub fn compare_version_objects(
         a: &VersionObject,
         b: &VersionObject,
     ) -> Result<std::cmp::Ordering> {
-        // Check if they're the same type first
         if std::mem::discriminant(a) == std::mem::discriminant(b) {
             match (a, b) {
                 (VersionObject::SemVer(a_sem), VersionObject::SemVer(b_sem)) => {
@@ -137,9 +90,9 @@ mod tests {
             "v2.0.0".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
-            ("v1.0.1".to_string(), VersionObject::parse_with_format("v1.0.1", "semver").unwrap()),
-            ("v2.0.0".to_string(), VersionObject::parse_with_format("v2.0.0", "semver").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
+            ("v1.0.1".to_string(), VersionObject::parse_semver("v1.0.1").unwrap()),
+            ("v2.0.0".to_string(), VersionObject::parse_semver("v2.0.0").unwrap()),
         ],
         Some("v2.0.0".to_string()),
     )]
@@ -154,9 +107,9 @@ mod tests {
             "1.1.0a1".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
-            ("v1.0.1".to_string(), VersionObject::parse_with_format("v1.0.1", "semver").unwrap()),
-            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_with_format("v2.0.0-alpha.1", "semver").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
+            ("v1.0.1".to_string(), VersionObject::parse_semver("v1.0.1").unwrap()),
+            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_semver("v2.0.0-alpha.1").unwrap()),
         ],
         Some("v2.0.0-alpha.1".to_string()),
     )]
@@ -171,11 +124,11 @@ mod tests {
             "1.0.0rc2".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
         ],
         Some("v1.0.0".to_string()),
     )]
-    // Auto format with mixed versions - tie goes to first tag's format (SemVer in this case)
+    // Auto format with mixed versions - PEP440 wins majority (6 vs 3)
     #[case(
         "auto",
         vec![
@@ -187,9 +140,12 @@ mod tests {
             "v2.0.0-alpha.1".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "auto").unwrap()),
-            ("v1.1.0".to_string(), VersionObject::parse_with_format("v1.1.0", "auto").unwrap()),
-            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_with_format("v2.0.0-alpha.1", "auto").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_pep440("v1.0.0").unwrap()),
+            ("v1.1.0".to_string(), VersionObject::parse_pep440("v1.1.0").unwrap()),
+            ("1.0.0rc1".to_string(), VersionObject::parse_pep440("1.0.0rc1").unwrap()),
+            ("1.1.0a1".to_string(), VersionObject::parse_pep440("1.1.0a1").unwrap()),
+            ("1.2.0b2".to_string(), VersionObject::parse_pep440("1.2.0b2").unwrap()),
+            ("v2.0.0-alpha.1".to_string(), VersionObject::parse_pep440("v2.0.0-alpha.1").unwrap()),
         ],
         Some("v2.0.0-alpha.1".to_string()),
     )]
@@ -205,12 +161,12 @@ mod tests {
             "1.0.0rc2".to_string(),
         ],
         vec![
-            ("1.0.0".to_string(), VersionObject::parse_with_format("1.0.0", "pep440").unwrap()),
-            ("1.0.0rc1".to_string(), VersionObject::parse_with_format("1.0.0rc1", "pep440").unwrap()),
-            ("1.1.0a1".to_string(), VersionObject::parse_with_format("1.1.0a1", "pep440").unwrap()),
-            ("1.2.0b2".to_string(), VersionObject::parse_with_format("1.2.0b2", "pep440").unwrap()),
-            ("2.0.0".to_string(), VersionObject::parse_with_format("2.0.0", "pep440").unwrap()),
-            ("1.0.0rc2".to_string(), VersionObject::parse_with_format("1.0.0rc2", "pep440").unwrap()),
+            ("1.0.0".to_string(), VersionObject::parse_pep440("1.0.0").unwrap()),
+            ("1.0.0rc1".to_string(), VersionObject::parse_pep440("1.0.0rc1").unwrap()),
+            ("1.1.0a1".to_string(), VersionObject::parse_pep440("1.1.0a1").unwrap()),
+            ("1.2.0b2".to_string(), VersionObject::parse_pep440("1.2.0b2").unwrap()),
+            ("2.0.0".to_string(), VersionObject::parse_pep440("2.0.0").unwrap()),
+            ("1.0.0rc2".to_string(), VersionObject::parse_pep440("1.0.0rc2").unwrap()),
         ],
         Some("2.0.0".to_string()),
     )]
@@ -222,7 +178,7 @@ mod tests {
             "1.0.0rc1".to_string(),
         ],
         vec![
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
         ],
         Some("v1.0.0".to_string()),
     )]
@@ -235,11 +191,94 @@ mod tests {
             "v1.0.0".to_string(),
         ],
         vec![
-            ("v1.0.1-rc.1.post.1".to_string(), VersionObject::parse_with_format("v1.0.1-rc.1.post.1", "semver").unwrap()),
-            ("v1.0.1-rc.1.post.2".to_string(), VersionObject::parse_with_format("v1.0.1-rc.1.post.2", "semver").unwrap()),
-            ("v1.0.0".to_string(), VersionObject::parse_with_format("v1.0.0", "semver").unwrap()),
+            ("v1.0.1-rc.1.post.1".to_string(), VersionObject::parse_semver("v1.0.1-rc.1.post.1").unwrap()),
+            ("v1.0.1-rc.1.post.2".to_string(), VersionObject::parse_semver("v1.0.1-rc.1.post.2").unwrap()),
+            ("v1.0.0".to_string(), VersionObject::parse_semver("v1.0.0").unwrap()),
         ],
         Some("v1.0.1-rc.1.post.2".to_string()),
+    )]
+    // Realistic tags with prefix
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+        ],
+        vec![
+            ("v1".to_string(), VersionObject::parse_pep440("v1").unwrap()),
+            ("v1.2".to_string(), VersionObject::parse_pep440("v1.2").unwrap()),
+            ("v1.2.3".to_string(), VersionObject::parse_pep440("v1.2.3").unwrap()),
+        ],
+        Some("v1.2.3".to_string()),
+    )]
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+            "v1.2.3-alpha.1.post.1.semver".to_string(),
+            "v1.2.3-alpha.2.post.1.semver".to_string(),
+        ],
+        vec![
+            ("v1.2.3".to_string(), VersionObject::parse_semver("v1.2.3").unwrap()),
+            ("v1.2.3-alpha.1.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.1.post.1.semver").unwrap()),
+            ("v1.2.3-alpha.2.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.2.post.1.semver").unwrap()),
+        ],
+        Some("v1.2.3".to_string()),
+    )]
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+            "v1.2.3-alpha.1.post.1.semver".to_string(),
+            "v1.2.3-alpha.2.post.1.semver".to_string(),
+            "v1.2.3-alpha.3.post.1.semver".to_string(),
+        ],
+        vec![
+            ("v1.2.3".to_string(), VersionObject::parse_semver("v1.2.3").unwrap()),
+            ("v1.2.3-alpha.1.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.1.post.1.semver").unwrap()),
+            ("v1.2.3-alpha.2.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.2.post.1.semver").unwrap()),
+            ("v1.2.3-alpha.3.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.3-alpha.3.post.1.semver").unwrap()),
+        ],
+        Some("v1.2.3".to_string()),
+    )]
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+            "v1.2.4-alpha.1.post.1.semver".to_string(),
+            "v1.2.4-alpha.2.post.1.semver".to_string(),
+            "v1.2.4-alpha.3.post.1.semver".to_string(),
+        ],
+        vec![
+            ("v1.2.3".to_string(), VersionObject::parse_semver("v1.2.3").unwrap()),
+            ("v1.2.4-alpha.1.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.1.post.1.semver").unwrap()),
+            ("v1.2.4-alpha.2.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.2.post.1.semver").unwrap()),
+            ("v1.2.4-alpha.3.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.3.post.1.semver").unwrap()),
+        ],
+        Some("v1.2.4-alpha.3.post.1.semver".to_string()),
+    )]
+    #[case(
+        "auto",
+        vec![
+            "v1".to_string(),
+            "v1.2".to_string(),
+            "v1.2.3".to_string(),
+            "v1.2.4-alpha.1.post.1.semver".to_string(),
+            "v1.2.4-alpha.2.post.1.semver".to_string(),
+        ],
+        vec![
+            ("v1.2.3".to_string(), VersionObject::parse_semver("v1.2.3").unwrap()),
+            ("v1.2.4-alpha.1.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.1.post.1.semver").unwrap()),
+            ("v1.2.4-alpha.2.post.1.semver".to_string(), VersionObject::parse_semver("v1.2.4-alpha.2.post.1.semver").unwrap()),
+        ],
+        Some("v1.2.4-alpha.2.post.1.semver".to_string()),
     )]
     // No valid tags - should return empty
     #[case(
@@ -265,7 +304,7 @@ mod tests {
         #[case] expected_valid_tags: Vec<(String, VersionObject)>,
         #[case] expected_max_version_tag: Option<String>,
     ) {
-        let filtered_tags = GitUtils::filter_only_valid_tags(&tags, format).unwrap();
+        let filtered_tags = GitUtils::filter_only_valid_tags(&tags, format);
 
         assert_eq!(filtered_tags, expected_valid_tags);
 

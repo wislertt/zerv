@@ -313,6 +313,8 @@ mod tests {
     )] // very long local segments
     #[case("1.0.0+0.a", "1.0.0+0.b")] // mixed numeric and string
     #[case("1.0.0+a.0", "1.0.0+a.1")] // mixed string and numeric
+    #[case("0", "0.7")]
+    #[case("0.7", "0.7.87")]
     fn test_version_ordering_less_than(#[case] left: &str, #[case] right: &str) {
         let left_version: PEP440 = left.parse().unwrap();
         let right_version: PEP440 = right.parse().unwrap();

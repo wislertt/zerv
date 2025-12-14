@@ -146,7 +146,7 @@ impl GitVcs {
         let commit_hash = self.get_commit_hash_from_tag(&latest_valid_version_tag)?;
         let tags = self.get_all_tags_from_commit_hash(&commit_hash)?;
 
-        let valid_tags = GitUtils::filter_only_valid_tags(&tags, format)?;
+        let valid_tags = GitUtils::filter_only_valid_tags(&tags, format);
         let max_tag = GitUtils::find_max_version_tag(&valid_tags)?;
 
         Ok(max_tag)
