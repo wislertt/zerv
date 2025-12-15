@@ -46,6 +46,18 @@ impl GitRepoFixture {
         Ok(fixture)
     }
 
+    /// Create a repository with a clean annotated tag (Tier 1: major.minor.patch)
+    pub fn tagged_annotated(tag: &str, message: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let fixture = Self::empty()?;
+
+        fixture
+            .git_impl
+            .create_annotated_tag(&fixture.test_dir, tag, message)
+            .map_err(|e| format!("Failed to create annotated tag '{tag}': {e}"))?;
+
+        Ok(fixture)
+    }
+
     /// Create a repository with distance from tag (Tier 2: major.minor.patch.post<distance>+branch.<commit>)
     pub fn with_distance(tag: &str, commits: u32) -> Result<Self, Box<dyn std::error::Error>> {
         let fixture = Self::tagged(tag)?;
@@ -142,6 +154,19 @@ impl GitRepoFixture {
             .create_tag(&self.test_dir, tag)
             .unwrap_or_else(|e| panic!("Failed to create tag '{}': {}", tag, e));
         self
+    }
+
+    /// Create a single annotated tag
+    pub fn create_annotated_tag(self, tag: &str, message: &str) -> Self {
+        self.git_impl
+            .create_annotated_tag(&self.test_dir, tag, message)
+            .unwrap_or_else(|e| panic!("Failed to create annotated tag '{}': {}", tag, e));
+        self
+    }
+
+    /// Builder-style: Create a single annotated tag
+    pub fn with_annotated_tag(self, tag: &str, message: &str) -> Self {
+        self.create_annotated_tag(tag, message)
     }
 
     /// Create a commit without tagging (for building distance)

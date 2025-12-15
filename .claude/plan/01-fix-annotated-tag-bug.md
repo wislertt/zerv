@@ -1,6 +1,6 @@
 # Plan: Fix Annotated Tag Detection Bug
 
-**Status**: Planned
+**Status**: In Progress (Phase 1 & 2 Complete, Phase 3 In Progress)
 **Priority**: High
 **Context**: zerv flow and zerv version commands do not properly detect annotated tags, causing version detection to fail when repositories use annotated tags instead of lightweight tags.
 

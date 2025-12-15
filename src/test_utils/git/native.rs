@@ -67,4 +67,9 @@ impl GitOperations for NativeGit {
         self.execute_git(test_dir, &["tag", tag])?;
         Ok(())
     }
+
+    fn create_annotated_tag(&self, test_dir: &TestDir, tag: &str, message: &str) -> io::Result<()> {
+        self.execute_git(test_dir, &["tag", "-a", tag, "-m", message])?;
+        Ok(())
+    }
 }
