@@ -232,6 +232,7 @@ impl GitVcs {
     }
 
     /// Get all tags merged into HEAD, grouped by timestamp (newest first)
+    // TODO: fix this now!!!
     fn get_merged_tags(&self) -> Result<Vec<BTreeSet<String>>> {
         match self.run_git_command(&[
             "tag",
@@ -954,7 +955,7 @@ mod tests {
         }
     }
 
-    // TODO: debug this test
+    // TODO: create similar test with annotated tags
     #[test]
     fn test_get_latest_tag_comprehensive() -> crate::error::Result<()> {
         if !should_run_docker_tests() {
