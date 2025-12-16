@@ -97,6 +97,7 @@ jobs:
                       ~/.cargo/git/db/
                   key: cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
                   restore-keys: |
+                      cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}-
                       cargo-zerv-${{ runner.os }}-
 
             - name: Install zerv
@@ -280,5 +281,5 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: ${{ steps.cache-zerv.outputs.cache-primary-key }}
+                  key: ${{ steps.cache-zerv.outputs.cache-primary-key }}-${{ github.run_id }}
                   #   key: cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
