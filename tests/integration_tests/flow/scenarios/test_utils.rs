@@ -106,6 +106,11 @@ impl FlowIntegrationTestScenario {
         self.fixture.path().to_string_lossy().to_string()
     }
 
+    /// Get current HEAD commit hash
+    pub fn get_head_commit(&self) -> Result<String, Box<dyn std::error::Error>> {
+        self.fixture.get_head_commit()
+    }
+
     /// Copy the test repository to a temporary directory for debugging
     /// Creates a copy in .cache/tmp/<tmp_dir_name> that can be inspected manually
     /// If the directory already exists, it will be deleted first

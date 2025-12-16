@@ -1,4 +1,5 @@
 pub mod complex_release_branch;
+pub mod detached_head;
 pub mod gitflow;
 pub mod test_utils;
 pub mod trunk_based;
