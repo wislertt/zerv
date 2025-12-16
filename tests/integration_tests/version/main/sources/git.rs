@@ -68,6 +68,7 @@ fn test_git_source_comprehensive() {
     expected.vars.last_timestamp = parsed_zerv.vars.last_timestamp;
     expected.vars.bumped_timestamp = parsed_zerv.vars.bumped_timestamp;
     expected.vars.last_commit_hash = parsed_zerv.vars.last_commit_hash.clone();
+    expected.vars.last_tag_version = Some("v1.2.3".to_string()); // From the fixture tag
 
     // Git source doesn't provide last_branch - it should be None
     assert_eq!(

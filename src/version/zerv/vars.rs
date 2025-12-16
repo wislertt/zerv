@@ -34,6 +34,7 @@ pub struct ZervVars {
     pub last_branch: Option<String>,
     pub last_commit_hash: Option<String>,
     pub last_timestamp: Option<u64>,
+    pub last_tag_version: Option<String>,
 
     // Custom variables
     #[serde(default = "default_custom_value")]
@@ -155,6 +156,9 @@ impl ZervVars {
             self.pre_release = parsed_vars.pre_release;
             self.post = parsed_vars.post;
             self.dev = parsed_vars.dev;
+
+            // Update last_tag_version to reflect the override
+            self.last_tag_version = Some(tag_version.clone());
         }
 
         if let Some(ref custom_json) = args.overrides.custom {

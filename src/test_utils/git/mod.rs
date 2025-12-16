@@ -47,6 +47,9 @@ pub trait GitOperations {
     /// Create a git tag
     fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()>;
 
+    /// Create an annotated git tag with a message
+    fn create_annotated_tag(&self, test_dir: &TestDir, tag: &str, message: &str) -> io::Result<()>;
+
     /// Create a commit
     fn create_commit(&self, test_dir: &TestDir, message: &str) -> io::Result<()>;
 

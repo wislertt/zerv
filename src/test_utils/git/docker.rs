@@ -316,14 +316,15 @@ impl DockerGit {
 
         Ok(())
     }
-}
 
-impl GitOperations for DockerGit {
-    fn execute_git(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
-        self.run_git_command(test_dir, args)
-    }
-
-    fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
+    /// Helper method to create both lightweight and annotated tags
+    /// message: None creates lightweight tag, Some(message) creates annotated tag
+    fn create_tag_with_command(
+        &self,
+        test_dir: &TestDir,
+        tag: &str,
+        message: Option<&str>,
+    ) -> io::Result<()> {
         self.ensure_container_running(test_dir)?;
 
         // Enhanced verification: Ensure commit object exists and is accessible with retry logic
@@ -344,26 +345,69 @@ impl GitOperations for DockerGit {
             done
         "#;
 
+        let operation_desc = if message.is_some() {
+            "annotated tag creation"
+        } else {
+            "tag creation"
+        };
+
         self.execute_docker_command(
             verify_script,
-            "repository state verification before tag creation",
+            &format!("repository state verification before {}", operation_desc),
         )?;
 
-        // Create tag with proper escaping and additional verification
+        // Create tag with proper escaping and verification
         let escaped_tag = tag.replace('\'', "'\"'\"'");
+
+        let (tag_command, verification_steps) = match message {
+            Some(msg) => {
+                let escaped_message = msg.replace('\'', "'\"'\"'");
+                (
+                    format!("git tag -a '{escaped_tag}' -m '{escaped_message}'"),
+                    format!(
+                        "git tag -l '{escaped_tag}' | grep -q '{escaped_tag}' && git cat-file -t '{escaped_tag}' | grep -q 'tag'"
+                    ),
+                )
+            }
+            None => (
+                format!("git tag '{escaped_tag}'"),
+                format!("git tag -l '{escaped_tag}' | grep -q '{escaped_tag}'"),
+            ),
+        };
+
         let tag_script = format!(
             r#"
             set -e
             # Create the tag
-            git tag '{escaped_tag}' &&
-            # Verify the tag was created successfully
-            git tag -l '{escaped_tag}' | grep -q '{escaped_tag}'
-        "#
+            {tag_command} &&
+            # Verify the tag was created successfully{}
+            {}
+        "#,
+            if message.is_some() {
+                " and is annotated"
+            } else {
+                ""
+            },
+            verification_steps
         );
 
-        self.execute_docker_command_with_retry(&tag_script, "tag creation", 3)?;
+        self.execute_docker_command_with_retry(&tag_script, operation_desc, 3)?;
 
         Ok(())
+    }
+}
+
+impl GitOperations for DockerGit {
+    fn execute_git(&self, test_dir: &TestDir, args: &[&str]) -> io::Result<String> {
+        self.run_git_command(test_dir, args)
+    }
+
+    fn create_tag(&self, test_dir: &TestDir, tag: &str) -> io::Result<()> {
+        self.create_tag_with_command(test_dir, tag, None)
+    }
+
+    fn create_annotated_tag(&self, test_dir: &TestDir, tag: &str, message: &str) -> io::Result<()> {
+        self.create_tag_with_command(test_dir, tag, Some(message))
     }
 
     fn init_repo(&self, test_dir: &TestDir) -> io::Result<()> {

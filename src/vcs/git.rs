@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::path::{
     Path,
     PathBuf,
@@ -14,7 +13,6 @@ use crate::vcs::{
     Vcs,
     VcsData,
 };
-use crate::version::VersionObject;
 
 /// Git VCS implementation
 pub struct GitVcs {
@@ -136,207 +134,58 @@ impl GitVcs {
         ZervError::CommandFailed(format!("Git command failed: {stderr_str}"))
     }
 
-    /// Get latest version tag using enhanced algorithm
-    fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
-        let tags = self.get_merged_tags()?;
-        let latest_valid_version_tag = match self.find_latest_valid_version_tag(&tags, format)? {
-            Some(tag) => tag,
-            None => return Ok(None),
-        };
-        let commit_hash = self.get_commit_hash_from_tag(&latest_valid_version_tag)?;
-        let tags = self.get_all_tags_from_commit_hash(&commit_hash)?;
-
-        let valid_tags = GitUtils::filter_only_valid_tags(&tags, format);
-        let max_tag = GitUtils::find_max_version_tag(&valid_tags)?;
-
-        Ok(max_tag)
-    }
-
-    /// Get HEAD commit hash
-    fn get_head_commit(&self) -> Result<String> {
-        let output = self.run_git_command(&["rev-parse", "HEAD"])?;
-        Ok(output.trim().to_string())
-    }
-
-    /// Get commit hash from tag
-    fn get_commit_hash_from_tag(&self, tag: &str) -> Result<String> {
-        let output = self.run_git_command(&["rev-parse", &format!("{}^{{commit}}", tag)])?;
-        Ok(output.trim().to_string())
-    }
-
-    /// Get all tags pointing to a commit hash
-    fn get_all_tags_from_commit_hash(&self, commit_hash: &str) -> Result<Vec<String>> {
-        let tags_output = self.get_tags_pointing_at_commit(commit_hash)?;
-        Ok(tags_output
+    /// Get all commits from HEAD in topological order
+    fn get_commits_in_topo_order(&self) -> Result<Vec<String>> {
+        let commits_output = self.run_git_command(&["rev-list", "--topo-order", "HEAD"])?;
+        Ok(commits_output
             .lines()
             .map(|line| line.trim().to_string())
-            .filter(|tag| !tag.is_empty())
+            .filter(|hash| !hash.is_empty())
             .collect())
     }
 
-    /// Parse git tag output into groups of tags with same timestamp, sorted by timestamp (newest first)
-    fn parse_tags_into_groups(tags_output: &str) -> Vec<BTreeSet<String>> {
-        let mut tag_timestamp_pairs: Vec<(String, i64)> = tags_output
-            .lines()
-            .filter_map(|line| {
-                let parts: Vec<&str> = line.split("||").collect();
-                if parts.len() != 2 {
-                    return None;
-                }
+    /// Get latest version tag using enhanced algorithm
+    fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
+        // Get all commits from HEAD in topological order
+        let commits = self.get_commits_in_topo_order()?;
 
-                let tag = parts[0].trim().to_string();
-                let timestamp_str = parts[1].trim();
+        // Process each commit in topological order
+        for commit_hash in commits {
+            // Get all tags pointing to this commit (reusing existing function)
+            let tags = self.get_all_tags_from_commit_hash(&commit_hash);
 
-                match timestamp_str.parse::<i64>() {
-                    Ok(timestamp) => Some((tag, timestamp)),
-                    Err(_) => None,
-                }
-            })
-            .filter(|(tag, _)| !tag.is_empty())
-            .collect();
-
-        // Sort by timestamp (newest first)
-        tag_timestamp_pairs
-            .sort_by(|(_, timestamp_a), (_, timestamp_b)| timestamp_b.cmp(timestamp_a));
-
-        // Group tags by timestamp using BTreeSet for deterministic ordering
-        let mut tag_groups: Vec<BTreeSet<String>> = Vec::new();
-        let mut current_timestamp: Option<i64> = None;
-        let mut current_group: BTreeSet<String> = BTreeSet::new();
-
-        for (tag, timestamp) in tag_timestamp_pairs {
-            match current_timestamp {
-                None => {
-                    current_timestamp = Some(timestamp);
-                    current_group.insert(tag);
-                }
-                Some(current_ts) => {
-                    if timestamp == current_ts {
-                        current_group.insert(tag);
-                    } else {
-                        tag_groups.push(current_group);
-                        current_group = BTreeSet::new();
-                        current_group.insert(tag);
-                        current_timestamp = Some(timestamp);
-                    }
-                }
-            }
-        }
-
-        // Add the last group if not empty
-        if !current_group.is_empty() {
-            tag_groups.push(current_group);
-        }
-
-        tag_groups
-    }
-
-    /// Get all tags merged into HEAD, grouped by timestamp (newest first)
-    fn get_merged_tags(&self) -> Result<Vec<BTreeSet<String>>> {
-        match self.run_git_command(&[
-            "tag",
-            "--merged",
-            "HEAD",
-            "--sort=-committerdate",
-            "--format=%(refname:short)||%(committerdate:unix)",
-        ]) {
-            Ok(tags_output) => {
-                let tag_groups = Self::parse_tags_into_groups(&tags_output);
-                Ok(tag_groups)
-            }
-            Err(ZervError::CommandFailed(_)) => Ok(Vec::new()), // No tags found
-            Err(e) => Err(e),
-        }
-    }
-
-    /// Find the closest tag to HEAD from a list of tags using commit distance
-    fn find_closest_tag_to_head(&self, tags: &[String]) -> Result<String> {
-        let head_commit = self.get_head_commit()?;
-
-        let mut closest_tag = None;
-        let mut min_distance = u32::MAX;
-
-        for tag in tags {
-            let trimmed_tag = tag.trim();
-            if trimmed_tag.is_empty() {
+            // If no tags, continue to next commit
+            if tags.is_empty() {
                 continue;
             }
 
-            // Get commit hash for this tag
-            let tag_commit = self.get_commit_hash_from_tag(trimmed_tag)?;
+            // Filter tags by format
+            let valid_tags = GitUtils::filter_only_valid_tags(&tags, format);
 
-            // Calculate distance from HEAD to tag commit
-            let distance = self.get_commit_distance(&tag_commit, &head_commit)?;
+            // If no valid tags, continue to next commit
+            if valid_tags.is_empty() {
+                continue;
+            }
 
-            if distance < min_distance {
-                min_distance = distance;
-                closest_tag = Some(trimmed_tag.to_string());
+            // Find and return the maximum version tag
+            if let Some(max_tag) = GitUtils::find_max_version_tag(&valid_tags)? {
+                return Ok(Some(max_tag));
             }
         }
 
-        closest_tag.ok_or_else(|| ZervError::CommandFailed("No valid tags found".to_string()))
+        // No valid tags found
+        Ok(None)
     }
 
-    /// Get commit distance between two commits
-    fn get_commit_distance(&self, from_commit: &str, to_commit: &str) -> Result<u32> {
-        let output = self.run_git_command(&[
-            "rev-list",
-            "--count",
-            &format!("{}..{}", from_commit, to_commit),
-        ])?;
-        output
-            .trim()
-            .parse::<u32>()
-            .map_err(|_| ZervError::CommandFailed("Failed to parse commit distance".to_string()))
-    }
-
-    /// Find the latest valid version tag from grouped git tags
-    fn find_latest_valid_version_tag(
-        &self,
-        tag_groups: &[BTreeSet<String>],
-        format: &str,
-    ) -> Result<Option<String>> {
-        // Process groups in order (newest timestamps first)
-        for group in tag_groups {
-            let valid_tags: Vec<String> = group
-                .iter()
-                .filter_map(|tag| {
-                    let trimmed_tag = tag.trim();
-                    if trimmed_tag.is_empty() {
-                        return None;
-                    }
-                    if self.is_valid_version_tag(trimmed_tag, format) {
-                        Some(trimmed_tag.to_string())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-            match valid_tags.len() {
-                1 => return Ok(Some(valid_tags[0].clone())), // Single valid tag - use it
-                0 => continue, // No valid tags in this group, try next group
-                _ => {
-                    // Multiple valid tags in same group - use commit distance to pick closest
-                    let closest = self.find_closest_tag_to_head(&valid_tags)?;
-                    return Ok(Some(closest));
-                }
-            }
-        }
-
-        Ok(None) // No valid tags found in any group
-    }
-
-    /// Check if a tag is a valid version for the given format
-    fn is_valid_version_tag(&self, tag: &str, format: &str) -> bool {
-        VersionObject::parse_with_format(tag, format).is_ok()
-    }
-
-    /// Get all tags pointing to a specific commit
-    fn get_tags_pointing_at_commit(&self, commit_hash: &str) -> Result<String> {
+    /// Get all tags pointing to a commit hash
+    fn get_all_tags_from_commit_hash(&self, commit_hash: &str) -> Vec<String> {
         match self.run_git_command(&["tag", "--points-at", commit_hash]) {
-            Ok(tags) => Ok(tags),
-            Err(_) => Ok(String::new()), // Return empty if no tags found
+            Ok(tags_output) => tags_output
+                .lines()
+                .map(|line| line.trim().to_string())
+                .filter(|tag| !tag.is_empty())
+                .collect(),
+            Err(_) => Vec::new(), // Return empty vector if no tags found
         }
     }
 
@@ -371,28 +220,15 @@ impl GitVcs {
 
     /// Get tag timestamp
     fn get_tag_timestamp(&self, tag: &str) -> Result<Option<i64>> {
-        // Check if tag is annotated or lightweight
-        let tag_type = match self.run_git_command(&["cat-file", "-t", tag]) {
-            Ok(t) => t,
-            Err(_) => return Ok(None),
-        };
-
-        let timestamp = match tag_type.trim() {
-            "tag" => {
-                // Annotated tag - use tag creation date
-                self.run_git_command(&["log", "-1", "--format=%ct", tag])?
-            }
-            "commit" => {
-                // Lightweight tag - use commit date
-                self.run_git_command(&["log", "-1", "--format=%ct", tag])?
-            }
-            _ => return Ok(None),
-        };
-
-        timestamp
-            .parse::<i64>()
-            .map(Some)
-            .map_err(|e| ZervError::CommandFailed(format!("Failed to parse tag timestamp: {e}")))
+        // Get the commit date for both annotated and lightweight tags
+        // Using ^{commit} to dereference the tag to the commit it points to
+        match self.run_git_command(&["show", "-s", "--format=%ct", &format!("{}^{{commit}}", tag)])
+        {
+            Ok(timestamp) => timestamp.parse::<i64>().map(Some).map_err(|e| {
+                ZervError::CommandFailed(format!("Failed to parse tag timestamp: {e}"))
+            }),
+            Err(_) => Ok(None),
+        }
     }
 
     /// Get the commit hash that a tag points to
@@ -954,7 +790,6 @@ mod tests {
         }
     }
 
-    // TODO: debug this test
     #[test]
     fn test_get_latest_tag_comprehensive() -> crate::error::Result<()> {
         if !should_run_docker_tests() {
@@ -1047,55 +882,211 @@ mod tests {
         Ok(())
     }
 
-    mod parse_tags_into_groups_tests {
-        use rstest::rstest;
-
-        use super::*;
-
-        #[rstest]
-        #[case::same_timestamp_grouping(
-            r#"v2.0.0||1763817334
-v1.1.0||1763817334
-v0.9.0||1763817333
-v0.8.0||1763817332
-v1.0.0||1763817334
-v0.7.0||1763817900"#,
-            vec![
-                BTreeSet::from(["v0.7.0".to_string()]),
-                BTreeSet::from(["v1.0.0".to_string(), "v1.1.0".to_string(), "v2.0.0".to_string()]),
-                BTreeSet::from(["v0.9.0".to_string()]),
-                BTreeSet::from(["v0.8.0".to_string()]),
-            ]
-        )]
-        #[case::different_timestamps(
-            r#"v3.0.0||1732000000
-v2.0.0||1731900000
-v1.0.0||1731800000"#,
-            vec![
-                BTreeSet::from(["v3.0.0".to_string()]),
-                BTreeSet::from(["v2.0.0".to_string()]),
-                BTreeSet::from(["v1.0.0".to_string()]),
-            ]
-        )]
-        #[case::empty_input("", vec![])]
-        #[case::mixed_valid_invalid(
-            r#"v2.0.0||1732000000
-invalid_line
-v1.0.0||1731900000
-v1.5.0||invalid_timestamp
-v0.9.0||1731800000"#,
-            vec![
-                BTreeSet::from(["v2.0.0".to_string()]),
-                BTreeSet::from(["v1.0.0".to_string()]),
-                BTreeSet::from(["v0.9.0".to_string()]),
-            ]
-        )]
-        fn test_parse_tags_into_groups(
-            #[case] input: &str,
-            #[case] expected: Vec<BTreeSet<String>>,
-        ) {
-            let result = GitVcs::parse_tags_into_groups(input);
-            assert_eq!(result, expected);
+    // Test with annotated tags - mirrors test_get_latest_tag_comprehensive but uses annotated tags
+    #[test]
+    fn test_get_latest_tag_comprehensive_annotated() -> crate::error::Result<()> {
+        if !should_run_docker_tests() {
+            return Ok(());
         }
+
+        // Create repository with complex history covering all scenarios using annotated tags
+        let mut fixture = GitRepoFixture::tagged_annotated("v1.0.0", "Release version 1.0.0")
+            .expect("Failed to create initial fixture");
+        let git_vcs = GitVcs::new(fixture.path())?;
+
+        // Test 1: Empty repo behavior (already has v1.0.0 annotated tag)
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v1.0.0".to_string()),
+            "Should find initial annotated tag"
+        );
+
+        // Test 2: Multiple annotated tags on same commit (main bug scenario)
+        fixture = fixture.create_annotated_tag("v1.0.1-beta.1", "Beta release 1.0.1")   // pre-release
+            .create_annotated_tag("build-123", "Build 123")                            // non-version tag
+            .create_annotated_tag("v1.0.2-rc.1.post.3", "Release candidate with post")  // problematic pre-release from bug
+            .create_annotated_tag("v1.1.0", "Release version 1.1.0")                    // clean release (should be chosen)
+            .create_annotated_tag("release-candidate", "Release candidate tag"); // another non-version tag
+
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v1.1.0".to_string()),
+            "Should return v1.1.0 (clean annotated release) over pre-release annotated tags"
+        );
+
+        // Test 3: Format-specific behavior with annotated tags
+        let result_semver = git_vcs.get_latest_tag("semver")?;
+        assert!(
+            result_semver.is_some(),
+            "SemVer format should find an annotated tag"
+        );
+
+        let result_pep440 = git_vcs.get_latest_tag("pep440")?;
+        assert!(
+            result_pep440.is_some(),
+            "PEP440 format should find an annotated tag"
+        );
+
+        // Test 4: Build history with HEAD not at latest commit using annotated tags
+        fixture = fixture
+            .commit("Feature A")
+            .create_annotated_tag("v2.0.0", "Major release with feature A")
+            .commit("Work after v2.0.0")
+            .commit("Feature B")
+            .create_annotated_tag("v3.0.0", "Major release with feature B");
+
+        // Get v2.0.0 commit and checkout to it (middle of history)
+        let v2_commit = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
+            .expect("Failed to get v2.0.0 commit");
+        let v2_commit = v2_commit.trim();
+        fixture = fixture.checkout(v2_commit);
+
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v2.0.0".to_string()),
+            "Should return v2.0.0 annotated tag when HEAD is at v2.0.0, not future v3.0.0 annotated tag"
+        );
+
+        // Test 5: Old commit with high version annotated tag
+        let head_commit = fixture
+            .get_head_commit()
+            .expect("Failed to get HEAD commit");
+
+        // Reset to initial commit and add high version annotated tag
+        let v1_0_0_commit = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v1.0.0"])
+            .expect("Failed to get v1.0.0 commit");
+        let v1_0_0_commit = v1_0_0_commit.trim();
+
+        // Test 6: Verify annotated tag type detection before moving fixture
+        let tag_type = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["cat-file", "-t", "v1.0.0"])
+            .expect("Failed to get tag type");
+        assert_eq!(
+            tag_type.trim(),
+            "tag",
+            "v1.0.0 should be an annotated tag (type 'tag')"
+        );
+
+        let _fixture = fixture
+            .checkout(v1_0_0_commit)
+            .commit("Old feature")
+            .create_annotated_tag("v10.5.0", "High version annotated tag on old commit")
+            .checkout(&head_commit);
+
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v2.0.0".to_string()),
+            "Should return v2.0.0 annotated tag (traceable from HEAD), not v10.5.0 annotated tag (old high version)"
+        );
+
+        Ok(())
+    }
+
+    // Test with mixed annotated and lightweight tags
+    #[test]
+    fn test_get_latest_tag_mixed_tag_types() -> crate::error::Result<()> {
+        if !should_run_docker_tests() {
+            return Ok(());
+        }
+
+        // Create repository with both annotated and lightweight tags
+        let fixture = GitRepoFixture::tagged_annotated("v1.0.0", "Initial annotated release")
+            .expect("Failed to create initial fixture")
+            // Add lightweight tags on same commit
+            .create_tag("v1.0.1")
+            .create_tag("v1.1.0")
+            // Add more annotated tags on different commits
+            .commit("Feature A")
+            .create_annotated_tag("v2.0.0", "Major annotated release")
+            .commit("Bug fix")
+            .create_tag("v2.0.1")
+            // Add more commits and tags
+            .commit("Feature B")
+            .create_annotated_tag("v3.0.0-alpha.1", "Alpha annotated release")
+            .commit("More work")
+            .create_tag("v3.0.0")
+            .create_annotated_tag("v3.1.0", "Latest annotated release");
+
+        let git_vcs = GitVcs::new(fixture.path())?;
+
+        // Should find the latest version regardless of tag type
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v3.1.0".to_string()),
+            "Should find v3.1.0 (highest version annotated tag) when mixed tag types exist"
+        );
+
+        // Verify tag types
+        let v1_0_0_type = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["cat-file", "-t", "v1.0.0"])
+            .expect("Failed to get v1.0.0 tag type");
+        assert_eq!(v1_0_0_type.trim(), "tag", "v1.0.0 should be annotated");
+
+        let v1_0_1_type = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["cat-file", "-t", "v1.0.1"])
+            .expect("Failed to get v1.0.1 tag type");
+        assert_eq!(v1_0_1_type.trim(), "commit", "v1.0.1 should be lightweight");
+
+        // Test timestamp extraction works for both types
+        let _timestamp_annotated = git_vcs.get_tag_timestamp("v1.0.0")?;
+        let _timestamp_lightweight = git_vcs.get_tag_timestamp("v1.0.1")?;
+
+        // Additional test: Latest tag is lightweight
+        let fixture = fixture.commit("Final feature").create_tag("v4.0.0"); // Latest version as lightweight tag
+
+        let git_vcs = GitVcs::new(fixture.path())?;
+
+        // Should find v4.0.0 (lightweight tag) as latest
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v4.0.0".to_string()),
+            "Should find v4.0.0 (lightweight tag) as latest version"
+        );
+
+        // Verify v4.0.0 is indeed lightweight
+        let v4_0_0_type = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["cat-file", "-t", "v4.0.0"])
+            .expect("Failed to get v4.0.0 tag type");
+        assert_eq!(v4_0_0_type.trim(), "commit", "v4.0.0 should be lightweight");
+
+        // Test with different formats
+        let result_semver = git_vcs.get_latest_tag("semver")?;
+        assert_eq!(
+            result_semver,
+            Some("v4.0.0".to_string()),
+            "SemVer should find v4.0.0 lightweight tag"
+        );
+
+        // Test with lightweight and annotated tags on same commit
+        let fixture = fixture
+            .commit("Same commit multiple tags")
+            .create_tag("v4.1.0-alpha.1")
+            .create_annotated_tag("v4.1.0", "Release version 4.1.0");
+
+        let git_vcs = GitVcs::new(fixture.path())?;
+
+        // Should find v4.1.0 (annotated) over v4.1.0-alpha.1 (lightweight) on same commit
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v4.1.0".to_string()),
+            "Should find v4.1.0 annotated tag over v4.1.0-alpha.1 lightweight on same commit"
+        );
+
+        Ok(())
     }
 }
