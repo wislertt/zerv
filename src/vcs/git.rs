@@ -136,27 +136,47 @@ impl GitVcs {
         ZervError::CommandFailed(format!("Git command failed: {stderr_str}"))
     }
 
+    /// Get all commits from HEAD in topological order
+    fn get_commits_in_topo_order(&self) -> Result<Vec<String>> {
+        let commits_output = self.run_git_command(&["rev-list", "--topo-order", "HEAD"])?;
+        Ok(commits_output
+            .lines()
+            .map(|line| line.trim().to_string())
+            .filter(|hash| !hash.is_empty())
+            .collect())
+    }
+
     /// Get latest version tag using enhanced algorithm
     fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
-        // TODO: :=======
-        // rewrite this to see annotated tags by
-        // - get all commit from HEAD history to topo order by `git rev-list --topo-order HEAD`
-        // - loop each commit find tags by `git tag --points-at` then get tags
-        // - use GitUtils::filter_only_valid_tags(&tags, format) if result is empty go-to next loop
-        // - else use GitUtils::find_max_version_tag(&valid_tags) to find max tags
+        // Get all commits from HEAD in topological order
+        let commits = self.get_commits_in_topo_order()?;
 
-        let tags = self.get_merged_tags()?;
-        let latest_valid_version_tag = match self.find_latest_valid_version_tag(&tags, format)? {
-            Some(tag) => tag,
-            None => return Ok(None),
-        };
-        let commit_hash = self.get_commit_hash_from_tag(&latest_valid_version_tag)?;
-        let tags = self.get_all_tags_from_commit_hash(&commit_hash)?;
+        // Process each commit in topological order
+        for commit_hash in commits {
+            // Get all tags pointing to this commit (reusing existing function)
+            let tags = self.get_all_tags_from_commit_hash(&commit_hash)?;
 
-        let valid_tags = GitUtils::filter_only_valid_tags(&tags, format);
-        let max_tag = GitUtils::find_max_version_tag(&valid_tags)?;
+            // If no tags, continue to next commit
+            if tags.is_empty() {
+                continue;
+            }
 
-        Ok(max_tag)
+            // Filter tags by format
+            let valid_tags = GitUtils::filter_only_valid_tags(&tags, format);
+
+            // If no valid tags, continue to next commit
+            if valid_tags.is_empty() {
+                continue;
+            }
+
+            // Find and return the maximum version tag
+            if let Some(max_tag) = GitUtils::find_max_version_tag(&valid_tags)? {
+                return Ok(Some(max_tag));
+            }
+        }
+
+        // No valid tags found
+        Ok(None)
     }
 
     /// Get HEAD commit hash
