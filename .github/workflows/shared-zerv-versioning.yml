@@ -9,7 +9,7 @@ on:
             zerv_version:
                 type: string
                 required: false
-                description: "Version of zerv to install (e.g., '0.7.84'). If not specified, installs latest version"
+                description: "Version of zerv to install (e.g., '0.7.96'). If not specified, installs latest version"
             schema:
                 type: string
                 description: "Zerv flow schema"
@@ -57,8 +57,8 @@ on:
                 default: >-
                     {
                         "docker_tag": "{{ semver_obj.docker }}",
-                        "v_major": "v{{ major | default(value='0') }}",
-                        "v_major_minor": "v{{ major | default(value='0') }}{{ prefix_if(value=minor, prefix='.') }}"
+                        "v_major": "v{{ major | default(value=\\\"0\\\") }}",
+                        "v_major_minor": "v{{ major | default(value=\\\"0\\\") }}{{ prefix_if(value=minor, prefix=\\\".\\\") }}"
                     }
             custom_outputs:
                 type: string
@@ -87,6 +87,7 @@ jobs:
                   toolchain: stable
 
             - name: Restore cache
+              id: cache-zerv
               uses: actions/cache/restore@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
               with:
                   path: |
@@ -96,6 +97,7 @@ jobs:
                       ~/.cargo/git/db/
                   key: cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
                   restore-keys: |
+                      cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}-
                       cargo-zerv-${{ runner.os }}-
 
             - name: Install zerv
@@ -279,4 +281,4 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
+                  key: ${{ steps.cache-zerv.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
