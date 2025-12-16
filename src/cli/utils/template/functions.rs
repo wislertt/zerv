@@ -18,6 +18,24 @@ mod timestamp_patterns {
     pub const COMPACT_DATETIME: &str = "compact_datetime";
 }
 
+/// Extract string value from any Tera Value type
+/// This function converts numbers, booleans, and other types to strings
+fn get_string_value(
+    args: &std::collections::HashMap<String, Value>,
+    key: &str,
+) -> Result<String, tera::Error> {
+    args.get(key)
+        .map(|v| match v {
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Null => String::new(),
+            Value::Array(_) => v.to_string(),
+            Value::Object(_) => v.to_string(),
+        })
+        .ok_or_else(|| tera::Error::msg(format!("Missing required parameter '{}'", key)))
+}
+
 /// Register custom Tera functions
 pub fn register_functions(tera: &mut Tera) -> Result<(), ZervError> {
     tera.register_function("sanitize", Box::new(sanitize_function));
@@ -34,10 +52,7 @@ pub fn register_functions(tera: &mut Tera) -> Result<(), ZervError> {
 fn sanitize_function(
     args: &std::collections::HashMap<String, Value>,
 ) -> Result<Value, tera::Error> {
-    let value = args
-        .get("value")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| tera::Error::msg("sanitize function requires a 'value' parameter"))?;
+    let value = get_string_value(args, "value")?;
 
     // Check for preset format
     let preset = args.get("preset").and_then(|v| v.as_str());
@@ -61,11 +76,11 @@ fn sanitize_function(
     let sanitized = if let Some(preset) = preset {
         // Use preset format
         match preset {
-            "semver_str" | "semver" | "dotted" => Sanitizer::semver_str().sanitize(value),
+            "semver_str" | "semver" | "dotted" => Sanitizer::semver_str().sanitize(&value),
             "pep440_local_str" | "pep440" | "lower_dotted" => {
-                Sanitizer::pep440_local_str().sanitize(value)
+                Sanitizer::pep440_local_str().sanitize(&value)
             }
-            "uint" => Sanitizer::uint().sanitize(value),
+            "uint" => Sanitizer::uint().sanitize(&value),
             _ => {
                 return Err(tera::Error::msg(format!(
                     "Unknown sanitize preset: {}",
@@ -81,10 +96,10 @@ fn sanitize_function(
             keep_zeros.unwrap_or(false),
             max_length.map(|l| l as usize),
         );
-        sanitizer.sanitize(value)
+        sanitizer.sanitize(&value)
     } else {
         // Default to dotted preset if no parameters specified
-        Sanitizer::semver_str().sanitize(value)
+        Sanitizer::semver_str().sanitize(&value)
     };
 
     Ok(Value::String(sanitized))
@@ -93,10 +108,7 @@ fn sanitize_function(
 /// Generate hex hash of string with configurable length
 /// Usage: {{ hash(value, length=7) }}
 fn hash_function(args: &std::collections::HashMap<String, Value>) -> Result<Value, tera::Error> {
-    let input = args
-        .get("value")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| tera::Error::msg("hash function requires a 'value' parameter"))?;
+    let input = get_string_value(args, "value")?;
 
     let length = args.get("length").and_then(|v| v.as_u64()).unwrap_or(7) as usize;
 
@@ -118,10 +130,7 @@ fn hash_function(args: &std::collections::HashMap<String, Value>) -> Result<Valu
 fn hash_int_function(
     args: &std::collections::HashMap<String, Value>,
 ) -> Result<Value, tera::Error> {
-    let input = args
-        .get("value")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| tera::Error::msg("hash_int function requires a 'value' parameter"))?;
+    let input = get_string_value(args, "value")?;
 
     let length = args.get("length").and_then(|v| v.as_u64()).unwrap_or(7) as usize;
 
@@ -152,17 +161,14 @@ fn hash_int_function(
 /// Extract prefix from string with configurable length
 /// Usage: {{ prefix(value, length=10) }}
 fn prefix_function(args: &std::collections::HashMap<String, Value>) -> Result<Value, tera::Error> {
-    let input = args
-        .get("value")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| tera::Error::msg("prefix function requires a 'value' parameter"))?;
+    let input = get_string_value(args, "value")?;
 
     let length = args.get("length").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
 
     let prefix = if input.len() > length {
         &input[..length]
     } else {
-        input
+        &input
     };
 
     Ok(Value::String(prefix.to_string()))
@@ -173,10 +179,7 @@ fn prefix_function(args: &std::collections::HashMap<String, Value>) -> Result<Va
 fn prefix_if_function(
     args: &std::collections::HashMap<String, Value>,
 ) -> Result<Value, tera::Error> {
-    let value = args
-        .get("value")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| tera::Error::msg("prefix_if function requires a 'value' parameter"))?;
+    let value = get_string_value(args, "value")?;
 
     let prefix = args
         .get("prefix")
@@ -401,7 +404,7 @@ mod tests {
             result
                 .unwrap_err()
                 .to_string()
-                .contains("'value' parameter")
+                .contains("Missing required parameter 'value'")
         );
     }
 
