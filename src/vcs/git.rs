@@ -882,7 +882,6 @@ mod tests {
         Ok(())
     }
 
-    // TODO: fix this bug now ====
     // Test with annotated tags - mirrors test_get_latest_tag_comprehensive but uses annotated tags
     #[test]
     fn test_get_latest_tag_comprehensive_annotated() -> crate::error::Result<()> {
