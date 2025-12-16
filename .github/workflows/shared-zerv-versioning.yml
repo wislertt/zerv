@@ -9,7 +9,7 @@ on:
             zerv_version:
                 type: string
                 required: false
-                description: "Version of zerv to install (e.g., '0.7.84'). If not specified, installs latest version"
+                description: "Version of zerv to install (e.g., '0.7.96'). If not specified, installs latest version"
             schema:
                 type: string
                 description: "Zerv flow schema"
