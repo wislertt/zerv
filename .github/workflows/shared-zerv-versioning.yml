@@ -57,8 +57,8 @@ on:
                 default: >-
                     {
                         "docker_tag": "{{ semver_obj.docker }}",
-                        "v_major": "v{{ major | default(value=\"0\") }}",
-                        "v_major_minor": "v{{ major | default(value=\"0\") }}{{ prefix_if(value=minor, prefix=\".\") }}"
+                        "v_major": "v{{ major | default(value=\\\"0\\\") }}",
+                        "v_major_minor": "v{{ major | default(value=\\\"0\\\") }}{{ prefix_if(value=minor, prefix=\\\".\\\") }}"
                     }
             custom_outputs:
                 type: string
