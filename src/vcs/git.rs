@@ -220,28 +220,15 @@ impl GitVcs {
 
     /// Get tag timestamp
     fn get_tag_timestamp(&self, tag: &str) -> Result<Option<i64>> {
-        // Check if tag is annotated or lightweight
-        let tag_type = match self.run_git_command(&["cat-file", "-t", tag]) {
-            Ok(t) => t,
-            Err(_) => return Ok(None),
-        };
-
-        let timestamp = match tag_type.trim() {
-            "tag" => {
-                // Annotated tag - use tag creation date
-                self.run_git_command(&["log", "-1", "--format=%ct", tag])?
-            }
-            "commit" => {
-                // Lightweight tag - use commit date
-                self.run_git_command(&["log", "-1", "--format=%ct", tag])?
-            }
-            _ => return Ok(None),
-        };
-
-        timestamp
-            .parse::<i64>()
-            .map(Some)
-            .map_err(|e| ZervError::CommandFailed(format!("Failed to parse tag timestamp: {e}")))
+        // Get the commit date for both annotated and lightweight tags
+        // Using ^{commit} to dereference the tag to the commit it points to
+        match self.run_git_command(&["show", "-s", "--format=%ct", &format!("{}^{{commit}}", tag)])
+        {
+            Ok(timestamp) => timestamp.parse::<i64>().map(Some).map_err(|e| {
+                ZervError::CommandFailed(format!("Failed to parse tag timestamp: {e}"))
+            }),
+            Err(_) => Ok(None),
+        }
     }
 
     /// Get the commit hash that a tag points to
