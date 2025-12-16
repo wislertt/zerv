@@ -34,15 +34,9 @@ jobs:
         with:
             tags: >-
                 [
-                  "${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver_major }}",
-                  "${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver_major_minor }}"
+                  "${{ fromJson(needs.zerv-versioning.outputs.versions).v_major }}",
+                  "${{ fromJson(needs.zerv-versioning.outputs.versions).v_major_minor }}"
                 ]
-            # TODO: update this after release
-            # tags: >-
-            #     [
-            #       "${{ fromJson(needs.zerv-versioning.outputs.versions).v_major }}",
-            #       "${{ fromJson(needs.zerv-versioning.outputs.versions).v_major_minor }}"
-            #     ]
 
     # ====================================================
     # Test and Lint
