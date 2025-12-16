@@ -87,6 +87,7 @@ jobs:
                   toolchain: stable
 
             - name: Restore cache
+              id: cache-zerv
               uses: actions/cache/restore@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
               with:
                   path: |
