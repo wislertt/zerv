@@ -279,4 +279,5 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
+                  key: ${{ steps.cache-zerv.outputs.cache-primary-key }}
+                  #   key: cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
