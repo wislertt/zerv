@@ -138,6 +138,13 @@ impl GitVcs {
 
     /// Get latest version tag using enhanced algorithm
     fn get_latest_tag(&self, format: &str) -> Result<Option<String>> {
+        // TODO: :=======
+        // rewrite this to see annotated tags by
+        // - get all commit from HEAD history to topo order by `git rev-list --topo-order HEAD`
+        // - loop each commit find tags by `git tag --points-at` then get tags
+        // - use GitUtils::filter_only_valid_tags(&tags, format) if result is empty go-to next loop
+        // - else use GitUtils::find_max_version_tag(&valid_tags) to find max tags
+
         let tags = self.get_merged_tags()?;
         let latest_valid_version_tag = match self.find_latest_valid_version_tag(&tags, format)? {
             Some(tag) => tag,
@@ -1048,164 +1055,169 @@ mod tests {
     }
 
     // TODO: fix this bug now ====
-    // // Test with annotated tags - mirrors test_get_latest_tag_comprehensive but uses annotated tags
-    // #[test]
-    // fn test_get_latest_tag_comprehensive_annotated() -> crate::error::Result<()> {
-    //     if !should_run_docker_tests() {
-    //         return Ok(());
-    //     }
+    // Test with annotated tags - mirrors test_get_latest_tag_comprehensive but uses annotated tags
+    #[test]
+    fn test_get_latest_tag_comprehensive_annotated() -> crate::error::Result<()> {
+        if !should_run_docker_tests() {
+            return Ok(());
+        }
 
-    //     // Create repository with complex history covering all scenarios using annotated tags
-    //     let mut fixture =
-    //         GitRepoFixture::tagged_annotated("v1.0.0", "Release version 1.0.0")
-    //             .expect("Failed to create initial fixture");
-    //     let git_vcs = GitVcs::new(fixture.path())?;
+        // Create repository with complex history covering all scenarios using annotated tags
+        let mut fixture = GitRepoFixture::tagged_annotated("v1.0.0", "Release version 1.0.0")
+            .expect("Failed to create initial fixture");
+        let git_vcs = GitVcs::new(fixture.path())?;
 
-    //     // Test 1: Empty repo behavior (already has v1.0.0 annotated tag)
-    //     let result = git_vcs.get_latest_tag("auto")?;
-    //     assert_eq!(
-    //         result,
-    //         Some("v1.0.0".to_string()),
-    //         "Should find initial annotated tag"
-    //     );
+        // Test 1: Empty repo behavior (already has v1.0.0 annotated tag)
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v1.0.0".to_string()),
+            "Should find initial annotated tag"
+        );
 
-    //     // Test 2: Multiple annotated tags on same commit (main bug scenario)
-    //     fixture = fixture.create_annotated_tag("v1.0.1-beta.1", "Beta release 1.0.1")   // pre-release
-    //         .create_annotated_tag("build-123", "Build 123")                            // non-version tag
-    //         .create_annotated_tag("v1.0.2-rc.1.post.3", "Release candidate with post")  // problematic pre-release from bug
-    //         .create_annotated_tag("v1.1.0", "Release version 1.1.0")                    // clean release (should be chosen)
-    //         .create_annotated_tag("release-candidate", "Release candidate tag");        // another non-version tag
+        // // Test 2: Multiple annotated tags on same commit (main bug scenario)
+        // fixture = fixture.create_annotated_tag("v1.0.1-beta.1", "Beta release 1.0.1")   // pre-release
+        //     .create_annotated_tag("build-123", "Build 123")                            // non-version tag
+        //     .create_annotated_tag("v1.0.2-rc.1.post.3", "Release candidate with post")  // problematic pre-release from bug
+        //     .create_annotated_tag("v1.1.0", "Release version 1.1.0")                    // clean release (should be chosen)
+        //     .create_annotated_tag("release-candidate", "Release candidate tag"); // another non-version tag
 
-    //     let result = git_vcs.get_latest_tag("auto")?;
-    //     assert_eq!(
-    //         result,
-    //         Some("v1.1.0".to_string()),
-    //         "Should return v1.1.0 (clean annotated release) over pre-release annotated tags"
-    //     );
+        // let result = git_vcs.get_latest_tag("auto")?;
+        // assert_eq!(
+        //     result,
+        //     Some("v1.1.0".to_string()),
+        //     "Should return v1.1.0 (clean annotated release) over pre-release annotated tags"
+        // );
 
-    //     // Test 3: Format-specific behavior with annotated tags
-    //     let result_semver = git_vcs.get_latest_tag("semver")?;
-    //     assert!(result_semver.is_some(), "SemVer format should find an annotated tag");
+        // // Test 3: Format-specific behavior with annotated tags
+        // let result_semver = git_vcs.get_latest_tag("semver")?;
+        // assert!(
+        //     result_semver.is_some(),
+        //     "SemVer format should find an annotated tag"
+        // );
 
-    //     let result_pep440 = git_vcs.get_latest_tag("pep440")?;
-    //     assert!(result_pep440.is_some(), "PEP440 format should find an annotated tag");
+        // let result_pep440 = git_vcs.get_latest_tag("pep440")?;
+        // assert!(
+        //     result_pep440.is_some(),
+        //     "PEP440 format should find an annotated tag"
+        // );
 
-    //     // Test 4: Build history with HEAD not at latest commit using annotated tags
-    //     fixture = fixture
-    //         .commit("Feature A")
-    //         .create_annotated_tag("v2.0.0", "Major release with feature A")
-    //         .commit("Work after v2.0.0")
-    //         .commit("Feature B")
-    //         .create_annotated_tag("v3.0.0", "Major release with feature B");
+        // // Test 4: Build history with HEAD not at latest commit using annotated tags
+        // fixture = fixture
+        //     .commit("Feature A")
+        //     .create_annotated_tag("v2.0.0", "Major release with feature A")
+        //     .commit("Work after v2.0.0")
+        //     .commit("Feature B")
+        //     .create_annotated_tag("v3.0.0", "Major release with feature B");
 
-    //     // Get v2.0.0 commit and checkout to it (middle of history)
-    //     let v2_commit = fixture
-    //         .git_impl
-    //         .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
-    //         .expect("Failed to get v2.0.0 commit");
-    //     let v2_commit = v2_commit.trim();
-    //     fixture = fixture.checkout(v2_commit);
+        // // Get v2.0.0 commit and checkout to it (middle of history)
+        // let v2_commit = fixture
+        //     .git_impl
+        //     .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v2.0.0"])
+        //     .expect("Failed to get v2.0.0 commit");
+        // let v2_commit = v2_commit.trim();
+        // fixture = fixture.checkout(v2_commit);
 
-    //     let result = git_vcs.get_latest_tag("auto")?;
-    //     assert_eq!(
-    //         result,
-    //         Some("v2.0.0".to_string()),
-    //         "Should return v2.0.0 annotated tag when HEAD is at v2.0.0, not future v3.0.0 annotated tag"
-    //     );
+        // let result = git_vcs.get_latest_tag("auto")?;
+        // assert_eq!(
+        //     result,
+        //     Some("v2.0.0".to_string()),
+        //     "Should return v2.0.0 annotated tag when HEAD is at v2.0.0, not future v3.0.0 annotated tag"
+        // );
 
-    //     // Test 5: Old commit with high version annotated tag
-    //     let head_commit = fixture
-    //         .get_head_commit()
-    //         .expect("Failed to get HEAD commit");
+        // // Test 5: Old commit with high version annotated tag
+        // let head_commit = fixture
+        //     .get_head_commit()
+        //     .expect("Failed to get HEAD commit");
 
-    //     // Reset to initial commit and add high version annotated tag
-    //     let v1_0_0_commit = fixture
-    //         .git_impl
-    //         .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v1.0.0"])
-    //         .expect("Failed to get v1.0.0 commit");
-    //     let v1_0_0_commit = v1_0_0_commit.trim();
+        // // Reset to initial commit and add high version annotated tag
+        // let v1_0_0_commit = fixture
+        //     .git_impl
+        //     .execute_git(&fixture.test_dir, &["rev-list", "-n", "1", "v1.0.0"])
+        //     .expect("Failed to get v1.0.0 commit");
+        // let v1_0_0_commit = v1_0_0_commit.trim();
 
-    //     // Test 6: Verify annotated tag type detection before moving fixture
-    //     let tag_type = fixture
-    //         .git_impl
-    //         .execute_git(&fixture.test_dir, &["cat-file", "-t", "v1.0.0"])
-    //         .expect("Failed to get tag type");
-    //     assert_eq!(
-    //         tag_type.trim(),
-    //         "tag",
-    //         "v1.0.0 should be an annotated tag (type 'tag')"
-    //     );
+        // // Test 6: Verify annotated tag type detection before moving fixture
+        // let tag_type = fixture
+        //     .git_impl
+        //     .execute_git(&fixture.test_dir, &["cat-file", "-t", "v1.0.0"])
+        //     .expect("Failed to get tag type");
+        // assert_eq!(
+        //     tag_type.trim(),
+        //     "tag",
+        //     "v1.0.0 should be an annotated tag (type 'tag')"
+        // );
 
-    //     let _fixture = fixture
-    //         .checkout(v1_0_0_commit)
-    //         .commit("Old feature")
-    //         .create_annotated_tag("v10.5.0", "High version annotated tag on old commit")
-    //         .checkout(&head_commit);
+        // let _fixture = fixture
+        //     .checkout(v1_0_0_commit)
+        //     .commit("Old feature")
+        //     .create_annotated_tag("v10.5.0", "High version annotated tag on old commit")
+        //     .checkout(&head_commit);
 
-    //     let result = git_vcs.get_latest_tag("auto")?;
-    //     assert_eq!(
-    //         result,
-    //         Some("v2.0.0".to_string()),
-    //         "Should return v2.0.0 annotated tag (traceable from HEAD), not v10.5.0 annotated tag (old high version)"
-    //     );
+        // let result = git_vcs.get_latest_tag("auto")?;
+        // assert_eq!(
+        //     result,
+        //     Some("v2.0.0".to_string()),
+        //     "Should return v2.0.0 annotated tag (traceable from HEAD), not v10.5.0 annotated tag (old high version)"
+        // );
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
-    // // Test with mixed annotated and lightweight tags
-    // #[test]
-    // fn test_get_latest_tag_mixed_tag_types() -> crate::error::Result<()> {
-    //     if !should_run_docker_tests() {
-    //         return Ok(());
-    //     }
+    // Test with mixed annotated and lightweight tags
+    #[test]
+    fn test_get_latest_tag_mixed_tag_types() -> crate::error::Result<()> {
+        if !should_run_docker_tests() {
+            return Ok(());
+        }
 
-    //     // Create repository with both annotated and lightweight tags
-    //     let fixture = GitRepoFixture::tagged_annotated("v1.0.0", "Initial annotated release")
-    //         .expect("Failed to create initial fixture")
-    //         // Add lightweight tags on same commit
-    //         .create_tag("v1.0.1")
-    //         .create_tag("v1.1.0")
-    //         // Add more annotated tags on different commits
-    //         .commit("Feature A")
-    //         .create_annotated_tag("v2.0.0", "Major annotated release")
-    //         .commit("Bug fix")
-    //         .create_tag("v2.0.1")
-    //         // Add more commits and tags
-    //         .commit("Feature B")
-    //         .create_annotated_tag("v3.0.0-alpha.1", "Alpha annotated release")
-    //         .commit("More work")
-    //         .create_tag("v3.0.0")
-    //         .create_annotated_tag("v3.1.0", "Latest annotated release");
+        // Create repository with both annotated and lightweight tags
+        let fixture = GitRepoFixture::tagged_annotated("v1.0.0", "Initial annotated release")
+            .expect("Failed to create initial fixture")
+            // Add lightweight tags on same commit
+            .create_tag("v1.0.1")
+            .create_tag("v1.1.0")
+            // Add more annotated tags on different commits
+            .commit("Feature A")
+            .create_annotated_tag("v2.0.0", "Major annotated release")
+            .commit("Bug fix")
+            .create_tag("v2.0.1")
+            // Add more commits and tags
+            .commit("Feature B")
+            .create_annotated_tag("v3.0.0-alpha.1", "Alpha annotated release")
+            .commit("More work")
+            .create_tag("v3.0.0")
+            .create_annotated_tag("v3.1.0", "Latest annotated release");
 
-    //     let git_vcs = GitVcs::new(fixture.path())?;
+        let git_vcs = GitVcs::new(fixture.path())?;
 
-    //     // Should find the latest version regardless of tag type
-    //     let result = git_vcs.get_latest_tag("auto")?;
-    //     assert_eq!(
-    //         result,
-    //         Some("v3.1.0".to_string()),
-    //         "Should find v3.1.0 (highest version annotated tag) when mixed tag types exist"
-    //     );
+        // Should find the latest version regardless of tag type
+        let result = git_vcs.get_latest_tag("auto")?;
+        assert_eq!(
+            result,
+            Some("v3.1.0".to_string()),
+            "Should find v3.1.0 (highest version annotated tag) when mixed tag types exist"
+        );
 
-    //     // Verify tag types
-    //     let v1_0_0_type = fixture
-    //         .git_impl
-    //         .execute_git(&fixture.test_dir, &["cat-file", "-t", "v1.0.0"])
-    //         .expect("Failed to get v1.0.0 tag type");
-    //     assert_eq!(v1_0_0_type.trim(), "tag", "v1.0.0 should be annotated");
+        // Verify tag types
+        let v1_0_0_type = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["cat-file", "-t", "v1.0.0"])
+            .expect("Failed to get v1.0.0 tag type");
+        assert_eq!(v1_0_0_type.trim(), "tag", "v1.0.0 should be annotated");
 
-    //     let v1_0_1_type = fixture
-    //         .git_impl
-    //         .execute_git(&fixture.test_dir, &["cat-file", "-t", "v1.0.1"])
-    //         .expect("Failed to get v1.0.1 tag type");
-    //     assert_eq!(v1_0_1_type.trim(), "commit", "v1.0.1 should be lightweight");
+        let v1_0_1_type = fixture
+            .git_impl
+            .execute_git(&fixture.test_dir, &["cat-file", "-t", "v1.0.1"])
+            .expect("Failed to get v1.0.1 tag type");
+        assert_eq!(v1_0_1_type.trim(), "commit", "v1.0.1 should be lightweight");
 
-    //     // Test timestamp extraction works for both types
-    //     let _timestamp_annotated = git_vcs.get_tag_timestamp("v1.0.0")?;
-    //     let _timestamp_lightweight = git_vcs.get_tag_timestamp("v1.0.1")?;
+        // Test timestamp extraction works for both types
+        let _timestamp_annotated = git_vcs.get_tag_timestamp("v1.0.0")?;
+        let _timestamp_lightweight = git_vcs.get_tag_timestamp("v1.0.1")?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     mod parse_tags_into_groups_tests {
         use rstest::rstest;
