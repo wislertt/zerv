@@ -45,6 +45,7 @@ pub fn vcs_data_to_zerv_vars(vcs_data: VcsData, input_format: &str) -> Result<Ze
         .map(|hash| format!("{}{}", vcs_data.commit_hash_prefix, hash));
     vars.bumped_timestamp = Some(vcs_data.commit_timestamp as u64);
     vars.last_timestamp = vcs_data.tag_timestamp.map(|t| t as u64);
+    vars.last_tag_version = vcs_data.tag_version;
 
     tracing::debug!("VCS data conversion complete");
     Ok(vars)

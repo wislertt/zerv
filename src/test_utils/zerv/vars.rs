@@ -327,6 +327,7 @@ mod tests {
             last_branch: Some("main".to_string()),
             last_commit_hash: Some("hash456".to_string()),
             last_timestamp: Some(1703000000),
+            last_tag_version: Some("v2.1.0-rc.3".to_string()),
             custom: serde_json::json!({}),
         };
 
