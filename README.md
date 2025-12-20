@@ -51,7 +51,6 @@ echo $ZERV_RON | zerv version --source stdin --output-prefix v --output-format s
 # → v1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a
 
 # v_major
-echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}"
 echo $ZERV_RON | \
     zerv version --source stdin \
          --schema-ron '(core:[var(Major)], extra_core:[], build:[])' \
@@ -59,7 +58,6 @@ echo $ZERV_RON | \
 # → v1
 
 # v_major_minor
-echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}{{ prefix_if(value=minor, prefix=\".\") }}"
 echo $ZERV_RON | \
     zerv version --source stdin \
          --schema-ron '(core:[var(Major), var(Minor)], extra_core:[], build:[])' \
