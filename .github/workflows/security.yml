@@ -62,8 +62,26 @@ jobs:
 
             - name: Install cargo-audit
               run: |
-                  cargo install cargo-audit --locked || true
-                  cargo audit --version
+                  # Get currently installed version (if any)
+                  if command -v cargo-audit >/dev/null 2>&1; then
+                      CURRENT_VERSION=$(cargo audit --version | awk '{print $2}')
+                  else
+                      CURRENT_VERSION=""
+                  fi
+
+                  # Get latest version from crates.io
+                  LATEST_VERSION=$(cargo search cargo-audit --limit 1 | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+
+                  echo "Current cargo-audit version: ${CURRENT_VERSION:-none}"
+                  echo "Latest cargo-audit version : $LATEST_VERSION"
+
+                  # Install if not installed or if outdated
+                  if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+                      echo "Installing latest cargo-audit ($LATEST_VERSION)"
+                      cargo install cargo-audit --force
+                  else
+                      echo "cargo-audit is up to date"
+                  fi
 
             - name: Run cargo audit
               run: |
