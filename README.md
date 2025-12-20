@@ -28,6 +28,48 @@ zerv flow
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_documentation_examples -->
 
+- .github/workflows/shared-zerv-versioning.yml github actions behavior
+
+```bash
+# (on dirty feature branch)
+ZERV_RON=$(zerv flow --output-format zerv)
+
+# semver
+echo $ZERV_RON | zerv version --source stdin --output-format semver
+# → 1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a
+
+# pep440
+echo $ZERV_RON | zerv version --source stdin --output-format pep440
+# → 1.0.0a17015.post1.dev1764382150+feature.dirty.work.1.g54c499a
+
+# docker_tag
+echo $ZERV_RON | zerv version --source stdin --output-template "{{ semver_obj.docker }}"
+# → 1.0.1-alpha.17015.post.1.dev.1764382150-feature.dirty.work.1.g54c499a
+
+# v_semver
+echo $ZERV_RON | zerv version --source stdin --output-prefix v --output-format semver
+# → v1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a
+
+# v_major
+echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}"
+echo $ZERV_RON | \
+    zerv version --source stdin \
+         --schema-ron '(core:[var(Major)], extra_core:[], build:[])' \
+         --output-prefix v --output-format pep440
+# → v1
+
+# v_major_minor
+echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}{{ prefix_if(value=minor, prefix=\".\") }}"
+echo $ZERV_RON | \
+    zerv version --source stdin \
+         --schema-ron '(core:[var(Major), var(Minor)], extra_core:[], build:[])' \
+         --output-prefix v --output-format pep440
+# → v1.0
+```
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:fn test_quick_start_shared_zerv_versioning_github_actions_documentation_examples() {
+ -->
+
 ## Key Features
 
 - **zerv version**: Flexible, configurable version generation with full control

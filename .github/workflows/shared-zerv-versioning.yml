@@ -54,18 +54,23 @@ on:
                 type: string
                 required: false
                 description: "JSON object mapping output names to zerv output templates (without quotes)"
-                default: >-
-                    {
-                        "docker_tag": "{{ semver_obj.docker }}",
-                        "v_major": "v{{ major | default(value=\\\"0\\\") }}",
-                        "v_major_minor": "v{{ major | default(value=\\\"0\\\") }}{{ prefix_if(value=minor, prefix=\\\".\\\") }}"
-                    }
+                # default: >-
+                #     {
+                #         "docker_tag": "{{ semver_obj.docker }}",
+                #         "v_major": "v{{ major | default(value=\\\"0\\\") }}",
+                #         "v_major_minor": "v{{ major | default(value=\\\"0\\\") }}{{ prefix_if(value=minor, prefix=\\\".\\\") }}"
+                #     }
+                default: '{ "docker_tag": "{{ semver_obj.docker }}" }'
             custom_outputs:
                 type: string
                 required: false
                 description: "JSON object mapping output names to full zerv command arguments"
-                default: '{"v_semver": "--output-prefix v --output-format semver"}'
-
+                default: >-
+                    {
+                        "v_semver": "--output-prefix v --output-format semver",
+                        "v_major": "--schema-ron '(core:[var(Major)], extra_core:[], build:[])' --output-prefix v --output-format pep440",
+                        "v_major_minor": "--schema-ron '(core:[var(Major), var(Minor)], extra_core:[], build:[])' --output-prefix v --output-format pep440",
+                    }
         outputs:
             versions:
                 description: "JSON object containing all generated versions"

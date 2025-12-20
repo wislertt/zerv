@@ -4,6 +4,7 @@
 use zerv::cli::flow::test_utils::expect_branch_hash;
 
 use crate::integration_tests::flow::docs::test_utils::TestScenario;
+
 #[test]
 fn test_quick_start_documentation_examples() {
     // Test main branch (should produce clean version)
@@ -87,4 +88,55 @@ fn test_quick_start_documentation_examples() {
                 branch_dirty_work_hash
             ),
         );
+}
+
+#[test]
+fn test_quick_start_shared_zerv_versioning_github_actions_documentation_examples() {
+    // Test dirty feature branch (should include dev timestamp)
+    let branch_dirty_work_hash = expect_branch_hash("feature/dirty-work", 5, "17015");
+
+    let dirty_feature_branch_scenario = TestScenario::new()
+        .expect("Failed to create test scenario")
+        .create_tag("v1.0.0")
+        .create_branch("feature/dirty-work")
+        .checkout("feature/dirty-work")
+        .commit()
+        .make_dirty();
+
+    // semver
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_commands(
+        &[
+            "flow --source stdin --output-format zerv",
+            "version --source stdin --output-format semver",
+        ],
+        &format!(
+            "1.0.1-alpha.{}.post.1.dev.{{timestamp:now}}+feature.dirty.work.1.g{{hex:7}}",
+            branch_dirty_work_hash
+        ),
+    );
+
+    // pep440
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_commands(
+        &[
+            "flow --source stdin --output-format zerv",
+            "version --source stdin --output-format pep440",
+        ],
+        &format!(
+            "1.0.1a{}.post1.dev{{timestamp:now}}+feature.dirty.work.1.g{{hex:7}}",
+            branch_dirty_work_hash
+        ),
+    );
+
+    // docker_tag
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_commands(
+        &[
+            "flow --source stdin --output-format zerv",
+            "version --source stdin --output-template \"{{ semver_obj.docker }}\"",
+        ],
+        &format!(
+            "1.0.1-alpha.{}.post.1.dev.{{timestamp:now}}-feature.dirty.work.1.g{{hex:7}}",
+            branch_dirty_work_hash
+        ),
+    );
+    _ = dirty_feature_branch_scenario;
 }
