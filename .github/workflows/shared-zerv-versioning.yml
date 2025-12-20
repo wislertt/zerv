@@ -65,12 +65,7 @@ on:
                 type: string
                 required: false
                 description: "JSON object mapping output names to full zerv command arguments"
-                default: >-
-                    {
-                        "v_semver": "--output-prefix v --output-format semver",
-                        "v_major": "--schema-ron \\\"(core:[var(Major)], extra_core:[], build:[])\\\" --output-prefix v --output-format pep440",
-                        "v_major_minor": "--schema-ron \\\"(core:[var(Major), var(Minor)], extra_core:[], build:[])\\\" --output-prefix v --output-format pep440",
-                    }
+                default: '{"v_semver": "--output-prefix v --output-format semver", "v_major": "--schema-ron \"(core:[var(Major)], extra_core:[], build:[])\" --output-prefix v --output-format pep440", "v_major_minor": "--schema-ron \"(core:[var(Major), var(Minor)], extra_core:[], build:[])\" --output-prefix v --output-format pep440"}'
         outputs:
             versions:
                 description: "JSON object containing all generated versions"
