@@ -54,11 +54,13 @@ on:
                 type: string
                 required: false
                 description: "JSON object mapping output names to zerv output templates (without quotes)"
+                # Note: v_major_custom/v_major_minor_custom demonstrate custom template-based approach
+                # vs schema-based approach in custom_outputs (v_major/v_major_minor)
                 default: >-
                     {
                         "docker_tag": "{{ semver_obj.docker }}",
-                        "v_major_variant": "v{{ major | default(value=\\\"0\\\") }}",
-                        "v_major_minor_variant": "v{{ major | default(value=\\\"0\\\") }}{{ prefix_if(value=minor, prefix=\\\".\\\") }}"
+                        "v_major_custom": "v{{ major | default(value=\\\"0\\\") }}",
+                        "v_major_minor_custom": "v{{ major | default(value=\\\"0\\\") }}{{ prefix_if(value=minor, prefix=\\\".\\\") }}"
                     }
             custom_outputs:
                 type: string

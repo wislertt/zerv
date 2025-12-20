@@ -169,5 +169,23 @@ fn test_quick_start_shared_zerv_versioning_github_actions_documentation_examples
         "v1.0",
     );
 
+    // v_major_custom (using custom template-based approach)
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_commands(
+        &[
+            "flow --source stdin --output-format zerv",
+            "version --source stdin --output-template \"v{{ major | default(value=\\\"0\\\") }}\"",
+        ],
+        "v1",
+    );
+
+    // v_major_minor_custom (using custom template-based approach)
+    let dirty_feature_branch_scenario = dirty_feature_branch_scenario.assert_commands(
+        &[
+            "flow --source stdin --output-format zerv",
+            "version --source stdin --output-template \"v{{ major | default(value=\\\"0\\\") }}{{ prefix_if(value=minor, prefix=\\\".\\\") }}\"",
+        ],
+        "v1.0",
+    );
+
     _ = dirty_feature_branch_scenario;
 }
