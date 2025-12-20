@@ -16,7 +16,3 @@ jobs:
 
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
-
-    # TODO: for testing only
-    zerv-versioning:
-        uses: ./.github/workflows/shared-zerv-versioning.yml
