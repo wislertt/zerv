@@ -54,17 +54,24 @@ on:
                 type: string
                 required: false
                 description: "JSON object mapping output names to zerv output templates (without quotes)"
+                # Note: v_major_custom/v_major_minor_custom demonstrate custom template-based approach
+                # vs schema-based approach in custom_outputs (v_major/v_major_minor)
                 default: >-
                     {
                         "docker_tag": "{{ semver_obj.docker }}",
-                        "v_major": "v{{ major | default(value=\\\"0\\\") }}",
-                        "v_major_minor": "v{{ major | default(value=\\\"0\\\") }}{{ prefix_if(value=minor, prefix=\\\".\\\") }}"
+                        "v_major_custom": "v{{ major | default(value=\\\"0\\\") }}",
+                        "v_major_minor_custom": "v{{ major | default(value=\\\"0\\\") }}{{ prefix_if(value=minor, prefix=\\\".\\\") }}"
                     }
             custom_outputs:
                 type: string
                 required: false
                 description: "JSON object mapping output names to full zerv command arguments"
-                default: '{"v_semver": "--output-prefix v --output-format semver"}'
+                default: >-
+                    {
+                        "v_semver": "--output-prefix v --output-format semver",
+                        "v_major": "--schema-ron \"(core:[var(Major)], extra_core:[], build:[])\" --output-prefix v --output-format pep440",
+                        "v_major_minor": "--schema-ron \"(core:[var(Major), var(Minor)], extra_core:[], build:[])\" --output-prefix v --output-format pep440"
+                    }
 
         outputs:
             versions:
@@ -82,7 +89,7 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e # stable
+            - uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
               with:
                   toolchain: stable
 

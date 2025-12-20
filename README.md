@@ -13,6 +13,8 @@
 
 ## Quick Start
 
+**Smart Version Detection**: `zerv flow` automatically generates meaningful SemVer versions from any Git state - no manual configuration required for common workflows.
+
 ```bash
 # Install
 cargo install zerv
@@ -27,6 +29,54 @@ zerv flow
 ```
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_documentation_examples -->
+
+- **Multiple Format Generation**: Transform a single ZERV_RON output into various formats (see [`.github/workflows/shared-zerv-versioning.yml`](.github/workflows/shared-zerv-versioning.yml) for example implementation)
+
+```bash
+# (on dirty feature branch)
+ZERV_RON=$(zerv flow --output-format zerv)
+
+# semver
+echo $ZERV_RON | zerv version --source stdin --output-format semver
+# → 1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a
+
+# pep440
+echo $ZERV_RON | zerv version --source stdin --output-format pep440
+# → 1.0.0a17015.post1.dev1764382150+feature.dirty.work.1.g54c499a
+
+# docker_tag
+echo $ZERV_RON | zerv version --source stdin --output-template "{{ semver_obj.docker }}"
+# → 1.0.1-alpha.17015.post.1.dev.1764382150-feature.dirty.work.1.g54c499a
+
+# v_semver
+echo $ZERV_RON | zerv version --source stdin --output-prefix v --output-format semver
+# → v1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a
+
+# v_major (schema-based approach)
+echo $ZERV_RON | \
+    zerv version --source stdin \
+         --schema-ron '(core:[var(Major)], extra_core:[], build:[])' \
+         --output-prefix v --output-format pep440
+# → v1
+
+# v_major_minor (schema-based approach)
+echo $ZERV_RON | \
+    zerv version --source stdin \
+         --schema-ron '(core:[var(Major), var(Minor)], extra_core:[], build:[])' \
+         --output-prefix v --output-format pep440
+# → v1.0
+
+# v_major_custom (custom template-based approach)
+echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}"
+# → v1
+
+# v_major_minor_custom (custom template-based approach)
+echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}{{ prefix_if(value=minor, prefix=\".\") }}"
+# → v1.0
+```
+
+<!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:fn test_quick_start_shared_zerv_versioning_github_actions_documentation_examples() {
+ -->
 
 ## Key Features
 
