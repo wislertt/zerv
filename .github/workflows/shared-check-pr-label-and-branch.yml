@@ -103,9 +103,15 @@ jobs:
 
                   # Check if current branch starts with any of the allowed prefixes
                   if [ "$BRANCH_PREFIXES" != "[]" ]; then
-                    PREFIX_MATCH=$(echo "$BRANCH_PREFIXES" | \
-                      jq --arg branch "$CURRENT_BRANCH" \
-                      '[.[] | select($branch | startswith(.))] | length > 0')
+                    PREFIX_MATCH=false
+                    # Loop through each prefix and check
+                    while IFS= read -r prefix; do
+                      if [[ "$CURRENT_BRANCH" == "$prefix"* ]]; then
+                        PREFIX_MATCH=true
+                        echo "✅ Branch starts with prefix: $prefix"
+                        break
+                      fi
+                    done < <(echo "$BRANCH_PREFIXES" | jq -r '.[]')
 
                     echo "Has prefix match: $PREFIX_MATCH"
                     echo "has_prefix_match=$PREFIX_MATCH" >> $GITHUB_OUTPUT
