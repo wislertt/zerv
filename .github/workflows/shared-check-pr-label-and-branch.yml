@@ -12,11 +12,16 @@ on:
                 required: true
                 type: string
                 description: "Target label to check for in the PR"
-            branch_prefix:
+            branch_prefixes:
                 required: false
                 type: string
-                description: "Required prefix for the branch name"
-                default: ""
+                description: "JSON array of allowed prefixes for the branch name"
+                default: "[]"
+            branch_names:
+                required: false
+                type: string
+                description: "JSON array of allowed exact branch names"
+                default: "[]"
         outputs:
             is_valid:
                 value: ${{ jobs.check-pr-label-and-branch.outputs.is_valid }}
@@ -30,37 +35,18 @@ jobs:
         name: check-pr-label-and-branch
         runs-on: ubuntu-latest
         outputs:
-            is_valid: ${{ steps.check.outputs.is_valid }}
-            has_label: ${{ steps.check.outputs.has_label }}
-            is_valid_branch: ${{ steps.check.outputs.is_valid_branch }}
+            is_valid: ${{ steps.combine-results.outputs.is_valid }}
+            has_label: ${{ steps.check-label.outputs.has_label }}
+            is_valid_branch: ${{ steps.combine-results.outputs.is_valid_branch }}
         steps:
-            - name: Check for label and branch prefix
+            - name: check-label
               env:
                   LABELS_JSON: ${{ inputs.labels }}
-              id: check
+              id: check-label
               run: |
                   TARGET_LABEL="${{ inputs.target_label }}"
-                  BRANCH_PREFIX="${{ inputs.branch_prefix }}"
-                  CURRENT_BRANCH="${{ github.head_ref }}"
-
                   echo "Checking for label: $TARGET_LABEL"
-                  echo "Required branch prefix: $BRANCH_PREFIX"
-                  echo "Current branch: $CURRENT_BRANCH"
                   echo "Input labels: $LABELS_JSON"
-
-                  # Check if branch has the required prefix
-                  if [ -n "$BRANCH_PREFIX" ]; then
-                    if [[ "$CURRENT_BRANCH" == "$BRANCH_PREFIX"* ]]; then
-                      echo "✅ Branch prefix matches"
-                      HAS_BRANCH_PREFIX=true
-                    else
-                      echo "❌ Branch prefix does not match"
-                      HAS_BRANCH_PREFIX=false
-                    fi
-                  else
-                    echo "ℹ️ No branch prefix requirement"
-                    HAS_BRANCH_PREFIX=true
-                  fi
 
                   # Use jq to check if the label exists in the labels array
                   HAS_LABEL=$(echo "$LABELS_JSON" | \
@@ -68,31 +54,139 @@ jobs:
                     '[.[] | select(.name == $target)] | length > 0')
 
                   echo "Has label: $HAS_LABEL"
-
-                  # Output individual condition results
                   echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
-                  echo "is_valid_branch=$HAS_BRANCH_PREFIX" >> $GITHUB_OUTPUT
 
-                  # Both conditions must be true
-                  if [ "$HAS_LABEL" = "true" ] && [ "$HAS_BRANCH_PREFIX" = "true" ]; then
-                    echo "is_valid=true" >> $GITHUB_OUTPUT
-                    echo "✅ Both label '$TARGET_LABEL' and branch prefix '$BRANCH_PREFIX' found"
+                  if [ "$HAS_LABEL" = "true" ]; then
+                    echo "✅ Label '$TARGET_LABEL' found"
                   else
-                    echo "is_valid=false" >> $GITHUB_OUTPUT
-                    if [ "$HAS_LABEL" != "true" ]; then
-                      echo "❌ Label '$TARGET_LABEL' not found"
+                    echo "❌ Label '$TARGET_LABEL' not found"
+                  fi
+
+            - name: check-branch-exact
+              id: check-branch-exact
+              run: |
+                  BRANCH_NAMES="${{ inputs.branch_names }}"
+                  CURRENT_BRANCH="${{ github.head_ref }}"
+
+                  echo "Checking exact branch names: $BRANCH_NAMES"
+                  echo "Current branch: $CURRENT_BRANCH"
+
+                  # Check exact branch names
+                  if [ "$BRANCH_NAMES" != "[]" ]; then
+                    EXACT_MATCH=$(echo "$BRANCH_NAMES" | \
+                      jq --arg branch "$CURRENT_BRANCH" \
+                      '[.[] | select(. == $branch)] | length > 0')
+
+                    echo "Has exact match: $EXACT_MATCH"
+                    echo "has_exact_match=$EXACT_MATCH" >> $GITHUB_OUTPUT
+
+                    if [ "$EXACT_MATCH" = "true" ]; then
+                      echo "✅ Branch name matches exactly"
                     else
-                      echo "✅ Label '$TARGET_LABEL' found"
+                      echo "❌ Branch name does not match any exact names"
                     fi
-                    if [ "$HAS_BRANCH_PREFIX" != "true" ]; then
-                      echo "❌ Branch prefix '$BRANCH_PREFIX' not found"
+                  else
+                    echo "ℹ️ No exact branch name restrictions"
+                    echo "has_exact_match=false" >> $GITHUB_OUTPUT
+                  fi
+
+            - name: check-branch-prefixes
+              id: check-branch-prefixes
+              run: |
+                  BRANCH_PREFIXES="${{ inputs.branch_prefixes }}"
+                  CURRENT_BRANCH="${{ github.head_ref }}"
+
+                  echo "Checking branch prefixes: $BRANCH_PREFIXES"
+                  echo "Current branch: $CURRENT_BRANCH"
+
+                  # Check if current branch starts with any of the allowed prefixes
+                  if [ "$BRANCH_PREFIXES" != "[]" ]; then
+                    PREFIX_MATCH=$(echo "$BRANCH_PREFIXES" | \
+                      jq --arg branch "$CURRENT_BRANCH" \
+                      '[.[] | select($branch | startswith(.))] | length > 0')
+
+                    echo "Has prefix match: $PREFIX_MATCH"
+                    echo "has_prefix_match=$PREFIX_MATCH" >> $GITHUB_OUTPUT
+
+                    if [ "$PREFIX_MATCH" = "true" ]; then
+                      echo "✅ Branch prefix matches"
                     else
-                      echo "✅ Branch prefix '$BRANCH_PREFIX' found"
+                      echo "❌ Branch does not start with any allowed prefixes"
+                    fi
+                  else
+                    echo "ℹ️ No branch prefix restrictions"
+                    echo "has_prefix_match=false" >> $GITHUB_OUTPUT
+                  fi
+
+            - name: combine-results
+              id: combine-results
+              run: |
+                  HAS_LABEL="${{ steps.check-label.outputs.has_label }}"
+                  HAS_EXACT_MATCH="${{ steps.check-branch-exact.outputs.has_exact_match }}"
+                  HAS_PREFIX_MATCH="${{ steps.check-branch-prefixes.outputs.has_prefix_match }}"
+                  BRANCH_NAMES="${{ inputs.branch_names }}"
+                  BRANCH_PREFIXES="${{ inputs.branch_prefixes }}"
+
+                  echo "Combining results:"
+                  echo "- Has label: $HAS_LABEL"
+                  echo "- Has exact match: $HAS_EXACT_MATCH"
+                  echo "- Has prefix match: $HAS_PREFIX_MATCH"
+
+                  # Determine if branch is valid
+                  IS_VALID_BRANCH=false
+
+                  # Valid if exact match exists
+                  if [ "$HAS_EXACT_MATCH" = "true" ]; then
+                    IS_VALID_BRANCH=true
+                    echo "Branch valid due to exact name match"
+                  # Or if prefix match exists
+                  elif [ "$HAS_PREFIX_MATCH" = "true" ]; then
+                    IS_VALID_BRANCH=true
+                    echo "Branch valid due to prefix match"
+                  # Or if no restrictions specified
+                  elif [ "$BRANCH_NAMES" = "[]" ] && [ "$BRANCH_PREFIXES" = "[]" ]; then
+                    IS_VALID_BRANCH=true
+                    echo "Branch valid (no restrictions specified)"
+                  else
+                    echo "Branch not valid (no match found)"
+                  fi
+
+                  echo "is_valid_branch=$IS_VALID_BRANCH" >> $GITHUB_OUTPUT
+
+                  # Final validation requires both label and valid branch
+                  if [ "$HAS_LABEL" = "true" ] && [ "$IS_VALID_BRANCH" = "true" ]; then
+                    IS_VALID=true
+                    echo "✅ Both label and branch validation passed"
+                  else
+                    IS_VALID=false
+                    echo "❌ Validation failed"
+                    if [ "$HAS_LABEL" != "true" ]; then
+                      echo "  - Label validation failed"
+                    fi
+                    if [ "$IS_VALID_BRANCH" != "true" ]; then
+                      echo "  - Branch validation failed"
                     fi
                   fi
 
-            - name: Display Validation Result
+                  echo "is_valid=$IS_VALID" >> $GITHUB_OUTPUT
+
+            - name: display-results
               run: |
-                  echo "Validation result: ${{ steps.check.outputs.is_valid }}"
-                  echo "Has label: ${{ steps.check.outputs.has_label }}"
-                  echo "Is valid branch: ${{ steps.check.outputs.is_valid_branch }}"
+                  echo "=========================================="
+                  echo "          VALIDATION SUMMARY"
+                  echo "=========================================="
+                  echo ""
+                  echo "Label Check:"
+                  echo "  - Target label: ${{ inputs.target_label }}"
+                  echo "  - Has label: ${{ steps.check-label.outputs.has_label }}"
+                  echo ""
+                  echo "Branch Validation:"
+                  echo "  - Current branch: ${{ github.head_ref }}"
+                  echo "  - Exact match: ${{ steps.check-branch-exact.outputs.has_exact_match }}"
+                  echo "  - Prefix match: ${{ steps.check-branch-prefixes.outputs.has_prefix_match }}"
+                  echo "  - Valid branch: ${{ steps.combine-results.outputs.is_valid_branch }}"
+                  echo ""
+                  echo "Final Result:"
+                  echo "  - Overall valid: ${{ steps.combine-results.outputs.is_valid }}"
+                  echo ""
+                  echo "=========================================="
