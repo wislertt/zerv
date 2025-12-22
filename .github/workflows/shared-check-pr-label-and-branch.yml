@@ -65,7 +65,8 @@ jobs:
             - name: check-branch-exact
               id: check-branch-exact
               run: |
-                  BRANCH_NAMES="${{ inputs.branch_names }}"
+                  # Escape JSON properly for bash
+                  BRANCH_NAMES='${{ inputs.branch_names }}'
                   CURRENT_BRANCH="${{ github.head_ref }}"
 
                   echo "Checking exact branch names: $BRANCH_NAMES"
@@ -93,7 +94,8 @@ jobs:
             - name: check-branch-prefixes
               id: check-branch-prefixes
               run: |
-                  BRANCH_PREFIXES="${{ inputs.branch_prefixes }}"
+                  # Escape JSON properly for bash
+                  BRANCH_PREFIXES='${{ inputs.branch_prefixes }}'
                   CURRENT_BRANCH="${{ github.head_ref }}"
 
                   echo "Checking branch prefixes: $BRANCH_PREFIXES"
@@ -124,8 +126,9 @@ jobs:
                   HAS_LABEL="${{ steps.check-label.outputs.has_label }}"
                   HAS_EXACT_MATCH="${{ steps.check-branch-exact.outputs.has_exact_match }}"
                   HAS_PREFIX_MATCH="${{ steps.check-branch-prefixes.outputs.has_prefix_match }}"
-                  BRANCH_NAMES="${{ inputs.branch_names }}"
-                  BRANCH_PREFIXES="${{ inputs.branch_prefixes }}"
+                  # Escape JSON properly for bash
+                  BRANCH_NAMES='${{ inputs.branch_names }}'
+                  BRANCH_PREFIXES='${{ inputs.branch_prefixes }}'
 
                   echo "Combining results:"
                   echo "- Has label: $HAS_LABEL"
