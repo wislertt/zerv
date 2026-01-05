@@ -134,13 +134,22 @@ impl GitVcs {
         ZervError::CommandFailed(format!("Git command failed: {stderr_str}"))
     }
 
-    /// Get all commits from HEAD in topological order
+    /// Get all commits from HEAD in topological order (only commits with tags)
     fn get_commits_in_topo_order(&self) -> Result<Vec<String>> {
         let commits_output = self.run_git_command(&["rev-list", "--topo-order", "HEAD"])?;
-        Ok(commits_output
+        let commits_output_only_with_tags =
+            self.run_git_command(&["log", "--tags", "--no-walk", "--format=%H"])?;
+
+        let tagged_commits: std::collections::HashSet<String> = commits_output_only_with_tags
             .lines()
             .map(|line| line.trim().to_string())
             .filter(|hash| !hash.is_empty())
+            .collect();
+
+        Ok(commits_output
+            .lines()
+            .map(|line| line.trim().to_string())
+            .filter(|hash| !hash.is_empty() && tagged_commits.contains(hash))
             .collect())
     }
 
