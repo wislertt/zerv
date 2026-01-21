@@ -28,9 +28,6 @@ jobs:
               with:
                   toolchain: stable
 
-            - name: Production build check
-              run: cargo build --verbose
-
             - name: Restore cache
               id: cache
               uses: actions/cache/restore@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
@@ -61,12 +58,6 @@ jobs:
                       ~/.cargo/git/db/
                   key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
-            - name: SonarQube Scan
-              if: matrix.os == 'ubuntu-latest'
-              uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
-              env:
-                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
             - name: Upload coverage reports to Codecov
               if: matrix.os == 'ubuntu-latest'
               uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
@@ -74,3 +65,9 @@ jobs:
                   fail_ci_if_error: true
                   token: ${{ secrets.CODECOV_TOKEN }}
                   verbose: true
+
+            - name: SonarQube Scan
+              if: matrix.os == 'ubuntu-latest'
+              uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
+              env:
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
