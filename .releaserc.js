@@ -6,9 +6,7 @@ module.exports = {
             {
                 preset: "angular",
                 releaseRules: [
-                    // Pre-alpha configuration: all commit types trigger patch releases
-                    // TODO: Change feat to "minor" when project reaches stable state
-                    { type: "feat", release: "patch" },
+                    { type: "feat", release: "minor" },
                     { type: "fix", release: "patch" },
                     { type: "chore", release: "patch" },
                     { type: "docs", release: "patch" },
