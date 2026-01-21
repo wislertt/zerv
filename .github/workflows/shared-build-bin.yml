@@ -62,7 +62,10 @@ jobs:
             - uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
               with:
                   toolchain: stable
-                  targets: ${{ matrix.target }}
+
+            - name: Install target
+              shell: bash
+              run: rustup target add ${{ matrix.target }}
 
             - name: Install cross-compilation dependencies
               if: matrix.target == 'aarch64-unknown-linux-gnu'
