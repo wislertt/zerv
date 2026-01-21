@@ -16,3 +16,9 @@ jobs:
 
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
+
+    # ====================================================
+    # Build Binaries
+    # ====================================================
+    build-bin:
+        uses: ./.github/workflows/shared-build-bin.yml

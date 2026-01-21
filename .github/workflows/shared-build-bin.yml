@@ -1,0 +1,97 @@
+name: build-bin
+
+on:
+    workflow_call:
+        inputs:
+            version:
+                description: "Version to set in Cargo.toml (e.g., '1.0.0'). If not provided, version update is skipped"
+                type: string
+                required: false
+            tag:
+                description: "Git tag for release upload (e.g., 'v1.0.0'). Only used when upload_to_release is true"
+                type: string
+                required: false
+            upload_to_release:
+                description: "Whether to upload binaries to GitHub release"
+                type: boolean
+                required: false
+                default: false
+
+jobs:
+    build-bin:
+        name: build-bin-${{ matrix.name }}
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: linux-x64
+                      os: ubuntu-latest
+                      target: x86_64-unknown-linux-gnu
+                      artifact_name: zerv
+                      asset_name: zerv-linux-x86_64
+                    - name: linux-arm64
+                      os: ubuntu-latest
+                      target: aarch64-unknown-linux-gnu
+                      artifact_name: zerv
+                      asset_name: zerv-linux-arm64
+                    - name: macos-x64
+                      os: macos-latest
+                      target: x86_64-apple-darwin
+                      artifact_name: zerv
+                      asset_name: zerv-macos-x86_64
+                    - name: macos-arm64
+                      os: macos-latest
+                      target: aarch64-apple-darwin
+                      artifact_name: zerv
+                      asset_name: zerv-macos-arm64
+                    - name: windows-x64
+                      os: windows-latest
+                      target: x86_64-pc-windows-msvc
+                      artifact_name: zerv.exe
+                      asset_name: zerv-windows-x86_64.exe
+                    - name: windows-arm64
+                      os: windows-latest
+                      target: aarch64-pc-windows-msvc
+                      artifact_name: zerv.exe
+                      asset_name: zerv-windows-arm64.exe
+
+        steps:
+            - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+            - uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
+              with:
+                  toolchain: stable
+                  targets: ${{ matrix.target }}
+
+            - name: Install cross-compilation dependencies
+              if: matrix.target == 'aarch64-unknown-linux-gnu'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y gcc-aarch64-linux-gnu
+                  echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+            - name: Update Cargo.toml version
+              if: inputs.version != ''
+              shell: bash
+              run: |
+                  VERSION="${{ inputs.version }}"
+                  echo "Updating version to $VERSION"
+                  if [[ "$RUNNER_OS" == "macOS" ]]; then
+                      sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+                  else
+                      sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+                  fi
+
+            - name: Build binary
+              run: cargo build --release --target ${{ matrix.target }}
+
+            - name: Upload binary to release
+              if: inputs.upload_to_release == true && inputs.tag != ''
+              uses: svenstaro/upload-release-action@6b7fa9f267e90b50a19fef07b3596790bb941741 # 2.11.3
+              with:
+                  repo_token: ${{ secrets.GITHUB_TOKEN }}
+                  file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+                  asset_name: ${{ matrix.asset_name }}
+                  tag: ${{ inputs.tag }}
+                  overwrite: true
