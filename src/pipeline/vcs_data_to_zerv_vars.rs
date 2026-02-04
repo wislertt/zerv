@@ -120,7 +120,7 @@ mod tests {
             Err(ZervError::NoTagsFound) => {
                 assert_eq!(
                     ZervError::NoTagsFound.to_string(),
-                    "No version tags found in git repository"
+                    "No version tags are reachable from HEAD"
                 );
             }
             _ => panic!("Expected NoTagsFound error"),

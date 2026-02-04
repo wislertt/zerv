@@ -114,7 +114,7 @@ fn test_git_source_no_tag_version() {
 
     let stderr = output.stderr();
     assert!(
-        stderr.contains("Error: No version tags found in git repository"),
+        stderr.contains("Error: No version tags are reachable from HEAD"),
         "stderr should contain expected error message. Got: {stderr}"
     );
 }

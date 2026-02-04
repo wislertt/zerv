@@ -1,5 +1,0 @@
-[advisories]
-# Ignore gix-date vulnerability in cargo-audit dev-dependency
-# This only affects the audit tool itself, not production code
-# TODO: remove this ignore once cargo-audit update
-ignore = ["RUSTSEC-2025-0140"]
