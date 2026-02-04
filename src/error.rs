@@ -65,7 +65,7 @@ impl std::fmt::Display for ZervError {
         match self {
             // VCS errors
             ZervError::VcsNotFound(vcs) => write!(f, "VCS not found: {vcs}"),
-            ZervError::NoTagsFound => write!(f, "No version tags found in git repository"),
+            ZervError::NoTagsFound => write!(f, "No version tags are reachable from HEAD"),
             ZervError::CommandFailed(msg) => write!(f, "Command execution failed: {msg}"),
 
             // Version errors
@@ -192,7 +192,7 @@ mod tests {
 
     #[rstest]
     #[case(ZervError::VcsNotFound("git".to_string()), "VCS not found: git")]
-    #[case(ZervError::NoTagsFound, "No version tags found in git repository")]
+    #[case(ZervError::NoTagsFound, "No version tags are reachable from HEAD")]
     #[case(ZervError::InvalidFormat("bad".to_string()), "Invalid version format: bad")]
     #[case(ZervError::InvalidVersion("1.0.0-invalid".to_string()), "Invalid version: 1.0.0-invalid")]
     #[case(ZervError::CommandFailed("exit 1".to_string()), "Command execution failed: exit 1")]
@@ -211,7 +211,7 @@ mod tests {
 
     /// Test specific error messages that match requirements exactly
     #[rstest]
-    #[case(ZervError::NoTagsFound, "No version tags found in git repository")]
+    #[case(ZervError::NoTagsFound, "No version tags are reachable from HEAD")]
     #[case(ZervError::VcsNotFound("Not in a git repository (--source git)".to_string()), "VCS not found: Not in a git repository (--source git)")]
     #[case(ZervError::CommandFailed("No commits found in git repository".to_string()), "Command execution failed: No commits found in git repository")]
     #[case(ZervError::CommandFailed("Git command not found. Please install git and try again.".to_string()), "Command execution failed: Git command not found. Please install git and try again.")]
@@ -471,7 +471,7 @@ mod tests {
 
         // Test that NoTagsFound includes source information
         let no_tags_error = ZervError::NoTagsFound;
-        assert!(no_tags_error.to_string().contains("git repository"));
+        assert!(no_tags_error.to_string().contains("HEAD"));
 
         // Test that command failed errors are clear and actionable
         let git_not_found = ZervError::CommandFailed(
@@ -496,7 +496,6 @@ mod tests {
         // Test 1: All VCS-related errors should be source-aware (Requirement 5.1)
         let vcs_errors = vec![
             ZervError::VcsNotFound("Not in a git repository (--source git)".to_string()),
-            ZervError::NoTagsFound,
             ZervError::CommandFailed("No commits found in git repository".to_string()),
             ZervError::CommandFailed(
                 "Git command not found. Please install git and try again.".to_string(),
@@ -514,7 +513,7 @@ mod tests {
 
         // Test 2: Error messages should use consistent terminology (Requirement 5.2)
         let terminology_tests = vec![
-            (ZervError::NoTagsFound, "git repository"),
+            (ZervError::NoTagsFound, "HEAD"),
             (
                 ZervError::VcsNotFound("Not in a git repository (--source git)".to_string()),
                 "git repository",
@@ -591,7 +590,7 @@ mod tests {
                 ZervError::VcsNotFound("Not in a git repository (--source git)".to_string()),
                 vec!["git", "--source"],
             ),
-            (ZervError::NoTagsFound, vec!["git repository"]),
+            (ZervError::NoTagsFound, vec!["HEAD"]),
             // Command errors should be clear and specific
             (
                 ZervError::CommandFailed(
