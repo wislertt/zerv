@@ -18,13 +18,23 @@
 - [x] Set Python version support to 3.10-3.14
 - [x] All existing tests pass (686 tests)
 
-### 🚧 Phase 2: PyO3 Boundary Layer (Next)
+### ✅ Phase 2: PyO3 Boundary Layer (Complete)
 
-- [ ] Create Python module structure (`python/zerv/__init__.py`, `_core.pyi`)
-- [ ] Create PyO3 bindings module (`src/python.rs`)
-- [ ] Add placeholder implementations
+- [x] Created Python module structure (`python/zerv/__init__.py`, `_core.pyi`)
+- [x] Created type-safe stubs with `Literal` types
+- [x] Created PyO3 bindings module (`src/python.rs`) with placeholder implementations
+- [x] Updated `src/lib.rs` to conditionally include python module
+- [x] Configured `pyproject.toml` with `python-source = "python"` and `module-name = "zerv._core"`
+- [x] Verified `maturin build` creates valid wheel
+- [x] All existing tests pass (686 integration + 2376 unit tests)
 
-### ⏳ Phase 3-6: Pending
+### 🚧 Phase 3: Implement Python Bindings (Next)
+
+- [ ] Implement `py_version()` to call existing pipeline
+- [ ] Implement `py_flow()` to call existing pipeline
+- [ ] Implement `py_check()` to call existing command
+
+### ⏳ Phase 4-6: Pending
 
 ---
 
@@ -744,8 +754,8 @@ Validate zerv configuration.
 Execute phases in this order:
 
 1. ✅ **Phase 1** - Project configuration (COMPLETE)
-2. ⏳ **Phase 2** - PyO3 boundary structure (NEXT)
-3. ⏳ **Phase 3** - Implement actual bindings
+2. ✅ **Phase 2** - PyO3 boundary structure (COMPLETE)
+3. 🚧 **Phase 3** - Implement actual bindings (NEXT)
 4. ⏳ **Phase 4** - Testing
 5. ⏳ **Phase 5** - Build and release
 6. ⏳ **Phase 6** - Documentation
@@ -757,9 +767,10 @@ Execute phases in this order:
 After each phase, verify:
 
 - [x] `cargo check` passes ✅
-- [x] `cargo test` passes ✅ (686 tests)
-- [ ] `maturin develop` works (Phase 2+)
-- [ ] `import zerv` in Python works (Phase 2+)
+- [x] `cargo test` passes ✅ (686 integration + 2376 unit tests)
+- [x] `maturin build` works ✅ (creates valid wheel)
+- [x] `maturin build --features python` works ✅
+- [ ] `import zerv` in Python works (Phase 3+)
 - [ ] Python tests pass (Phase 4+)
 - [ ] Built wheel installs and works (Phase 5+)
 

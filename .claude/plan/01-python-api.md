@@ -1,8 +1,33 @@
 # Python API & Pip Distribution
 
-**Status:** Planned
+**Status:** In Progress
 **Priority:** Medium
 **Created:** 2025-02-03
+**Updated:** 2025-02-04
+
+---
+
+## Progress
+
+### ✅ Phase 1: Project Configuration (Complete)
+
+- [x] Added `crate-type = ["cdylib", "rlib"]` to Cargo.toml
+- [x] Added PyO3 as optional dependency with `python` feature
+- [x] Created `pyproject.toml` with maturin configuration
+- [x] Package name: `zerv-version` (PyPI), module import: `zerv`
+- [x] Python 3.10-3.14 support
+
+### ✅ Phase 2: PyO3 Boundary Layer (Complete)
+
+- [x] Created `python/zerv/` directory with `__init__.py` and `_core.pyi`
+- [x] Created type-safe stubs with `Literal` types
+- [x] Created `src/python.rs` with placeholder PyO3 bindings
+- [x] Configured maturin with `python-source = "python"` and `module-name = "zerv._core"`
+- [x] Successfully built wheel with `maturin build`
+
+### 🚧 Phase 3: Implement Python Bindings (Next)
+
+### ⏳ Phase 4-6: Pending
 
 ---
 

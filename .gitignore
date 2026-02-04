@@ -596,3 +596,4 @@ $RECYCLE.BIN/
 
 .vscode/*
 *.profraw
+python/*.data/
