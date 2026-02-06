@@ -89,11 +89,11 @@ def _extend_args(args: list[str], flags: list[tuple[str, Any]]) -> list[str]:
     return args
 
 
-def _run_zerv_command(args: list[str]) -> str:
-    """Run the zerv CLI binary and return stdout."""
+def _run_zerv_command(args: list[str], stdin: str | None = None) -> str:
     zerv_bin = find_zerv_bin()
     result = subprocess.run(
         [zerv_bin, *args],
+        input=stdin,
         capture_output=True,
         text=True,
         check=False,
@@ -107,6 +107,7 @@ def version(
     *,
     # Input options
     source: Source | None = None,
+    stdin: str | None = None,
     input_format: Format | None = None,
     repo_path: str | None = None,
     # Output options
@@ -213,7 +214,8 @@ def version(
                 ("--bump-context", bump_context),
                 ("--no-bump-context", no_bump_context),
             ],
-        )
+        ),
+        stdin=stdin,
     )
 
 
@@ -221,6 +223,7 @@ def flow(
     *,
     repo_path: str | None = None,
     source: Source | None = None,
+    stdin: str | None = None,
     verbose: bool | None = None,
     input_format: FlowInputFormat | None = None,
     output_format: FlowOutputFormat | None = None,
@@ -279,7 +282,8 @@ def flow(
                 ("--schema", schema),
                 ("--schema-ron", schema_ron),
             ],
-        )
+        ),
+        stdin=stdin,
     )
 
 

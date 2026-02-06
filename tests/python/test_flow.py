@@ -46,6 +46,5 @@ from zerv import flow
     ],
 )
 def test_flow_all_args(kwargs):
-    """Test all flow() arguments work without error."""
     result = flow(**kwargs)
     assert result

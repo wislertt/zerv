@@ -13,19 +13,16 @@ from zerv._find_zerv import find_zerv_bin
 
 
 def test_find_zerv_bin_returns_string():
-    """Test that find_zerv_bin returns a string."""
     result = find_zerv_bin()
     assert isinstance(result, str)
 
 
 def test_find_zerv_bin_path_exists():
-    """Test that find_zerv_bin returns an existing path."""
     result = find_zerv_bin()
     assert os.path.isfile(result), f"Path does not exist: {result}"
 
 
 def test_find_zerv_bin_has_correct_name():
-    """Test that find_zerv_bin returns a path ending with zerv executable."""
     result = find_zerv_bin()
     exe = sysconfig.get_config_var("EXE") or ""
     assert result.endswith(f"zerv{exe}"), (
@@ -34,7 +31,6 @@ def test_find_zerv_bin_has_correct_name():
 
 
 def test_find_zerv_bin_not_found_raises_file_not_found():
-    """Test that FileNotFoundError is raised when zerv binary cannot be found."""
     with patch("zerv._find_zerv.sysconfig.get_path") as mock_get_path:
         # Make all paths return a non-existent directory
         mock_get_path.return_value = "/nonexistent/path"
@@ -45,7 +41,6 @@ def test_find_zerv_bin_not_found_raises_file_not_found():
 
 
 def test_find_zerv_bin_exe_suffix():
-    """Test that zerv_exe has correct suffix for platform."""
     exe = sysconfig.get_config_var("EXE") or ""
     expected_name = f"zerv{exe}"
     result = find_zerv_bin()

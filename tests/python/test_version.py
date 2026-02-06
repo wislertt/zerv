@@ -60,6 +60,5 @@ from zerv import version
     ],
 )
 def test_version_all_args(kwargs):
-    """Test all version() arguments work without error."""
     result = version(**kwargs)
     assert result
