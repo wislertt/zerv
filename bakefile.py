@@ -64,9 +64,11 @@ class MyBakebook(PythonLibSpace):
         env["ZERV_TEST_NATIVE_GIT"] = str(self.zerv_test_native_git).lower()
         env["ZERV_TEST_DOCKER"] = str(self.zerv_test_docker).lower()
         env["ZERV_FORCE_RUST_LOG_OFF"] = str(self.zerv_force_rust_log_off).lower()
+        env["RUST_BACKTRACE"] = "1"
+        env["RUST_LOG"] = "cargo_tarpaulin=off"
 
         ctx.run(
-            "RUST_BACKTRACE=1 RUST_LOG=cargo_tarpaulin=off cargo tarpaulin "
+            "cargo tarpaulin "
             "--features test-utils "
             "--out Xml --out Html --out Lcov "
             "--output-dir coverage "
