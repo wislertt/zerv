@@ -165,7 +165,8 @@ jobs:
 
             - name: install-dependencies
               run: |
-                  uv sync --all-extras --all-groups --frozen
+                  echo "=== Running uv sync with verbose ==="
+                  uv sync --all-extras --all-groups --frozen --verbose 2>&1 | tail -50
                   echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
               #   which bake
               #   maturin develop
