@@ -75,6 +75,7 @@ jobs:
               run: |
                   which zerv
                   zerv --version
+                  uv run pytest tests/python --cov=python/zerv --cov-report=html
 
             - name: run-tests
               run: bake test
