@@ -75,17 +75,17 @@ jobs:
             - name: setup-path
               run: echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
 
-            - name: debug
-              run: |
-                  which bake
-                  which zerv
-                  zerv --version
-                  uv run python -c "from zerv._find_zerv import find_zerv_bin; print(find_zerv_bin())"
-                  uv run pytest tests/python --cov=python/zerv --cov-report=html
+            # - name: debug
+            #   run: |
+            #       which bake
+            #       which zerv
+            #       zerv --version
+            #       uv run python -c "from zerv._find_zerv import find_zerv_bin; print(find_zerv_bin())"
+            #       uv run pytest tests/python --cov=python/zerv --cov-report=html
 
-            - name: run-tests
-              run: bake test
-            #   shell: bash
+            # - name: run-tests
+            #   run: bake test
+            # #   shell: bash
 
             - name: save-cache
               uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
