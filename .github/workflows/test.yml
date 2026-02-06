@@ -53,7 +53,7 @@ jobs:
                   version: "latest"
                   python-version: "3.14"
                   enable-cache: true
-                  cache-python: true
+                  cache-python: ${{ matrix.os != 'macos-latest' && 'true' || 'false' }}
                   #   cache-dependency-glob: "uv.lock"
 
             - name: cache-uv
@@ -154,8 +154,8 @@ jobs:
                   version: "latest"
                   python-version: "3.14"
                   enable-cache: true
-                  cache-python: true
-                  cache-dependency-glob: "uv.lock"
+                  cache-python: ${{ matrix.os != 'macos-latest' && 'true' || 'false' }}
+                  #   cache-dependency-glob: "uv.lock"
 
             - name: cache-uv
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
@@ -170,8 +170,8 @@ jobs:
               run: |
                   uv sync --all-extras --all-groups --frozen
                   echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
-                  which bake
-                  maturin develop
+              #   which bake
+              #   maturin develop
 
             # - name: debug
             #   run: |
@@ -206,17 +206,3 @@ jobs:
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
                   key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
-
-            # - name: upload-coverage-reports-to-codecov
-            #   if: matrix.os == 'ubuntu-latest'
-            #   uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-            #   with:
-            #       fail_ci_if_error: true
-            #       token: ${{ secrets.CODECOV_TOKEN }}
-            #       verbose: true
-
-            # - name: sonarqube-scan
-            #   if: matrix.os == 'ubuntu-latest'
-            #   uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
-            #   env:
-            #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
