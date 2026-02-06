@@ -5,11 +5,11 @@ import sys
 import sysconfig
 
 
-def find_zerv_bin() -> str:
-    """Return the zerv binary path."""
-    zerv_exe = "zerv" + sysconfig.get_config_var("EXE")
+def find_bin(name: str) -> str:
+    """Return the binary path for the given name."""
+    exe = name + sysconfig.get_config_var("EXE")
 
-    scripts_path = os.path.join(sysconfig.get_path("scripts"), zerv_exe)
+    scripts_path = os.path.join(sysconfig.get_path("scripts"), exe)
     if os.path.isfile(scripts_path):
         return scripts_path
 
@@ -24,13 +24,13 @@ def find_zerv_bin() -> str:
 
     user_path = os.path.join(
         sysconfig.get_path("scripts", scheme=user_scheme),
-        zerv_exe,
+        exe,
     )
     if os.path.isfile(user_path):
         return user_path
 
     pkg_root = os.path.dirname(os.path.dirname(__file__))
-    target_path = os.path.join(pkg_root, "bin", zerv_exe)
+    target_path = os.path.join(pkg_root, "bin", exe)
     if os.path.isfile(target_path):
         return target_path
 
@@ -62,8 +62,12 @@ def find_zerv_bin() -> str:
             and maybe_overlay[-1].startswith("pip-build-env-")
             and maybe_overlay[-2] == "overlay"
         ):
-            candidate = os.path.join(paths[0], zerv_exe)
+            candidate = os.path.join(paths[0], exe)
             if os.path.isfile(candidate):
                 return candidate
 
     raise FileNotFoundError(scripts_path)
+
+
+def find_zerv_bin() -> str:
+    return find_bin("zerv")
