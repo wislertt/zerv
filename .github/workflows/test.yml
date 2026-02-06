@@ -53,7 +53,7 @@ jobs:
                   version: "latest"
                   python-version: "3.14"
                   enable-cache: true
-                  #   cache-python: true
+                  cache-python: true
                   #   cache-dependency-glob: "uv.lock"
 
             - name: cache-uv
