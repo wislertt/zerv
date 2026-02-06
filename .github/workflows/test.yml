@@ -66,7 +66,9 @@ jobs:
 
             # TODO: verify --no-editable work
             - name: install-dependencies
-              run: uv sync --no-editable --all-extras --all-groups --frozen
+              run: |
+                  uv sync --all-extras --all-groups --frozen
+                  maturin develop
 
             - name: setup-path
               run: echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
@@ -75,6 +77,7 @@ jobs:
               run: |
                   which zerv
                   zerv --version
+                  uv run python -c "from zerv._find_zerv import find_zerv_bin; print(find_zerv_bin())"
                   uv run pytest tests/python --cov=python/zerv --cov-report=html
 
             - name: run-tests
