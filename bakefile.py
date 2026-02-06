@@ -78,6 +78,7 @@ class MyBakebook(PythonLibSpace):
             "--exclude-files 'src/test_utils/git/native.rs' "
             "-- --quiet",
             env=env,
+            shell=True,
         )
 
     @command()
