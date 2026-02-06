@@ -176,20 +176,16 @@ jobs:
                   which bake
                   echo "=== Running maturin develop ==="
                   uv run maturin develop
-                  echo "=== Searching for zerv binary ==="
+                  echo "=== Checking .pth file ==="
+                  cat .venv/lib/python3.14/site-packages/zerv_version.pth
+                  echo "=== Checking target directory ==="
+                  find target -name "zerv*" -type f 2>/dev/null || echo "No zerv in target/"
+                  echo "=== Checking if zerv is executable ==="
+                  file target/debug/zerv 2>/dev/null || echo "zerv not in target/debug/"
+                  echo "=== Testing direct execution ==="
+                  ./target/debug/zerv --version 2>/dev/null || echo "Cannot execute target/debug/zerv"
+                  echo "=== Checking PATH ==="
                   echo "PATH: $PATH"
-                  echo "=== Checking .venv/bin ==="
-                  ls -la .venv/bin/ | grep -i zerv || echo "No zerv in .venv/bin/"
-                  echo "=== Checking .venv/bin directly ==="
-                  find .venv/bin -name "*zerv*" -type f 2>/dev/null || echo "No zerv found in .venv/bin/"
-                  echo "=== Checking site-packages ==="
-                  find .venv/lib -name "*zerv*" -type f 2>/dev/null | head -20 || echo "No zerv found in lib/"
-                  echo "=== Checking cargo bin ==="
-                  ls -la ~/.cargo/bin/ | grep -i zerv || echo "No zerv in ~/.cargo/bin/"
-                  echo "=== Running which zerv ==="
-                  which zerv || echo "zerv not in PATH"
-                  echo "=== Checking sysconfig ==="
-                  uv run python -c "import sysconfig; print('scripts:', sysconfig.get_path('scripts')); print('purelib:', sysconfig.get_path('purelib'))"
 
             # - name: setup-path
             #   run: echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH

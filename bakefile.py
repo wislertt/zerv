@@ -68,7 +68,7 @@ class MyBakebook(PythonLibSpace):
         env["RUST_LOG"] = "cargo_tarpaulin=off"
 
         ctx.run(
-            "RUST_BACKTRACE=1 RUST_LOG=cargo_tarpaulin=off cargo tarpaulin "
+            "cargo tarpaulin "
             "--features test-utils "
             "--out Xml --out Html --out Lcov "
             "--output-dir coverage "
