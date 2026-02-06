@@ -174,9 +174,22 @@ jobs:
               run: |
                   uv run bake --help
                   which bake
-                  which zerv
-                  zerv --version
-                  uv run python -c "from zerv._find_zerv import find_zerv_bin; print(find_zerv_bin())"
+                  echo "=== Running maturin develop ==="
+                  uv run maturin develop
+                  echo "=== Searching for zerv binary ==="
+                  echo "PATH: $PATH"
+                  echo "=== Checking .venv/bin ==="
+                  ls -la .venv/bin/ | grep -i zerv || echo "No zerv in .venv/bin/"
+                  echo "=== Checking .venv/bin directly ==="
+                  find .venv/bin -name "*zerv*" -type f 2>/dev/null || echo "No zerv found in .venv/bin/"
+                  echo "=== Checking site-packages ==="
+                  find .venv/lib -name "*zerv*" -type f 2>/dev/null | head -20 || echo "No zerv found in lib/"
+                  echo "=== Checking cargo bin ==="
+                  ls -la ~/.cargo/bin/ | grep -i zerv || echo "No zerv in ~/.cargo/bin/"
+                  echo "=== Running which zerv ==="
+                  which zerv || echo "zerv not in PATH"
+                  echo "=== Checking sysconfig ==="
+                  uv run python -c "import sysconfig; print('scripts:', sysconfig.get_path('scripts')); print('purelib:', sysconfig.get_path('purelib'))"
 
             # - name: setup-path
             #   run: echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
