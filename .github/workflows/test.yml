@@ -165,60 +165,20 @@ jobs:
 
             - name: install-dependencies
               run: |
-                  echo "=== Running uv sync with verbose ==="
-                  uv sync --all-extras --all-groups --frozen --verbose 2>&1 | tail -50
+                  uv sync --all-extras --all-groups --frozen
                   echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
-              #   which bake
-              #   maturin develop
+                  echo "${{ github.workspace }}/target/release" >> $GITHUB_PATH
 
-            - name: debug
+            - name: verify-zerv
               run: |
-                  uv run bake --help
-                  which bake
-                  echo "=== AFTER uv sync, BEFORE maturin develop ==="
-                  echo "=== Checking .pth file ==="
-                  cat .venv/lib/python3.14/site-packages/zerv_version.pth || echo "No .pth file"
-                  echo "=== Checking wheel contents ==="
-                  uv run python -m zipfile -l target/wheels/zerv_version-0.0.0-py3-none-linux_x86_64.whl | grep -i zerv || echo "No zerv in wheel"
-                  echo "=== Extracting wheel to check contents ==="
-                  uv run python -c "import zipfile, tempfile, os; z = zipfile.ZipFile('target/wheels/zerv_version-0.0.0-py3-none-linux_x86_64.whl'); print('\n'.join(z.namelist()))"
-                  echo "=== Checking site-packages for zerv binary ==="
-                  ls -laR .venv/lib/python3.14/site-packages/ | grep -i "zerv$" || echo "No zerv binary in site-packages"
-                  echo "=== Checking target/release (from uv sync) ==="
-                  ls -la target/release/zerv 2>/dev/null && echo "zerv exists in target/release!" || echo "No zerv in target/release"
-                  echo "=== Testing if target/release/zerv works ==="
-                  ./target/release/zerv --version 2>/dev/null && echo "target/release/zerv works!" || echo "target/release/zerv does not work"
-
-            - name: setup-path
-              run: |
-                  echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
-                  echo "${{ github.workspace }}/target/debug" >> $GITHUB_PATH
-
-            - name: debug-after-path
-              run: |
-                  echo "=== PATH includes target/debug ==="
-                  echo "PATH: $PATH"
-                  echo "=== Testing zerv with new PATH ==="
+                  echo "=== Verifying zerv binary ==="
                   which zerv
                   zerv --version
                   echo "=== Testing find_zerv_bin ==="
-                  uv run python -c "from zerv._find_zerv import find_zerv_bin; print(find_zerv_bin())"
-
-            # - name: debug
-            #   run: |
-            #       which bake
-            #       which maturin
-            #       maturin develop
-            #       which zerv
-
-            #       which zerv
-            #       zerv --version
-            #       uv run python -c "from zerv._find_zerv import find_zerv_bin; print(find_zerv_bin())"
-            #       uv run pytest tests/python --cov=python/zerv --cov-report=html
+                  uv run python -c "from zerv._find_zerv import find_zerv_bin; print('Found:', find_zerv_bin())"
 
             # - name: run-tests
             #   run: bake python-test
-            # #   shell: bash
 
             - name: save-cache
               uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
