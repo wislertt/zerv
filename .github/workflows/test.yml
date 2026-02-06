@@ -174,7 +174,8 @@ jobs:
               run: |
                   uv run bake --help
                   which bake
-                  maturin develop
+                  which zerv
+                  zerv --version
                   uv run python -c "from zerv._find_zerv import find_zerv_bin; print(find_zerv_bin())"
 
             # - name: setup-path
