@@ -68,6 +68,7 @@ jobs:
             - name: install-dependencies
               run: |
                   uv sync --all-extras --all-groups --frozen
+                  echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
                   maturin develop
 
             - name: setup-path
