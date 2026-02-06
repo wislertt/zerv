@@ -48,12 +48,14 @@ jobs:
             - name: install-cargo-tarpaulin
               run: cargo install cargo-tarpaulin --locked || true
 
+            # TODO: python version??
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
               with:
                   version: "latest"
+                  python-version: "3.14"
                   enable-cache: true
-                  python-version: ${{ inputs.python_version }}
+                  cache-python: true
                   cache-dependency-glob: "uv.lock"
 
             # TODO: reconsider caching .venv - causes invalid Python interpreter warnings
@@ -72,19 +74,20 @@ jobs:
               #   which bake
               #   maturin develop
 
-            - name: debug
-              run: |
-                  which bake || echo 1
+            # - name: debug
+            #   run: |
+            #       which bake || echo 1
 
-            - name: setup-path
-              run: echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
+            # - name: setup-path
+            #   run: echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
 
-            - name: debug
-              run: |
-                  which bake
-                  which maturin
-                  maturin develop
-                  which zerv
+            # - name: debug
+            #   run: |
+            #       which bake
+            #       which maturin
+            #       maturin develop
+            #       which zerv
+
             #       which zerv
             #       zerv --version
             #       uv run python -c "from zerv._find_zerv import find_zerv_bin; print(find_zerv_bin())"
