@@ -174,18 +174,18 @@ jobs:
               run: |
                   uv run bake --help
                   which bake
+                  echo "=== BEFORE maturin develop ==="
+                  echo "=== Checking if zerv exists in target/debug ==="
+                  ls -la target/debug/zerv 2>/dev/null && echo "zerv exists!" || echo "zerv does NOT exist"
+                  echo "=== Testing zerv execution before maturin develop ==="
+                  ./target/debug/zerv --version 2>/dev/null && echo "zerv works BEFORE maturin develop!" || echo "zerv does NOT work before maturin develop"
                   echo "=== Running maturin develop ==="
                   uv run maturin develop
+                  echo "=== AFTER maturin develop ==="
                   echo "=== Checking .pth file ==="
                   cat .venv/lib/python3.14/site-packages/zerv_version.pth
-                  echo "=== Checking target directory ==="
-                  find target -name "zerv*" -type f 2>/dev/null || echo "No zerv in target/"
-                  echo "=== Checking if zerv is executable ==="
-                  file target/debug/zerv 2>/dev/null || echo "zerv not in target/debug/"
-                  echo "=== Testing direct execution ==="
-                  ./target/debug/zerv --version 2>/dev/null || echo "Cannot execute target/debug/zerv"
-                  echo "=== Checking PATH ==="
-                  echo "PATH: $PATH"
+                  echo "=== Testing zerv execution after maturin develop ==="
+                  ./target/debug/zerv --version 2>/dev/null && echo "zerv works!" || echo "zerv does NOT work"
 
             # - name: setup-path
             #   run: echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
