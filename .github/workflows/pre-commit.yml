@@ -19,6 +19,7 @@ jobs:
               with:
                   version: "latest"
                   enable-cache: true
+                  cache-python: true
                   python-version: ${{ inputs.python_version }}
 
             - name: cache-uv
