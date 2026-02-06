@@ -24,6 +24,7 @@ classifiers = [
 dev = [
   "bakefile[lib]>=0.0.14",
   "deptry>=0.24.0",
+  "maturin>=1.11.5",
   "pre-commit>=4.5.1",
   "pytest-cov>=7.0.0",
   "pytest>=9.0.2",
