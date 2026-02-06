@@ -58,15 +58,15 @@ jobs:
                   cache-python: true
                   cache-dependency-glob: "uv.lock"
 
-            # TODO: reconsider caching .venv - causes invalid Python interpreter warnings
-            # - name: cache-uv
-            #   uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-            #   with:
-            #       path: ${{ github.workspace }}/.venv
-            #       key: uv-${{ runner.os }}-py${{ inputs.python_version }}-${{ hashFiles('uv.lock') }}
-            #       restore-keys: |
-            #           uv-${{ runner.os }}-py${{ inputs.python_version }}-
-            #           uv-${{ runner.os }}-
+            - name: cache-uv
+              uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+              with:
+                  path: ${{ github.workspace }}/.venv
+                  key: uv-${{ runner.os }}-py3.14-${{ hashFiles('uv.lock') }}
+                  restore-keys: |
+                      uv-${{ runner.os }}-py3.14-
+                      uv-${{ runner.os }}-
+
             - name: install-dependencies
               run: |
                   uv sync --all-extras --all-groups --frozen
