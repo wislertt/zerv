@@ -20,15 +20,17 @@ jobs:
             ZERV_TEST_DOCKER: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
             ZERV_FORCE_RUST_LOG_OFF: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
         steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+            - name: checkout-repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   fetch-depth: 0
 
-            - uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
+            - name: setup-rust-toolchain
+              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
               with:
                   toolchain: stable
 
-            - name: Restore cache
+            - name: restore-cache
               id: cache
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
@@ -42,12 +44,14 @@ jobs:
                       cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
                       cargo-${{ runner.os }}-
 
-            - run: cargo install cargo-tarpaulin --locked || true
+            - name: install-cargo-tarpaulin
+              run: cargo install cargo-tarpaulin --locked || true
 
-            - run: make _test
+            - name: run-tests
+              run: make _test
               shell: bash
 
-            - name: Save cache
+            - name: save-cache
               uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               if: always()
               with:
@@ -58,7 +62,7 @@ jobs:
                       ~/.cargo/git/db/
                   key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
-            - name: Upload coverage reports to Codecov
+            - name: upload-coverage-reports-to-codecov
               if: matrix.os == 'ubuntu-latest'
               uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
               with:
@@ -66,7 +70,7 @@ jobs:
                   token: ${{ secrets.CODECOV_TOKEN }}
                   verbose: true
 
-            - name: SonarQube Scan
+            - name: sonarqube-scan
               if: matrix.os == 'ubuntu-latest'
               uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
               env:

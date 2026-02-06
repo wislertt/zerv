@@ -29,13 +29,14 @@ jobs:
         name: ${{ inputs.job_name || 'unlock' }}
         runs-on: ubuntu-latest
         steps:
-            - uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
+            - name: check-lock
+              uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: check-lock
               with:
                   mode: "check"
                   environment: ${{ inputs.key }}
 
-            - name: Check ownership before unlock
+            - name: check-ownership-before-unlock
               id: check-unlock
               shell: bash
               run: |
@@ -74,14 +75,15 @@ jobs:
                       fi
                   fi
 
-            - uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
+            - name: unlock
+              uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: unlock
               with:
                   mode: "unlock"
                   environment: ${{ inputs.key }}
               if: steps.check-unlock.outputs.should_unlock == 'true'
 
-            - name: Final unlock status
+            - name: final-unlock-status
               if: always()
               run: |
                   echo "=== Unlock Result ==="

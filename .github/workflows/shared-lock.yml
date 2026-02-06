@@ -34,7 +34,7 @@ jobs:
         name: ${{ inputs.job_name || 'lock' }}
         runs-on: ubuntu-latest
         steps:
-            - name: Define lock check function
+            - name: define-lock-check-function
               shell: bash
               run: |
                   # Define reusable function for lock ownership checking
@@ -99,14 +99,14 @@ jobs:
                   EOF
 
             # Check lock state
-            - name: Get lock state
+            - name: get-lock-state
               uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: get-lock-state
               with:
                   mode: "check"
                   environment: ${{ inputs.key }}
 
-            - name: Check lock state
+            - name: check-lock-state
               id: check-lock
               shell: bash
               run: |
@@ -118,7 +118,7 @@ jobs:
                       --locked "${{ steps.get-lock-state.outputs.locked }}"
 
             # Lock
-            - name: Prepare lock reason
+            - name: prepare-lock-reason
               id: lock-reason
               run: |
                   # Simple reason with owner information
@@ -136,7 +136,7 @@ jobs:
                   reason: ${{ steps.lock-reason.outputs.reason }}
               if: steps.check-lock.outputs.should_proceed == 'true'
 
-            - name: Wait for lock to propagate
+            - name: wait-for-lock-to-propagate
               shell: bash
               if: inputs.check_owner_after_lock
               run: |
@@ -144,7 +144,7 @@ jobs:
                   sleep ${{ inputs.delay_check_owner_after_lock_in_sec }}
 
             # Recheck lock state after lock
-            - name: Get lock state for recheck
+            - name: get-lock-state-for-recheck
               uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: get-lock-state-for-recheck
               if: inputs.check_owner_after_lock
@@ -152,7 +152,7 @@ jobs:
                   mode: "check"
                   environment: ${{ inputs.key }}
 
-            - name: Recheck lock state
+            - name: recheck-lock-state
               id: recheck-lock
               shell: bash
               if: steps.lock.outcome == 'success' && inputs.check_owner_after_lock
@@ -165,7 +165,7 @@ jobs:
                       --locked "${{ steps.get-lock-state-for-recheck.outputs.locked }}" \
                       --require-owned true
 
-            - name: Final lock status
+            - name: final-lock-status
               if: always()
               run: |
                   echo "=== Lock Result ==="
