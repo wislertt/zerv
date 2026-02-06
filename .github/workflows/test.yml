@@ -174,11 +174,11 @@ jobs:
                   echo "=== Verifying zerv binary ==="
                   which zerv
                   zerv --version
-                  echo "=== Testing find_zerv_bin ==="
-                  uv run python -c "from zerv._find_zerv import find_zerv_bin; print('Found:', find_zerv_bin())"
+              #   echo "=== Testing find_zerv_bin ==="
+              #   uv run python -c "from zerv._find_zerv import find_zerv_bin; print('Found:', find_zerv_bin())"
 
-            # - name: run-tests
-            #   run: bake python-test
+            - name: run-tests
+              run: bake python-test
 
             - name: save-cache
               uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
