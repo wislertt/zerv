@@ -54,21 +54,23 @@ jobs:
                   version: "latest"
                   enable-cache: true
                   python-version: ${{ inputs.python_version }}
+                  cache-dependency-glob: "uv.lock"
 
-            - name: cache-uv
-              uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-              with:
-                  path: ${{ github.workspace }}/.venv
-                  key: uv-${{ runner.os }}-py${{ inputs.python_version }}-${{ hashFiles('uv.lock') }}
-                  restore-keys: |
-                      uv-${{ runner.os }}-py${{ inputs.python_version }}-
-                      uv-${{ runner.os }}-
+            # TODO: reconsider caching .venv - causes invalid Python interpreter warnings
+            # - name: cache-uv
+            #   uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+            #   with:
+            #       path: ${{ github.workspace }}/.venv
+            #       key: uv-${{ runner.os }}-py${{ inputs.python_version }}-${{ hashFiles('uv.lock') }}
+            #       restore-keys: |
+            #           uv-${{ runner.os }}-py${{ inputs.python_version }}-
+            #           uv-${{ runner.os }}-
 
-            # TODO: verify --no-editable work
             - name: install-dependencies
               run: |
                   uv sync --all-extras --all-groups --frozen
                   echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
+                  which bake
                   maturin develop
 
             - name: setup-path
