@@ -77,6 +77,7 @@ jobs:
 
             - name: debug
               run: |
+                  which bake
                   which zerv
                   zerv --version
                   uv run python -c "from zerv._find_zerv import find_zerv_bin; print(find_zerv_bin())"
