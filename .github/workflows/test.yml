@@ -174,17 +174,21 @@ jobs:
               run: |
                   uv run bake --help
                   which bake
-                  echo "=== BEFORE maturin develop ==="
-                  echo "=== Checking if zerv exists in target/debug ==="
-                  ls -la target/debug/zerv 2>/dev/null && echo "zerv exists!" || echo "zerv does NOT exist"
-                  echo "=== Testing zerv execution before maturin develop ==="
-                  ./target/debug/zerv --version 2>/dev/null && echo "zerv works BEFORE maturin develop!" || echo "zerv does NOT work before maturin develop"
+                  echo "=== AFTER uv sync, BEFORE maturin develop ==="
+                  echo "=== Checking .pth file (created by uv sync) ==="
+                  cat .venv/lib/python3.14/site-packages/zerv_version.pth || echo "No .pth file"
+                  echo "=== Checking target/debug ==="
+                  ls -la target/debug/zerv 2>/dev/null && echo "zerv exists in target/debug!" || echo "zerv does NOT exist in target/debug"
+                  echo "=== Checking site-packages for binaries ==="
+                  find .venv/lib/python3.14/site-packages -name "zerv*" -type f -executable 2>/dev/null || echo "No executable zerv in site-packages"
+                  echo "=== Checking UV build cache ==="
+                  uv run python -c "import zerv; print('zerv module:', zerv.__file__)" 2>/dev/null || echo "Cannot import zerv"
                   echo "=== Running maturin develop ==="
                   uv run maturin develop
                   echo "=== AFTER maturin develop ==="
-                  echo "=== Checking .pth file ==="
-                  cat .venv/lib/python3.14/site-packages/zerv_version.pth
-                  echo "=== Testing zerv execution after maturin develop ==="
+                  echo "=== Checking target/debug again ==="
+                  ls -la target/debug/zerv 2>/dev/null && echo "zerv NOW exists in target/debug!" || echo "Still no zerv in target/debug"
+                  echo "=== Testing zerv execution ==="
                   ./target/debug/zerv --version 2>/dev/null && echo "zerv works!" || echo "zerv does NOT work"
 
             - name: setup-path
