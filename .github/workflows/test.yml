@@ -64,12 +64,27 @@ jobs:
             - name: install-cargo-tarpaulin
               shell: bash
               run: |
-                  if [ ! -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
-                      echo "cargo-tarpaulin not found in ~/.cargo/bin, installing..."
-                      cargo install cargo-tarpaulin --locked
+                  # Get currently installed version (if any)
+                  if [ -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
+                      CURRENT_VERSION=$("$HOME/.cargo/bin/cargo-tarpaulin" --version 2>/dev/null | awk '{print $2}')
                   else
-                      echo "cargo-tarpaulin already installed (from cache)"
+                      CURRENT_VERSION=""
                   fi
+
+                  # Get latest version from crates.io
+                  LATEST_VERSION=$(cargo search cargo-tarpaulin --limit 1 | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+
+                  echo "Current cargo-tarpaulin: ${CURRENT_VERSION:-none}"
+                  echo "Latest cargo-tarpaulin : $LATEST_VERSION"
+
+                  if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+                      echo "Installing cargo-tarpaulin ($LATEST_VERSION)"
+                      cargo install cargo-tarpaulin --version "$LATEST_VERSION" --force
+                  else
+                      echo "cargo-tarpaulin is already up to date"
+                  fi
+
+                  "$HOME/.cargo/bin/cargo-tarpaulin" --version
 
             - name: debug-cargo-bin-after-install
               shell: bash
