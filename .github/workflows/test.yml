@@ -146,8 +146,8 @@ jobs:
                   version: "latest"
                   python-version: ${{ matrix.python_version }}
                   enable-cache: true
-                  cache-python: false
-                  #   cache-python: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+                  #   cache-python: false
+                  cache-python: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
 
             - name: cache-uv
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3

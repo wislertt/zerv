@@ -69,8 +69,10 @@ def symlink_zerv_to_venv_bin(tmp_path_factory):
     print(f"venv_bin exists: {venv_bin.exists()}")
     print(f"venv_bin is_dir: {venv_bin.is_dir()}")
 
-    # Create symlink
-    symlink_path = venv_bin / "zerv"
+    # On Windows, the symlink needs .exe extension to match what find_zerv_bin() expects
+    symlink_name = "zerv.exe" if sys.platform == "win32" else "zerv"
+    symlink_path = venv_bin / symlink_name
+    print(f"symlink_name: {symlink_name}")
     print(f"symlink_path target: {symlink_path}")
 
     # Remove existing symlink if it exists (from previous test runs)
