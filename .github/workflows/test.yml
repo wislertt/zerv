@@ -50,26 +50,6 @@ jobs:
                       cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
                       cargo-${{ github.job }}-${{ runner.os }}-
 
-            # - name: debug-cargo-bin-before-install
-            #   shell: bash
-            #   run: |
-            #       echo "=== Before install - HOME ==="
-            #       echo "$HOME"
-            #       echo ""
-            #       echo "=== Before install - PATH ==="
-            #       echo "$PATH"
-            #       echo ""
-            #       echo "=== Before install - ~/.cargo/bin/ contents ==="
-            #       ls -la "$HOME/.cargo/bin/" 2>/dev/null || echo "Directory not found or empty"
-            #       echo ""
-            #       echo "=== Before install - cargo-tarpaulin check ==="
-            #       if [ -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
-            #           echo "FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
-            #           "$HOME/.cargo/bin/cargo-tarpaulin" --version 2>/dev/null || echo "Cannot execute"
-            #       else
-            #           echo "NOT FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
-            #       fi
-
             - name: install-cargo-tarpaulin
               shell: bash
               run: |
@@ -94,20 +74,6 @@ jobs:
                   fi
 
                   "$HOME/.cargo/bin/cargo-tarpaulin" --version
-
-            # - name: debug-cargo-bin-after-install
-            #   shell: bash
-            #   run: |
-            #       echo "=== After install - ~/.cargo/bin/ contents ==="
-            #       ls -la "$HOME/.cargo/bin/" 2>/dev/null || echo "Directory not found or empty"
-            #       echo ""
-            #       echo "=== After install - cargo-tarpaulin check ==="
-            #       if [ -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
-            #           echo "FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
-            #           "$HOME/.cargo/bin/cargo-tarpaulin" --version
-            #       else
-            #           echo "NOT FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
-            #       fi
 
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
@@ -138,8 +104,8 @@ jobs:
                       echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
                   fi
 
-            # - name: run-tests
-            #   run: bake rust-test
+            - name: run-tests
+              run: bake rust-test
 
             - name: save-cache
               uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
@@ -148,19 +114,19 @@ jobs:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
-            # - name: upload-coverage-reports-to-codecov
-            #   if: matrix.os == 'ubuntu-latest'
-            #   uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-            #   with:
-            #       fail_ci_if_error: true
-            #       token: ${{ secrets.CODECOV_TOKEN }}
-            #       verbose: true
+            - name: upload-coverage-reports-to-codecov
+              if: matrix.os == 'ubuntu-latest'
+              uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+              with:
+                  fail_ci_if_error: true
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  verbose: true
 
-            # - name: sonarqube-scan
-            #   if: matrix.os == 'ubuntu-latest'
-            #   uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
-            #   env:
-            #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            - name: sonarqube-scan
+              if: matrix.os == 'ubuntu-latest'
+              uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
+              env:
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     python:
         strategy:
