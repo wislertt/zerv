@@ -22,5 +22,5 @@ jobs:
     # ====================================================
     # Build Binaries
     # ====================================================
-    # build-bin:
-    #     uses: ./.github/workflows/shared-build-bin.yml
+    build-bin:
+        uses: ./.github/workflows/shared-build-bin.yml
