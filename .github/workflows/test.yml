@@ -19,6 +19,7 @@ jobs:
             ZERV_TEST_NATIVE_GIT: true
             ZERV_TEST_DOCKER: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
             ZERV_FORCE_RUST_LOG_OFF: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+            PYTHON_VERSION: "3.14"
         steps:
             - name: checkout-repository
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -74,7 +75,7 @@ jobs:
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
               with:
                   version: "latest"
-                  python-version: "3.14"
+                  python-version: ${{ env.PYTHON_VERSION }}
                   enable-cache: true
                   cache-python: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
 
@@ -82,9 +83,9 @@ jobs:
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ github.workspace }}/.venv
-                  key: uv-${{ runner.os }}-py3.14-${{ hashFiles('uv.lock') }}
+                  key: uv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('uv.lock') }}
                   restore-keys: |
-                      uv-${{ runner.os }}-py3.14-
+                      uv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
                       uv-${{ runner.os }}-
 
             - name: install-dependencies
