@@ -1,8 +1,14 @@
+from typing import Annotated, Literal, get_args
+
+import typer
 from bake import Context, command
-from bakelib import PythonLibSpace
+from bakelib import PythonLibSpace, RustLibSpace
+from bakelib.space.python_lib import PyPIRegistry
+
+CratesRegistry = Literal["crates"]
 
 
-class MyBakebook(PythonLibSpace):
+class MyBakebook(RustLibSpace, PythonLibSpace):
     zerv_test_native_git: bool = False
     zerv_test_docker: bool = True
     zerv_force_rust_log_off: bool = False
@@ -11,39 +17,6 @@ class MyBakebook(PythonLibSpace):
         for key, value in kwargs.items():
             if value is not None:
                 setattr(self, key, value)
-
-    def update(self, ctx: Context):
-        super().update(ctx)
-        ctx.run("rustup update")
-        ctx.run("cargo update")
-
-    def lint(self, ctx: Context) -> None:
-        super().lint(ctx=ctx)
-        ctx.run("cargo +nightly check --tests")
-        ctx.run("cargo +nightly fmt -- --check || (cargo +nightly fmt && exit 1)")
-        ctx.run("cargo +nightly clippy --all-targets --all-features -- -D warnings")
-
-    # TODO: update this to bakefile
-    def _test(
-        self,
-        ctx: Context,
-        *,
-        tests_paths: str | list[str],
-        verbose: bool = False,
-        coverage_report: bool = True,
-        coverage_path: str = "src",
-    ) -> None:
-        paths = tests_paths if isinstance(tests_paths, str) else " ".join(tests_paths)
-
-        cmd = f"uv run pytest {paths}"
-
-        if coverage_report:
-            cmd += f" --cov={coverage_path} --cov-report=html --cov-report=term-missing --cov-report=xml"
-
-        if verbose:
-            cmd += " -s -v"
-
-        ctx.run(cmd)
 
     @command()
     def rust_test(
@@ -117,6 +90,22 @@ class MyBakebook(PythonLibSpace):
     @command()
     def extract_mermaid_svgs(self, ctx: Context):
         ctx.run("./scripts/extract_mermaid_from_markers.sh")
+
+    def publish(
+        self,
+        ctx: Context,
+        *,
+        registry: Annotated[
+            str, typer.Option(help="Publish registry (testpypi, pypi, or crates)")
+        ] = "testpypi",
+        token: Annotated[str | None, typer.Option(help="Publish token")] = None,
+        version: Annotated[str | None, typer.Option(help="Version to publish")] = None,
+    ):
+        if registry in get_args(PyPIRegistry):
+            return PythonLibSpace.publish(
+                self, ctx=ctx, registry=registry, token=token, version=version
+            )
+        return RustLibSpace.publish(self, ctx=ctx, registry=registry, token=token, version=version)
 
 
 bakebook = MyBakebook()

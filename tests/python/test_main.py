@@ -24,9 +24,7 @@ def test_python_m_zerv_version_output():
         text=True,
     )
     assert result.returncode == 0
-    assert "zerv" in result.stdout.lower(), (
-        f"Expected 'zerv' in output, got: {result.stdout}"
-    )
+    assert "zerv" in result.stdout.lower(), f"Expected 'zerv' in output, got: {result.stdout}"
 
 
 def test_python_m_zerv_help_output():
