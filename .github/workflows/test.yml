@@ -144,11 +144,8 @@ jobs:
                   python-version: ${{ matrix.python_version }}
                   enable-cache: true
                   # Disable Python 3.12 caching on Ubuntu due to bug: UV_PYTHON_INSTALL_DIR does not exist during post-job cleanup
-                  # See: https://github.com/astral-sh/setup-uv/issues (not yet reported as of 2026-02-07)
                   # All other Python versions (3.10, 3.11, 3.13, 3.14) cache successfully on Ubuntu
-                  # cache-python: ${{ matrix.python_version != '3.12' && matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
-                  cache-python: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
-                  prune-cache: false
+                  cache-python: ${{ matrix.python_version != '3.12' && matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
 
             - name: cache-uv
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
