@@ -131,6 +131,7 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
+                      ${{ github.workspace }}/target/
                   key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
                       cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
@@ -179,4 +180,5 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
+                      ${{ github.workspace }}/target/
                   key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
