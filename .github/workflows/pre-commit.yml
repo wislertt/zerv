@@ -50,5 +50,32 @@ jobs:
                   toolchain: nightly
                   components: rustfmt, clippy
 
+            - name: restore-cache
+              id: cache
+              uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                      ${{ github.workspace }}/target/
+                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+                      cargo-${{ runner.os }}-
+
             - name: run-pre-commit
               run: uv run pre-commit run --all-files
+
+            - name: save-cache
+              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+              if: always()
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                      ${{ github.workspace }}/target/
+                  key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
