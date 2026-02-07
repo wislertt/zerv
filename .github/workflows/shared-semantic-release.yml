@@ -39,12 +39,12 @@ jobs:
             is_valid: ${{ steps.check-ref.outputs.is_valid }}
             tag_version: ${{ steps.check-ref.outputs.tag_version }}
         steps:
-            - name: Checkout
+            - name: checkout
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   fetch-depth: 0
 
-            - name: Validate ref (tag or branch)
+            - name: validate-ref-tag-or-branch
               id: check-ref
               run: |
                   set -euo pipefail
@@ -117,18 +117,18 @@ jobs:
             new_release_version: ${{ steps.determine-version.outputs.new_release_version }}
             new_release_published: ${{ steps.determine-version.outputs.new_release_published }}
         steps:
-            - name: Checkout
+            - name: checkout
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   fetch-depth: 0
 
             - id: release
-              name: Release
+              name: release
               uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Determine version from release or tag
+            - name: determine-version-from-release-or-tag
               id: determine-version
               run: |
                   # Set the published status
@@ -158,7 +158,7 @@ jobs:
                       echo "New release: ${{ steps.release.outputs.new_release_version }}"
                   fi
 
-            - name: Display outputs
+            - name: display-outputs
               run: |
                   echo "Version: ${{ steps.determine-version.outputs.new_release_version }}"
                   echo "Published: ${{ steps.determine-version.outputs.new_release_published }}"

@@ -1,0 +1,64 @@
+[project]
+name = "zerv-version"
+version = "0.0.0" # Use git tag
+description = "Dynamic versioning CLI tool"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+keywords = ["cli", "git", "semver", "versioning"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Rust",
+  "Topic :: Software Development :: Version Control"
+]
+
+[dependency-groups]
+dev = [
+  "bakefile[lib]>=0.0.14",
+  "deptry>=0.24.0",
+  "maturin>=1.11.5",
+  "pre-commit>=4.5.1",
+  "pytest-cov>=7.0.0",
+  "pytest>=9.0.2",
+  "toml-sort>=0.24.3"
+]
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.coverage.run]
+omit = [
+  "python/zerv/__main__.py"
+]
+
+[tool.deptry]
+known_first_party = ["zerv"]
+extend_exclude = ["bakefile.py"]
+
+[tool.deptry.package_module_name_map]
+bakefile = ["bake", "bakelib"]
+
+[tool.maturin]
+bindings = "bin"
+module-name = "zerv"
+python-source = "python"
+strip = true
+include = [
+  {path = "python/zerv/**/*.py", format = ["wheel"]},
+  {path = "python/zerv/py.typed", format = ["wheel"]}
+]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true

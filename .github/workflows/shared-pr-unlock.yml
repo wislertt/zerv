@@ -43,7 +43,7 @@ jobs:
         outputs:
             missing_envs: ${{ steps.check-missing.outputs.missing_envs }}
         steps:
-            - name: Check which environments to unlock
+            - name: check-which-environments-to-unlock
               id: check-missing
               run: |
                   LABELS='${{ needs.check-deploy-labels.outputs.labels }}'

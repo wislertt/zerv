@@ -10,10 +10,10 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - name: Checkout repository
+            - name: checkout-repository
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Run Trivy dependency scan
+            - name: run-trivy-dependency-scan
               uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
               with:
                   scan-type: fs
@@ -26,11 +26,13 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+            - name: checkout-repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   fetch-depth: 0
 
-            - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+            - name: run-gitleaks-scan
+              uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -39,15 +41,16 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - name: Checkout repository
+            - name: checkout-repository
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Setup Rust
+            - name: setup-rust
               uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
               with:
                   toolchain: stable
 
-            - name: Restore cache
+            - name: restore-cache
+              id: restore-cache
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: |
@@ -55,12 +58,12 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-audit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+                  key: cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
-                      cargo-audit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-                      cargo-audit-${{ runner.os }}-
+                      cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+                      cargo-${{ github.job }}-${{ runner.os }}-
 
-            - name: Install cargo-audit
+            - name: install-cargo-audit
               run: |
                   # Get currently installed version (if any)
                   if command -v cargo-audit >/dev/null 2>&1; then
@@ -83,11 +86,11 @@ jobs:
                       echo "cargo-audit is up to date"
                   fi
 
-            - name: Run cargo audit
+            - name: run-cargo-audit
               run: |
                   cargo audit
 
-            - name: Save cache
+            - name: save-cache
               uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               if: always()
               with:
@@ -96,4 +99,4 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-audit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+                  key: ${{ steps.restore-cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
