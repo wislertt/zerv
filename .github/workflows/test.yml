@@ -45,10 +45,10 @@ jobs:
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: cargo-rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-${{ job.job_id }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
-                      cargo-rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
-                      cargo-rust-${{ runner.os }}-
+                      cargo-${{ job.job_id }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+                      cargo-${{ job.job_id }}-${{ runner.os }}-
 
             - name: debug-cargo-bin-before-install
               shell: bash
@@ -121,10 +121,10 @@ jobs:
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ github.workspace }}/.venv
-                  key: uv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('uv.lock') }}
+                  key: uv-${{ job.job_id }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('uv.lock') }}
                   restore-keys: |
-                      uv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
-                      uv-${{ runner.os }}-
+                      uv-${{ job.job_id }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
+                      uv-${{ job.job_id }}-${{ runner.os }}-
 
             - name: install-dependencies
               run: uv sync --all-extras --all-groups --frozen
@@ -185,10 +185,10 @@ jobs:
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: cargo-python-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-${{ job.job_id }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
-                      cargo-python-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
-                      cargo-python-${{ runner.os }}-
+                      cargo-${{ job.job_id }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+                      cargo-${{ job.job_id }}-${{ runner.os }}-
 
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
@@ -204,10 +204,10 @@ jobs:
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ github.workspace }}/.venv
-                  key: uv-${{ runner.os }}-py${{ matrix.python_version }}-${{ hashFiles('uv.lock') }}
+                  key: uv-${{ job.job_id }}-${{ runner.os }}-py${{ matrix.python_version }}-${{ hashFiles('uv.lock') }}
                   restore-keys: |
-                      uv-${{ runner.os }}-py${{ matrix.python_version }}-
-                      uv-${{ runner.os }}-
+                      uv-${{ job.job_id }}-${{ runner.os }}-py${{ matrix.python_version }}-
+                      uv-${{ job.job_id }}-${{ runner.os }}-
 
             - name: install-dependencies
               shell: bash
