@@ -16,9 +16,11 @@ jobs:
 
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
+        with:
+            python_version: "3.14"
 
     # ====================================================
     # Build Binaries
     # ====================================================
-    build-bin:
-        uses: ./.github/workflows/shared-build-bin.yml
+    # build-bin:
+    #     uses: ./.github/workflows/shared-build-bin.yml

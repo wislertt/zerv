@@ -85,15 +85,17 @@ jobs:
         outputs:
             versions: ${{ steps.generate-versions.outputs.versions }}
         steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+            - name: checkout-repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   fetch-depth: 0
 
-            - uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
+            - name: setup-rust-toolchain
+              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
               with:
                   toolchain: stable
 
-            - name: Restore cache
+            - name: restore-cache
               id: cache-zerv
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
@@ -107,7 +109,7 @@ jobs:
                       cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}-
                       cargo-zerv-${{ runner.os }}-
 
-            - name: Install zerv
+            - name: install-zerv
               run: |
                   # Get currently installed version (if any)
                   if command -v zerv >/dev/null 2>&1; then
@@ -146,7 +148,7 @@ jobs:
 
                   zerv --version
 
-            - name: Generate Zerv RON
+            - name: generate-zerv-ron
               id: zerv-ron
               # Support github.event_name == 'pull_request' or 'push'
               run: |
@@ -193,7 +195,7 @@ jobs:
                   echo "$ZERV_RON" >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
 
-            - name: Convert inputs to final dictionary
+            - name: convert-inputs-to-final-dictionary
               id: convert-inputs
               run: |
                   # Parse JSON inputs
@@ -244,7 +246,7 @@ jobs:
                       echo "EOF"
                   } >> $GITHUB_OUTPUT
 
-            - name: Generate versions
+            - name: generate-versions
               id: generate-versions
               run: |
                   # Get ZERV_RON from previous step
@@ -275,11 +277,11 @@ jobs:
                       echo "EOF"
                   } >> $GITHUB_OUTPUT
 
-            - name: Display generated versions
+            - name: display-generated-versions
               run: |
                   echo '${{ steps.generate-versions.outputs.versions }}' | jq .
 
-            - name: Save cache
+            - name: save-cache
               uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               if: always()
               with:
