@@ -1,5 +1,3 @@
-"""Pytest configuration and fixtures for zerv Python tests."""
-
 from __future__ import annotations
 
 import sys
@@ -12,14 +10,18 @@ def _find_zerv_binary() -> Path:
     """Find the zerv binary in target/release or target/debug."""
     # Start from tests/python and go up to project root
     project_root = Path(__file__).parent.parent.parent
+
+    # On Windows, the binary has .exe extension
+    binary_name = "zerv.exe" if sys.platform == "win32" else "zerv"
+
     for path in [
-        project_root / "target" / "release" / "zerv",
-        project_root / "target" / "debug" / "zerv",
+        project_root / "target" / "release" / binary_name,
+        project_root / "target" / "debug" / binary_name,
     ]:
         if path.exists() and path.is_file():
             return path
     raise FileNotFoundError(
-        f"Could not find zerv binary. Searched in: "
+        f"Could not find zerv binary (searched for '{binary_name}'). Searched in: "
         f"{project_root / 'target' / 'release'}, {project_root / 'target' / 'debug'}"
     )
 

@@ -168,6 +168,19 @@ jobs:
                   fi
                   echo "${{ github.workspace }}/target/release" >> $GITHUB_PATH
 
+            - name: debug-target-directory
+              shell: bash
+              run: |
+                  echo "=== Listing target/release directory ==="
+                  ls -la "${{ github.workspace }}/target/release/" || echo "Directory not found"
+                  echo ""
+                  echo "=== Checking for zerv binary ==="
+                  if [ "$RUNNER_OS" == "Windows" ]; then
+                      test -f "${{ github.workspace }}/target/release/zerv.exe" && echo "Found: zerv.exe" || echo "NOT FOUND: zerv.exe"
+                  else
+                      test -f "${{ github.workspace }}/target/release/zerv" && echo "Found: zerv" || echo "NOT FOUND: zerv"
+                  fi
+
             - name: run-tests
               run: bake python-test
 
