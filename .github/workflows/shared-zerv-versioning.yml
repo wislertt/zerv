@@ -96,7 +96,7 @@ jobs:
                   toolchain: stable
 
             - name: restore-cache
-              id: cache-zerv
+              id: restore-cache
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: |
@@ -290,4 +290,4 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: ${{ steps.cache-zerv.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  key: ${{ steps.restore-cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}

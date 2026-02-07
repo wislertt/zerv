@@ -41,7 +41,7 @@ jobs:
                   toolchain: stable
 
             - name: restore-cache
-              id: cache
+              id: restore-cache
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
@@ -112,7 +112,7 @@ jobs:
               if: always()
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  key: ${{ steps.restore-cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
             - name: upload-coverage-reports-to-codecov
               if: matrix.os == 'ubuntu-latest'
@@ -147,7 +147,7 @@ jobs:
                   toolchain: stable
 
             - name: restore-cache
-              id: cache
+              id: restore-cache
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
@@ -194,4 +194,4 @@ jobs:
               if: always()
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  key: ${{ steps.restore-cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
