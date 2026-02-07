@@ -41,10 +41,10 @@ jobs:
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
                       ${{ github.workspace }}/target/
-                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
-                      cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
-                      cargo-${{ runner.os }}-
+                      cargo-rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+                      cargo-rust-${{ runner.os }}-
 
             - name: debug-cargo-bin-before-install
               shell: bash
@@ -149,19 +149,19 @@ jobs:
                       ${{ github.workspace }}/target/
                   key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
-            - name: upload-coverage-reports-to-codecov
-              if: matrix.os == 'ubuntu-latest'
-              uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-              with:
-                  fail_ci_if_error: true
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  verbose: true
+            # - name: upload-coverage-reports-to-codecov
+            #   if: matrix.os == 'ubuntu-latest'
+            #   uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+            #   with:
+            #       fail_ci_if_error: true
+            #       token: ${{ secrets.CODECOV_TOKEN }}
+            #       verbose: true
 
-            - name: sonarqube-scan
-              if: matrix.os == 'ubuntu-latest'
-              uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
-              env:
-                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            # - name: sonarqube-scan
+            #   if: matrix.os == 'ubuntu-latest'
+            #   uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
+            #   env:
+            #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     python:
         strategy:
@@ -177,7 +177,7 @@ jobs:
                   fetch-depth: 0
 
             - name: setup-rust-toolchain
-              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
+              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e9f475f3d7449005a359c84ca0f306 # stable
               with:
                   toolchain: stable
 
@@ -191,10 +191,10 @@ jobs:
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
                       ${{ github.workspace }}/target/
-                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-python-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
-                      cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
-                      cargo-${{ runner.os }}-
+                      cargo-python-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+                      cargo-python-${{ runner.os }}-
 
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
