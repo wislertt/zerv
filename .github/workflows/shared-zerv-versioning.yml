@@ -104,10 +104,10 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
-                  key: cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
+                  key: cargo-zerv-${{ github.job }}-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
                   restore-keys: |
-                      cargo-zerv-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}-
-                      cargo-zerv-${{ runner.os }}-
+                      cargo-zerv-${{ github.job }}-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}-
+                      cargo-zerv-${{ github.job }}-${{ runner.os }}-
 
             - name: install-zerv
               run: |

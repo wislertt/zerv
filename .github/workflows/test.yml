@@ -45,30 +45,30 @@ jobs:
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: cargo-${{ job.job_id }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
-                      cargo-${{ job.job_id }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
-                      cargo-${{ job.job_id }}-${{ runner.os }}-
+                      cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+                      cargo-${{ github.job }}-${{ runner.os }}-
 
-            - name: debug-cargo-bin-before-install
-              shell: bash
-              run: |
-                  echo "=== Before install - HOME ==="
-                  echo "$HOME"
-                  echo ""
-                  echo "=== Before install - PATH ==="
-                  echo "$PATH"
-                  echo ""
-                  echo "=== Before install - ~/.cargo/bin/ contents ==="
-                  ls -la "$HOME/.cargo/bin/" 2>/dev/null || echo "Directory not found or empty"
-                  echo ""
-                  echo "=== Before install - cargo-tarpaulin check ==="
-                  if [ -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
-                      echo "FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
-                      "$HOME/.cargo/bin/cargo-tarpaulin" --version 2>/dev/null || echo "Cannot execute"
-                  else
-                      echo "NOT FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
-                  fi
+            # - name: debug-cargo-bin-before-install
+            #   shell: bash
+            #   run: |
+            #       echo "=== Before install - HOME ==="
+            #       echo "$HOME"
+            #       echo ""
+            #       echo "=== Before install - PATH ==="
+            #       echo "$PATH"
+            #       echo ""
+            #       echo "=== Before install - ~/.cargo/bin/ contents ==="
+            #       ls -la "$HOME/.cargo/bin/" 2>/dev/null || echo "Directory not found or empty"
+            #       echo ""
+            #       echo "=== Before install - cargo-tarpaulin check ==="
+            #       if [ -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
+            #           echo "FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
+            #           "$HOME/.cargo/bin/cargo-tarpaulin" --version 2>/dev/null || echo "Cannot execute"
+            #       else
+            #           echo "NOT FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
+            #       fi
 
             - name: install-cargo-tarpaulin
               shell: bash
@@ -95,19 +95,19 @@ jobs:
 
                   "$HOME/.cargo/bin/cargo-tarpaulin" --version
 
-            - name: debug-cargo-bin-after-install
-              shell: bash
-              run: |
-                  echo "=== After install - ~/.cargo/bin/ contents ==="
-                  ls -la "$HOME/.cargo/bin/" 2>/dev/null || echo "Directory not found or empty"
-                  echo ""
-                  echo "=== After install - cargo-tarpaulin check ==="
-                  if [ -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
-                      echo "FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
-                      "$HOME/.cargo/bin/cargo-tarpaulin" --version
-                  else
-                      echo "NOT FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
-                  fi
+            # - name: debug-cargo-bin-after-install
+            #   shell: bash
+            #   run: |
+            #       echo "=== After install - ~/.cargo/bin/ contents ==="
+            #       ls -la "$HOME/.cargo/bin/" 2>/dev/null || echo "Directory not found or empty"
+            #       echo ""
+            #       echo "=== After install - cargo-tarpaulin check ==="
+            #       if [ -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
+            #           echo "FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
+            #           "$HOME/.cargo/bin/cargo-tarpaulin" --version
+            #       else
+            #           echo "NOT FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
+            #       fi
 
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
@@ -121,10 +121,10 @@ jobs:
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ github.workspace }}/.venv
-                  key: uv-${{ job.job_id }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('uv.lock') }}
+                  key: uv-${{ github.job }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('uv.lock') }}
                   restore-keys: |
-                      uv-${{ job.job_id }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
-                      uv-${{ job.job_id }}-${{ runner.os }}-
+                      uv-${{ github.job }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
+                      uv-${{ github.job }}-${{ runner.os }}-
 
             - name: install-dependencies
               run: uv sync --all-extras --all-groups --frozen
@@ -185,10 +185,10 @@ jobs:
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: cargo-${{ job.job_id }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
-                      cargo-${{ job.job_id }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
-                      cargo-${{ job.job_id }}-${{ runner.os }}-
+                      cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+                      cargo-${{ github.job }}-${{ runner.os }}-
 
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
@@ -204,10 +204,10 @@ jobs:
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ github.workspace }}/.venv
-                  key: uv-${{ job.job_id }}-${{ runner.os }}-py${{ matrix.python_version }}-${{ hashFiles('uv.lock') }}
+                  key: uv-${{ github.job }}-${{ runner.os }}-py${{ matrix.python_version }}-${{ hashFiles('uv.lock') }}
                   restore-keys: |
-                      uv-${{ job.job_id }}-${{ runner.os }}-py${{ matrix.python_version }}-
-                      uv-${{ job.job_id }}-${{ runner.os }}-
+                      uv-${{ github.job }}-${{ runner.os }}-py${{ matrix.python_version }}-
+                      uv-${{ github.job }}-${{ runner.os }}-
 
             - name: install-dependencies
               shell: bash
