@@ -9,7 +9,7 @@ on:
                 required: true
 
 jobs:
-    # rust-test:
+    # rust:
     #     strategy:
     #         fail-fast: false
     #         matrix:
@@ -104,18 +104,13 @@ jobs:
     #           env:
     #               SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-    python-test:
+    python:
         strategy:
             fail-fast: false
             matrix:
-                # os: [ubuntu-latest, macos-latest, windows-latest]
-                python_version: ["3.14"]
-                os: [ubuntu-latest]
+                os: [ubuntu-latest, macos-latest, windows-latest]
+                python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         runs-on: ${{ matrix.os }}
-        # env:
-        #     ZERV_TEST_NATIVE_GIT: true
-        #     ZERV_TEST_DOCKER: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
-        #     ZERV_FORCE_RUST_LOG_OFF: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
         steps:
             - name: checkout-repository
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -144,38 +139,33 @@ jobs:
             - name: install-cargo-tarpaulin
               run: cargo install cargo-tarpaulin --locked || true
 
-            # TODO: python version??
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
               with:
                   version: "latest"
-                  python-version: "3.14"
+                  python-version: ${{ matrix.python_version }}
                   enable-cache: true
                   cache-python: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
-                  #   cache-dependency-glob: "uv.lock"
 
             - name: cache-uv
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ github.workspace }}/.venv
-                  key: uv-${{ runner.os }}-py3.14-${{ hashFiles('uv.lock') }}
+                  key: uv-${{ runner.os }}-py${{ matrix.python_version }}-${{ hashFiles('uv.lock') }}
                   restore-keys: |
-                      uv-${{ runner.os }}-py3.14-
+                      uv-${{ runner.os }}-py${{ matrix.python_version }}-
                       uv-${{ runner.os }}-
 
             - name: install-dependencies
+              shell: bash
               run: |
                   uv sync --all-extras --all-groups --frozen
-                  echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
+                  if [ "$RUNNER_OS" == "Windows" ]; then
+                      echo "${{ github.workspace }}/.venv/Scripts" >> $GITHUB_PATH
+                  else
+                      echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
+                  fi
                   echo "${{ github.workspace }}/target/release" >> $GITHUB_PATH
-
-            - name: verify-zerv
-              run: |
-                  echo "=== Verifying zerv binary ==="
-                  which zerv
-                  zerv --version
-              #   echo "=== Testing find_zerv_bin ==="
-              #   uv run python -c "from zerv._find_zerv import find_zerv_bin; print('Found:', find_zerv_bin())"
 
             - name: run-tests
               run: bake python-test
