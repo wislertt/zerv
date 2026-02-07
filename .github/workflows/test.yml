@@ -39,6 +39,7 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
+                      ${{ github.workspace }}/target/
                   key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
                       cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
@@ -88,6 +89,7 @@ jobs:
                       ~/.cargo/registry/index/
                       ~/.cargo/registry/cache/
                       ~/.cargo/git/db/
+                      ${{ github.workspace }}/target/
                   key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
             - name: upload-coverage-reports-to-codecov
@@ -122,6 +124,21 @@ jobs:
               with:
                   toolchain: stable
 
+            - name: restore-cache
+              id: cache
+              uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                      ${{ github.workspace }}/target/
+                  key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+                      cargo-${{ runner.os }}-
+
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
               with:
@@ -154,3 +171,15 @@ jobs:
 
             - name: run-tests
               run: bake python-test
+
+            - name: save-cache
+              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+              if: always()
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                      ${{ github.workspace }}/target/
+                  key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
