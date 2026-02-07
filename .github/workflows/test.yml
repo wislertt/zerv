@@ -137,17 +137,18 @@ jobs:
                       cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
                       cargo-${{ runner.os }}-
 
-            # - name: install-cargo-tarpaulin
-            #   run: cargo install cargo-tarpaulin --locked || true
-
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
               with:
                   version: "latest"
                   python-version: ${{ matrix.python_version }}
                   enable-cache: true
-                  #   cache-python: false
+                  # Disable Python 3.12 caching on Ubuntu due to bug: UV_PYTHON_INSTALL_DIR does not exist during post-job cleanup
+                  # See: https://github.com/astral-sh/setup-uv/issues (not yet reported as of 2026-02-07)
+                  # All other Python versions (3.10, 3.11, 3.13, 3.14) cache successfully on Ubuntu
+                  # cache-python: ${{ matrix.python_version != '3.12' && matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
                   cache-python: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+                  prune-cache: false
 
             - name: cache-uv
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
@@ -168,19 +169,6 @@ jobs:
                       echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
                   fi
                   echo "${{ github.workspace }}/target/release" >> $GITHUB_PATH
-
-            - name: debug-target-directory
-              shell: bash
-              run: |
-                  echo "=== Listing target/release directory ==="
-                  ls -la "${{ github.workspace }}/target/release/" || echo "Directory not found"
-                  echo ""
-                  echo "=== Checking for zerv binary ==="
-                  if [ "$RUNNER_OS" == "Windows" ]; then
-                      test -f "${{ github.workspace }}/target/release/zerv.exe" && echo "Found: zerv.exe" || echo "NOT FOUND: zerv.exe"
-                  else
-                      test -f "${{ github.workspace }}/target/release/zerv" && echo "Found: zerv" || echo "NOT FOUND: zerv"
-                  fi
 
             - name: run-tests
               run: bake python-test
