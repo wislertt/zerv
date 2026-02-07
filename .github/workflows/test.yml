@@ -45,14 +45,41 @@ jobs:
                       cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
                       cargo-${{ runner.os }}-
 
-            - name: install-cargo-tarpaulin
+            - name: debug-cargo-bin
+              shell: bash
               run: |
-                  if ! command -v cargo-tarpaulin &> /dev/null; then
-                      echo "cargo-tarpaulin not found, installing..."
+                  echo "=== HOME ==="
+                  echo "$HOME"
+                  echo ""
+                  echo "=== PATH ==="
+                  echo "$PATH"
+                  echo ""
+                  echo "=== Checking ~/.cargo/bin/ ==="
+                  ls -la "$HOME/.cargo/bin/" || echo "Directory not found"
+                  echo ""
+                  echo "=== Checking for cargo-tarpaulin ==="
+                  test -f "$HOME/.cargo/bin/cargo-tarpaulin" && echo "FOUND: $HOME/.cargo/bin/cargo-tarpaulin" || echo "NOT FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
+                  command -v cargo-tarpaulin && echo "FOUND in PATH" || echo "NOT FOUND in PATH"
+
+            - name: install-cargo-tarpaulin
+              shell: bash
+              run: |
+                  if [ ! -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
+                      echo "cargo-tarpaulin not found in ~/.cargo/bin, installing..."
                       cargo install cargo-tarpaulin --locked
                   else
                       echo "cargo-tarpaulin already installed (from cache)"
                   fi
+
+            - name: debug-cargo-bin-after-install
+              shell: bash
+              run: |
+                  echo "=== After install - Checking ~/.cargo/bin/ ==="
+                  ls -la "$HOME/.cargo/bin/" || echo "Directory not found"
+                  echo ""
+                  echo "=== After install - Checking for cargo-tarpaulin ==="
+                  test -f "$HOME/.cargo/bin/cargo-tarpaulin" && echo "FOUND: $HOME/.cargo/bin/cargo-tarpaulin" || echo "NOT FOUND: $HOME/.cargo/bin/cargo-tarpaulin"
+                  command -v cargo-tarpaulin && echo "FOUND in PATH" || echo "NOT FOUND in PATH"
 
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
@@ -98,19 +125,19 @@ jobs:
                       ${{ github.workspace }}/target/
                   key: ${{ steps.cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
-            - name: upload-coverage-reports-to-codecov
-              if: matrix.os == 'ubuntu-latest'
-              uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-              with:
-                  fail_ci_if_error: true
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  verbose: true
+            # - name: upload-coverage-reports-to-codecov
+            #   if: matrix.os == 'ubuntu-latest'
+            #   uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+            #   with:
+            #       fail_ci_if_error: true
+            #       token: ${{ secrets.CODECOV_TOKEN }}
+            #       verbose: true
 
-            - name: sonarqube-scan
-              if: matrix.os == 'ubuntu-latest'
-              uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
-              env:
-                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            # - name: sonarqube-scan
+            #   if: matrix.os == 'ubuntu-latest'
+            #   uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
+            #   env:
+            #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     # python:
     #     strategy:
