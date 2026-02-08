@@ -1,0 +1,69 @@
+name: publish-crates
+
+on:
+    workflow_call:
+        inputs:
+            version:
+                required: true
+                type: string
+        secrets:
+            # pass token in empty string will be in dry-run mode
+            CRATES_API_TOKEN:
+                required: true
+
+jobs:
+    release-crates:
+        name: release-crates
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout-repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: setup-uv
+              uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
+              with:
+                  python-version: ${{ inputs.python_version }}
+                  version: "latest"
+                  enable-cache: true
+
+            - name: install-bake
+              run: |
+                  uv tool install "bakefile[lib]"
+                  uv tool upgrade --all
+                  bake --version
+
+            - name: setup-rust-toolchain
+              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
+              with:
+                  toolchain: stable
+
+            - name: publish
+              run: |
+                  BAKE_PUBLISH_TOKEN=${{ secrets.CRATES_API_TOKEN }} \
+                  bake publish \
+                      --registry crates \
+                      --version "${{ inputs.version }}"
+
+            # - name: setup-rust-toolchain
+            #   uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
+            #   with:
+            #       toolchain: stable
+
+            # - name: update-cargo-toml-version
+            #   run: |
+            #       VERSION="${{ inputs.version }}"
+            #       echo "Updating version to $VERSION"
+            #       sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+
+            # - name: release-to-crates-io
+            #   run: |
+            #       set -o pipefail
+            #       if cargo publish --token ${{ secrets.CARGO_TOKEN }} --allow-dirty 2>&1 | tee output.log; then
+            #           echo "Publish succeeded."
+            #       elif grep -q "already exists on crates.io index" output.log; then
+            #           echo "Version already exists, skipping publish."
+            #           exit 0
+            #       else
+            #           echo "Publish failed with unexpected error."
+            #           exit 1
+            #       fi

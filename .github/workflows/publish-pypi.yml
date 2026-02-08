@@ -1,0 +1,49 @@
+name: publish-python-package
+
+on:
+    workflow_call:
+        inputs:
+            version:
+                required: true
+                type: string
+                description: "PEP440 version string"
+            registry:
+                required: false
+                type: string
+                description: "Publish index (pypi or testpypi)"
+                default: "testpypi"
+            python_version:
+                required: false
+                type: string
+                description: "Python version"
+        secrets:
+            PYPI_API_TOKEN:
+                required: true
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: checkout
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: setup-uv
+              uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
+              with:
+                  python-version: ${{ inputs.python_version }}
+                  version: "latest"
+                  enable-cache: true
+
+            - name: install-bake
+              run: |
+                  uv tool install "bakefile[lib]"
+                  uv tool upgrade --all
+                  bake --version
+
+            - name: publish
+              run: |
+                  BAKE_PUBLISH_TOKEN=${{ secrets.PYPI_API_TOKEN }} \
+                  bake publish \
+                      --registry "${{ inputs.registry }}" \
+                      --version "${{ inputs.version }}"
