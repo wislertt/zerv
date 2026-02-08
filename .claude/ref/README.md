@@ -20,7 +20,7 @@ This directory contains detailed reference documentation for the Zerv project, o
 │   ├── modules.md           # Key modules overview
 │   └── cli.md               # CLI commands and options
 └── workflows/          # Development workflows
-    ├── commands.md          # Make commands, slash commands
+    ├── commands.md          # Bake commands, slash commands
     └── cicd.md              # CI/CD configuration
 ```
 
