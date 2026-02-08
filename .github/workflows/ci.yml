@@ -57,7 +57,7 @@ jobs:
     publish-testpypi:
         if: needs.check-pre-release.outputs.has_label == 'true'
         needs: [zerv-versioning, check-pre-release]
-        uses: ./.github/workflows/publish.yml
+        uses: ./.github/workflows/publish-pypi.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).pep440 }}
             index: "testpypi"
