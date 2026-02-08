@@ -71,5 +71,6 @@ jobs:
         uses: ./.github/workflows/publish-crates.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
+            python_version: "3.14"
         secrets:
-            CARGO_TOKEN: "" # dry-run mode
+            CRATES_API_TOKEN: "" # dry-run mode

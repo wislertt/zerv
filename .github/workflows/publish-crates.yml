@@ -6,6 +6,10 @@ on:
             version:
                 required: true
                 type: string
+            python_version:
+                required: false
+                type: string
+                description: "Python version"
         secrets:
             # pass token in empty string will be in dry-run mode
             CRATES_API_TOKEN:
