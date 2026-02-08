@@ -3,10 +3,16 @@ from typing import Annotated, get_args
 
 import typer
 from bake import command, console
-from bakelib import PythonLibSpace, RustLibSpace
+from bakelib import PythonLibSpace as _PythonLibSpace
+from bakelib import RustLibSpace
 from bakelib.space.lib import BaseLibSpace, PublishResult
 from bakelib.space.python_lib import PyPIRegistry
 from bakelib.space.rust_lib import CratesRegistry
+
+
+class PythonLibSpace(_PythonLibSpace):
+    def _build_for_publish(self):
+        self.ctx.run("maturin build --release")
 
 
 class MyBakebook(RustLibSpace, PythonLibSpace):
@@ -15,8 +21,8 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
     zerv_force_rust_log_off: bool = False
     __registry: CratesRegistry | PyPIRegistry | None = None
 
-    def _build_for_publish(self):
-        self.ctx.run("maturin build --release")
+    # def _build_for_publish(self):
+    #     self.ctx.run("maturin build --release")
 
     def _handle_publish_result(self, publish_result: PublishResult) -> None:
         if self.ctx.dry_run:
