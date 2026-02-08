@@ -16,8 +16,8 @@ on:
                 required: true
 
 jobs:
-    release-crates:
-        name: release-crates
+    publish-crates:
+        name: publish-crates
         runs-on: ubuntu-latest
         steps:
             - name: checkout-repository

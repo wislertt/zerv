@@ -15,6 +15,42 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
     zerv_force_rust_log_off: bool = False
     __registry: CratesRegistry | PyPIRegistry | None = None
 
+    def _build_for_publish(self):
+        self.ctx.run("maturin build --release")
+
+    def _handle_publish_result(self, publish_result: PublishResult) -> None:
+        if self.ctx.dry_run:
+            return
+
+        elif publish_result.is_auth_failed:
+            console.error("Authentication failed. Please check your publish token.")
+            raise typer.Exit(1)
+
+        elif publish_result.result is None:
+            console.error("Publish result is empty (unexpected).")
+            raise typer.Exit(1)
+
+        elif publish_result.result.returncode == 0:
+            if publish_result.is_dry_run:
+                console.warning(
+                    "This was a dry-run. To actually publish, "
+                    "set the BAKE_PUBLISH_TOKEN environment variable"
+                )
+                return
+
+            console.success("Publish succeeded!")
+            return
+
+        elif publish_result.result.returncode != 0:
+            console.error(
+                "Publish failed with unexpected error. "
+                f"Return code: {publish_result.result.returncode}"
+            )
+            raise typer.Exit(1)
+
+        console.error("Unexpected publish result state")
+        raise typer.Exit(1)
+
     @property
     def _registry(self) -> CratesRegistry | PyPIRegistry:
         if self.__registry is None:

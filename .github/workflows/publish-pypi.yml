@@ -21,7 +21,7 @@ on:
                 required: true
 
 jobs:
-    publish:
+    publish-pypi:
         runs-on: ubuntu-latest
 
         steps:
