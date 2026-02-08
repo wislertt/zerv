@@ -12,7 +12,7 @@ from bakelib.space.rust_lib import CratesRegistry
 
 class PythonLibSpace(_PythonLibSpace):
     def _build_for_publish(self):
-        self.ctx.run("maturin build --release")
+        self.ctx.run("maturin build --release --out dist/")
 
 
 class MyBakebook(RustLibSpace, PythonLibSpace):
@@ -20,9 +20,6 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
     zerv_test_docker: bool = True
     zerv_force_rust_log_off: bool = False
     __registry: CratesRegistry | PyPIRegistry | None = None
-
-    # def _build_for_publish(self):
-    #     self.ctx.run("maturin build --release")
 
     def _handle_publish_result(self, publish_result: PublishResult) -> None:
         if self.ctx.dry_run:
