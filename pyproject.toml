@@ -85,17 +85,8 @@ url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
 
-# Debug
-[tool.uv.sources]
-bakefile = {workspace = true}
-
-# Debug
-[tool.uv.workspace]
-members = [".", "../bakefile"]
-
 # Debug with local bakefile in editable mode
 # =============================================
-#
 # # Debug
 # [tool.uv.sources]
 # bakefile = {workspace = true}
