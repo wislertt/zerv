@@ -1,4 +1,5 @@
 import subprocess
+from contextlib import contextmanager
 from typing import Annotated, get_args
 
 import typer
@@ -27,39 +28,6 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
     zerv_test_docker: bool = True
     zerv_force_rust_log_off: bool = False
     __registry: CratesRegistry | PyPIRegistry | None = None
-
-    def _handle_publish_result(self, publish_result: PublishResult) -> None:
-        if self.ctx.dry_run:
-            return
-
-        elif publish_result.is_auth_failed:
-            console.error("Authentication failed. Please check your publish token.")
-            raise typer.Exit(1)
-
-        elif publish_result.result is None:
-            console.error("Publish result is empty (unexpected).")
-            raise typer.Exit(1)
-
-        elif publish_result.result.returncode == 0:
-            if publish_result.is_dry_run:
-                console.warning(
-                    "This was a dry-run. To actually publish, "
-                    "set the BAKE_PUBLISH_TOKEN environment variable"
-                )
-                return
-
-            console.success("Publish succeeded!")
-            return
-
-        elif publish_result.result.returncode != 0:
-            console.error(
-                "Publish failed with unexpected error. "
-                f"Return code: {publish_result.result.returncode}"
-            )
-            raise typer.Exit(1)
-
-        console.error("Unexpected publish result state")
-        raise typer.Exit(1)
 
     @property
     def _registry(self) -> CratesRegistry | PyPIRegistry:
@@ -165,7 +133,7 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
         registry: Annotated[
             str,
             typer.Option(help="Publish registry (test-pypi, pypi, or crates)"),
-        ] = "testpypi",
+        ] = "test-pypi",
         token: Annotated[str | None, typer.Option(help="Publish token")] = None,
         version: Annotated[str | None, typer.Option(help="Version to publish")] = None,
         target: Annotated[
@@ -195,14 +163,6 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
 
         return valid_registry
 
-    @property
-    def _version_schema(self) -> str | None:
-        return self._publish_impl._version_schema.fget(self)
-
-    @property
-    def _version_output_format(self) -> str | None:
-        return self._publish_impl._version_output_format.fget(self)
-
     def _get_publish_token_from_remote(self, registry: str) -> str | None:
         return self._publish_impl._get_publish_token_from_remote(self, registry)
 
@@ -215,12 +175,29 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
     def _is_auth_failure(self, result: subprocess.CompletedProcess[str]) -> bool:
         return self._publish_impl._is_auth_failure(self, result)
 
-    def _version_bump_context(self, version: str):
-        # TODO: fix this
-        return self._publish_impl._version_bump_context(self, version)
+    @contextmanager
+    def _version_bump_context(self, version: str | None):
+        # update both Cargo.toml and pyproject.toml
+        with (
+            RustLibSpace._version_bump_context(self, version),
+            PythonLibSpace._version_bump_context(self, version),
+        ):
+            yield
 
     def _pre_publish_cleanup(self):
         return self._publish_impl._pre_publish_cleanup(self)
 
 
 bakebook = MyBakebook()
+
+
+@bakebook.command()
+def uvx_install_zerv_test():
+    bakebook.ctx.run(
+        "uv tool install zerv-version "
+        "--index-url https://test.pypi.org/simple/ "
+        "--extra-index-url https://pypi.org/simple "
+        "--prerelease allow "
+        "--reinstall "
+        "--index-strategy unsafe-best-match"
+    )

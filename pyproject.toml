@@ -1,6 +1,6 @@
 [project]
 name = "zerv-version"
-version = "0.0.0" # Use git tag
+version = "0.7.103a65924.post19.dev1770649378" # Use git tag
 description = "Dynamic versioning CLI tool"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -81,13 +81,6 @@ select = [
 
 [[tool.uv.index]]
 name = "test-pypi"
-url = "https://test.pypi.org/simple/"
-publish-url = "https://test.pypi.org/legacy/"
-explicit = true
-
-# TODO
-[[tool.uv.index]]
-name = "testpypi"
 url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true

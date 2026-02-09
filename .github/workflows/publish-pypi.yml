@@ -11,7 +11,7 @@ on:
                 required: false
                 type: string
                 description: "Publish index (pypi or test-pypi)"
-                default: "testpypi"
+                default: "test-pypi"
             python_version:
                 required: false
                 type: string
