@@ -22,6 +22,21 @@ class PythonLibSpace(_PythonLibSpace):
 
         self.ctx.run(" ".join(cmd))
 
+    # TODO: move this to bakefile package
+    def get_current_version_from_pyproject_toml(self) -> str:
+        return self._uv_version()[1]
+
+    @contextmanager
+    def _version_bump_context(self, version: str | None):
+        original_version = self.get_current_version_from_pyproject_toml()
+        self.ctx.run(f"uv version {self._get_version_for_pyproject_toml(version)}")
+        try:
+            yield
+        finally:
+            self.ctx.run(f"uv version {original_version}")
+
+    # ===== end move
+
 
 class MyBakebook(RustLibSpace, PythonLibSpace):
     zerv_test_native_git: bool = False
@@ -185,7 +200,18 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
             yield
 
     def _pre_publish_cleanup(self):
-        return self._publish_impl._pre_publish_cleanup(self)
+        import shutil
+        from pathlib import Path
+
+        RustLibSpace._pre_publish_cleanup(self)
+        PythonLibSpace._pre_publish_cleanup(self)
+
+        # maturin
+        python_dir = Path("python")
+        if python_dir.exists():
+            for item in python_dir.iterdir():
+                if item.is_dir() and item.name.endswith(".data"):
+                    shutil.rmtree(item)
 
 
 bakebook = MyBakebook()
