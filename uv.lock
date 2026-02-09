@@ -1233,7 +1233,7 @@ wheels = [
 
 [[package]]
 name = "zerv-version"
-version = "0.7.103a65924.post19.dev1770649378"
+version = "0.0.0"
 source = { editable = "." }
 
 [package.dev-dependencies]
