@@ -31,6 +31,8 @@ jobs:
                   enable-cache: true
 
             - name: cache-publish
+              env:
+                  CACHE_KEY_PREFIX: publish-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: |
@@ -40,7 +42,10 @@ jobs:
                       ~/.cargo/git/db/
                       ${{ github.workspace }}/target/
                       ${{ github.workspace }}/.venv
-                  key: publish-${{ github.job }}-${{ runner.os }}
+                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  restore-keys: |
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ github.run_id }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-
 
             - name: install-bake
               run: |
