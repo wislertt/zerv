@@ -16,6 +16,7 @@ on:
                 required: false
                 type: string
                 description: "Python version"
+                default: "3.14"
         secrets:
             PYPI_API_TOKEN:
                 required: true

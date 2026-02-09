@@ -4,9 +4,6 @@ on:
     pull_request:
         types: [opened, synchronize, reopened]
 
-env:
-    PYTHON_VERSION: "3.14"
-
 jobs:
     # ====================================================
     # Versioning and Release
@@ -48,8 +45,6 @@ jobs:
 
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
-        with:
-            python_version: ${{ env.PYTHON_VERSION }}
 
     build-bin:
         uses: ./.github/workflows/shared-build-bin.yml
@@ -64,7 +59,6 @@ jobs:
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
             registry: "test-pypi"
-            python_version: ${{ env.PYTHON_VERSION }}
         secrets:
             PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
@@ -74,6 +68,5 @@ jobs:
         uses: ./.github/workflows/publish-crates.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
-            python_version: ${{ env.PYTHON_VERSION }}
         secrets:
             CRATES_API_TOKEN: "" # dry-run mode

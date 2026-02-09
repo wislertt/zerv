@@ -10,6 +10,7 @@ on:
                 required: false
                 type: string
                 description: "Python version"
+                default: "3.14"
         secrets:
             # pass token in empty string will be in dry-run mode
             CRATES_API_TOKEN:

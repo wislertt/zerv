@@ -6,9 +6,6 @@ on:
             - main
     workflow_dispatch:
 
-env:
-    PYTHON_VERSION: "3.14"
-
 permissions:
     contents: write
     issues: write
@@ -52,8 +49,6 @@ jobs:
 
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
-        with:
-            python_version: ${{ env.PYTHON_VERSION }}
 
     # ====================================================
     # Deployment without environment
@@ -72,7 +67,6 @@ jobs:
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
             registry: "test-pypi"
-            python_version: ${{ env.PYTHON_VERSION }}
         secrets:
             PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
@@ -82,7 +76,6 @@ jobs:
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
             registry: "pypi"
-            python_version: ${{ env.PYTHON_VERSION }}
         secrets:
             PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
@@ -91,6 +84,5 @@ jobs:
         uses: ./.github/workflows/publish-crates.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
-            python_version: ${{ env.PYTHON_VERSION }}
         secrets:
             CRATES_API_TOKEN: ${{ secrets.CARGO_TOKEN }}
