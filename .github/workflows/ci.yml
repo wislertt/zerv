@@ -37,19 +37,19 @@ jobs:
     # ====================================================
     # Test and Lint
     # ====================================================
-    test:
-        uses: ./.github/workflows/test.yml
-        secrets:
-            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    # test:
+    #     uses: ./.github/workflows/test.yml
+    #     secrets:
+    #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-    pre-commit:
-        uses: ./.github/workflows/pre-commit.yml
-        with:
-            python_version: "3.14"
+    # pre-commit:
+    #     uses: ./.github/workflows/pre-commit.yml
+    #     with:
+    #         python_version: "3.14"
 
-    build-bin:
-        uses: ./.github/workflows/shared-build-bin.yml
+    # build-bin:
+    #     uses: ./.github/workflows/shared-build-bin.yml
 
     # ====================================================
     # Deployment

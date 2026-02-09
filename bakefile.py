@@ -11,8 +11,15 @@ from bakelib.space.rust_lib import CratesRegistry
 
 
 class PythonLibSpace(_PythonLibSpace):
+    _target: str | None = None
+
     def _build_for_publish(self):
-        self.ctx.run("maturin build --release --out dist/")
+        cmd = ["maturin", "build", "--release", "--out", "dist/"]
+
+        if self._target:
+            cmd.extend(["--target", self._target])
+
+        self.ctx.run(" ".join(cmd))
 
 
 class MyBakebook(RustLibSpace, PythonLibSpace):
@@ -161,8 +168,15 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
         ] = "testpypi",
         token: Annotated[str | None, typer.Option(help="Publish token")] = None,
         version: Annotated[str | None, typer.Option(help="Version to publish")] = None,
+        target: Annotated[
+            str | None,
+            typer.Option(
+                help="Rust target triple (e.g., aarch64-apple-darwin, x86_64-pc-windows-msvc)"
+            ),
+        ] = None,
     ):
         self._registry = registry
+        self._target = target
         return self._publish_impl.publish(
             self, registry=self._registry, token=token, version=version
         )
@@ -202,6 +216,7 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
         return self._publish_impl._is_auth_failure(self, result)
 
     def _version_bump_context(self, version: str):
+        # TODO: fix this
         return self._publish_impl._version_bump_context(self, version)
 
     def _pre_publish_cleanup(self):

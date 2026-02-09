@@ -1,6 +1,6 @@
 [package]
 name = "zerv"
-version = "0.0.0" # ...
+version = "0.0.0" # Use git tag
 authors = ["Wisaroot Lertthaweedech <wislertth@gmail.com>"]
 edition = "2024"
 description = """
