@@ -10,7 +10,7 @@ on:
             registry:
                 required: false
                 type: string
-                description: "Publish index (pypi or testpypi)"
+                description: "Publish index (pypi or test-pypi)"
                 default: "testpypi"
             python_version:
                 required: false

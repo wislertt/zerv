@@ -164,7 +164,7 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
         *,
         registry: Annotated[
             str,
-            typer.Option(help="Publish registry (testpypi, pypi, or crates)"),
+            typer.Option(help="Publish registry (test-pypi, pypi, or crates)"),
         ] = "testpypi",
         token: Annotated[str | None, typer.Option(help="Publish token")] = None,
         version: Annotated[str | None, typer.Option(help="Version to publish")] = None,
