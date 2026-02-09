@@ -6,6 +6,9 @@ on:
             - main
     workflow_dispatch:
 
+env:
+    PYTHON_VERSION: "3.14"
+
 permissions:
     contents: write
     issues: write
@@ -50,7 +53,7 @@ jobs:
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
         with:
-            python_version: "3.14"
+            python_version: ${{ env.PYTHON_VERSION }}
 
     # ====================================================
     # Deployment without environment
@@ -63,11 +66,31 @@ jobs:
             tag: ${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver }}
             upload_to_release: true
 
+    publish-test-pypi:
+        needs: [zerv-versioning, release-bin]
+        uses: ./.github/workflows/publish-pypi.yml
+        with:
+            version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
+            registry: "test-pypi"
+            python_version: ${{ env.PYTHON_VERSION }}
+        secrets:
+            PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+
+    publish-pypi:
+        needs: [zerv-versioning, release-bin]
+        uses: ./.github/workflows/publish-pypi.yml
+        with:
+            version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
+            registry: "pypi"
+            python_version: ${{ env.PYTHON_VERSION }}
+        secrets:
+            PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
     publish-crates:
         needs: [zerv-versioning, release-bin]
         uses: ./.github/workflows/publish-crates.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
-            python_version: "3.14"
+            python_version: ${{ env.PYTHON_VERSION }}
         secrets:
             CRATES_API_TOKEN: ${{ secrets.CARGO_TOKEN }}
