@@ -117,7 +117,7 @@ jobs:
             # 3. Save cache (runs even if build fails)
             - name: save-cargo-cache
               if: always()
-              uses: actions/cache/save@8c838cbe8e9c4b41d7be8ca7bcc388df19aa43b1 # v4.2.1
+              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATH }}
                   key: ${{ steps.restore-cargo.outputs.cache-primary-key }}
