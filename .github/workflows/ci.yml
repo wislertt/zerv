@@ -59,7 +59,7 @@ jobs:
         needs: [zerv-versioning, check-pre-release]
         uses: ./.github/workflows/publish-pypi.yml
         with:
-            version: ${{ fromJson(needs.zerv-versioning.outputs.versions).pep440 }}
+            version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
             registry: "test-pypi"
             python_version: "3.14"
         secrets:
