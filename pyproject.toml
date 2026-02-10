@@ -57,8 +57,41 @@ include = [
   {path = "python/zerv/py.typed", format = ["wheel"]}
 ]
 
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+  "ARG",
+  "B", # bugbear
+  "C4", # flake8-comprehensions
+  "E", # pycodestyle (error)
+  "F", # pyflakes
+  "I", # isort
+  "N",
+  "PGH", # pygrep-hooks
+  "PIE", # flake8-pie
+  "PYI", # flake8-pyi
+  "RUF",
+  "SIM", # flake8-simplify
+  "UP" # pyupgrade
+]
+
+[tool.uv]
+
 [[tool.uv.index]]
-name = "testpypi"
+name = "test-pypi"
 url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
+
+# Debug with local bakefile in editable mode
+# =============================================
+# # Debug
+# [tool.uv.sources]
+# bakefile = {workspace = true}
+#
+# # Debug
+# [tool.uv.workspace]
+# members = [".", "../bakefile"]
+# =============================================

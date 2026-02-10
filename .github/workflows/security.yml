@@ -39,6 +39,12 @@ jobs:
     cargo-audit:
         name: cargo-audit
         runs-on: ubuntu-latest
+        env:
+            CARGO_CACHE_PATHS: |
+                ~/.cargo/bin/
+                ~/.cargo/registry/index/
+                ~/.cargo/registry/cache/
+                ~/.cargo/git/db/
 
         steps:
             - name: checkout-repository
@@ -49,19 +55,17 @@ jobs:
               with:
                   toolchain: stable
 
-            - name: restore-cache
-              id: restore-cache
+            - name: restore-cache-cargo
+              id: restore-cache-cargo
+              env:
+                  CACHE_KEY_PREFIX: cargo-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
-                  path: |
-                      ~/.cargo/bin/
-                      ~/.cargo/registry/index/
-                      ~/.cargo/registry/cache/
-                      ~/.cargo/git/db/
-                  key: cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  path: ${{ env.CARGO_CACHE_PATHS }}
+                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
-                      cargo-${{ github.job }}-${{ runner.os }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-
 
             - name: install-cargo-audit
               run: |
@@ -90,13 +94,9 @@ jobs:
               run: |
                   cargo audit
 
-            - name: save-cache
-              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+            - name: save-cache-cargo
               if: always()
+              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
-                  path: |
-                      ~/.cargo/bin/
-                      ~/.cargo/registry/index/
-                      ~/.cargo/registry/cache/
-                      ~/.cargo/git/db/
-                  key: ${{ steps.restore-cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ${{ env.CARGO_CACHE_PATHS }}
+                  key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}

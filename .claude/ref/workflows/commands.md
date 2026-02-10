@@ -3,14 +3,13 @@
 ## Development Setup
 
 ```bash
-make setup_dev  # Install pre-commit hooks and cargo-tarpaulin
+bake setup-dev  # Install pre-commit hooks and cargo-tarpaulin
 ```
 
 ## Testing
 
 ```bash
-make test       # Full test suite: Docker Git + Docker tests enabled (full coverage)
-make test_flaky # Run 5 iterations to detect flaky tests
+bake test       # Full test suite: Docker Git + Docker tests enabled (full coverage)
 ```
 
 **Coverage Analysis**: See @.claude/ref/workflows/coverage.md for detailed coverage workflow
@@ -18,8 +17,8 @@ make test_flaky # Run 5 iterations to detect flaky tests
 ## Code Quality
 
 ```bash
-make lint       # Check code formatting and clippy warnings
-make update     # Update Rust toolchain and dependencies
+bake lint       # Check code formatting and clippy warnings
+bake update     # Update Rust toolchain and dependencies
 ```
 
 ## Slash Commands

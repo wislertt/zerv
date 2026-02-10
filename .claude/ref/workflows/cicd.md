@@ -12,7 +12,7 @@
 - Linting (clippy)
 - Running tests
 
-**IMPORTANT**: Ensure `make lint` and `make test` always pass before committing.
+**IMPORTANT**: Ensure `bake lint` and `bake test` always pass before committing.
 
 ## GitHub Actions
 

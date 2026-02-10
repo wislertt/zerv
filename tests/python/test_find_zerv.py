@@ -8,7 +8,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from zerv._find_zerv import find_zerv_bin
 
 
@@ -25,9 +24,7 @@ def test_find_zerv_bin_path_exists():
 def test_find_zerv_bin_has_correct_name():
     result = find_zerv_bin()
     exe = sysconfig.get_config_var("EXE") or ""
-    assert result.endswith(f"zerv{exe}"), (
-        f"Expected path to end with 'zerv{exe}', got: {result}"
-    )
+    assert result.endswith(f"zerv{exe}"), f"Expected path to end with 'zerv{exe}', got: {result}"
 
 
 def test_find_zerv_bin_not_found_raises_file_not_found():
@@ -35,9 +32,8 @@ def test_find_zerv_bin_not_found_raises_file_not_found():
         # Make all paths return a non-existent directory
         mock_get_path.return_value = "/nonexistent/path"
 
-        with patch.object(Path, "is_file", return_value=False):
-            with pytest.raises(FileNotFoundError):
-                find_zerv_bin()
+        with patch.object(Path, "is_file", return_value=False), pytest.raises(FileNotFoundError):
+            find_zerv_bin()
 
 
 def test_find_zerv_bin_exe_suffix():

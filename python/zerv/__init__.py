@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import subprocess
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _version
 from typing import Any, Literal
 
 from zerv._find_zerv import find_zerv_bin
-from importlib.metadata import PackageNotFoundError, version as _version
 
 
 def _get_version() -> str:
@@ -15,7 +16,7 @@ def _get_version() -> str:
 
 
 __version__ = _get_version()
-__all__ = ["find_zerv_bin", "version", "flow", "check"]
+__all__ = ["check", "find_zerv_bin", "flow", "version"]
 
 # Format literals
 Format = Literal["auto", "semver", "pep440", "zerv"]

@@ -28,7 +28,7 @@ def _find_zerv_binary() -> Path:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def symlink_zerv_to_venv_bin(tmp_path_factory):
+def symlink_zerv_to_venv_bin():
     """
     Symlink zerv binary to venv bin directory so find_zerv_bin() can find it.
 
