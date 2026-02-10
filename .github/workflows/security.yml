@@ -65,6 +65,7 @@ jobs:
                   key: ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
                       ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-
 
             - name: install-cargo-audit
               run: |

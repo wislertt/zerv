@@ -111,6 +111,7 @@ jobs:
                   key: ${{ env.CACHE_KEY_PREFIX }}-${{ inputs.zerv_version || 'latest' }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
                       ${{ env.CACHE_KEY_PREFIX }}-${{ inputs.zerv_version || 'latest' }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-
 
             - name: install-zerv
               run: |
