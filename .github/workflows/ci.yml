@@ -6,6 +6,35 @@ on:
 
 jobs:
     # ====================================================
+    # Versioning and Release
+    # ====================================================
+    check-pre-release:
+        name: check-pre-release
+        uses: ./.github/workflows/shared-check-pr-label-and-branch.yml
+        with:
+            target_label: "pre-release"
+            branch_prefixes: '["release/"]'
+            branch_names: '["develop"]'
+
+    zerv-versioning:
+        name: zerv-versioning
+        needs: check-pre-release
+        uses: ./.github/workflows/shared-zerv-versioning.yml
+        with:
+            schema: >-
+                ${{ (needs.check-pre-release.outputs.is_valid == 'true'
+                && 'standard-base-prerelease-post')
+                || 'standard-base-prerelease-post-dev' }}
+
+    tag-pre-release:
+        name: tag-pre-release
+        needs: [zerv-versioning, check-pre-release]
+        if: needs.check-pre-release.outputs.is_valid == 'true'
+        uses: ./.github/workflows/shared-create-tags.yml
+        with:
+            tags: '["${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver }}"]'
+
+    # ====================================================
     # Test and Lint
     # ====================================================
     test:
@@ -17,8 +46,27 @@ jobs:
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
 
-    # ====================================================
-    # Build Binaries
-    # ====================================================
     build-bin:
         uses: ./.github/workflows/shared-build-bin.yml
+
+    # ====================================================
+    # Deployment
+    # ====================================================
+    publish-test-pypi:
+        if: needs.check-pre-release.outputs.has_label == 'true'
+        needs: [zerv-versioning, check-pre-release]
+        uses: ./.github/workflows/publish-pypi.yml
+        with:
+            version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
+            registry: "test-pypi"
+        secrets:
+            PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+
+    publish-crates-dry-run:
+        if: needs.check-pre-release.outputs.has_label == 'true'
+        needs: [zerv-versioning, check-pre-release]
+        uses: ./.github/workflows/publish-crates.yml
+        with:
+            version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
+        secrets:
+            CRATES_API_TOKEN: "" # dry-run mode

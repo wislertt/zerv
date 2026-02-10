@@ -188,7 +188,7 @@ pre-release information from the current Git branch using configurable pattern m
 
 - `--branch-rules <BRANCH_RULES>` — Branch rules in RON format (default: GitFlow rules)
 
-    Default value: `[(pattern:"develop",pre_release_label:beta,pre_release_num:Some(1),post_mode:commit),(pattern:"release/*",pre_release_label:rc,pre_release_num:None,post_mode:tag)]`
+    Default value: `[(pattern:"develop",pre_release_label:beta,pre_release_num:Some(1),post_mode:commit),(pattern:"release/*",pre_release_label:rc,pre_release_num:None,post_mode:tag),(pattern:"*",pre_release_label:alpha,pre_release_num:None,post_mode:commit)]`
 
 - `--tag-version <TAG_VERSION>` — Override detected tag version (e.g., 'v2.0.0', '1.5.0-beta.1')
 - `--distance <DISTANCE>` — Override distance from tag (number of commits since tag)
@@ -221,17 +221,7 @@ standard-base-prerelease-post-context - 1.1.0-alpha.1.post.2+main.2.a1b2c3d
 standard-base-prerelease-post-dev-context - 1.1.0-alpha.1.post.2.dev.1729924622+main.2.a1b2c3d
 standard-context - Smart auto-detection with build context
 
-CalVer Schema Family:
-calver - Smart auto-detection based on repository state (clean/dirty/distance)
-calver-base - 2024.11.03
-calver-base-prerelease - 2024.11.03-alpha.1
-calver-base-prerelease-post - 2024.11.03-alpha.1.post.2
-calver-base-prerelease-post-dev - 2024.11.03-alpha.1.post.2.dev.1729924622
-calver-base-context - 2024.11.03+main.2.a1b2c3d
-calver-base-prerelease-context - 2024.11.03-alpha.1+main.2.a1b2c3d
-calver-base-prerelease-post-context - 2024.11.03-alpha.1.post.2+main.2.a1b2c3d
-calver-base-prerelease-post-dev-context - 2024.11.03-alpha.1.post.2.dev.1729924622+main.2.a1b2c3d
-calver-context - Smart auto-detection with build context
+- `--schema-ron <SCHEMA_RON>` — Custom schema in RON format
 
 ## `zerv check`
 

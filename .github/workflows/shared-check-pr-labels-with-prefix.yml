@@ -26,7 +26,7 @@ jobs:
         outputs:
             labels: ${{ steps.filter.outputs.filtered-labels }}
         steps:
-            - name: Filter labels by prefix
+            - name: filter-labels-by-prefix
               id: filter
               env:
                   LABELS_JSON: ${{ inputs.labels }}
@@ -55,6 +55,6 @@ jobs:
                     echo "EOF"
                   } >> $GITHUB_OUTPUT
 
-            - name: Display Filter Result
+            - name: display-filter-result
               run: |
                   echo "Filtered labels: ${{ steps.filter.outputs.filtered-labels }}"

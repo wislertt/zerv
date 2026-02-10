@@ -61,32 +61,28 @@ jobs:
             tag: ${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver }}
             upload_to_release: true
 
-    release-crates:
-        name: release-crates
-        runs-on: ubuntu-latest
+    publish-test-pypi:
         needs: [zerv-versioning, release-bin]
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: ./.github/workflows/publish-pypi.yml
+        with:
+            version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
+            registry: "test-pypi"
+        secrets:
+            PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
-            - uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
-              with:
-                  toolchain: stable
+    publish-pypi:
+        needs: [zerv-versioning, release-bin]
+        uses: ./.github/workflows/publish-pypi.yml
+        with:
+            version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
+            registry: "pypi"
+        secrets:
+            PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
-            - name: Update Cargo.toml version
-              run: |
-                  VERSION="${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}"
-                  echo "Updating version to $VERSION"
-                  sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
-
-            - name: Release to crates.io
-              run: |
-                  set -o pipefail
-                  if cargo publish --token ${{ secrets.CARGO_TOKEN }} --allow-dirty 2>&1 | tee output.log; then
-                      echo "Publish succeeded."
-                  elif grep -q "already exists on crates.io index" output.log; then
-                      echo "Version already exists, skipping publish."
-                      exit 0
-                  else
-                      echo "Publish failed with unexpected error."
-                      exit 1
-                  fi
+    publish-crates:
+        needs: [zerv-versioning, release-bin]
+        uses: ./.github/workflows/publish-crates.yml
+        with:
+            version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
+        secrets:
+            CRATES_API_TOKEN: ${{ secrets.CARGO_TOKEN }}

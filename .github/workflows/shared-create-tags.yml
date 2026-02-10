@@ -15,12 +15,12 @@ jobs:
     create-tags:
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout repository
+            - name: checkout-repository
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   fetch-depth: 0
 
-            - name: Create or move tags and push
+            - name: create-or-move-tags-and-push
               run: |
                   git config --local user.email "github-actions[bot]@users.noreply.github.com"
                   git config --local user.name "github-actions[bot]"
@@ -42,7 +42,7 @@ jobs:
 
                   echo "All tags created/moved and pushed successfully"
 
-            - name: Verify tags
+            - name: verify-tags
               run: |
                   echo "Verifying tags on current commit..."
                   git fetch --tags

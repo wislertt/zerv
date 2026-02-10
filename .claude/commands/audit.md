@@ -29,7 +29,7 @@ Fast, reliable audit and fix workflow for any code files.
 ### 1. Pre-flight checks (REQUIRED) 🔴
 
 ```bash
-make lint test            # Ensure code builds and tests pass
+bake lint test            # Ensure code builds and tests pass
 ```
 
 ⚠️ **If this fails, stop here and fix lint/test errors first!**
@@ -84,7 +84,7 @@ git status --porcelain | sed 's/^[[:space:]]*[AMD?]//'
 
 ```bash
 ./audit/summary.sh        # Check remaining violations
-make lint test            # Ensure fixes don't break functionality
+bake lint test            # Ensure fixes don't break functionality
 ```
 
 ### NLP Path Examples 🗣️
