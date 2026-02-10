@@ -6,10 +6,6 @@ on:
             overridden_tag_version:
                 type: string
                 required: false
-            zerv_version:
-                type: string
-                required: false
-                description: "Version of zerv to install (e.g., '0.7.96'). If not specified, installs latest version"
             schema:
                 type: string
                 description: "Zerv flow schema"
@@ -93,7 +89,7 @@ jobs:
             - name: setup-uv
               uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
               with:
-                  python-version: ${{ inputs.python_version || '3.14' }}
+                  python-version: "3.14"
                   version: "latest"
                   enable-cache: true
 
