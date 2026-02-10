@@ -22,12 +22,15 @@ classifiers = [
 
 [dependency-groups]
 dev = [
-  "bakefile[lib]>=0.0.14",
+  "bakefile>=0.0.14", # Skip lib extras to avoid circular dependency (lib includes zerv-version)
   "deptry>=0.24.0",
+  "keyring>=25.7.0", # bakefile[lib]
   "maturin>=1.11.5",
+  "pathspec>=1.0.3", # bakefile[lib]
   "pre-commit>=4.5.1",
   "pytest-cov>=7.0.0",
   "pytest>=9.0.2",
+  "tenacity>=9.1.2", # bakefile[lib]
   "toml-sort>=0.24.3"
 ]
 
@@ -89,9 +92,5 @@ explicit = true
 # =============================================
 # # Debug
 # [tool.uv.sources]
-# bakefile = {workspace = true}
-#
-# # Debug
-# [tool.uv.workspace]
-# members = [".", "../bakefile"]
+# bakefile = {path = "../bakefile", editable = true}
 # =============================================
