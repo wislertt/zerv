@@ -5,7 +5,7 @@
 ### Generate Coverage Report
 
 ```bash
-make test       # Generates coverage reports in coverage/ directory
+bake test       # Generates coverage reports in coverage/ directory
 ```
 
 This command:

@@ -13,7 +13,7 @@ def find_bin(name: str) -> str:
     if os.path.isfile(scripts_path):
         return scripts_path
 
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10):  # noqa: UP036
         user_scheme = sysconfig.get_preferred_scheme("user")
     elif os.name == "nt":
         user_scheme = "nt_user"

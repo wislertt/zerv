@@ -82,6 +82,12 @@ jobs:
     zerv-versioning:
         name: zerv-versioning
         runs-on: ubuntu-latest
+        env:
+            CARGO_CACHE_PATHS: |
+                ~/.cargo/bin/
+                ~/.cargo/registry/index/
+                ~/.cargo/registry/cache/
+                ~/.cargo/git/db/
         outputs:
             versions: ${{ steps.generate-versions.outputs.versions }}
         steps:
@@ -95,19 +101,16 @@ jobs:
               with:
                   toolchain: stable
 
-            - name: restore-cache
-              id: restore-cache
+            - name: restore-cache-cargo
+              id: restore-cache-cargo
+              env:
+                  CACHE_KEY_PREFIX: cargo-zerv-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
-                  path: |
-                      ~/.cargo/bin/
-                      ~/.cargo/registry/index/
-                      ~/.cargo/registry/cache/
-                      ~/.cargo/git/db/
-                  key: cargo-zerv-${{ github.job }}-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}
+                  path: ${{ env.CARGO_CACHE_PATHS }}
+                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ inputs.zerv_version || 'latest' }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      cargo-zerv-${{ github.job }}-${{ runner.os }}-${{ inputs.zerv_version || 'latest' }}-
-                      cargo-zerv-${{ github.job }}-${{ runner.os }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ inputs.zerv_version || 'latest' }}-
 
             - name: install-zerv
               run: |
@@ -281,13 +284,9 @@ jobs:
               run: |
                   echo '${{ steps.generate-versions.outputs.versions }}' | jq .
 
-            - name: save-cache
-              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+            - name: save-cache-cargo
               if: always()
+              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
-                  path: |
-                      ~/.cargo/bin/
-                      ~/.cargo/registry/index/
-                      ~/.cargo/registry/cache/
-                      ~/.cargo/git/db/
-                  key: ${{ steps.restore-cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ${{ env.CARGO_CACHE_PATHS }}
+                  key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}

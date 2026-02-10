@@ -1,0 +1,67 @@
+name: publish-crates
+
+on:
+    workflow_call:
+        inputs:
+            version:
+                required: true
+                type: string
+            python_version:
+                required: false
+                type: string
+                description: "Python version"
+                default: "3.14"
+        secrets:
+            # pass token in empty string will be in dry-run mode
+            CRATES_API_TOKEN:
+                required: true
+
+jobs:
+    publish-crates:
+        name: publish-crates
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout-repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: setup-uv
+              uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
+              with:
+                  python-version: ${{ inputs.python_version }}
+                  version: "latest"
+                  enable-cache: true
+
+            - name: cache-publish
+              env:
+                  CACHE_KEY_PREFIX: publish-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
+              uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                      ${{ github.workspace }}/target/
+                      ${{ github.workspace }}/.venv
+                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  restore-keys: |
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ github.run_id }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-
+
+            - name: install-bake
+              run: |
+                  uv tool install "bakefile[lib]"
+                  uv tool upgrade --all
+                  bake --version
+
+            - name: setup-rust-toolchain
+              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
+              with:
+                  toolchain: stable
+
+            - name: publish
+              run: |
+                  BAKE_PUBLISH_TOKEN=${{ secrets.CRATES_API_TOKEN }} \
+                  bake publish \
+                      --registry crates \
+                      --version "${{ inputs.version }}"

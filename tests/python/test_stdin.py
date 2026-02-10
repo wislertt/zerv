@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from zerv import flow, version
 
-
 SAMPLE_ZERV_INPUT = """(
     schema: (
         core: [

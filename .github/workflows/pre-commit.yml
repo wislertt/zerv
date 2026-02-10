@@ -4,8 +4,9 @@ on:
     workflow_call:
         inputs:
             python_version:
-                required: true
+                required: false
                 type: string
+                default: "3.14"
 
 jobs:
     pre-commit:
@@ -22,16 +23,23 @@ jobs:
                   cache-python: true
                   python-version: ${{ inputs.python_version }}
 
-            - name: cache-uv
+            - name: cache-deps
+              env:
+                  CACHE_KEY_PREFIX: deps-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-py${{ inputs.python_version }}
+                  CACHE_KEY_DEPS: ${{ hashFiles('uv.lock') }}
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: |
                       ${{ github.workspace }}/.venv
+                      ~/.cache/pre-commit
+                      ~/.cache/ruff
+                      ~/.bun/install/cache
                       ${{ github.workspace }}/target/
-                  key: uv-${{ github.job }}-${{ runner.os }}-py${{ inputs.python_version }}-${{ hashFiles('uv.lock') }}
+                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      uv-${{ github.job }}-${{ runner.os }}-py${{ inputs.python_version }}-
-                      uv-${{ github.job }}-${{ runner.os }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-
 
             - name: install-dependencies
               run: uv sync --all-extras --all-groups --frozen

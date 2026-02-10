@@ -40,15 +40,16 @@ jobs:
               with:
                   toolchain: stable
 
-            - name: restore-cache
-              id: restore-cache
+            - name: restore-cache-cargo
+              id: restore-cache-cargo
+              env:
+                  CACHE_KEY_PREFIX: cargo-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
-                      cargo-${{ github.job }}-${{ runner.os }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-
 
             - name: install-cargo-tarpaulin
               shell: bash
@@ -83,14 +84,18 @@ jobs:
                   enable-cache: true
                   cache-python: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
 
-            - name: cache-uv
+            - name: cache-venv
+              env:
+                  CACHE_KEY_PREFIX: venv-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}
+                  CACHE_KEY_DEPS: ${{ hashFiles('uv.lock') }}
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ github.workspace }}/.venv
-                  key: uv-${{ github.job }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('uv.lock') }}
+                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      uv-${{ github.job }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
-                      uv-${{ github.job }}-${{ runner.os }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-
 
             - name: install-dependencies
               run: uv sync --all-extras --all-groups --frozen
@@ -107,12 +112,12 @@ jobs:
             - name: run-tests
               run: bake rust-test
 
-            - name: save-cache
-              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+            - name: save-cache-cargo
               if: always()
+              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: ${{ steps.restore-cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}
 
             - name: upload-coverage-reports-to-codecov
               if: matrix.os == 'ubuntu-latest'
@@ -146,15 +151,16 @@ jobs:
               with:
                   toolchain: stable
 
-            - name: restore-cache
-              id: restore-cache
+            - name: restore-cache-cargo
+              id: restore-cache-cargo
+              env:
+                  CACHE_KEY_PREFIX: cargo-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
               uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      cargo-${{ github.job }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
-                      cargo-${{ github.job }}-${{ runner.os }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-
 
             - name: setup-uv
               uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
@@ -166,14 +172,18 @@ jobs:
                   # All other Python versions (3.10, 3.11, 3.13, 3.14) cache successfully on Ubuntu
                   cache-python: ${{ matrix.python_version != '3.12' && matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
 
-            - name: cache-uv
+            - name: cache-venv
+              env:
+                  CACHE_KEY_PREFIX: venv-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-py${{ matrix.python_version }}
+                  CACHE_KEY_DEPS: ${{ hashFiles('uv.lock') }}
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ github.workspace }}/.venv
-                  key: uv-${{ github.job }}-${{ runner.os }}-py${{ matrix.python_version }}-${{ hashFiles('uv.lock') }}
+                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
-                      uv-${{ github.job }}-${{ runner.os }}-py${{ matrix.python_version }}-
-                      uv-${{ github.job }}-${{ runner.os }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-
+                      ${{ env.CACHE_KEY_PREFIX }}-
 
             - name: install-dependencies
               shell: bash
@@ -189,9 +199,9 @@ jobs:
             - name: run-tests
               run: bake python-test
 
-            - name: save-cache
-              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+            - name: save-cache-cargo
               if: always()
+              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: ${{ steps.restore-cache.outputs.cache-primary-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+                  key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}
