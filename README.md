@@ -5,7 +5,10 @@
 [![vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=wislertt_zerv&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=wislertt_zerv)
 [![codecov](https://img.shields.io/codecov/c/github/wislertt/zerv?token=549GL6LQBX&label=codecov&logo=codecov)](https://codecov.io/gh/wislertt/zerv)
 [![crates.io](https://img.shields.io/crates/v/zerv?color=green)](https://crates.io/crates/zerv)
-[![downloads](https://img.shields.io/crates/d/zerv?label=downloads&color=green)](https://crates.io/crates/zerv)
+[![pypi](https://img.shields.io/pypi/v/zerv-version.svg?color=blue)](https://pypi.python.org/pypi/zerv-version)
+[![crates.io downloads](https://img.shields.io/crates/d/zerv?label=crates.io%20downloads&color=green)](https://crates.io/crates/zerv)
+[![pypi downloads](https://static.pepy.tech/personalized-badge/zerv-version?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pypi%20downloads)](https://pepy.tech/projects/zerv)
+[![python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?logo=python)](https://github.com/wislertt/zerv/)
 
 # zerv
 

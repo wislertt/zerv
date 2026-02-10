@@ -18,13 +18,14 @@ def _get_version() -> str:
 __version__ = _get_version()
 __all__ = ["check", "find_zerv_bin", "flow", "version"]
 
-# Format literals
-Format = Literal["auto", "semver", "pep440", "zerv"]
+InputFormat = Literal["auto", "semver", "pep440"]
+OutputFormat = Literal["semver", "pep440", "zerv"]
 
-# Source literals
+PreReleaseLabel = Literal["alpha", "beta", "rc"]
+VersionPreReleaseLabel = Literal["alpha", "beta", "rc", "none"]
+
 Source = Literal["git", "stdin"]
 
-# Bump type literals
 BumpType = Literal[
     "epoch",
     "major",
@@ -72,9 +73,6 @@ SchemaPreset = StandardSchema | CalverSchema
 CheckFormat = Literal["semver", "pep440"]
 
 # Flow-specific literals
-FlowInputFormat = Literal["auto", "semver", "pep440"]
-FlowOutputFormat = Literal["semver", "pep440", "zerv"]
-FlowPreReleaseLabel = Literal["alpha", "beta", "rc"]
 FlowPostMode = Literal["tag", "commit"]
 
 
@@ -109,10 +107,10 @@ def version(
     # Input options
     source: Source | None = None,
     stdin: str | None = None,
-    input_format: Format | None = None,
+    input_format: InputFormat | None = None,
     repo_path: str | None = None,
     # Output options
-    output_format: Format | None = None,
+    output_format: OutputFormat | None = None,
     output_template: str | None = None,
     output_prefix: str | None = None,
     # Schema options
@@ -135,7 +133,7 @@ def version(
     post: int | None = None,
     # Version-specific override options
     dev: int | None = None,
-    pre_release_label: str | None = None,
+    pre_release_label: VersionPreReleaseLabel | None = None,
     pre_release_num: int | None = None,
     custom: str | None = None,
     # Schema component override options
@@ -226,11 +224,11 @@ def flow(
     source: Source | None = None,
     stdin: str | None = None,
     verbose: bool | None = None,
-    input_format: FlowInputFormat | None = None,
-    output_format: FlowOutputFormat | None = None,
+    input_format: InputFormat | None = None,
+    output_format: OutputFormat | None = None,
     output_template: str | None = None,
     output_prefix: str | None = None,
-    pre_release_label: FlowPreReleaseLabel | None = None,
+    pre_release_label: PreReleaseLabel | None = None,
     pre_release_num: int | None = None,
     post_mode: FlowPostMode | None = None,
     branch_rules: str | None = None,

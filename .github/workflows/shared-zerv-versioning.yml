@@ -82,12 +82,6 @@ jobs:
     zerv-versioning:
         name: zerv-versioning
         runs-on: ubuntu-latest
-        env:
-            CARGO_CACHE_PATHS: |
-                ~/.cargo/bin/
-                ~/.cargo/registry/index/
-                ~/.cargo/registry/cache/
-                ~/.cargo/git/db/
         outputs:
             versions: ${{ steps.generate-versions.outputs.versions }}
         steps:
@@ -96,60 +90,17 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - name: setup-rust-toolchain
-              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
+            - name: setup-uv
+              uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
               with:
-                  toolchain: stable
-
-            - name: restore-cache-cargo
-              id: restore-cache-cargo
-              env:
-                  CACHE_KEY_PREFIX: cargo-zerv-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
-              uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-              with:
-                  path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: ${{ env.CACHE_KEY_PREFIX }}-${{ inputs.zerv_version || 'latest' }}-${{ github.run_id }}-${{ github.run_attempt }}
-                  restore-keys: |
-                      ${{ env.CACHE_KEY_PREFIX }}-${{ inputs.zerv_version || 'latest' }}-
-                      ${{ env.CACHE_KEY_PREFIX }}-
+                  python-version: ${{ inputs.python_version || '3.14' }}
+                  version: "latest"
+                  enable-cache: true
 
             - name: install-zerv
               run: |
-                  # Get currently installed version (if any)
-                  if command -v zerv >/dev/null 2>&1; then
-                      CURRENT_VERSION=$(zerv --version | awk '{print $2}')
-                  else
-                      CURRENT_VERSION=""
-                  fi
-
-                  # Get latest version from crates.io
-                  LATEST_VERSION=$(cargo search zerv --limit 1 | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
-
-                  # Input version (may be empty)
-                  REQUIRED_VERSION="${{ inputs.zerv_version }}"
-
-                  echo "Current zerv version : ${CURRENT_VERSION:-none}"
-                  echo "Latest zerv version  : $LATEST_VERSION"
-                  echo "Required version     : ${REQUIRED_VERSION:-latest}"
-
-                  if [ -z "$REQUIRED_VERSION" ]; then
-                    # No input version → use latest
-                    if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
-                        echo "Installing latest zerv ($LATEST_VERSION)"
-                        cargo install zerv --version "$LATEST_VERSION" --force
-                    else
-                        echo "zerv is already up to date"
-                    fi
-                  else
-                    # Input version provided
-                    if [ "$CURRENT_VERSION" != "$REQUIRED_VERSION" ]; then
-                        echo "Installing required zerv version ($REQUIRED_VERSION)"
-                        cargo install zerv --version "$REQUIRED_VERSION" --force
-                    else
-                        echo "Required zerv version already installed"
-                    fi
-                  fi
-
+                  uv tool install "zerv-version"
+                  uv tool upgrade --all
                   zerv --version
 
             - name: generate-zerv-ron
@@ -284,10 +235,3 @@ jobs:
             - name: display-generated-versions
               run: |
                   echo '${{ steps.generate-versions.outputs.versions }}' | jq .
-
-            - name: save-cache-cargo
-              if: always()
-              uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-              with:
-                  path: ${{ env.CARGO_CACHE_PATHS }}
-                  key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}
