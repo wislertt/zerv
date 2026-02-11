@@ -1,4 +1,5 @@
 pub mod git;
+pub mod none;
 pub mod smart_default;
 pub mod stdin;
 

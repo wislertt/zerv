@@ -38,3 +38,13 @@ fn test_flow_smart_default_with_stdin() {
     // Should default to stdin source
     assert!(output.contains("3.4"), "Should output version from stdin");
 }
+
+#[test]
+fn test_flow_source_none() {
+    // Test --source none with flow
+    let output = TestCommand::new()
+        .args_from_str("flow --source none --tag-version 7.8.9 --output-format semver")
+        .assert_success();
+
+    assert_eq!(output.stdout().trim(), "7.8.9");
+}
