@@ -4,6 +4,7 @@ pub mod common;
 pub mod flow;
 pub mod llm_help;
 pub mod parser;
+pub mod render;
 pub mod utils;
 pub mod version;
 
@@ -22,6 +23,10 @@ pub use flow::{
 pub use parser::{
     Cli,
     Commands,
+};
+pub use render::{
+    RenderArgs,
+    run_render,
 };
 pub use version::{
     VersionArgs,

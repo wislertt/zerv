@@ -1,6 +1,6 @@
 # Implementation Plan: Render and Source Improvements
 
-**Status:** Phase 1 Complete, Phase 2 In Progress
+**Status:** Phase 1 Complete, Phase 2 Complete, Phase 3 (Unit Tests) Complete
 **Priority:** Medium
 **Created:** 2025-02-11
 
@@ -77,20 +77,22 @@ Zerv → OutputFormatter::format_output() → final output
 
 No custom parsing functions needed - everything already exists in `VersionObject`!
 
-- [ ] 2.1 Create `src/cli/render/mod.rs` with `RenderArgs`
-- [ ] 2.2 Create `src/cli/render/pipeline.rs` using existing `VersionObject` + `OutputFormatter`
-- [ ] 2.3 Add `Render` command to `Commands` enum in `parser.rs`
-- [ ] 2.4 Wire up render handler in `app.rs`
+- [x] 2.1 Create `src/cli/render/mod.rs` with `RenderArgs`
+- [x] 2.2 Create `src/cli/render/pipeline.rs` using existing `VersionObject` + `OutputFormatter`
+- [x] 2.3 Add `Render` command to `Commands` enum in `parser.rs`
+- [x] 2.4 Wire up render handler in `app.rs`
 
 ### Phase 3: Testing
 
 - [x] 3.1 Source tests for version (smart_default.rs, none.rs)
 - [x] 3.2 Source tests for flow (sources.rs)
-- [ ] 3.3 Render tests - SemVer input
-- [ ] 3.4 Render tests - PEP440 input
-- [ ] 3.5 Render tests - format conversion (SemVer ↔ PEP440)
-- [ ] 3.6 Render tests - auto-detect
-- [ ] 3.7 Render tests - schema and template
+- [x] 3.3 Render unit tests - 83 tests covering:
+    - Basic format conversion (SemVer ↔ PEP440)
+    - Complex versions (pre-release, post, dev, epoch, build)
+    - Template rendering (all available variables)
+    - Validation (template + prefix conflict)
+    - Invalid input handling
+- [ ] 3.4 Render integration tests (separate integration test suite)
 
 ### Phase 4: Documentation
 

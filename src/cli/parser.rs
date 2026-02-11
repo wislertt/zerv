@@ -5,6 +5,7 @@ use clap::{
 
 use crate::cli::check::CheckArgs;
 use crate::cli::flow::FlowArgs;
+use crate::cli::render::RenderArgs;
 use crate::cli::version::VersionArgs;
 
 #[derive(Parser, Debug)]
@@ -73,6 +74,12 @@ pre-release information from the current Git branch using configurable pattern m
 Supports SemVer, PEP440, and other version format validation."
     )]
     Check(CheckArgs),
+    /// Render a version string with format conversion and output options
+    #[command(
+        long_about = "Parse a version string and render it with flexible output options.
+Supports format conversion (SemVer ↔ PEP440), normalization, templates, and schemas."
+    )]
+    Render(Box<RenderArgs>),
 }
 
 #[cfg(test)]
@@ -92,6 +99,9 @@ mod tests {
 
         let cli = Cli::try_parse_from(["zerv", "check", "1.0.0"]).unwrap();
         assert!(matches!(cli.command, Some(Commands::Check(_))));
+
+        let cli = Cli::try_parse_from(["zerv", "render", "1.2.3"]).unwrap();
+        assert!(matches!(cli.command, Some(Commands::Render(_))));
     }
 
     #[test]
@@ -113,6 +123,7 @@ mod tests {
     #[case(vec!["zerv", "version"], true)]
     #[case(vec!["zerv", "flow"], true)]
     #[case(vec!["zerv", "check", "1.0.0"], true)]
+    #[case(vec!["zerv", "render", "1.2.3"], true)]
     #[case(vec!["zerv", "invalid"], false)]
     fn test_cli_parsing(#[case] args: Vec<&str>, #[case] should_succeed: bool) {
         let result = Cli::try_parse_from(args);
