@@ -49,7 +49,7 @@ pub source: String,
 - [x] 1.3 Implement smart source default in `validate()`
 - [x] 1.4 Create `none_pipeline.rs` for version
 - [x] 1.5 Wire up `none` source in version pipeline
-- [ ] 1.6 Add tests for smart source default
+- [x] 1.6 Add tests for smart source default
 - [ ] 1.7 Add tests for `none` source
 
 **Note:** Flow uses `run_version_pipeline()` internally, so `none` source handling automatically applies to flow. No separate flow implementation needed.

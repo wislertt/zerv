@@ -1,4 +1,6 @@
 use clap::Parser;
+#[cfg(test)]
+use rstest::rstest;
 
 use crate::utils::constants::{
     formats,
@@ -161,37 +163,26 @@ mod tests {
         assert!(config.directory.is_none());
     }
 
-    #[test]
-    fn test_apply_smart_source_default_with_stdin() {
+    #[rstest]
+    #[case::none_source_no_stdin(None, false, sources::GIT)]
+    #[case::none_source_with_stdin(None, true, sources::STDIN)]
+    #[case::explicit_git_no_stdin(Some(sources::GIT), false, sources::GIT)]
+    #[case::explicit_git_with_stdin(Some(sources::GIT), true, sources::GIT)]
+    #[case::explicit_stdin_no_stdin(Some(sources::STDIN), false, sources::STDIN)]
+    #[case::explicit_stdin_with_stdin(Some(sources::STDIN), true, sources::STDIN)]
+    #[case::explicit_none_no_stdin(Some(sources::NONE), false, sources::NONE)]
+    #[case::explicit_none_with_stdin(Some(sources::NONE), true, sources::NONE)]
+    fn test_apply_smart_source_default(
+        #[case] initial_source: Option<&str>,
+        #[case] has_stdin: bool,
+        #[case] expected_source: &str,
+    ) {
         let mut config = InputConfig {
-            source: None,
+            source: initial_source.map(|s| s.to_string()),
             input_format: formats::AUTO.to_string(),
             directory: None,
         };
-        config.apply_smart_source_default(true);
-        assert_eq!(config.source, Some(sources::STDIN.to_string()));
-    }
-
-    #[test]
-    fn test_apply_smart_source_default_without_stdin() {
-        let mut config = InputConfig {
-            source: None,
-            input_format: formats::AUTO.to_string(),
-            directory: None,
-        };
-        config.apply_smart_source_default(false);
-        assert_eq!(config.source, Some(sources::GIT.to_string()));
-    }
-
-    #[test]
-    fn test_apply_smart_source_default_preserves_explicit_source() {
-        let mut config = InputConfig {
-            source: Some(sources::NONE.to_string()),
-            input_format: formats::AUTO.to_string(),
-            directory: None,
-        };
-        config.apply_smart_source_default(true);
-        // Explicit source should be preserved
-        assert_eq!(config.source, Some(sources::NONE.to_string()));
+        config.apply_smart_source_default(has_stdin);
+        assert_eq!(config.source.as_deref(), Some(expected_source));
     }
 }

@@ -3,3 +3,4 @@
 pub mod docs;
 pub mod main;
 pub mod scenarios;
+pub mod sources;
