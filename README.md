@@ -1040,7 +1040,7 @@ curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.s
 # Download from: https://github.com/wislertt/zerv/releases
 ```
 
-## Uninstall
+### Uninstall
 
 ```bash
 # Rust/cargo
