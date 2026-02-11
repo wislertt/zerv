@@ -46,13 +46,13 @@ pub source: String,
 
 - [x] 1.1 Add `NONE` source constant
 - [x] 1.2 Change `InputConfig.source` to `Option<String>`
-- [x] 1.3 Implement smart source default in `app.rs`
+- [x] 1.3 Implement smart source default in `validate()`
 - [ ] 1.4 Create `none_pipeline.rs` for version
 - [ ] 1.5 Wire up `none` source in version pipeline
-- [ ] 1.6 Create `none_pipeline.rs` for flow
-- [ ] 1.7 Wire up `none` source in flow pipeline
-- [ ] 1.8 Add tests for smart source default
-- [ ] 1.9 Add tests for `none` source
+- [ ] 1.6 Add tests for smart source default
+- [ ] 1.7 Add tests for `none` source
+
+**Note:** Flow uses `run_version_pipeline()` internally, so `none` source handling automatically applies to flow. No separate flow implementation needed.
 
 ### Phase 2: New `render` Subcommand
 
@@ -171,9 +171,16 @@ let zerv_draft = match args.input.source.as_str() {
 };
 ```
 
-#### 1.6-1.7 Apply Same to Flow Pipeline
+#### 1.6 Flow: No Changes Needed
 
-Same pattern as version pipeline.
+Flow pipeline calls `run_version_pipeline()` internally, so `none` source handling automatically applies.
+
+**File:** `src/cli/flow/pipeline.rs` (line 24)
+
+```rust
+// This call already handles all sources including 'none'
+let ron_output = run_version_pipeline(version_args, stdin_content)?;
+```
 
 ---
 
@@ -331,9 +338,7 @@ pub fn run_with_args<W: Write>(...) {
 - Test `--source none` uses only overrides
 - Test VCS is skipped
 
-**New:** `src/cli/flow/tests/source_default.rs`
-
-- Same tests for flow command
+**Note:** Flow tests are covered by existing integration tests since flow uses `run_version_pipeline()` internally.
 
 #### 3.2 Render Tests
 
@@ -406,10 +411,13 @@ Add render usage section.
 ### Modified Files
 
 - `src/utils/constants.rs` - Add `sources::NONE`
-- `src/cli/common/args/input.rs` - Change source to `Option<String>`
+- `src/cli/common/args/input.rs` - Change source to `Option<String>` + add `apply_smart_source_default()` method
+- `src/cli/version/args/mod.rs` - Update `validate()` to accept `stdin_content`
+- `src/cli/flow/args/validation.rs` - Update `validate()` to accept `stdin_content`
 - `src/cli/parser.rs` - Add `Render` command
-- `src/cli/app.rs` - Smart default + render handler
 - `src/cli/version/pipeline.rs` - Handle `none` source
+- `src/cli/app.rs` - Render handler
+- `tests/integration_tests/help_flags.rs` - Update expected help text for `none` source
 - `src/cli/flow/pipeline.rs` - Handle `none` source
 
 ---
