@@ -1,6 +1,6 @@
 # Implementation Plan: Render and Source Improvements
 
-**Status:** Planned
+**Status:** Phase 1 Complete, Phase 2 In Progress
 **Priority:** Medium
 **Created:** 2025-02-11
 
@@ -56,22 +56,39 @@ pub source: String,
 
 ### Phase 2: New `render` Subcommand
 
+**Key insight:** Render reuses existing version parsing infrastructure!
+
+**From git source pattern (`src/pipeline/vcs_data_to_zerv_vars.rs`):**
+
+```rust
+let version = VersionObject::parse_with_format(tag_version, input_format)?;
+let vars: ZervVars = version.into();  // impl From<VersionObject> for ZervVars
+let zerv = Zerv::from_vars(vars)?;
+```
+
+**Render follows the exact same pattern:**
+
+```
+version_string → VersionObject::parse_with_format() → VersionObject
+VersionObject → impl From<VersionObject> for ZervVars → ZervVars
+ZervVars → Zerv::from_vars() → Zerv
+Zerv → OutputFormatter::format_output() → final output
+```
+
+No custom parsing functions needed - everything already exists in `VersionObject`!
+
 - [ ] 2.1 Create `src/cli/render/mod.rs` with `RenderArgs`
-- [ ] 2.2 Create `src/cli/render/parser.rs` for format conversion
-    - [ ] 2.2.1 `parse_semver_to_zerv()` function
-    - [ ] 2.2.2 `parse_pep440_to_zerv()` function
-    - [ ] 2.2.3 `detect_and_parse()` auto-detection function
-- [ ] 2.3 Create `src/cli/render/pipeline.rs` using `OutputFormatter`
-- [ ] 2.4 Add `Render` command to `Commands` enum in `parser.rs`
-- [ ] 2.5 Wire up render handler in `app.rs`
+- [ ] 2.2 Create `src/cli/render/pipeline.rs` using existing `VersionObject` + `OutputFormatter`
+- [ ] 2.3 Add `Render` command to `Commands` enum in `parser.rs`
+- [ ] 2.4 Wire up render handler in `app.rs`
 
 ### Phase 3: Testing
 
-- [ ] 3.1 Source tests for version
-- [ ] 3.2 Source tests for flow
-- [ ] 3.3 Render tests - SemVer
-- [ ] 3.4 Render tests - PEP440
-- [ ] 3.5 Render tests - format conversion
+- [x] 3.1 Source tests for version (smart_default.rs, none.rs)
+- [x] 3.2 Source tests for flow (sources.rs)
+- [ ] 3.3 Render tests - SemVer input
+- [ ] 3.4 Render tests - PEP440 input
+- [ ] 3.5 Render tests - format conversion (SemVer ↔ PEP440)
 - [ ] 3.6 Render tests - auto-detect
 - [ ] 3.7 Render tests - schema and template
 
@@ -214,62 +231,27 @@ pub struct RenderArgs {
 }
 ```
 
-#### 2.2 Create Format Parser
-
-**New file:** `src/cli/render/parser.rs`
-
-```rust
-use crate::error::ZervError;
-use crate::utils::constants;
-use crate::version::zerv::core::Zerv;
-use crate::version::semver::core::SemVer;
-use crate::version::pep440::core::PEP440;
-
-pub fn parse_to_zerv(version: &str, format: &str) -> Result<Zerv, ZervError> {
-    match format {
-        constants::formats::AUTO => detect_and_parse(version),
-        constants::formats::SEMVER => parse_semver_to_zerv(version),
-        constants::formats::PEP440 => parse_pep440_to_zerv(version),
-        constants::formats::ZERV => version.parse(),
-        _ => Err(ZervError::UnsupportedFormat(format.to_string())),
-    }
-}
-
-fn parse_semver_to_zerv(version: &str) -> Result<Zerv, ZervError> {
-    let semver: SemVer = version.parse()?;
-    // Convert SemVer to Zerv
-    // Map: major/minor/patch, pre-release -> pre_release, build -> discard (no equivalent)
-    Ok(/* converted Zerv */)
-}
-
-fn parse_pep440_to_zerv(version: &str) -> Result<Zerv, ZervError> {
-    let pep440: PEP440 = version.parse()?;
-    // Convert PEP440 to Zerv
-    // Map: release, epoch, pre, post, dev, local
-    Ok(/* converted Zerv */)
-}
-
-fn detect_and_parse(version: &str) -> Result<Zerv, ZervError> {
-    // Try each format in order
-    // Return first successful parse
-}
-```
-
-#### 2.3 Create Render Pipeline
+#### 2.2 Create Render Pipeline
 
 **New file:** `src/cli/render/pipeline.rs`
 
 ```rust
 use crate::cli::render::RenderArgs;
 use crate::cli::utils::output_formatter::OutputFormatter;
-use crate::cli::render::parser::parse_to_zerv;
 use crate::error::ZervError;
+use crate::version::{VersionObject, Zerv};
 
 pub fn run_render(args: RenderArgs) -> Result<String, ZervError> {
-    // 1. Parse input version to Zerv
-    let zerv = parse_to_zerv(&args.version, &args.input_format)?;
+    // 1. Parse version string using existing VersionObject infrastructure
+    let version_object = VersionObject::parse_with_format(&args.version, &args.input_format)?;
 
-    // 2. Use existing OutputFormatter - no need to reimplement!
+    // 2. Convert VersionObject to ZervVars (existing impl From<VersionObject> for ZervVars)
+    let vars = crate::version::ZervVars::from(version_object);
+
+    // 3. Convert ZervVars to Zerv
+    let zerv = Zerv::from_vars(vars)?;
+
+    // 4. Use existing OutputFormatter - no need to reimplement!
     let output = OutputFormatter::format_output(
         &zerv,
         &args.output.output_format,
@@ -281,9 +263,9 @@ pub fn run_render(args: RenderArgs) -> Result<String, ZervError> {
 }
 ```
 
-**Key insight:** We reuse `OutputFormatter::format_output()` directly - all rendering logic already exists!
+**Key insight:** We reuse `VersionObject::parse_with_format()` + `impl From<VersionObject> for ZervVars` + `OutputFormatter::format_output()` - all infrastructure already exists!
 
-#### 2.4-2.5 Wire Up Render Command
+#### 2.3-2.4 Wire Up Render Command
 
 **Modify:** `src/cli/parser.rs`
 
@@ -326,44 +308,53 @@ pub fn run_with_args<W: Write>(...) {
 
 ### Phase 3: Testing Strategy
 
-#### 3.1 Source Tests
+#### 3.1 Source Tests (COMPLETED)
 
-**New:** `src/cli/version/tests/source_default.rs`
+**Done:** `tests/integration_tests/version/main/sources/smart_default.rs`
 
 - Test with stdin present → defaults to `stdin`
 - Test without stdin → defaults to `git`
+- Test explicit source overrides smart default
+- Test `--source none` works
 
-**New:** `src/cli/version/tests/none_source.rs`
+**Done:** `tests/integration_tests/version/main/sources/none.rs`
 
-- Test `--source none` uses only overrides
-- Test VCS is skipped
+- Test `--source none` with `--tag-version`
+- Test `--source none` with `--distance`
+- Test `--source none` with `--dirty`
+- Test `--source none` with all overrides
+- Test `--source none` without `--tag-version` defaults to 0.0.0
 
-**Note:** Flow tests are covered by existing integration tests since flow uses `run_version_pipeline()` internally.
+**Done:** `tests/integration_tests/flow/sources.rs`
+
+- Test flow with `--source stdin`
+- Test flow smart default with stdin
+- Test flow with `--source none`
 
 #### 3.2 Render Tests
 
-**New:** `src/cli/render/tests/render_semver.rs`
+**New:** `tests/integration_tests/render/input_semver.rs`
 
-- Parse valid SemVer
-- Parse invalid SemVer (should error)
+- Render valid SemVer → various output formats
+- Render invalid SemVer (should error)
 
-**New:** `src/cli/render/tests/render_pep440.rs`
+**New:** `tests/integration_tests/render/input_pep440.rs`
 
-- Parse valid PEP440
-- Test normalization (separators, labels)
+- Render valid PEP440 → various output formats
+- Test PEP440 normalization (separators, labels)
 
-**New:** `src/cli/render/tests/format_conversion.rs`
+**New:** `tests/integration_tests/render/format_conversion.rs`
 
 - SemVer → PEP440
 - PEP440 → SemVer
 - Round-trip tests
 
-**New:** `src/cli/render/tests/auto_detect.rs`
+**New:** `tests/integration_tests/render/auto_detect.rs`
 
-- Test format detection
+- Test auto format detection
 - Ambiguous cases
 
-**New:** `src/cli/render/tests/schema_template.rs`
+**New:** `tests/integration_tests/render/schema_template.rs`
 
 - Test with schema
 - Test with template
@@ -401,24 +392,25 @@ Add render usage section.
 
 - `src/cli/version/none_pipeline.rs`
 - `src/cli/render/mod.rs`
-- `src/cli/render/parser.rs`
 - `src/cli/render/pipeline.rs`
 - `src/cli/render/tests/*.rs`
-- `src/cli/version/tests/source_default.rs`
-- `src/cli/version/tests/none_source.rs`
-- `src/cli/flow/tests/source_default.rs`
+- `tests/integration_tests/render/*.rs`
+- `tests/integration_tests/version/main/sources/none.rs`
+- `tests/integration_tests/version/main/sources/smart_default.rs`
+- `tests/integration_tests/flow/sources.rs`
 
 ### Modified Files
 
 - `src/utils/constants.rs` - Add `sources::NONE`
-- `src/cli/common/args/input.rs` - Change source to `Option<String>` + add `apply_smart_source_default()` method
+- `src/cli/common/args/input.rs` - Change source to `Option<String>` + add `apply_smart_source_default()` method + tests
 - `src/cli/version/args/mod.rs` - Update `validate()` to accept `stdin_content`
 - `src/cli/flow/args/validation.rs` - Update `validate()` to accept `stdin_content`
-- `src/cli/parser.rs` - Add `Render` command
 - `src/cli/version/pipeline.rs` - Handle `none` source
+- `src/cli/version/mod.rs` - Export none_pipeline
+- `src/cli/parser.rs` - Add `Render` command
 - `src/cli/app.rs` - Render handler
-- `tests/integration_tests/help_flags.rs` - Update expected help text for `none` source
-- `src/cli/flow/pipeline.rs` - Handle `none` source
+- `tests/integration_tests/version/main/sources/mod.rs` - Add none and smart_default modules
+- `tests/integration_tests/flow/mod.rs` - Add sources module
 
 ---
 
