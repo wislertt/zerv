@@ -47,8 +47,8 @@ pub source: String,
 - [x] 1.1 Add `NONE` source constant
 - [x] 1.2 Change `InputConfig.source` to `Option<String>`
 - [x] 1.3 Implement smart source default in `validate()`
-- [ ] 1.4 Create `none_pipeline.rs` for version
-- [ ] 1.5 Wire up `none` source in version pipeline
+- [x] 1.4 Create `none_pipeline.rs` for version
+- [x] 1.5 Wire up `none` source in version pipeline
 - [ ] 1.6 Add tests for smart source default
 - [ ] 1.7 Add tests for `none` source
 

@@ -24,9 +24,7 @@ pub fn run_version_pipeline(
         Some(sources::STDIN) => {
             super::stdin_pipeline::process_cached_stdin_source(&args, stdin_content)?
         }
-        Some(sources::NONE) => {
-            return Err(ZervError::UnknownSource(sources::NONE.to_string()));
-        }
+        Some(sources::NONE) => super::none_pipeline::process_none_source()?,
         Some(source) => return Err(ZervError::UnknownSource(source.to_string())),
         None => {
             return Err(ZervError::UnknownSource("none (not set)".to_string()));
