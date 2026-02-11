@@ -20,6 +20,12 @@ and advanced override capabilities for CI/CD workflows.
 Use --llm-help to display the comprehensive CLI manual with detailed examples and guidance.
 
 EXAMPLES:
+  # Flow - intelligent versioning based on git state
+  zerv flow
+
+  # Flow - use specific schema preset
+  zerv flow --schema standard
+
   # Basic version generation from git
   zerv version
 
@@ -36,7 +42,17 @@ EXAMPLES:
   zerv version --output-format zerv | zerv version --source stdin --schema calver
 
   # Use in different directory
-  zerv version -C /path/to/repo"
+  zerv version -C /path/to/repo
+
+  # Render - convert SemVer to PEP440
+  zerv render 1.2.3-alpha.1 --output-format pep440
+
+  # Render - use template for custom output
+  zerv render 1.2.3 --template 'v{{major}}.{{minor}}'
+
+  # Render - add prefix
+  zerv render 1.2.3 --output-prefix release-
+"
 )]
 pub struct Cli {
     /// Use verbose output (enables debug-level logs to stderr).
@@ -77,7 +93,7 @@ Supports SemVer, PEP440, and other version format validation."
     /// Render a version string with format conversion and output options
     #[command(
         long_about = "Parse a version string and render it with flexible output options.
-Supports format conversion (SemVer ↔ PEP440), normalization, templates, and schemas."
+Supports format conversion (SemVer ↔ PEP440), normalization, templates, and custom prefixes."
     )]
     Render(Box<RenderArgs>),
 }

@@ -101,7 +101,10 @@ No custom parsing functions needed - everything already exists in `VersionObject
 
 ### Phase 4: Documentation
 
-- [ ] 4.1 Update CLI help text in `parser.rs`
+- [x] 4.1 Update CLI help text in `parser.rs`
+    - Updated render command description (removed "schemas", added "prefixes")
+    - Added render examples to main CLI help
+    - Added flow examples at top (most important subcommand)
 - [ ] 4.2 Add render examples to README.md
 
 ---

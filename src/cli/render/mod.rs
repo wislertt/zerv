@@ -16,7 +16,13 @@ pub use pipeline::run_render;
 #[command(about = "Render a version string with flexible output options")]
 #[command(
     long_about = "Parse a version string and render it with flexible output options.
-Supports format conversion (SemVer ↔ PEP440), normalization, templates, and schemas."
+Supports format conversion (SemVer ↔ PEP440), auto-detection, templates, and custom prefixes.
+
+This command is useful for:
+  - Converting between version formats (SemVer, PEP440)
+  - Normalizing version strings
+  - Creating custom version output with templates
+  - Adding prefixes to versions"
 )]
 pub struct RenderArgs {
     /// Version string to render
