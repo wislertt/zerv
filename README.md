@@ -14,13 +14,26 @@
 
 **Automatic versioning for every commit** - Generate semantic versions from any commit across all branches, or dirty working directory, with seamless pre-release handling and flexible format support for any CI/CD workflow.
 
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Key Features](#key-features)
+- [Usage Examples](#usage-examples)
+    - [zerv flow: Automated branch-based versions](#zerv-flow-automated-branch-based-versions)
+    - [zerv version: Manual control with 4 main capability areas](#zerv-version-manual-control-with-4-main-capability-areas)
+    - [zerv check: Validate version formats](#zerv-check-validate-version-formats)
+    - [zerv render: Format conversion](#zerv-render-format-conversion)
+    - [Python API](#python-api)
+- [Installation](#installation)
+- [Links](#links)
+
 ## Quick Start
 
 **Smart Version Detection**: `zerv flow` automatically generates meaningful SemVer versions from any Git state - no manual configuration required for common workflows.
 
 ```bash
-# Install
-cargo install zerv
+# Install (Python via uv)
+uv tool install zerv-version
 
 # Try automated versioning (current branch determines output)
 zerv flow
@@ -857,6 +870,25 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples -->
 
+- **Smart Source Detection**: Auto-detects input source (stdin if piped, git otherwise)
+
+```bash
+# Implicit source detection (auto: git if no stdin, stdin if piped)
+zerv version
+
+# Explicit git source
+zerv version --source git
+
+# Pipe between commands (implicit stdin detection)
+zerv version --output-format zerv | zerv version
+
+# Pipe between commands (explicit stdin source)
+zerv version --output-format zerv | zerv version --source stdin
+
+# No VCS - use overrides only
+zerv version --source none --tag-version 1.2.3 --distance 5
+```
+
 ##### Template System: Advanced custom formatting
 
 **Purpose**: Complete control over version output using Tera templating with extensive variables, functions, and logical operations.
@@ -924,36 +956,103 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_template_documentation_examples -->
 
+### zerv check: Validate version formats
+
+Validate version strings against specific format requirements.
+
+```bash
+zerv check "1.2.3-rc.2"
+# Version: 1.2.3-rc.2
+# ✓ Valid PEP440 format (normalized: 1.2.3rc2)
+# ✓ Valid SemVer format
+```
+
+### zerv render: Format conversion
+
+Parse and render version strings with format conversion, templates, and custom prefixes.
+
+```bash
+# Convert SemVer to PEP440
+zerv render "1.2.3-alpha.1" --output-format pep440
+# 1.2.3a1
+
+# Convert PEP440 to SemVer
+zerv render "1.2.3b2" --input-format pep440 --output-format semver
+# 1.2.3-beta.2
+
+# Auto-detect input format
+zerv render "1.2.3a1" --output-format semver
+# 1.2.3-alpha.1
+```
+
+**Templates:**
+
+```bash
+# Custom format
+zerv render "1.2.3" --template "v{{major}}.{{minor}}"
+# v1.2
+
+# With pre-release
+zerv render "2.0.0-beta.2" --template "{{major}}.{{minor}}.{{patch}}-{{pre_release.label}}"
+# 2.0.0-beta
+```
+
+**Prefixes:**
+
+```bash
+zerv render "1.2.3" --output-prefix "v"
+# v1.2.3
+```
+
+### Python API
+
+Zerv can be used as a Python library for version generation in Python scripts.
+
+```python
+import zerv
+
+zerv.version()
+# "1.2.3-alpha.1"
+```
+
 ## Installation
 
-### Cargo Install (Recommended)
-
 ```bash
+# Python (uv - global CLI tool) - Recommended
+uv tool install zerv-version
+
+# Python (pip)
+pip install zerv-version
+
+# Python (uv - add to project)
+uv add zerv-version
+
+# Rust (cargo)
 cargo install zerv
-```
 
-### Installation Script
-
-```bash
-# Install latest version
+# Installation script (latest version)
 curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash
 
-# Install specific version
+# Installation script (specific version)
 curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash -s vX.X.X
 
-# Or using environment variable
-curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | ZERV_VERSION=vX.X.X bash
+# Pre-built binaries
+# Download from: https://github.com/wislertt/zerv/releases
 ```
-
-### Manual Download
-
-Download pre-built binaries from [GitHub Releases](https://github.com/wislertt/zerv/releases)
 
 ### Uninstall
 
-For Quick Install and Manual Download:
-
 ```bash
+# Rust/cargo
+cargo uninstall zerv
+
+# Python (pip)
+pip uninstall zerv-version
+
+# Python (uv tool)
+uv tool uninstall zerv-version
+
+# Manual binary
 rm ~/.local/bin/zerv
 ```
 

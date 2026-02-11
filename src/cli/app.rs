@@ -13,6 +13,7 @@ use crate::cli::parser::{
     Cli,
     Commands,
 };
+use crate::cli::render::run_render;
 use crate::cli::version::run_version_pipeline;
 
 pub fn run_with_args<W: Write>(
@@ -45,6 +46,10 @@ pub fn run_with_args<W: Write>(
         }
         Some(Commands::Check(check_args)) => {
             let output = run_check_command(check_args)?;
+            writeln!(writer, "{output}")?;
+        }
+        Some(Commands::Render(render_args)) => {
+            let output = run_render(*render_args)?;
             writeln!(writer, "{output}")?;
         }
         None => {

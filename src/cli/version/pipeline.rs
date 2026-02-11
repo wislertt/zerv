@@ -10,7 +10,7 @@ pub fn run_version_pipeline(
     stdin_content: Option<&str>,
 ) -> Result<String, ZervError> {
     // 0. Early validation - fail fast on conflicting options
-    args.validate()?;
+    args.validate(stdin_content)?;
 
     // 1. Determine working directory
     let work_dir = match args.input.directory.as_deref() {
@@ -19,10 +19,16 @@ pub fn run_version_pipeline(
     };
 
     // 2. Get ZervDraft from source (no schema applied yet)
-    let zerv_draft = match args.input.source.as_str() {
-        sources::GIT => super::git_pipeline::process_git_source(&work_dir, &args)?,
-        sources::STDIN => super::stdin_pipeline::process_cached_stdin_source(&args, stdin_content)?,
-        source => return Err(ZervError::UnknownSource(source.to_string())),
+    let zerv_draft = match args.input.source.as_deref() {
+        Some(sources::GIT) => super::git_pipeline::process_git_source(&work_dir, &args)?,
+        Some(sources::STDIN) => {
+            super::stdin_pipeline::process_cached_stdin_source(&args, stdin_content)?
+        }
+        Some(sources::NONE) => super::none_pipeline::process_none_source()?,
+        Some(source) => return Err(ZervError::UnknownSource(source.to_string())),
+        None => {
+            return Err(ZervError::UnknownSource("none (not set)".to_string()));
+        }
     };
 
     // 3. Convert to Zerv (applies overrides internally)

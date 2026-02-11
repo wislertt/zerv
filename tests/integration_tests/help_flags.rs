@@ -113,7 +113,7 @@ fn test_version_command_help() {
 
     // Should show possible values
     assert!(
-        stdout.contains("[possible values: git, stdin]"),
+        stdout.contains("[possible values: git, stdin, none]"),
         "Should show source values"
     );
     assert!(

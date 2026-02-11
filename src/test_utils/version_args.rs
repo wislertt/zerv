@@ -26,7 +26,7 @@ impl VersionArgsFixture {
 
     /// Set source
     pub fn with_source(mut self, source: &str) -> Self {
-        self.args.input.source = source.to_string();
+        self.args.input.source = Some(source.to_string());
         self
     }
 
@@ -353,7 +353,7 @@ mod tests {
         let fixture = VersionArgsFixture::new();
         let args = fixture.build();
 
-        assert_eq!(args.input.source, sources::GIT);
+        assert_eq!(args.input.source, Some(sources::GIT.to_string()));
         assert_eq!(args.input.input_format, formats::AUTO);
         assert_eq!(args.output.output_format, formats::SEMVER);
         assert_eq!(args.overrides.common.tag_version, None);
@@ -373,7 +373,7 @@ mod tests {
             .build();
 
         assert_eq!(args.overrides.common.tag_version, Some("2.0.0".to_string()));
-        assert_eq!(args.input.source, "custom");
+        assert_eq!(args.input.source, Some("custom".to_string()));
         assert_eq!(args.main.schema, Some("test-schema".to_string()));
         assert_eq!(args.output.output_format, formats::PEP440);
         assert_eq!(args.input.directory, Some("/test/dir".to_string()));

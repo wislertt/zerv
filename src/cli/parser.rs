@@ -5,6 +5,7 @@ use clap::{
 
 use crate::cli::check::CheckArgs;
 use crate::cli::flow::FlowArgs;
+use crate::cli::render::RenderArgs;
 use crate::cli::version::VersionArgs;
 
 #[derive(Parser, Debug)]
@@ -19,6 +20,12 @@ and advanced override capabilities for CI/CD workflows.
 Use --llm-help to display the comprehensive CLI manual with detailed examples and guidance.
 
 EXAMPLES:
+  # Flow - intelligent versioning based on git state
+  zerv flow
+
+  # Flow - use specific schema preset
+  zerv flow --schema standard
+
   # Basic version generation from git
   zerv version
 
@@ -35,7 +42,17 @@ EXAMPLES:
   zerv version --output-format zerv | zerv version --source stdin --schema calver
 
   # Use in different directory
-  zerv version -C /path/to/repo"
+  zerv version -C /path/to/repo
+
+  # Render - convert SemVer to PEP440
+  zerv render 1.2.3-alpha.1 --output-format pep440
+
+  # Render - use template for custom output
+  zerv render 1.2.3 --template 'v{{major}}.{{minor}}'
+
+  # Render - add prefix
+  zerv render 1.2.3 --output-prefix release-
+"
 )]
 pub struct Cli {
     /// Use verbose output (enables debug-level logs to stderr).
@@ -73,6 +90,12 @@ pre-release information from the current Git branch using configurable pattern m
 Supports SemVer, PEP440, and other version format validation."
     )]
     Check(CheckArgs),
+    /// Render a version string with format conversion and output options
+    #[command(
+        long_about = "Parse a version string and render it with flexible output options.
+Supports format conversion (SemVer ↔ PEP440), normalization, templates, and custom prefixes."
+    )]
+    Render(Box<RenderArgs>),
 }
 
 #[cfg(test)]
@@ -92,6 +115,9 @@ mod tests {
 
         let cli = Cli::try_parse_from(["zerv", "check", "1.0.0"]).unwrap();
         assert!(matches!(cli.command, Some(Commands::Check(_))));
+
+        let cli = Cli::try_parse_from(["zerv", "render", "1.2.3"]).unwrap();
+        assert!(matches!(cli.command, Some(Commands::Render(_))));
     }
 
     #[test]
@@ -113,6 +139,7 @@ mod tests {
     #[case(vec!["zerv", "version"], true)]
     #[case(vec!["zerv", "flow"], true)]
     #[case(vec!["zerv", "check", "1.0.0"], true)]
+    #[case(vec!["zerv", "render", "1.2.3"], true)]
     #[case(vec!["zerv", "invalid"], false)]
     fn test_cli_parsing(#[case] args: Vec<&str>, #[case] should_succeed: bool) {
         let result = Cli::try_parse_from(args);

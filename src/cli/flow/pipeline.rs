@@ -15,7 +15,7 @@ pub fn run_flow_pipeline(args: FlowArgs, stdin_content: Option<&str>) -> Result<
     let current_zerv = args.get_current_zerv_object(stdin_content)?;
 
     // Step 2: Validate and apply branch rules using current state
-    args.validate(&current_zerv)?;
+    args.validate(&current_zerv, stdin_content)?;
 
     // Step 3: Create bumped version args
     let version_args = args.create_bumped_version_args(&current_zerv)?;

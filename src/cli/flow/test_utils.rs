@@ -833,7 +833,7 @@ pub fn test_flow_pipeline_with_stdin(
 
     for (format_name, expectation) in test_cases {
         let mut args = FlowArgs::default();
-        args.input.source = "stdin".to_string();
+        args.input.source = Some("stdin".to_string());
         args.output.output_format = format_name.to_string();
 
         if let Some(schema_value) = schema {

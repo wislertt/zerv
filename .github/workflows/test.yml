@@ -111,7 +111,7 @@ jobs:
                   fi
 
             - name: run-tests
-              run: bake rust-test
+              run: bake test-rust
 
             - name: save-cache-cargo
               if: always()
@@ -199,7 +199,7 @@ jobs:
                   echo "${{ github.workspace }}/target/release" >> $GITHUB_PATH
 
             - name: run-tests
-              run: bake python-test
+              run: bake test-python
 
             - name: save-cache-cargo
               if: always()

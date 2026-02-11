@@ -16,7 +16,7 @@ def _get_version() -> str:
 
 
 __version__ = _get_version()
-__all__ = ["check", "find_zerv_bin", "flow", "version"]
+__all__ = ["check", "find_zerv_bin", "flow", "render", "version"]
 
 InputFormat = Literal["auto", "semver", "pep440"]
 OutputFormat = Literal["semver", "pep440", "zerv"]
@@ -298,6 +298,27 @@ def check(
             flags=[
                 ("--format", format),
                 ("-v", verbose),
+            ],
+        )
+    )
+
+
+def render(
+    version: str,
+    *,
+    input_format: InputFormat | None = None,
+    output_format: OutputFormat | None = None,
+    output_template: str | None = None,
+    output_prefix: str | None = None,
+) -> str:
+    return _run_zerv_command(
+        args=_extend_args(
+            args=["render", version],
+            flags=[
+                ("-f", input_format),
+                ("--output-format", output_format),
+                ("--output-template", output_template),
+                ("--output-prefix", output_prefix),
             ],
         )
     )

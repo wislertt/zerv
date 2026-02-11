@@ -199,7 +199,7 @@ mod tests {
         #[test]
         fn test_flow_args_default() {
             let args = FlowArgs::default();
-            assert_eq!(args.input.source, "git");
+            assert_eq!(args.input.source, Some("git".to_string()));
             assert_eq!(args.output.output_format, "semver");
             assert_eq!(args.hash_branch_len, 5);
             assert!(args.branch_config.pre_release_label.is_none());
@@ -213,7 +213,7 @@ mod tests {
         #[test]
         fn test_flow_args_validation_success() {
             let mut args = FlowArgs::default();
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
             assert!(args.schema.is_none()); // Should remain None after validation
         }
     }
@@ -225,7 +225,7 @@ mod tests {
         fn test_flow_args_with_custom_input_output() {
             let mut args = FlowArgs {
                 input: InputConfig {
-                    source: "git".to_string(),
+                    source: Some("git".to_string()),
                     input_format: "auto".to_string(),
                     directory: Some("/test/path".to_string()),
                 },
@@ -236,10 +236,10 @@ mod tests {
                 },
                 ..FlowArgs::default()
             };
-            assert_eq!(args.input.source, "git");
+            assert_eq!(args.input.source, Some("git".to_string()));
             assert_eq!(args.output.output_format, "zerv");
             assert_eq!(args.output.output_prefix, Some("v".to_string()));
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
 
         #[test]
@@ -252,7 +252,7 @@ mod tests {
             };
             assert!(args.schema.is_none());
             assert_eq!(args.schema_ron, Some(ron_schema.to_string()));
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
     }
 
@@ -280,7 +280,7 @@ mod tests {
             // Note: Our current validation only checks structural constraints, not value constraints
             // The clap argument parser would catch invalid values before they reach validate()
             // This test shows the validation passes but the values would be rejected by clap
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
     }
 
@@ -305,7 +305,7 @@ mod tests {
             };
 
             // Should validate successfully - branch rules and manual overrides can coexist
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
 
             // Manual overrides should be preserved
             assert_eq!(
