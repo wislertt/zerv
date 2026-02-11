@@ -44,9 +44,9 @@ pub source: String,
 
 ### Phase 1: Better `--source` Handling
 
-- [ ] 1.1 Add `NONE` source constant
-- [ ] 1.2 Change `InputConfig.source` to `Option<String>`
-- [ ] 1.3 Implement smart source default in `app.rs`
+- [x] 1.1 Add `NONE` source constant
+- [x] 1.2 Change `InputConfig.source` to `Option<String>`
+- [x] 1.3 Implement smart source default in `app.rs`
 - [ ] 1.4 Create `none_pipeline.rs` for version
 - [ ] 1.5 Wire up `none` source in version pipeline
 - [ ] 1.6 Create `none_pipeline.rs` for flow

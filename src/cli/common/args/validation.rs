@@ -62,7 +62,7 @@ mod tests {
 
     fn create_valid_input() -> InputConfig {
         InputConfig {
-            source: sources::GIT.to_string(),
+            source: Some(sources::GIT.to_string()),
             input_format: formats::AUTO.to_string(),
             directory: Some("/test".to_string()),
         }
@@ -88,7 +88,7 @@ mod tests {
 
         for source in sources_to_test {
             let input = InputConfig {
-                source: source.to_string(),
+                source: Some(source.to_string()),
                 input_format: formats::AUTO.to_string(),
                 directory: None,
             };
@@ -102,7 +102,7 @@ mod tests {
 
         for format in formats_to_test {
             let input = InputConfig {
-                source: sources::GIT.to_string(),
+                source: Some(sources::GIT.to_string()),
                 input_format: format.to_string(),
                 directory: None,
             };
@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn test_validate_input_with_directory() {
         let input = InputConfig {
-            source: sources::GIT.to_string(),
+            source: Some(sources::GIT.to_string()),
             input_format: formats::AUTO.to_string(),
             directory: Some("/workspace/project".to_string()),
         };

@@ -110,6 +110,7 @@ pub mod timestamp_patterns {
 pub mod sources {
     pub const GIT: &str = "git";
     pub const STDIN: &str = "stdin";
+    pub const NONE: &str = "none";
 }
 
 // Post distance calculation modes

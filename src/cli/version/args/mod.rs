@@ -60,7 +60,11 @@ pub struct VersionArgs {
 impl VersionArgs {
     /// Validate arguments and return early errors
     /// This provides early validation before VCS processing
-    pub fn validate(&mut self) -> Result<(), crate::error::ZervError> {
+    pub fn validate(&mut self, stdin_content: Option<&str>) -> Result<(), crate::error::ZervError> {
+        // Apply smart source default
+        self.input
+            .apply_smart_source_default(stdin_content.is_some());
+
         // Use shared validation for input/output
         CommonValidation::validate_io(&self.input, &self.output)?;
 

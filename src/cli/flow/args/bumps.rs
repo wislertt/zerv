@@ -101,7 +101,7 @@ mod tests {
         #[test]
         fn test_default_returns_alpha() {
             let mut args = FlowArgs::default();
-            args.validate(&mock_zerv()).unwrap(); // This sets the default pre_release_label
+            args.validate(&mock_zerv(), None).unwrap(); // This sets the default pre_release_label
             let expected = args.build_pre_release_bump_template("alpha");
             assert_eq!(args.bump_pre_release_label(), Some(Template::new(expected)));
         }

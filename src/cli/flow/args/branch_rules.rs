@@ -238,7 +238,7 @@ mod tests {
             };
 
             // Validation should succeed even with custom branch rules
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
     }
 }

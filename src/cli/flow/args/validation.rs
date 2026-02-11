@@ -8,7 +8,15 @@ use crate::utils::constants::pre_release_labels::ALPHA;
 use crate::version::zerv::core::Zerv;
 
 impl FlowArgs {
-    pub fn validate(&mut self, current_zerv: &Zerv) -> Result<(), ZervError> {
+    pub fn validate(
+        &mut self,
+        current_zerv: &Zerv,
+        stdin_content: Option<&str>,
+    ) -> Result<(), ZervError> {
+        // Apply smart source default
+        self.input
+            .apply_smart_source_default(stdin_content.is_some());
+
         // Use shared validation for input/output
         CommonValidation::validate_io(&self.input, &self.output)?;
 
@@ -142,7 +150,7 @@ mod tests {
         fn test_valid_pre_release_labels(#[case] label: &str) {
             let mut args = FlowArgs::default();
             args.branch_config.pre_release_label = Some(label.to_string());
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
 
         #[rstest]
@@ -154,7 +162,7 @@ mod tests {
                 hash_branch_len: length,
                 ..FlowArgs::default()
             };
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
 
         #[rstest]
@@ -163,7 +171,7 @@ mod tests {
         fn test_valid_post_modes(#[case] mode: &str) {
             let mut args = FlowArgs::default();
             args.branch_config.post_mode = Some(mode.to_string());
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
 
         #[rstest]
@@ -175,7 +183,7 @@ mod tests {
                 hash_branch_len: length,
                 ..FlowArgs::default()
             };
-            let result = args.validate(&mock_zerv());
+            let result = args.validate(&mock_zerv(), None);
             assert!(result.is_err());
             assert!(
                 result
@@ -193,7 +201,7 @@ mod tests {
         fn test_invalid_post_modes(#[case] mode: &str) {
             let mut args = FlowArgs::default();
             args.branch_config.post_mode = Some(mode.to_string());
-            let result = args.validate(&mock_zerv());
+            let result = args.validate(&mock_zerv(), None);
             assert!(result.is_err());
             assert!(
                 result
@@ -217,7 +225,7 @@ mod tests {
                 },
                 ..FlowArgs::default()
             };
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
     }
 
@@ -241,7 +249,7 @@ mod tests {
                 schema: Some(schema.to_string()),
                 ..FlowArgs::default()
             };
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
 
         #[rstest]
@@ -258,7 +266,7 @@ mod tests {
                 schema: Some(schema.to_string()),
                 ..FlowArgs::default()
             };
-            let result = args.validate(&mock_zerv());
+            let result = args.validate(&mock_zerv(), None);
             assert!(result.is_err());
             let error_msg = result.unwrap_err().to_string();
 
@@ -275,7 +283,7 @@ mod tests {
             assert!(args.schema.is_none());
 
             let mut args = args;
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
             assert!(args.schema.is_none()); // Should remain None
         }
 
@@ -292,7 +300,7 @@ mod tests {
             };
 
             // Should validate successfully - schema and manual overrides can coexist
-            assert!(args.validate(&mock_zerv()).is_ok());
+            assert!(args.validate(&mock_zerv(), None).is_ok());
         }
 
         mod overrides_validation {
@@ -314,7 +322,7 @@ mod tests {
                     },
                     ..FlowArgs::default()
                 };
-                assert!(args.validate(&mock_zerv()).is_ok());
+                assert!(args.validate(&mock_zerv(), None).is_ok());
             }
 
             #[test]
@@ -329,7 +337,7 @@ mod tests {
                     },
                     ..FlowArgs::default()
                 };
-                let result = args.validate(&mock_zerv());
+                let result = args.validate(&mock_zerv(), None);
                 assert!(result.is_err());
                 assert!(
                     result
@@ -351,7 +359,7 @@ mod tests {
                     },
                     ..FlowArgs::default()
                 };
-                let result = args.validate(&mock_zerv());
+                let result = args.validate(&mock_zerv(), None);
                 assert!(result.is_err());
                 assert!(
                     result
@@ -373,7 +381,7 @@ mod tests {
                     },
                     ..FlowArgs::default()
                 };
-                let result = args.validate(&mock_zerv());
+                let result = args.validate(&mock_zerv(), None);
                 assert!(result.is_err());
                 assert!(
                     result
@@ -395,7 +403,7 @@ mod tests {
                     },
                     ..FlowArgs::default()
                 };
-                let result = args.validate(&mock_zerv());
+                let result = args.validate(&mock_zerv(), None);
                 assert!(result.is_err());
                 assert!(
                     result
@@ -416,7 +424,7 @@ mod tests {
                     },
                     ..FlowArgs::default()
                 };
-                assert!(args.validate(&mock_zerv()).is_ok());
+                assert!(args.validate(&mock_zerv(), None).is_ok());
                 assert_eq!(
                     args.overrides.common.bumped_branch,
                     Some("custom-branch".to_string())
@@ -438,7 +446,7 @@ mod tests {
                     },
                     ..FlowArgs::default()
                 };
-                assert!(args.validate(&mock_zerv()).is_ok());
+                assert!(args.validate(&mock_zerv(), None).is_ok());
             }
         }
     }

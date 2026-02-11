@@ -11,7 +11,8 @@ use crate::utils::constants::{
 #[test]
 fn test_version_args_defaults() {
     let args = VersionArgs::try_parse_from(["version"]).unwrap();
-    assert_eq!(args.input.source, sources::GIT);
+    // source is None after parsing, smart default is applied in app.rs
+    assert_eq!(args.input.source, None);
     assert!(args.main.schema.is_none());
     assert!(args.main.schema_ron.is_none());
     assert_eq!(args.input.input_format, formats::AUTO);
@@ -125,7 +126,7 @@ fn test_version_args_dirty_flags() {
     assert!(args.overrides.common.no_dirty);
 
     // The conflict should be caught by early validation
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_err());
 }
 
@@ -152,7 +153,7 @@ fn test_dirty_override_helper() {
 #[case(&["version", "--distance", "5"])]
 fn test_validate_no_conflicts(#[case] args: &[&str]) {
     let mut args = VersionArgs::try_parse_from(args).unwrap();
-    assert!(args.validate().is_ok());
+    assert!(args.validate(None).is_ok());
 }
 
 use rstest::rstest;
@@ -166,7 +167,7 @@ use rstest::rstest;
 #[case(&["zerv", "--no-bump-context", "--dirty"], &["--no-bump-context", "--dirty"])]
 fn test_validate_conflicting_options(#[case] args: &[&str], #[case] expected_flags: &[&str]) {
     let mut args = VersionArgs::try_parse_from(args).unwrap();
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_err());
 
     let error = result.unwrap_err();
@@ -195,7 +196,7 @@ fn test_validate_clean_with_non_conflicting_options() {
         "abc123",
     ])
     .unwrap();
-    assert!(args.validate().is_ok());
+    assert!(args.validate(None).is_ok());
 }
 
 #[test]
@@ -210,7 +211,7 @@ fn test_validate_multiple_conflicts() {
         "--no-dirty",
     ])
     .unwrap();
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_err());
 
     let error = result.unwrap_err();
@@ -225,7 +226,7 @@ fn test_validate_multiple_conflicts() {
 fn test_validate_error_message_quality() {
     // Test that error messages are clear and actionable
     let mut args = VersionArgs::try_parse_from(["version", "--dirty", "--no-dirty"]).unwrap();
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_err());
 
     let error_msg = result.unwrap_err().to_string();
@@ -244,7 +245,7 @@ fn test_context_control_all_scenarios() {
     let mut args = VersionArgs::try_parse_from(["version"]).unwrap();
     assert!(!args.bumps.bump_context);
     assert!(!args.bumps.no_bump_context);
-    assert!(args.validate().is_ok());
+    assert!(args.validate(None).is_ok());
     assert!(args.bumps.bump_context);
     assert!(!args.bumps.no_bump_context);
 
@@ -252,7 +253,7 @@ fn test_context_control_all_scenarios() {
     let mut args = VersionArgs::try_parse_from(["version", "--bump-context"]).unwrap();
     assert!(args.bumps.bump_context);
     assert!(!args.bumps.no_bump_context);
-    assert!(args.validate().is_ok());
+    assert!(args.validate(None).is_ok());
     assert!(args.bumps.bump_context);
     assert!(!args.bumps.no_bump_context);
 
@@ -260,7 +261,7 @@ fn test_context_control_all_scenarios() {
     let mut args = VersionArgs::try_parse_from(["version", "--no-bump-context"]).unwrap();
     assert!(!args.bumps.bump_context);
     assert!(args.bumps.no_bump_context);
-    assert!(args.validate().is_ok());
+    assert!(args.validate(None).is_ok());
     assert!(!args.bumps.bump_context);
     assert!(args.bumps.no_bump_context);
 
@@ -269,7 +270,7 @@ fn test_context_control_all_scenarios() {
         VersionArgs::try_parse_from(["version", "--bump-context", "--no-bump-context"]).unwrap();
     assert!(args.bumps.bump_context);
     assert!(args.bumps.no_bump_context);
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(
@@ -283,7 +284,7 @@ fn test_context_control_all_scenarios() {
 #[test]
 fn test_version_args_fixture() {
     let args = VersionArgsFixture::new().build();
-    assert_eq!(args.input.source, sources::GIT);
+    assert_eq!(args.input.source, Some(sources::GIT.to_string()));
     assert_eq!(args.output.output_format, formats::SEMVER);
 
     let args_with_overrides = VersionArgsFixture::new()
@@ -318,7 +319,7 @@ fn test_validate_pre_release_flag_conflicts() {
         .with_pre_release_label("alpha")
         .with_bump_pre_release_label("beta")
         .build();
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_err());
 
     let error = result.unwrap_err();
@@ -342,7 +343,7 @@ fn test_validate_pre_release_flags_no_conflict() {
         Some(Template::new("alpha".to_string()))
     );
     assert_eq!(args.bumps.bump_pre_release_label, None);
-    assert!(args.validate().is_ok());
+    assert!(args.validate(None).is_ok());
 
     let mut args = VersionArgsFixture::new()
         .with_bump_pre_release_label("beta")
@@ -352,5 +353,5 @@ fn test_validate_pre_release_flags_no_conflict() {
         args.bumps.bump_pre_release_label,
         Some(Template::new("beta".to_string()))
     );
-    assert!(args.validate().is_ok());
+    assert!(args.validate(None).is_ok());
 }

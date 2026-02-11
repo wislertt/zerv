@@ -28,7 +28,7 @@ fn assert_invalid_input_rejected(invalid_input: &str, section: &str, expected_ar
         _ => panic!("Unknown section: {section}"),
     };
 
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(
         result.is_err(),
         "Should reject '{invalid_input}' in {section} section"
@@ -82,7 +82,7 @@ fn test_validate_schema_bump_args_invalid_format() {
         },
         ..Default::default()
     };
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, crate::error::ZervError::InvalidArgument(_)));
@@ -105,7 +105,7 @@ fn test_validate_schema_bump_args_valid_formats() {
         },
         ..Default::default()
     };
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_ok());
 }
 
@@ -121,7 +121,7 @@ fn test_validate_schema_bump_args_empty() {
         },
         ..Default::default()
     };
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_ok());
     assert!(args.bumps.bump_core.is_empty());
     assert!(args.bumps.bump_extra_core.is_empty());
@@ -140,7 +140,7 @@ fn test_validate_schema_bump_args_valid() {
         },
         ..Default::default()
     };
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_ok());
 }
 
@@ -154,6 +154,6 @@ fn test_validate_schema_bump_args_invalid_odd_count() {
         },
         ..Default::default()
     };
-    let result = args.validate();
+    let result = args.validate(None);
     assert!(result.is_ok());
 }
