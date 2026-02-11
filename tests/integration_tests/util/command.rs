@@ -226,6 +226,26 @@ impl TestCommand {
             .trim()
             .to_string()
     }
+
+    /// Convenience method: create command and return stdout
+    pub fn run(args: &str) -> String {
+        Self::new()
+            .args_from_str(args)
+            .assert_success()
+            .stdout()
+            .trim()
+            .to_string()
+    }
+
+    /// Convenience method: create command and expect failure, return stderr
+    pub fn run_expect_fail(args: &str) -> String {
+        Self::new()
+            .args_from_str(args)
+            .assert_failure()
+            .stderr()
+            .trim()
+            .to_string()
+    }
 }
 
 #[cfg(test)]

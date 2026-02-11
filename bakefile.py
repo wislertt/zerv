@@ -56,7 +56,7 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
                 setattr(self, key, value)
 
     @command()
-    def rust_test(
+    def test_rust(
         self,
         *,
         zerv_test_native_git: bool | None = None,
@@ -91,7 +91,7 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
         )
 
     @command()
-    def python_test(self, build: bool = False):
+    def test_python(self, build: bool = False):
         if build:
             self.ctx.run("maturin develop")
         tests_path = "tests/python"
@@ -111,8 +111,8 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
             zerv_force_rust_log_off=zerv_force_rust_log_off,
         )
 
-        self.rust_test()
-        self.python_test(build=True)
+        self.test_rust()
+        self.test_python(build=True)
 
     @command()
     def gen_docs(self):
