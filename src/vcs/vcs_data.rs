@@ -9,7 +9,6 @@ pub struct VcsData {
     pub commit_hash_prefix: String,
     pub commit_timestamp: i64,
     pub current_branch: Option<String>,
-    pub is_shallow: bool,
     pub is_dirty: bool,
     pub distance: u32,
 }

@@ -1,8 +1,10 @@
+import shutil
 import subprocess
-from contextlib import contextmanager
+from pathlib import Path
 from typing import Annotated, get_args
 
 import typer
+import zerv
 from bake import command, console
 from bakelib import PythonLibSpace as _PythonLibSpace
 from bakelib import RustLibSpace
@@ -183,28 +185,37 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
     def _is_auth_failure(self, result: subprocess.CompletedProcess[str]) -> bool:
         return self._publish_impl._is_auth_failure(self, result)
 
-    @contextmanager
-    def _version_bump_context(self, version: str | None):
-        # update both Cargo.toml and pyproject.toml
-        with (
-            RustLibSpace._version_bump_context(self, version),
-            PythonLibSpace._version_bump_context(self, version),
-        ):
-            yield
+    @property
+    def _version(self) -> str:
+        pyproject_raw = self._get_version_from_pyproject_toml()
+        cargo_raw = self._get_version_from_cargo_toml()
+
+        pyproject_semver = zerv.render(version=pyproject_raw, output_format="semver")
+        cargo_semver = zerv.render(version=cargo_raw, output_format="semver")
+
+        if pyproject_semver != cargo_semver:
+            raise ValueError(
+                f"Version mismatch: pyproject.toml={pyproject_raw} ({pyproject_semver}), "
+                f"Cargo.toml={cargo_raw} ({cargo_semver})"
+            )
+
+        return cargo_raw
+
+    @_version.setter
+    def _version(self, value: str) -> None:
+        RustLibSpace._version.fset(self, value)
+        PythonLibSpace._version.fset(self, value)
 
     def _pre_publish_cleanup(self):
-        import shutil
-        from pathlib import Path
+        symlink_zerv_to_venv_bin()
 
         RustLibSpace._pre_publish_cleanup(self)
         PythonLibSpace._pre_publish_cleanup(self)
 
         # maturin
-        python_dir = Path("python")
-        if python_dir.exists():
-            for item in python_dir.iterdir():
-                if item.is_dir() and item.name.endswith(".data"):
-                    shutil.rmtree(item)
+        for p in Path("python").glob("*.data"):
+            if p.is_dir():
+                shutil.rmtree(p)
 
 
 bakebook = MyBakebook()

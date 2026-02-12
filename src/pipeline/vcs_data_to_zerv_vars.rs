@@ -139,7 +139,6 @@ mod tests {
             commit_timestamp: 1703123456,
             tag_timestamp: Some(1703000000),
             is_dirty: false,
-            is_shallow: false,
         };
 
         let vars =
@@ -173,7 +172,6 @@ mod tests {
             commit_timestamp: 1703123456,
             tag_timestamp: Some(1703000000),
             is_dirty: false,
-            is_shallow: false,
         };
 
         let vars =
