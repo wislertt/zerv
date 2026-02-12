@@ -207,6 +207,7 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
         PythonLibSpace._version.fset(self, value)
 
     def _pre_publish_cleanup(self):
+        symlink_zerv_to_venv_bin()
 
         RustLibSpace._pre_publish_cleanup(self)
         PythonLibSpace._pre_publish_cleanup(self)

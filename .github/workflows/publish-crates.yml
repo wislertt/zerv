@@ -59,24 +59,6 @@ jobs:
               with:
                   toolchain: stable
 
-            - name: debug-find-zerv
-              run: |
-                  echo "=== Searching for zerv binary ==="
-                  echo "In workspace:"
-                  find "${{ github.workspace }}" -maxdepth 4 -name "zerv*" -type f 2>/dev/null || echo "  Not found"
-                  echo ""
-                  echo "In target directories:"
-                  find "${{ github.workspace }}/target" -name "zerv*" 2>/dev/null || echo "  Not found"
-                  echo ""
-                  echo "In .venv/bin:"
-                  find "${{ github.workspace }}/.venv/bin" -name "zerv*" 2>/dev/null || echo "  Not found"
-                  echo ""
-                  echo "In uv tool bin:"
-                  ls -la ~/.local/bin/ 2>/dev/null | grep zerv || echo "  Not found"
-                  echo ""
-                  echo "PATH:"
-                  echo "$PATH" | tr ':' '\n'
-
             - name: publish
               run: |
                   BAKE_PUBLISH_TOKEN=${{ secrets.CRATES_API_TOKEN }} \
