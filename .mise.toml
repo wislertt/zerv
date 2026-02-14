@@ -5,6 +5,7 @@ pipx.uvx = true
 "aqua:cargo-bins/cargo-binstall" = "latest"
 "aqua:rust-lang/rustup" = "latest"
 bun = "latest"
+"cargo:cargo-audit" = "latest"
 "cargo:cargo-tarpaulin" = "latest"
 "pipx:bakefile" = "latest"
 "pipx:toml-sort" = "latest"
