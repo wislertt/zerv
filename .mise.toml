@@ -1,7 +1,9 @@
 [settings]
 pipx.uvx = true
+jobs = 1 # serialize installs to avoid rustup race conditions
 
 [tools]
+"aqua:rust-lang/rustup" = "latest"
 bun = "latest"
 "cargo:cargo-audit" = "latest" # add this to bakefile // cargo-audit
 "cargo:cargo-tarpaulin" = "latest" # add this to bakefile // cargo-tarpaulin
