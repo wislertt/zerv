@@ -50,11 +50,6 @@ jobs:
             - name: checkout-repository
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: setup-rust
-              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
-              with:
-                  toolchain: stable
-
             - name: restore-cache-cargo
               id: restore-cache-cargo
               env:
@@ -70,10 +65,9 @@ jobs:
             - name: install-mise
               uses: jdx/mise-action@6d1e696aa24c1aa1bcc1adea0212707c71ab78a8 # v3.6.1
               with:
-                  install: false
-
-            - name: install-cargo-audit
-              run: mise use -g cargo:cargo-audit && mise install
+                  mise_toml: |
+                      [tools]
+                      "cargo:cargo-audit" = "latest"
 
             - name: run-cargo-audit
               run: |
