@@ -51,7 +51,6 @@ jobs:
             CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     pre-commit:
-        needs: warm-mise-cache
         uses: ./.github/workflows/pre-commit.yml
 
     build-bin:
