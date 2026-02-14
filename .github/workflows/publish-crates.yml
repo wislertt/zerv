@@ -43,6 +43,12 @@ jobs:
                       ${{ env.CACHE_KEY_PREFIX }}-${{ github.run_id }}-
                       ${{ env.CACHE_KEY_PREFIX }}-
 
+            - name: install-dependencies
+              shell: bash
+              run: |
+                  uv sync --all-extras --all-groups --frozen
+                  echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
+
             - name: publish
               run: |
                   BAKE_PUBLISH_TOKEN=${{ secrets.CRATES_API_TOKEN }} \
