@@ -1,6 +1,5 @@
 [settings]
 pipx.uvx = true
-jobs = 1 # serialize installs to avoid rustup race conditions
 
 [tools]
 "aqua:rust-lang/rustup" = "latest"
@@ -11,5 +10,4 @@ bun = "latest"
 "pipx:toml-sort" = "latest"
 "pipx:zerv-version" = "latest"
 pre-commit = "latest"
-rust = "latest" # "aqua:rust-lang/rustup" = "latest"
 uv = "latest"
