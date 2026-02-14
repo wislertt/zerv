@@ -13,12 +13,6 @@ permissions:
 
 jobs:
     # ====================================================
-    # Warm Mise Cache
-    # ====================================================
-    warm-mise-cache:
-        uses: ./.github/workflows/warm-mise-cache.yml
-
-    # ====================================================
     # Versioning and Release
     # ====================================================
     semantic-release:
@@ -48,21 +42,19 @@ jobs:
     # Test and Lint
     # ====================================================
     test:
-        needs: warm-mise-cache
         uses: ./.github/workflows/test.yml
         secrets:
             SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     pre-commit:
-        needs: warm-mise-cache
         uses: ./.github/workflows/pre-commit.yml
 
     # ====================================================
     # Deployment without environment
     # ====================================================
     release-bin:
-        needs: [warm-mise-cache, zerv-versioning]
+        needs: [zerv-versioning]
         uses: ./.github/workflows/build-bin.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
@@ -70,7 +62,7 @@ jobs:
             upload_to_release: true
 
     publish-test-pypi:
-        needs: [warm-mise-cache, zerv-versioning]
+        needs: [zerv-versioning]
         uses: ./.github/workflows/publish-pypi.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
@@ -79,7 +71,7 @@ jobs:
             PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
     publish-pypi:
-        needs: [warm-mise-cache, zerv-versioning]
+        needs: [zerv-versioning]
         uses: ./.github/workflows/publish-pypi.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
@@ -88,7 +80,7 @@ jobs:
             PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
     publish-crates:
-        needs: [warm-mise-cache, zerv-versioning, release-bin]
+        needs: [zerv-versioning, release-bin]
         uses: ./.github/workflows/publish-crates.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
