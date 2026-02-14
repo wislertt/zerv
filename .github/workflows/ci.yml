@@ -37,17 +37,17 @@ jobs:
     # ====================================================
     # Test and Lint
     # ====================================================
-    # test:
-    #     uses: ./.github/workflows/test.yml
-    #     secrets:
-    #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    #         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    test:
+        uses: ./.github/workflows/test.yml
+        secrets:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
 
-    # build-bin:
-    #     uses: ./.github/workflows/build-bin.yml
+    build-bin:
+        uses: ./.github/workflows/build-bin.yml
 
     # ====================================================
     # Deployment
