@@ -2,6 +2,7 @@
 pipx.uvx = true
 
 [tools]
+"aqua:rust-lang/rustup" = "latest"
 bun = "latest"
 "cargo:cargo-audit" = "latest" # add this to bakefile // cargo-audit
 "cargo:cargo-tarpaulin" = "latest" # add this to bakefile // cargo-tarpaulin
@@ -9,5 +10,6 @@ bun = "latest"
 "pipx:toml-sort" = "latest"
 "pipx:zerv-version" = "latest"
 pre-commit = "latest"
-rust = "latest" # add this to bakefile // rustup, cargo, rustc
 uv = "latest"
+
+# mise upgrade
