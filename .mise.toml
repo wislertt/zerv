@@ -2,7 +2,6 @@
 pipx.uvx = true
 
 [tools]
-"aqua:rust-lang/rustup" = "latest"
 bun = "latest"
 "cargo:cargo-audit" = "latest" # add this to bakefile // cargo-audit
 "cargo:cargo-tarpaulin" = "latest" # add this to bakefile // cargo-tarpaulin
@@ -10,5 +9,5 @@ bun = "latest"
 "pipx:toml-sort" = "latest"
 "pipx:zerv-version" = "latest"
 pre-commit = "latest"
-# rust = {version = "nightly", components = "rustfmt,clippy"}
+rust = "latest" # "aqua:rust-lang/rustup" = "latest"
 uv = "latest"
