@@ -10,6 +10,5 @@ bun = "latest"
 "pipx:toml-sort" = "latest"
 "pipx:zerv-version" = "latest"
 pre-commit = "latest"
-rust = "nightly"
 uv = "latest"
-"rust" = { version = "nightly", components = "rustfmt,clippy" }
+rust = { version = "nightly", components = "rustfmt,clippy" }
