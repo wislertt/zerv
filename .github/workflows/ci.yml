@@ -6,6 +6,12 @@ on:
 
 jobs:
     # ====================================================
+    # Warm Mise Cache
+    # ====================================================
+    warm-mise-cache:
+        uses: ./.github/workflows/warm-mise-cache.yml
+
+    # ====================================================
     # Versioning and Release
     # ====================================================
     check-pre-release:
@@ -38,15 +44,18 @@ jobs:
     # Test and Lint
     # ====================================================
     test:
+        needs: warm-mise-cache
         uses: ./.github/workflows/test.yml
         secrets:
             SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     pre-commit:
+        needs: warm-mise-cache
         uses: ./.github/workflows/pre-commit.yml
 
     build-bin:
+        needs: warm-mise-cache
         uses: ./.github/workflows/build-bin.yml
 
     # ====================================================
@@ -54,7 +63,7 @@ jobs:
     # ====================================================
     publish-test-pypi:
         if: needs.check-pre-release.outputs.has_label == 'true'
-        needs: [zerv-versioning, check-pre-release]
+        needs: [warm-mise-cache, zerv-versioning, check-pre-release]
         uses: ./.github/workflows/publish-pypi.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
@@ -64,7 +73,7 @@ jobs:
 
     publish-crates-dry-run:
         if: needs.check-pre-release.outputs.has_label == 'true'
-        needs: [zerv-versioning, check-pre-release]
+        needs: [warm-mise-cache, zerv-versioning, check-pre-release]
         uses: ./.github/workflows/publish-crates.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
