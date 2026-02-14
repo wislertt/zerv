@@ -60,10 +60,8 @@ jobs:
             - name: checkout-repository
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: setup-rust-toolchain
-              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
-              with:
-                  toolchain: stable
+            - name: setup-mise
+              uses: jdx/mise-action@6d1e696aa24c1aa1bcc1adea0212707c71ab78a8 # v3.6.1
 
             - name: install-target
               shell: bash
@@ -80,13 +78,7 @@ jobs:
               if: inputs.version != ''
               shell: bash
               run: |
-                  VERSION="${{ inputs.version }}"
-                  echo "Updating version to $VERSION"
-                  if [[ "$RUNNER_OS" == "macOS" ]]; then
-                      sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
-                  else
-                      sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
-                  fi
+                  bake version "${{ inputs.version }}"
 
             - name: build-binary
               run: cargo build --release --target ${{ matrix.target }}

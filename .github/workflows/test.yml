@@ -35,10 +35,11 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - name: setup-rust-toolchain
-              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
-              with:
-                  toolchain: stable
+            - name: set-python-version
+              run: echo "${{ matrix.python-version }}" > .python-version
+
+            - name: setup-mise
+              uses: jdx/mise-action@6d1e696aa24c1aa1bcc1adea0212707c71ab78a8 # v3.6.1
 
             - name: restore-cache-cargo
               id: restore-cache-cargo
@@ -52,46 +53,16 @@ jobs:
                       ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-
                       ${{ env.CACHE_KEY_PREFIX }}-
 
-            - name: install-cargo-tarpaulin
-              shell: bash
-              run: |
-                  # Get currently installed version (if any)
-                  if [ -f "$HOME/.cargo/bin/cargo-tarpaulin" ]; then
-                      CURRENT_VERSION=$("$HOME/.cargo/bin/cargo-tarpaulin" --version 2>/dev/null | awk '{print $2}')
-                  else
-                      CURRENT_VERSION=""
-                  fi
-
-                  # Get latest version from crates.io
-                  LATEST_VERSION=$(cargo search cargo-tarpaulin --limit 1 | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
-
-                  echo "Current cargo-tarpaulin: ${CURRENT_VERSION:-none}"
-                  echo "Latest cargo-tarpaulin : $LATEST_VERSION"
-
-                  if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
-                      echo "Installing cargo-tarpaulin ($LATEST_VERSION)"
-                      cargo install cargo-tarpaulin --version "$LATEST_VERSION" --force
-                  else
-                      echo "cargo-tarpaulin is already up to date"
-                  fi
-
-                  "$HOME/.cargo/bin/cargo-tarpaulin" --version
-
-            - name: setup-uv
-              uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
-              with:
-                  version: "latest"
-                  python-version: ${{ env.PYTHON_VERSION }}
-                  enable-cache: true
-                  cache-python: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
-
             - name: cache-venv
               env:
                   CACHE_KEY_PREFIX: venv-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}
                   CACHE_KEY_DEPS: ${{ hashFiles('uv.lock') }}
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
-                  path: ${{ github.workspace }}/.venv
+                  path: |
+                      ~/.local/share/uv
+                      ~/.cache/uv
+                      ${{ github.workspace }}/.venv
                   key: ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
                       ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-
@@ -164,15 +135,11 @@ jobs:
                       ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-
                       ${{ env.CACHE_KEY_PREFIX }}-
 
-            - name: setup-uv
-              uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
-              with:
-                  version: "latest"
-                  python-version: ${{ matrix.python_version }}
-                  enable-cache: true
-                  # Disable Python 3.12 caching on Ubuntu due to bug: UV_PYTHON_INSTALL_DIR does not exist during post-job cleanup
-                  # All other Python versions (3.10, 3.11, 3.13, 3.14) cache successfully on Ubuntu
-                  cache-python: ${{ matrix.python_version != '3.12' && matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+            - name: set-python-version
+              run: echo "${{ matrix.python-version }}" > .python-version
+
+            - name: setup-mise
+              uses: jdx/mise-action@6d1e696aa24c1aa1bcc1adea0212707c71ab78a8 # v3.6.1
 
             - name: cache-venv
               env:
@@ -180,7 +147,10 @@ jobs:
                   CACHE_KEY_DEPS: ${{ hashFiles('uv.lock') }}
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
               with:
-                  path: ${{ github.workspace }}/.venv
+                  path: |
+                      ~/.local/share/uv
+                      ~/.cache/uv
+                      ${{ github.workspace }}/.venv
                   key: ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-${{ github.run_attempt }}
                   restore-keys: |
                       ${{ env.CACHE_KEY_PREFIX }}-${{ env.CACHE_KEY_DEPS }}-${{ github.run_id }}-

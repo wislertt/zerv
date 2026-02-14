@@ -55,7 +55,7 @@ jobs:
     # ====================================================
     release-bin:
         needs: zerv-versioning
-        uses: ./.github/workflows/shared-build-bin.yml
+        uses: ./.github/workflows/build-bin.yml
         with:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
             tag: ${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver }}
