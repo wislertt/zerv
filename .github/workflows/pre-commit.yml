@@ -10,25 +10,13 @@ jobs:
             - name: checkout
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            # - name: restore-mise-config
-            #   run: |
-            #       rm -f .mise.toml
-            #       if [ -f .mise.toml.bak ]; then
-            #         mv .mise.toml.bak .mise.toml
-            #       fi
-            #       cat .mise.toml
-
             - name: setup-mise
               uses: jdx/mise-action@6d1e696aa24c1aa1bcc1adea0212707c71ab78a8 # v3.6.1
-              # with:
-              #     mise_toml: |
-              #         [tools]
-              #         "rust" = { version = "nightly", components = "rustfmt,clippy" }
               env:
                   MISE_JOBS: 1
 
             - name: setup-rust-toolchain
-              uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 # stable
+              uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9 # stable
               with:
                   toolchain: nightly
                   components: rustfmt, clippy
