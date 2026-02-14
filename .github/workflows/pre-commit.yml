@@ -16,6 +16,8 @@ jobs:
                   mise_toml: |
                       [tools]
                       "rust" = { version = "nightly", components = "rustfmt,clippy" }
+              env:
+                  MISE_JOBS: 1
 
             - name: cache-deps
               env:
