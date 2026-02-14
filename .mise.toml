@@ -4,7 +4,8 @@ pipx.uvx = true
 [tools]
 "aqua:rust-lang/rustup" = "latest"
 bun = "latest"
-"cargo:cargo-tarpaulin" = "latest" # add this to bakefile
+"cargo:cargo-audit" = "latest" # add this to bakefile // cargo-audit
+"cargo:cargo-tarpaulin" = "latest" # add this to bakefile // cargo-tarpaulin
 "pipx:bakefile" = "latest"
 "pipx:toml-sort" = "latest"
 "pipx:zerv-version" = "latest"
