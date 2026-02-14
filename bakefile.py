@@ -103,7 +103,8 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
     ):
         if build:
             self.ctx.run("maturin develop")
-            symlink_zerv_to_venv_bin()
+            if not self.ctx.dry_run:
+                symlink_zerv_to_venv_bin()
         tests_path = "tests/python"
         coverage_path = "python/zerv"
         self._test(tests_paths=tests_path, coverage_path=coverage_path)
@@ -187,8 +188,8 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
 
     @property
     def _version(self) -> str:
-        pyproject_raw = self._get_version_from_pyproject_toml()
-        cargo_raw = self._get_version_from_cargo_toml()
+        cargo_raw = RustLibSpace._version.fget(self)
+        pyproject_raw = PythonLibSpace._version.fget(self)
 
         pyproject_semver = zerv.render(version=pyproject_raw, output_format="semver")
         cargo_semver = zerv.render(version=cargo_raw, output_format="semver")
@@ -206,11 +207,14 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
         RustLibSpace._version.fset(self, value)
         PythonLibSpace._version.fset(self, value)
 
-    def _pre_publish_cleanup(self):
-        symlink_zerv_to_venv_bin()
+    def _pre_publish_setup(self):
+        # zerv uses itself for versioning in _version_bump_context, so build and symlink it first
+        self.ctx.run("maturin develop")
+        if not self.ctx.dry_run:
+            symlink_zerv_to_venv_bin()
 
-        RustLibSpace._pre_publish_cleanup(self)
-        PythonLibSpace._pre_publish_cleanup(self)
+        RustLibSpace._pre_publish_setup(self)
+        PythonLibSpace._pre_publish_setup(self)
 
         # maturin
         for p in Path("python").glob("*.data"):
