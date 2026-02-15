@@ -63,6 +63,11 @@ jobs:
             - name: setup-mise
               uses: jdx/mise-action@6d1e696aa24c1aa1bcc1adea0212707c71ab78a8 # v3.6.1
 
+            - name: verify-rust-toolchain
+              # TODO: Investigate if this step fixes the intermittent Windows toolchain race condition.
+              # If not effective, remove this step.
+              run: rustup show && cargo --version
+
             - name: install-target
               shell: bash
               run: rustup target add ${{ matrix.target }}
