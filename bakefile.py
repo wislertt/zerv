@@ -49,7 +49,7 @@ class PythonLibSpace(_PythonLibSpace):
 
         # If file already exists with different hash, treat as success
         if self._is_file_exists_error(result):
-            console.echo("File already exists on PyPI (different hash), skipping")
+            console.warning("File already exists on PyPI (different hash), skipping")
             result.returncode = 0
             return PublishResult(result=result, is_dry_run=is_dry_run, is_auth_failed=False)
 
