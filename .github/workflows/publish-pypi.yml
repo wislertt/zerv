@@ -49,14 +49,14 @@ jobs:
               uses: jdx/mise-action@6d1e696aa24c1aa1bcc1adea0212707c71ab78a8 # v3.6.1
 
             - name: verify-rust-toolchain
-              # TODO: Investigate if this step fixes the intermittent Windows toolchain race condition.
-              # Ref: https://github.com/rust-lang/rustup/issues/3104
-              # If not effective, remove this step.
+              # Workaround for Windows rustup bug: https://github.com/rust-lang/rustup/issues/3104
               shell: bash
               run: |
-                  TOOLCHAIN=$(rustup show active-toolchain | head -1 | cut -d' ' -f1)
-                  rustup toolchain uninstall "$TOOLCHAIN" || true
-                  rustup toolchain install "$TOOLCHAIN" --no-self-update
+                  if ! cargo --version &>/dev/null; then
+                    TOOLCHAIN=$(rustup show active-toolchain | head -1 | cut -d' ' -f1)
+                    rustup toolchain uninstall "$TOOLCHAIN" || true
+                    rustup toolchain install "$TOOLCHAIN" --no-self-update
+                  fi
                   cargo --version
 
             - name: cache-publish
