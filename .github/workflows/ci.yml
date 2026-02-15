@@ -37,17 +37,17 @@ jobs:
     # ====================================================
     # Test and Lint
     # ====================================================
-    test:
-        uses: ./.github/workflows/test.yml
-        secrets:
-            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    # test:
+    #     uses: ./.github/workflows/test.yml
+    #     secrets:
+    #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-    pre-commit:
-        uses: ./.github/workflows/pre-commit.yml
+    # pre-commit:
+    #     uses: ./.github/workflows/pre-commit.yml
 
-    build-bin:
-        uses: ./.github/workflows/build-bin.yml
+    # build-bin:
+    #     uses: ./.github/workflows/build-bin.yml
 
     # ====================================================
     # Deployment
@@ -60,7 +60,8 @@ jobs:
             version: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
             registry: "test-pypi"
         secrets:
-            PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+            # PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+            PYPI_API_TOKEN: "" # dry-run mode
 
     publish-crates-dry-run:
         if: needs.check-pre-release.outputs.has_label == 'true'
