@@ -43,10 +43,12 @@ jobs:
 
             - name: verify-rust-toolchain
               # TODO: Investigate if this step fixes the intermittent Windows toolchain race condition.
+              # Ref: https://github.com/rust-lang/rustup/issues/3104
               # If not effective, remove this step.
               shell: bash
               run: |
                   TOOLCHAIN=$(rustup show active-toolchain | head -1 | cut -d' ' -f1)
+                  rustup toolchain uninstall "$TOOLCHAIN" || true
                   rustup toolchain install "$TOOLCHAIN" --no-self-update
                   cargo --version
 
@@ -147,10 +149,12 @@ jobs:
 
             - name: verify-rust-toolchain
               # TODO: Investigate if this step fixes the intermittent Windows toolchain race condition.
+              # Ref: https://github.com/rust-lang/rustup/issues/3104
               # If not effective, remove this step.
               shell: bash
               run: |
                   TOOLCHAIN=$(rustup show active-toolchain | head -1 | cut -d' ' -f1)
+                  rustup toolchain uninstall "$TOOLCHAIN" || true
                   rustup toolchain install "$TOOLCHAIN" --no-self-update
                   cargo --version
 
