@@ -10,34 +10,40 @@ get_latest_release() {
         sed -E 's/.*"([^"]+)".*/\1/'
 }
 
-detect_platform() {
-    local platform
-    case "$(uname -s)" in
-        Linux*)     platform="linux" ;;
-        Darwin*)    platform="macos" ;;
-        CYGWIN*|MINGW*|MSYS*) platform="windows" ;;
-        *)          echo "Unsupported platform: $(uname -s)" >&2; exit 1 ;;
-    esac
-    echo "$platform"
-}
+detect_target() {
+    local platform=$(uname -s)
+    local arch=$(uname -m)
 
-detect_arch() {
-    local arch
-    case "$(uname -m)" in
-        x86_64|amd64) arch="x86_64" ;;
-        aarch64|arm64) arch="arm64" ;;
-        *)          echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+    case "$platform" in
+        Linux*)
+            case "$arch" in
+                x86_64|amd64) echo "x86_64-unknown-linux-gnu" ;;
+                aarch64|arm64) echo "aarch64-unknown-linux-gnu" ;;
+                *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
+            esac ;;
+        Darwin*)
+            case "$arch" in
+                x86_64|amd64) echo "x86_64-apple-darwin" ;;
+                aarch64|arm64) echo "aarch64-apple-darwin" ;;
+                *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
+            esac ;;
+        CYGWIN*|MINGW*|MSYS*)
+            case "$arch" in
+                x86_64|amd64) echo "x86_64-pc-windows-msvc" ;;
+                aarch64|arm64) echo "aarch64-pc-windows-msvc" ;;
+                *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
+            esac ;;
+        *)
+            echo "Unsupported platform: $platform" >&2; exit 1 ;;
     esac
-    echo "$arch"
 }
 
 main() {
-    local platform=$(detect_platform)
-    local arch=$(detect_arch)
+    local target=$(detect_target)
     local version=${1:-${ZERV_VERSION:-$(get_latest_release)}}
-    local asset_name="${BINARY_NAME}-${platform}-${arch}"
+    local asset_name="${BINARY_NAME}-${target}"
 
-    if [ "$platform" = "windows" ]; then
+    if [[ "$target" == *"-windows-"* ]]; then
         asset_name="${asset_name}.exe"
     fi
 
@@ -45,7 +51,7 @@ main() {
     local install_dir="$HOME/.local/bin"
     local binary_path="$install_dir/$BINARY_NAME"
 
-    echo "Installing $BINARY_NAME $version for $platform..."
+    echo "Installing $BINARY_NAME $version for $target..."
     echo "Download URL: $download_url"
 
     mkdir -p "$install_dir"
