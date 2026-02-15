@@ -26,37 +26,6 @@ class PythonLibSpace(_PythonLibSpace):
 
         self.ctx.run(" ".join(cmd))
 
-    def _is_file_exists_error(self, result: subprocess.CompletedProcess[str]) -> bool:
-        """Check if uv publish failed because file already exists with different hash."""
-        return result.returncode != 0 and "Local file and index file do not match" in result.stderr
-
-    def _publish_with_token(self, token: str | None, registry: str) -> PublishResult:
-        pypi_registry = self._validate_registry(registry)
-        index_flag = f"--index {pypi_registry} " if pypi_registry == "test-pypi" else ""
-        dry_run_flag = "" if token is not None else "--dry-run "
-        is_dry_run = token is None
-
-        env: dict[str, str] = {
-            "UV_PUBLISH_TOKEN": token if token is not None else self._dummy_publish_token
-        }
-
-        result = self.ctx.run(
-            f"uv publish {dry_run_flag}{index_flag}",
-            stream=True,
-            env=env,
-            check=False,
-        )
-
-        # If file already exists with different hash, treat as success
-        if self._is_file_exists_error(result):
-            console.warning("File already exists on PyPI (different hash), skipping")
-            result.returncode = 0
-            return PublishResult(result=result, is_dry_run=is_dry_run, is_auth_failed=False)
-
-        return PublishResult(
-            result=result, is_dry_run=is_dry_run, is_auth_failed=self._is_auth_failure(result)
-        )
-
 
 class MyBakebook(RustLibSpace, PythonLibSpace):
     zerv_test_native_git: bool = False

@@ -1,4 +1,5 @@
 [settings]
+cargo.binstall = true
 pipx.uvx = true
 
 [tools]
