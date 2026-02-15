@@ -44,7 +44,11 @@ jobs:
             - name: verify-rust-toolchain
               # TODO: Investigate if this step fixes the intermittent Windows toolchain race condition.
               # If not effective, remove this step.
-              run: rustup show && cargo --version
+              shell: bash
+              run: |
+                  TOOLCHAIN=$(rustup show active-toolchain | head -1 | cut -d' ' -f1)
+                  rustup toolchain install "$TOOLCHAIN" --no-self-update
+                  cargo --version
 
             - name: restore-cache-cargo
               id: restore-cache-cargo
@@ -144,7 +148,11 @@ jobs:
             - name: verify-rust-toolchain
               # TODO: Investigate if this step fixes the intermittent Windows toolchain race condition.
               # If not effective, remove this step.
-              run: rustup show && cargo --version
+              shell: bash
+              run: |
+                  TOOLCHAIN=$(rustup show active-toolchain | head -1 | cut -d' ' -f1)
+                  rustup toolchain install "$TOOLCHAIN" --no-self-update
+                  cargo --version
 
             - name: cache-venv
               env:
