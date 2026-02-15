@@ -186,6 +186,9 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
     def _is_auth_failure(self, result: subprocess.CompletedProcess[str]) -> bool:
         return self._publish_impl._is_auth_failure(self, result)
 
+    def _is_already_exists_error(self, result: subprocess.CompletedProcess[str]) -> bool:
+        return self._publish_impl._is_already_exists_error(self, result)
+
     @property
     def _version(self) -> str:
         cargo_raw = RustLibSpace._version.fget(self)
