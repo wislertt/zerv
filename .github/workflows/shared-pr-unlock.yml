@@ -13,6 +13,11 @@ on:
                 required: true
                 description: "Prefix for deploy labels"
                 # Example input: "deploy-"
+            key_prefix:
+                description: "Prefix for the lock key (e.g., 'hotfix/', 'feature/'). Leave empty for no prefix"
+                required: false
+                type: string
+                default: ""
 
 permissions:
     contents: write
@@ -27,6 +32,7 @@ jobs:
         uses: ./.github/workflows/shared-unlock.yml
         with:
             key: ${{ matrix.env }}
+            key_prefix: ${{ inputs.key_prefix }}
             key_owner: refs/pull/${{ github.event.number }}/merge
             fail_if_owner_mismatch: false
             job_name: unlock-${{ matrix.env }}
@@ -79,6 +85,7 @@ jobs:
         uses: ./.github/workflows/shared-unlock.yml
         with:
             key: ${{ matrix.env }}
+            key_prefix: ${{ inputs.key_prefix }}
             key_owner: ${{ github.ref }}
             fail_if_owner_mismatch: false
             job_name: unlock-${{ matrix.env }}
