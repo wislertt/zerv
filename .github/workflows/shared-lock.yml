@@ -127,7 +127,7 @@ jobs:
                   echo "reason=$REASON" >> $GITHUB_OUTPUT
               if: steps.check-lock.outputs.should_proceed == 'true'
 
-            - name: Lock
+            - name: lock
               uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: lock
               with:
