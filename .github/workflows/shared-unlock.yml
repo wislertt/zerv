@@ -3,6 +3,11 @@ name: unlock
 on:
     workflow_call:
         inputs:
+            enabled:
+                description: "Whether to run the unlock job (useful for matrix filtering, default: true)"
+                required: false
+                type: boolean
+                default: true
             key:
                 description: "Key to unlock (e.g., dev, staging, prod)"
                 required: true
@@ -32,6 +37,7 @@ permissions:
 jobs:
     unlock:
         name: ${{ inputs.job_name || 'unlock' }}
+        if: inputs.enabled == true
         runs-on: ubuntu-latest
         steps:
             - name: check-lock

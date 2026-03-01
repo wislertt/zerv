@@ -3,6 +3,11 @@ name: lock
 on:
     workflow_call:
         inputs:
+            enabled:
+                description: "Whether to run the lock job (useful for matrix filtering, default: true)"
+                required: false
+                type: boolean
+                default: true
             key:
                 description: "Key to lock (e.g., dev, staging, prod)"
                 required: true
@@ -37,6 +42,7 @@ permissions:
 jobs:
     lock:
         name: ${{ inputs.job_name || 'lock' }}
+        if: inputs.enabled == true
         runs-on: ubuntu-latest
         steps:
             - name: define-lock-check-function
