@@ -19,10 +19,10 @@ class PythonLibSpace(_PythonLibSpace):
     _target: str | None = None
 
     def _build_for_publish(self):
-        cmd = ["maturin", "build", "--release", "--out", "dist/"]
+        cmd = "maturin build --release --strip --out dist/"
 
         if self._target:
-            cmd.extend(["--target", self._target])
+            cmd += f" --target {self._target}"
 
         self.ctx.run(" ".join(cmd))
 
