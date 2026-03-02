@@ -96,7 +96,7 @@ jobs:
 
             - name: upload-binary-to-release
               if: inputs.upload_to_release == true && inputs.tag != ''
-              uses: svenstaro/upload-release-action@6b7fa9f267e90b50a19fef07b3596790bb941741 # 2.11.3
+              uses: svenstaro/upload-release-action@b98a3b12e86552593f3e4e577ca8a62aa2f3f22b # 2.11.4
               with:
                   repo_token: ${{ secrets.GITHUB_TOKEN }}
                   file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}

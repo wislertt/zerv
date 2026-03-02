@@ -54,7 +54,6 @@ bakefile = ["bake", "bakelib"]
 bindings = "bin"
 module-name = "zerv"
 python-source = "python"
-strip = true
 include = [
   {path = "python/zerv/**/*.py", format = ["wheel"]},
   {path = "python/zerv/py.typed", format = ["wheel"]}

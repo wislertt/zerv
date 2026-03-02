@@ -3,10 +3,20 @@ name: lock
 on:
     workflow_call:
         inputs:
+            enabled:
+                description: "Whether to run the lock job (useful for matrix filtering, default: true)"
+                required: false
+                type: boolean
+                default: true
             key:
                 description: "Key to lock (e.g., dev, staging, prod)"
                 required: true
                 type: string
+            key_prefix:
+                description: "Prefix for the lock key (e.g., 'hotfix/', 'feature/'). Leave empty for no prefix"
+                required: false
+                type: string
+                default: ""
             key_owner:
                 description: "Key owner identifier (e.g., PR number, SHA, run ID)"
                 required: true
@@ -32,6 +42,7 @@ permissions:
 jobs:
     lock:
         name: ${{ inputs.job_name || 'lock' }}
+        if: inputs.enabled == true
         runs-on: ubuntu-latest
         steps:
             - name: define-lock-check-function
@@ -104,7 +115,7 @@ jobs:
               id: get-lock-state
               with:
                   mode: "check"
-                  environment: ${{ inputs.key }}
+                  environment: ${{ inputs.key_prefix }}${{ inputs.key }}
 
             - name: check-lock-state
               id: check-lock
@@ -112,7 +123,7 @@ jobs:
               run: |
                   source ./lock_check_function.sh
                   check_lock \
-                      --key "${{ inputs.key }}" \
+                      --key "${{ inputs.key_prefix }}${{ inputs.key }}" \
                       --key-owner "${{ inputs.key_owner }}" \
                       --lock-reason "${{ steps.get-lock-state.outputs.reason }}" \
                       --locked "${{ steps.get-lock-state.outputs.locked }}"
@@ -127,12 +138,12 @@ jobs:
                   echo "reason=$REASON" >> $GITHUB_OUTPUT
               if: steps.check-lock.outputs.should_proceed == 'true'
 
-            - name: Lock
+            - name: lock
               uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: lock
               with:
                   mode: "lock"
-                  environment: ${{ inputs.key }}
+                  environment: ${{ inputs.key_prefix }}${{ inputs.key }}
                   reason: ${{ steps.lock-reason.outputs.reason }}
               if: steps.check-lock.outputs.should_proceed == 'true'
 
@@ -150,7 +161,7 @@ jobs:
               if: inputs.check_owner_after_lock
               with:
                   mode: "check"
-                  environment: ${{ inputs.key }}
+                  environment: ${{ inputs.key_prefix }}${{ inputs.key }}
 
             - name: recheck-lock-state
               id: recheck-lock
@@ -159,7 +170,7 @@ jobs:
               run: |
                   source ./lock_check_function.sh
                   check_lock \
-                      --key "${{ inputs.key }}" \
+                      --key "${{ inputs.key_prefix }}${{ inputs.key }}" \
                       --key-owner "${{ inputs.key_owner }}" \
                       --lock-reason "${{ steps.get-lock-state-for-recheck.outputs.reason }}" \
                       --locked "${{ steps.get-lock-state-for-recheck.outputs.locked }}" \
@@ -169,7 +180,7 @@ jobs:
               if: always()
               run: |
                   echo "=== Lock Result ==="
-                  echo "Key: ${{ inputs.key }}"
+                  echo "Key: ${{ inputs.key_prefix }}${{ inputs.key }}"
                   echo "Owner: ${{ inputs.key_owner }}"
                   echo "Status: ${{ steps.lock.outcome }}"
                   echo "Verified ownership: ${{ steps.recheck-lock.outputs.is_owned_by_us || 'N/A' }}"
