@@ -24,7 +24,7 @@ class PythonLibSpace(_PythonLibSpace):
         if self._target:
             cmd += f" --target {self._target}"
 
-        self.ctx.run(" ".join(cmd))
+        self.ctx.run(cmd)
 
 
 class MyBakebook(RustLibSpace, PythonLibSpace):
