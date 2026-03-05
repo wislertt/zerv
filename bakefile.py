@@ -1,24 +1,26 @@
 import shutil
-import subprocess
 from pathlib import Path
-from typing import Annotated, get_args
+from typing import Annotated
 
 import typer
 import zerv
 from bake import command, console
-from bakelib import PythonLibSpace as _PythonLibSpace
-from bakelib import RustLibSpace
-from bakelib.space.lib import BaseLibSpace, PublishResult
-from bakelib.space.python_lib import PyPIRegistry
-from bakelib.space.rust_lib import CratesRegistry
+from bakelib import PythonSpace, RustSpace
+from bakelib.publisher import Publisher
+from bakelib.publisher.crates import CratesPublisher
+from bakelib.publisher.pypi import PyPIPublisher as _PyPIPublisher
+from bakelib.space.lib import BaseLibSpace
+from bakelib.space.params import publish_token_option, publish_version_option
 
 from tests.python.utils import symlink_zerv_to_venv_bin
 
 
-class PythonLibSpace(_PythonLibSpace):
+class PyPIPublisher(_PyPIPublisher):
+    """Custom PyPI publisher for zerv that uses maturin instead of uv build."""
+
     _target: str | None = None
 
-    def _build_for_publish(self):
+    def _build_for_publish(self) -> None:
         cmd = "maturin build --release --strip --out dist/"
 
         if self._target:
@@ -27,31 +29,23 @@ class PythonLibSpace(_PythonLibSpace):
         self.ctx.run(cmd)
 
 
-class MyBakebook(RustLibSpace, PythonLibSpace):
+class MyBakebook(RustSpace, PythonSpace, BaseLibSpace):
     zerv_test_native_git: bool = False
     zerv_test_docker: bool = True
     zerv_force_rust_log_off: bool = False
-    __registry: CratesRegistry | PyPIRegistry | None = None
+    _target: str | None = None
 
-    @property
-    def _registry(self) -> CratesRegistry | PyPIRegistry:
-        if self.__registry is None:
-            raise RuntimeError("_registry not set")
-        return self.__registry
+    def get_publisher(self, registry: str) -> PyPIPublisher | CratesPublisher:
+        """Return the appropriate publisher, using custom PyPIPublisher for maturin builds."""
+        if registry in PyPIPublisher.valid_registries:
+            publisher = PyPIPublisher(self.ctx, registry)
+            publisher._target = self._target
+            return publisher
+        if registry in CratesPublisher.valid_registries:
+            return CratesPublisher(self.ctx, registry)
 
-    @_registry.setter
-    def _registry(self, value: str):
-        self.__registry = self._validate_registry(value)
-
-    @property
-    def _publish_impl(self) -> type[BaseLibSpace]:
-        if self._registry in get_args(PyPIRegistry):
-            return PythonLibSpace
-        if self._registry in get_args(CratesRegistry):
-            return RustLibSpace
-
-        valid = (*get_args(PyPIRegistry), *get_args(CratesRegistry))
-        console.error(f"Invalid registry: {self._registry!r}. Expected one of {valid}.")
+        valid = (*PyPIPublisher.valid_registries, *CratesPublisher.valid_registries)
+        console.error(f"Invalid registry: {registry!r}. Expected one of {valid}.")
         raise typer.Exit(1)
 
     def _update_config(self, **kwargs: bool | None) -> None:
@@ -145,8 +139,8 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
             str,
             typer.Option(help="Publish registry (test-pypi, pypi, or crates)"),
         ] = "test-pypi",
-        token: Annotated[str | None, typer.Option(help="Publish token")] = None,
-        version: Annotated[str | None, typer.Option(help="Version to publish")] = None,
+        token: publish_token_option = None,
+        version: publish_version_option = None,
         target: Annotated[
             str | None,
             typer.Option(
@@ -154,45 +148,13 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
             ),
         ] = None,
     ):
-        self._registry = registry
         self._target = target
-        return self._publish_impl.publish(
-            self, registry=self._registry, token=token, version=version
-        )
-
-    def _validate_registry(self, registry: str) -> CratesRegistry | PyPIRegistry:  # type: ignore[invalid-method-override]
-        if registry in get_args(PyPIRegistry):
-            impl = PythonLibSpace
-        elif registry in get_args(CratesRegistry):
-            impl = RustLibSpace
-        else:
-            valid = (*get_args(PyPIRegistry), *get_args(CratesRegistry))
-            console.error(f"Invalid registry: {registry!r}. Expected one of {valid}.")
-            raise typer.Exit(1)
-
-        valid_registry = impl._validate_registry(self, registry)
-
-        return valid_registry
-
-    def _get_publish_token_from_remote(self, registry: str) -> str | None:
-        return self._publish_impl._get_publish_token_from_remote(self, registry)
-
-    def _build_for_publish(self):
-        return self._publish_impl._build_for_publish(self)
-
-    def _publish_with_token(self, token: str | None, registry: str) -> PublishResult:
-        return self._publish_impl._publish_with_token(self, token, registry)
-
-    def _is_auth_failure(self, result: subprocess.CompletedProcess[str]) -> bool:
-        return self._publish_impl._is_auth_failure(self, result)
-
-    def _is_already_exists_error(self, result: subprocess.CompletedProcess[str]) -> bool:
-        return self._publish_impl._is_already_exists_error(self, result)
+        return super().publish(registry=registry, token=token, version=version)
 
     @property
     def _version(self) -> str:
-        cargo_raw = RustLibSpace._version.fget(self)
-        pyproject_raw = PythonLibSpace._version.fget(self)
+        cargo_raw = RustSpace._version.fget(self)
+        pyproject_raw = PythonSpace._version.fget(self)
 
         pyproject_semver = zerv.render(version=pyproject_raw, output_format="semver")
         cargo_semver = zerv.render(version=cargo_raw, output_format="semver")
@@ -207,17 +169,21 @@ class MyBakebook(RustLibSpace, PythonLibSpace):
 
     @_version.setter
     def _version(self, value: str) -> None:
-        RustLibSpace._version.fset(self, value)
-        PythonLibSpace._version.fset(self, value)
+        RustSpace._version.fset(self, value)
+        PythonSpace._version.fset(self, value)
 
-    def _pre_publish_setup(self):
+    def _pre_publish_setup(self, publisher: Publisher) -> None:
+        """Custom pre-publish setup for zerv - handles both Rust and Python."""
+        _ = publisher
+
         # zerv uses itself for versioning in _version_bump_context, so build and symlink it first
         self.ctx.run("maturin develop")
         if not self.ctx.dry_run:
             symlink_zerv_to_venv_bin()
 
-        RustLibSpace._pre_publish_setup(self)
-        PythonLibSpace._pre_publish_setup(self)
+        # Call BOTH publishers' setup (zerv is multi-lang)
+        CratesPublisher._pre_publish_setup(self.ctx)  # removes target/package
+        PyPIPublisher._pre_publish_setup(self.ctx)  # removes dist
 
         # maturin
         for p in Path("python").glob("*.data"):
