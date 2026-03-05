@@ -35,6 +35,11 @@ on:
                 required: false
                 type: number
                 default: 5
+            delay_before_start_in_sec:
+                description: "Delay in seconds before starting lock operations (allows previous lock/unlock to propagate)"
+                required: false
+                type: number
+                default: 0
 
 permissions:
     contents: write
@@ -45,6 +50,10 @@ jobs:
         if: inputs.enabled == true
         runs-on: ubuntu-latest
         steps:
+            - name: delay-before-start
+              if: inputs.delay_before_start_in_sec > 0
+              run: sleep ${{ inputs.delay_before_start_in_sec }}
+
             - name: define-lock-check-function
               shell: bash
               run: |
