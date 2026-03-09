@@ -6,7 +6,6 @@ import typer
 import zerv
 from bake import command, console
 from bakelib import PythonSpace, RustSpace
-from bakelib.publisher import Publisher
 from bakelib.publisher.crates import CratesPublisher
 from bakelib.publisher.pypi import PyPIPublisher as _PyPIPublisher
 from bakelib.space.lib import BaseLibSpace
@@ -34,6 +33,9 @@ class MyBakebook(RustSpace, PythonSpace, BaseLibSpace):
     zerv_test_docker: bool = True
     zerv_force_rust_log_off: bool = False
     _target: str | None = None
+
+    def get_publish_registries(self) -> set[str]:
+        return set(PyPIPublisher.valid_registries) | set(CratesPublisher.valid_registries)
 
     def get_publisher(self, registry: str) -> PyPIPublisher | CratesPublisher:
         """Return the appropriate publisher, using custom PyPIPublisher for maturin builds."""
@@ -172,10 +174,8 @@ class MyBakebook(RustSpace, PythonSpace, BaseLibSpace):
         RustSpace._version.fset(self, value)
         PythonSpace._version.fset(self, value)
 
-    def _pre_publish_setup(self, publisher: Publisher) -> None:
+    def _pre_publish_setup(self) -> None:
         """Custom pre-publish setup for zerv - handles both Rust and Python."""
-        _ = publisher
-
         # zerv uses itself for versioning in _version_bump_context, so build and symlink it first
         self.ctx.run("maturin develop")
         if not self.ctx.dry_run:
