@@ -27,7 +27,7 @@ jobs:
             fail-fast: false
             matrix:
                 env: [d, n, p]
-        uses: ./.github/workflows/shared-lock.yml@main
+        uses: ./.github/workflows/shared-lock.yml
         with:
             enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.env)] != null }}
             key: ${{ matrix.env }}
@@ -160,7 +160,7 @@ jobs:
             fail-fast: false
             matrix:
                 env: [d, n, p]
-        uses: ./.github/workflows/shared-unlock.yml@main
+        uses: ./.github/workflows/shared-unlock.yml
         needs:
             - lock
             - dummy-job
