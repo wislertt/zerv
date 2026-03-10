@@ -26,14 +26,14 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                key: [d, n, p]
+                env: [d, n, p]
         uses: ./.github/workflows/shared-lock.yml
         with:
-            enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.key)] != null }}
-            key: ${{ matrix.key }}
+            enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.env)] != null }}
+            key: ${{ matrix.env }}
             key_prefix: test/
             key_owner: ${{ inputs.key_owner }}
-            job_name: lock-${{ matrix.key }}
+            job_name: lock-${{ matrix.env }}
             upload_result_artifact: true
 
     # ====================================================
@@ -45,22 +45,27 @@ jobs:
         uses: ./.github/workflows/shared-aggregate-lock-results.yml
 
     # ====================================================
-    # Phase 3: Test jobs that verify lock status
+    # Phase 3: Deploy all dummy services (test)
     # ====================================================
-    dummy-job:
-        name: dummy-job-${{ matrix.key }}
+    deploy-all-dummy-services:
+        name: deploy-${{ matrix.dir }}-${{ matrix.env }}
         needs: [lock, aggregate-lock-results]
         if: always()
         strategy:
             fail-fast: false
             matrix:
-                key: [d, n, p]
-        uses: ./.github/workflows/test-shared-job.yml
+                include:
+                    - dir: dummy-service-1
+                      env: d
+                    - dir: dummy-service-1
+                      env: p
+                    - dir: dummy-service-2
+                      env: d
+                    - dir: dummy-service-2
+                      env: p
+        uses: ./.github/workflows/test-shared-deploy-dummy-service.yml
         with:
-            name: dummy-job-${{ matrix.key }}
-            show_status: true
-            successful_keys: ${{ needs.aggregate-lock-results.outputs.successful_lock_keys }}
-            current_key: ${{ matrix.key }}
+            name: deploy-${{ matrix.dir }}-${{ matrix.env }}
 
     # ====================================================
     # Phase 4: Unlock after dummy jobs
@@ -70,14 +75,14 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                key: [d, n, p]
+                env: [d, n, p]
         uses: ./.github/workflows/shared-unlock.yml
         needs:
             - lock
             - aggregate-lock-results
         with:
-            enabled: ${{ fromJson(inputs.deploy_labels)[format('deploy-{0}', matrix.key)] != null }}
-            key: ${{ matrix.key }}
+            enabled: ${{ fromJson(inputs.deploy_labels)[format('deploy-{0}', matrix.env)] != null }}
+            key: ${{ matrix.env }}
             key_prefix: test/
             key_owner: ${{ inputs.key_owner }}
-            job_name: unlock-${{ matrix.key }}
+            job_name: unlock-${{ matrix.env }}

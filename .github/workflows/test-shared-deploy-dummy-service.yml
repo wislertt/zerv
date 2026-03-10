@@ -1,0 +1,22 @@
+name: test-shared-deploy-dummy-service
+
+on:
+    workflow_call:
+        inputs:
+            name:
+                description: "Name for the test job"
+                required: false
+                type: string
+                default: "test-job"
+
+permissions:
+    contents: read
+
+jobs:
+    test:
+        name: ${{ inputs.name }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: run
+              run: |
+                  echo "✓ Test job completed"
