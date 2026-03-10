@@ -11,19 +11,19 @@ on:
         outputs:
             successful_lock_keys:
                 description: "Array of successfully locked keys (e.g., ['d', 'p'])"
-                value: ${{ jobs.aggregate.outputs.successful_lock_keys }}
+                value: ${{ jobs.aggregate-lock-results.outputs.successful_lock_keys }}
             failed_lock_keys:
                 description: "Array of failed/skipped lock keys (e.g., ['n'])"
-                value: ${{ jobs.aggregate.outputs.failed_lock_keys }}
+                value: ${{ jobs.aggregate-lock-results.outputs.failed_lock_keys }}
             lock_results_raw:
                 description: "Raw aggregated lock results as JSON object (e.g., {'d': {...}, 'p': {...}})"
-                value: ${{ jobs.aggregate.outputs.lock_results_raw }}
+                value: ${{ jobs.aggregate-lock-results.outputs.lock_results_raw }}
 
 permissions:
     contents: read
 
 jobs:
-    aggregate:
+    aggregate-lock-results:
         runs-on: ubuntu-latest
         outputs:
             successful_lock_keys: ${{ steps.output.outputs.successful_lock_keys }}
@@ -39,7 +39,7 @@ jobs:
             - name: list-downloaded-files
               run: |
                   echo "=== Downloaded files ==="
-                  find lock-results -type f -name "*.json" -exec echo {} \;
+                  find lock-results -type f -name "*.json" -exec echo {} \; 2>/dev/null || echo "No files found"
 
             - name: display-individual-results
               run: |
@@ -49,22 +49,30 @@ jobs:
                       echo "---"
                       cat "$file"
                     fi
-                  done
+                  done || echo "No lock result files found"
 
             - name: aggregate-results
               id: aggregate
               run: |
-                  # Extract successful lock keys
-                  jq -s 'map(select(.status == "success")) | map(.key)' \
-                      lock-results/${{ inputs.artifact_pattern }}/lock-result.json > successful-lock-keys.json
+                  # Check if any lock result files exist
+                  if ! ls lock-results/${{ inputs.artifact_pattern }}/lock-result.json 2>/dev/null; then
+                    echo "No lock result artifacts found - creating empty arrays"
+                    echo "[]" > successful-lock-keys.json
+                    echo "[]" > failed-lock-keys.json
+                    echo "{}" > lock-results-raw.json
+                  else
+                    # Extract successful lock keys
+                    jq -s 'map(select(.status == "success")) | map(.key)' \
+                        lock-results/${{ inputs.artifact_pattern }}/lock-result.json > successful-lock-keys.json
 
-                  # Extract failed/skipped lock keys
-                  jq -s 'map(select(.status != "success")) | map(.key)' \
-                      lock-results/${{ inputs.artifact_pattern }}/lock-result.json > failed-lock-keys.json
+                    # Extract failed/skipped lock keys
+                    jq -s 'map(select(.status != "success")) | map(.key)' \
+                        lock-results/${{ inputs.artifact_pattern }}/lock-result.json > failed-lock-keys.json
 
-                  # Create raw aggregated JSON object with all details
-                  jq -s 'map({(.key): .}) | add' \
-                      lock-results/${{ inputs.artifact_pattern }}/lock-result.json > lock-results-raw.json
+                    # Create raw aggregated JSON object with all details
+                    jq -s 'map({(.key): .}) | add' \
+                        lock-results/${{ inputs.artifact_pattern }}/lock-result.json > lock-results-raw.json
+                  fi
 
                   echo "=== Successful lock keys ==="
                   cat successful-lock-keys.json
