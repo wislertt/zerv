@@ -44,34 +44,30 @@ jobs:
             - name: display-individual-results
               run: |
                   echo "=== Individual lock results ==="
-                  for file in lock-results/${{ inputs.artifact_pattern }}/lock-result.json; do
-                    if [ -f "$file" ]; then
-                      echo "---"
-                      cat "$file"
-                    fi
+                  find lock-results -name "lock-result.json" -type f -print0 | while IFS= read -r -d '' file; do
+                    echo "---"
+                    echo "File: $file"
+                    cat "$file"
                   done || echo "No lock result files found"
 
             - name: aggregate-results
               id: aggregate
               run: |
                   # Check if any lock result files exist
-                  if ! ls lock-results/${{ inputs.artifact_pattern }}/lock-result.json 2>/dev/null; then
+                  if ! find lock-results -name "lock-result.json" -type f | grep -q .; then
                     echo "No lock result artifacts found - creating empty arrays"
                     echo "[]" > successful-lock-keys.json
                     echo "[]" > failed-lock-keys.json
                     echo "{}" > lock-results-raw.json
                   else
                     # Extract successful lock keys
-                    jq -s 'map(select(.status == "success")) | map(.key)' \
-                        lock-results/${{ inputs.artifact_pattern }}/lock-result.json > successful-lock-keys.json
+                    find lock-results -name "lock-result.json" -type f -exec jq -s 'map(select(.status == "success")) | map(.key)' {} + > successful-lock-keys.json
 
                     # Extract failed/skipped lock keys
-                    jq -s 'map(select(.status != "success")) | map(.key)' \
-                        lock-results/${{ inputs.artifact_pattern }}/lock-result.json > failed-lock-keys.json
+                    find lock-results -name "lock-result.json" -type f -exec jq -s 'map(select(.status != "success")) | map(.key)' {} + > failed-lock-keys.json
 
                     # Create raw aggregated JSON object with all details
-                    jq -s 'map({(.key): .}) | add' \
-                        lock-results/${{ inputs.artifact_pattern }}/lock-result.json > lock-results-raw.json
+                    find lock-results -name "lock-result.json" -type f -exec jq -s 'map({(.key): .}) | add' {} + > lock-results-raw.json
                   fi
 
                   echo "=== Successful lock keys ==="
