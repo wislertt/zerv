@@ -4,7 +4,7 @@ on:
     workflow_call:
         inputs:
             deploy_labels:
-                description: 'JSON object with deploy-service-env flags (e.g., ''{"deploy-dummy-service-1-d": true}'')'
+                description: 'JSON object with deploy-env flags (e.g., ''{"deploy-d": true}'')'
                 required: false
                 type: string
             lock_key_owner:
@@ -46,7 +46,7 @@ jobs:
 
         uses: ./.github/workflows/test-shared-deploy-dummy-service-with-lock.yml
         with:
-            enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}-{1}', matrix.service, matrix.env)] != null }}
+            enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.env)] != null }}
             name: deploy-${{ matrix.service }}-${{ matrix.env }}
             lock_key: ${{ matrix.env }}-${{ matrix.service }}
             lock_key_owner: ${{ inputs.lock_key_owner }}
