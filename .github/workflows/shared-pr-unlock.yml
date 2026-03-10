@@ -69,7 +69,7 @@ jobs:
                                               --argjson envs '${{ inputs.environments }}' \
                                               --argjson services '${{ inputs.service_names }}' \
                       '[
-                        ($envs[] | select($labels | has("\($prefix)\(.)") | not) as $env |
+                        ($envs[] | . as $env | select(($labels | has("\($prefix)\($env)")) | not) |
                           $services[] | {"env": $env, "service": .})
                       ]')
 
