@@ -62,23 +62,17 @@ jobs:
               run: |
                   LABELS='${{ needs.check-deploy-labels.outputs.labels }}'
                   LABEL_PREFIX="${{ inputs.deploy_label_prefix }}"
-                  COMBINATIONS=()
 
-                  # Iterate through environments and services to find missing labels
-                  for ENV in $(echo '${{ inputs.environments }}' | jq -r '.[]'); do
-                      # Check if the deploy label exists for this environment
-                      if ! echo "$LABELS" | jq -e "has(\"${LABEL_PREFIX}${ENV}\")" > /dev/null 2>&1; then
-                          echo "Missing ${LABEL_PREFIX}${ENV} label, will unlock all services for this env"
-                          # For each service, create a combination
-                          echo '${{ inputs.service_names }}' | jq -r '.[] | @sh' | while read -r SERVICE; do
-                              SERVICE=$(eval echo "$SERVICE")
-                              COMBINATIONS+=("{\"env\":\"$ENV\",\"service\":\"$SERVICE\"}")
-                          done
-                      fi
-                  done
+                  # Build combinations using jq (avoiding subshell issues)
+                  COMB_ARRAY=$(echo '{}' | jq -c --arg labels "$LABELS" \
+                                              --arg prefix "$LABEL_PREFIX" \
+                                              --argjson envs '${{ inputs.environments }}' \
+                                              --argjson services '${{ inputs.service_names }}' \
+                      '[
+                        ($envs[] | select($labels | has("\($prefix)\(.)") | not) as $env |
+                          $services[] | {"env": $env, "service": .})
+                      ]')
 
-                  # Convert to JSON array
-                  COMB_ARRAY=$(printf '%s\n' "${COMBINATIONS[@]}" | jq -s .)
                   echo "Unlock combinations: $COMB_ARRAY"
 
                   # Output as GitHub Actions variable
