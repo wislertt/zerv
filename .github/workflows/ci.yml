@@ -65,7 +65,8 @@ jobs:
         with:
             # deploy_labels: '{"deploy-d": true, "deploy-p": true}'
             deploy_labels: ${{ needs.check-deploy-env-labels.outputs.labels }}
-            key_owner: ${{ github.ref }}
+            lock_key_owner: ${{ github.ref }}
+            delay_before_lock_in_sec: 0
 
     # ====================================================
     # Deployment

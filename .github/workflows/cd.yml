@@ -51,6 +51,17 @@ jobs:
         uses: ./.github/workflows/pre-commit.yml
 
     # ====================================================
+    # Deployment with environment
+    # ====================================================
+    test-shared-lock-aggregation:
+        name: test-shared-lock-aggregation
+        uses: ./.github/workflows/test-shared-lock-aggregation.yml
+        with:
+            deploy_labels: '{"deploy-d": true, "deploy-n": true, "deploy-p": true}'
+            lock_key_owner: ${{ github.ref }}
+            delay_before_lock_in_sec: 30
+
+    # ====================================================
     # Deployment without environment
     # ====================================================
     release-bin:

@@ -8,11 +8,20 @@ on:
                 required: false
                 type: string
                 default: '{"deploy-d": true, "deploy-n": true}'
-            key_owner:
-                description: "Key owner for lock"
+            lock_key_owner:
+                description: "Key owner for environment lock"
                 required: false
                 type: string
-                default: "test-run"
+            unlock_after_deploy:
+                description: "Whether to unlock after deployment"
+                required: false
+                type: boolean
+                default: true
+            delay_before_lock_in_sec:
+                description: "Delay in seconds before starting lock operations (allows previous lock/unlock to propagate)"
+                required: false
+                type: number
+                default: 0
 
 permissions:
     contents: write
@@ -32,8 +41,9 @@ jobs:
             enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.env)] != null }}
             key: ${{ matrix.env }}
             key_prefix: test/
-            key_owner: ${{ inputs.key_owner }}
+            lock_key_owner: ${{ inputs.lock_key_owner }}
             job_name: lock-${{ matrix.env }}
+            delay_before_start_in_sec: ${{ inputs.delay_before_lock_in_sec }}
             upload_result_artifact: true
 
     # ====================================================
@@ -78,7 +88,7 @@ jobs:
     # Phase 4: Unlock after dummy jobs
     # ====================================================
     unlock:
-        if: always()
+        if: always() && inputs.unlock_after_deploy == true
         strategy:
             fail-fast: false
             matrix:
@@ -91,5 +101,5 @@ jobs:
             enabled: ${{ fromJson(inputs.deploy_labels)[format('deploy-{0}', matrix.env)] != null }}
             key: ${{ matrix.env }}
             key_prefix: test/
-            key_owner: ${{ inputs.key_owner }}
+            key_owner: ${{ inputs.lock_key_owner }}
             job_name: unlock-${{ matrix.env }}
