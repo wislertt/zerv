@@ -1,0 +1,53 @@
+name: test-shared-service-lock-aggregation
+
+on:
+    workflow_call:
+        inputs:
+            deploy_labels:
+                description: 'JSON object with deploy-service-env flags (e.g., ''{"deploy-dummy-service-1-d": true}'')'
+                required: false
+                type: string
+            lock_key_owner:
+                description: "Key owner for environment lock"
+                required: false
+                type: string
+            unlock_after_deploy:
+                description: "Whether to unlock after deployment"
+                required: false
+                type: boolean
+                default: true
+
+permissions:
+    contents: write
+
+jobs:
+    # ====================================================
+    # Deploy services with embedded lock/unlock
+    # ====================================================
+    deploy-services:
+        name: deploy-${{ matrix.service }}-${{ matrix.env }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - service: dummy-service-1
+                      env: d
+                    - service: dummy-service-1
+                      env: n
+                    - service: dummy-service-1
+                      env: p
+
+                    - service: dummy-service-2
+                      env: d
+                    - service: dummy-service-2
+                      env: n
+                    - service: dummy-service-2
+                      env: p
+
+        uses: ./.github/workflows/test-shared-deploy-with-lock.yml
+        with:
+            enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}-{1}', matrix.service, matrix.env)] != null }}
+            name: deploy-${{ matrix.service }}-${{ matrix.env }}
+            lock_key: ${{ matrix.env }}-${{ matrix.service }}
+            lock_key_owner: ${{ inputs.lock_key_owner }}
+            unlock_after_deploy: ${{ inputs.unlock_after_deploy }}

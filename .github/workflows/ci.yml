@@ -58,15 +58,24 @@ jobs:
         with:
             prefix: "deploy-"
 
-    test-shared-lock-aggregation:
-        name: test-shared-lock-aggregation
+    test-shared-global-lock:
+        name: test-shared-global-lock
         needs: check-deploy-env-labels
-        uses: ./.github/workflows/test-shared-lock-aggregation.yml
+        uses: ./.github/workflows/test-shared-global-lock.yml
         with:
             deploy_labels: ${{ needs.check-deploy-env-labels.outputs.labels }}
             lock_key_owner: ${{ github.ref }}
             unlock_after_deploy: false
             delay_before_lock_in_sec: 0
+
+    test-shared-service-lock:
+        name: test-shared-service-lock
+        needs: check-deploy-env-labels
+        uses: ./.github/workflows/test-shared-service-lock.yml
+        with:
+            deploy_labels: ${{ needs.check-deploy-env-labels.outputs.labels }}
+            lock_key_owner: ${{ github.ref }}
+            unlock_after_deploy: false
 
     # ====================================================
     # Deployment

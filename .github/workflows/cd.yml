@@ -53,9 +53,18 @@ jobs:
     # ====================================================
     # Deployment with environment
     # ====================================================
-    test-shared-lock-aggregation:
-        name: test-shared-lock-aggregation
-        uses: ./.github/workflows/test-shared-lock-aggregation.yml
+    test-shared-global-lock:
+        name: test-shared-global-lock
+        uses: ./.github/workflows/test-shared-global-lock.yml
+        with:
+            deploy_labels: '{"deploy-d": true, "deploy-n": true, "deploy-p": true}'
+            lock_key_owner: ${{ github.ref }}
+            unlock_after_deploy: true
+            delay_before_lock_in_sec: 30
+
+    test-shared-service-lock:
+        name: test-shared-service-lock
+        uses: ./.github/workflows/test-shared-service-lock.yml
         with:
             deploy_labels: '{"deploy-d": true, "deploy-n": true, "deploy-p": true}'
             lock_key_owner: ${{ github.ref }}
