@@ -44,7 +44,7 @@ jobs:
                     - service: dummy-service-2
                       env: p
 
-        uses: ./.github/workflows/test-shared-deploy-with-lock.yml
+        uses: ./.github/workflows/test-shared-deploy-dummy-service-with-lock.yml
         with:
             enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}-{1}', matrix.service, matrix.env)] != null }}
             name: deploy-${{ matrix.service }}-${{ matrix.env }}
