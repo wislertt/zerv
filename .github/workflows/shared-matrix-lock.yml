@@ -31,9 +31,9 @@ on:
             successful_locks:
                 description: "Array of successfully locked environment keys (e.g., ['d', 'p'])"
                 value: ${{ jobs.aggregate.outputs.successful_locks }}
-            lock_status:
-                description: "Aggregated lock status as JSON array (DEPRECATED: use successful_locks)"
-                value: ${{ jobs.aggregate.outputs.successful_locks }}
+            failed_locks:
+                description: "Array of failed/skipped lock keys (e.g., ['n'])"
+                value: ${{ jobs.aggregate.outputs.failed_locks }}
 
 permissions:
     contents: write
@@ -67,6 +67,7 @@ jobs:
         runs-on: ubuntu-latest
         outputs:
             successful_locks: ${{ steps.output.outputs.successful_locks }}
+            failed_locks: ${{ steps.output.outputs.failed_locks }}
         steps:
             - name: download-all-lock-artifacts
               uses: actions/download-artifact@v4
@@ -92,15 +93,21 @@ jobs:
             - name: aggregate-results
               id: aggregate
               run: |
-                  # Extract only successful lock keys as an array
+                  # Extract successful and failed lock keys
                   jq -s 'map(select(.status == "success")) | map(.key)' \
-                      lock-results/lock-result-*/lock-result.json > lock-status.json
+                      lock-results/lock-result-*/lock-result.json > successful-locks.json
+
+                  jq -s 'map(select(.status != "success")) | map(.key)' \
+                      lock-results/lock-result-*/lock-result.json > failed-locks.json
 
                   echo "=== Successful lock keys ==="
-                  cat lock-status.json
+                  cat successful-locks.json
+
+                  echo "=== Failed/skipped lock keys ==="
+                  cat failed-locks.json
 
                   # Validate JSON
-                  if jq empty lock-status.json 2>/dev/null; then
+                  if jq empty successful-locks.json 2>/dev/null && jq empty failed-locks.json 2>/dev/null; then
                     echo "✓ JSON is valid"
                   else
                     echo "✗ JSON is invalid"
@@ -110,5 +117,7 @@ jobs:
             - name: set-output
               id: output
               run: |
-                  CONTENT=$(jq -c . lock-status.json)
-                  echo "successful_locks=$CONTENT" >> $GITHUB_OUTPUT
+                  SUCCESSFUL=$(jq -c . successful-locks.json)
+                  FAILED=$(jq -c . failed-locks.json)
+                  echo "successful_locks=$SUCCESSFUL" >> $GITHUB_OUTPUT
+                  echo "failed_locks=$FAILED" >> $GITHUB_OUTPUT

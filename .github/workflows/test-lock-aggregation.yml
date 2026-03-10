@@ -38,7 +38,7 @@ jobs:
     dummy-job:
         name: dummy-job
         needs: matrix-lock
-        if: always() && contains(fromJson(needs.matrix-lock.outputs.successful_locks), matrix.env)
+        if: always()
         strategy:
             fail-fast: false
             matrix:
