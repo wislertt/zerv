@@ -70,7 +70,8 @@ jobs:
                       if ! echo "$LABELS" | jq -e "has(\"${LABEL_PREFIX}${ENV}\")" > /dev/null 2>&1; then
                           echo "Missing ${LABEL_PREFIX}${ENV} label, will unlock all services for this env"
                           # For each service, create a combination
-                          for SERVICE in $(echo '${{ inputs.service_names }}' | jq -r '.[]'); do
+                          echo '${{ inputs.service_names }}' | jq -r '.[] | @sh' | while read -r SERVICE; do
+                              SERVICE=$(eval echo "$SERVICE")
                               COMBINATIONS+=("{\"env\":\"$ENV\",\"service\":\"$SERVICE\"}")
                           done
                       fi
