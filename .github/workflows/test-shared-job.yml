@@ -1,0 +1,64 @@
+name: test-shared-job
+
+on:
+    workflow_call:
+        inputs:
+            name:
+                description: "Name for the test job"
+                required: false
+                type: string
+                default: "test-job"
+            message:
+                description: "Message to display when job runs"
+                required: false
+                type: string
+                default: "✓ Test job completed successfully"
+            status_emoji:
+                description: "Emoji prefix for status message"
+                required: false
+                type: string
+                default: "✓"
+            show_status:
+                description: "Whether to show detailed lock status (for lock aggregation tests)"
+                required: false
+                type: boolean
+                default: false
+            successful_keys:
+                description: "JSON array of successful keys (required if show_status=true)"
+                required: false
+                type: string
+            current_key:
+                description: "Current key to check (required if show_status=true)"
+                required: false
+                type: string
+
+permissions:
+    contents: read
+
+jobs:
+    test:
+        if: ${{ inputs.show_status && contains(fromJson(inputs.successful_keys), inputs.current_key) }}
+        name: ${{ inputs.name }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: status
+              if: ${{ !inputs.show_status }}
+              run: |
+                  echo "${{ inputs.status_emoji }} ${{ inputs.message }}"
+
+            - name: detailed-status
+              if: ${{ inputs.show_status }}
+              run: |
+                  KEY="${{ inputs.current_key }}"
+                  SUCCESSFUL_KEYS='${{ inputs.successful_keys }}'
+
+                  if echo "$SUCCESSFUL_KEYS" | jq -e '. | index($KEY)' > /dev/null; then
+                      echo "✓ Status: LOCK SUCCEEDED for key $KEY"
+                  else
+                      echo "⚠️  Status: LOCK SKIPPED for key $KEY (not in successful_lock_keys)"
+                      echo "   Successful keys were: $SUCCESSFUL_KEYS"
+                  fi
+
+            - name: complete
+              run: |
+                  echo "✓ Dummy job for key ${{ inputs.current_key }} completed successfully"

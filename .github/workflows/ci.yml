@@ -58,10 +58,10 @@ jobs:
         with:
             prefix: "deploy-"
 
-    test-lock-aggregation:
-        name: test-lock-aggregation
+    test-shared-lock-aggregation:
+        name: test-shared-lock-aggregation
         needs: check-deploy-env-labels
-        uses: ./.github/workflows/test-lock-aggregation.yml
+        uses: ./.github/workflows/test-shared-lock-aggregation.yml
         with:
             # deploy_labels: '{"deploy-d": true, "deploy-p": true}'
             deploy_labels: ${{ needs.check-deploy-env-labels.outputs.labels }}

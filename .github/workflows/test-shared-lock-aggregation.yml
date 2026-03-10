@@ -1,4 +1,4 @@
-name: test-lock-aggregation
+name: test-shared-lock-aggregation
 
 on:
     workflow_call:
@@ -45,21 +45,22 @@ jobs:
         uses: ./.github/workflows/shared-aggregate-lock-results.yml
 
     # ====================================================
-    # Phase 3: Dummy jobs that check lock status
+    # Phase 3: Test jobs that verify lock status
     # ====================================================
     dummy-job:
+        name: dummy-job-${{ matrix.key }}
         needs: [lock, aggregate-lock-results]
         if: always()
         strategy:
             fail-fast: false
             matrix:
                 key: [d, n, p]
-        runs-on: ubuntu-latest
-        steps:
-            - name: job-complete
-              if: contains(fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys), matrix.key)
-              run: |
-                  echo "✓ Dummy job for key ${{ matrix.key }} completed successfully"
+        uses: ./.github/workflows/test-shared-job.yml
+        with:
+            name: dummy-job-${{ matrix.key }}
+            show_status: true
+            successful_keys: ${{ needs.aggregate-lock-results.outputs.successful_lock_keys }}
+            current_key: ${{ matrix.key }}
 
     # ====================================================
     # Phase 4: Unlock after dummy jobs
@@ -73,7 +74,6 @@ jobs:
         uses: ./.github/workflows/shared-unlock.yml
         needs:
             - lock
-            - dummy-job
             - aggregate-lock-results
         with:
             enabled: ${{ fromJson(inputs.deploy_labels)[format('deploy-{0}', matrix.key)] != null }}
