@@ -1,0 +1,173 @@
+name: test-lock-aggregation
+
+on:
+    workflow_dispatch:
+        inputs:
+            deploy_labels:
+                description: 'JSON object with deploy flags (e.g., {"deploy-d": true, "deploy-n": true})'
+                required: false
+                type: string
+                default: '{"deploy-d": true, "deploy-n": true}'
+            lock_key_owner:
+                description: "Key owner for lock"
+                required: false
+                type: string
+                default: "test-run"
+
+permissions:
+    contents: write
+
+jobs:
+    # ====================================================
+    # Phase 1: Lock with matrix
+    # ====================================================
+    lock:
+        if: ${{ inputs.deploy_labels != '' && inputs.deploy_labels != '{}' }}
+        strategy:
+            fail-fast: false
+            matrix:
+                env: [d, n, p]
+        uses: ./.github/workflows/shared-lock.yml@main
+        with:
+            enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.env)] != null }}
+            key: ${{ matrix.env }}
+            key_prefix: test/
+            key_owner: ${{ inputs.lock_key_owner }}
+            job_name: lock-${{ matrix.env }}
+            upload_result_artifact: true
+
+    # ====================================================
+    # Phase 2: Aggregate lock results
+    # ====================================================
+    aggregate-lock-results:
+        needs: lock
+        if: always()
+        runs-on: ubuntu-latest
+        steps:
+            - name: download-all-lock-artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  pattern: lock-result-*
+                  path: lock-results
+
+            - name: list-downloaded-files
+              run: |
+                  echo "=== Downloaded files ==="
+                  find lock-results -type f -name "*.json" -exec echo {} \;
+
+            - name: display-individual-results
+              run: |
+                  echo "=== Individual lock results ==="
+                  for file in lock-results/lock-result-*/lock-result.json; do
+                    if [ -f "$file" ]; then
+                      echo "---"
+                      cat "$file"
+                    fi
+                  done
+
+            - name: aggregate-results
+              id: aggregate
+              run: |
+                  # Combine all lock results into single JSON
+                  echo '{' > lock-status.json
+
+                  first=true
+                  for file in lock-results/lock-result-*/lock-result.json; do
+                    if [ -f "$file" ]; then
+                      if [ "$first" = true ]; then
+                        first=false
+                      else
+                        echo ',' >> lock-status.json
+                      fi
+
+                      # Extract key and status from individual file
+                      key=$(jq -r '.key' "$file")
+                      status=$(jq -r '.status' "$file")
+
+                      echo "Processing: key=$key, status=$status"
+
+                      # Append to combined JSON
+                      echo -n "\"$key\": \"$status\"" >> lock-status.json
+                    fi
+                  done
+
+                  echo '}' >> lock-status.json
+
+                  echo ""
+                  echo "=== Aggregated lock status ==="
+                  cat lock-status.json
+
+                  # Validate JSON
+                  if jq empty lock-status.json 2>/dev/null; then
+                    echo "✓ JSON is valid"
+                  else
+                    echo "✗ JSON is invalid"
+                    exit 1
+                  fi
+
+            - name: upload-aggregated-status
+              uses: actions/upload-artifact@v4
+              with:
+                  name: lock-status-aggregated
+                  path: lock-status.json
+                  retention-days: 1
+
+            - name: set-output
+              id: output
+              run: |
+                  CONTENT=$(cat lock-status.json)
+                  echo "status=$CONTENT" >> $GITHUB_OUTPUT
+
+        outputs:
+            lock-status: ${{ steps.output.outputs.status }}
+
+    # ====================================================
+    # Phase 3: Dummy jobs that check lock status (MATRIX VERSION)
+    # ====================================================
+    # Note: This matches the pattern used in terraform-run-all.yml where
+    # jobs use matrix.env to dynamically check their specific environment's status
+    dummy-job:
+        needs: [lock, aggregate-lock-results]
+        if: |
+            always() &&
+            fromJson(needs.aggregate-lock-results.outputs.lock-status)[matrix.env] != 'failure'
+        strategy:
+            fail-fast: false
+            matrix:
+                env: [d, n, p]
+        runs-on: ubuntu-latest
+        steps:
+            - name: check-status
+              run: |
+                  LOCK_STATUS='${{ needs.aggregate-lock-results.outputs.lock-status }}'
+                  ENV="${{ matrix.env }}"
+                  echo "Lock status: $LOCK_STATUS"
+                  ENV_STATUS=$(echo "$LOCK_STATUS" | jq -r --arg env "$ENV" '.[$env]')
+                  echo "Environment $ENV lock status: $ENV_STATUS"
+                  if [ "$ENV_STATUS" = "success" ] || [ "$ENV_STATUS" = "skipped" ]; then
+                      echo "✓ Can proceed with $ENV environment"
+                  else
+                      echo "✗ Cannot proceed with $ENV environment"
+                      exit 1
+                  fi
+
+    # ====================================================
+    # Phase 4: Unlock after dummy jobs
+    # ====================================================
+    unlock:
+        if: always()
+        strategy:
+            fail-fast: false
+            matrix:
+                env: [d, n, p]
+        uses: ./.github/workflows/shared-unlock.yml@main
+        needs:
+            - lock
+            - dummy-job
+            - aggregate-lock-results
+        with:
+            enabled: ${{ fromJson(inputs.deploy_labels)[format('deploy-{0}', matrix.env)] != null }}
+            key: ${{ matrix.env }}
+            key_prefix: test/
+            key_owner: ${{ inputs.lock_key_owner }}
+            job_name: unlock-${{ matrix.env }}

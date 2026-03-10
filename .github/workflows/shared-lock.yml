@@ -40,6 +40,11 @@ on:
                 required: false
                 type: number
                 default: 0
+            upload_result_artifact:
+                description: "Whether to upload lock result as an artifact (useful for matrix aggregation)"
+                required: false
+                type: boolean
+                default: false
 
 permissions:
     contents: write
@@ -193,3 +198,39 @@ jobs:
                   echo "Owner: ${{ inputs.key_owner }}"
                   echo "Status: ${{ steps.lock.outcome }}"
                   echo "Verified ownership: ${{ steps.recheck-lock.outputs.is_owned_by_us || 'N/A' }}"
+
+            - name: create-lock-result-json
+              if: always() && inputs.upload_result_artifact == true
+              run: |
+                  # Determine final status
+                  STATUS="${{ steps.lock.outcome }}"
+                  if [ "$STATUS" = "success" ]; then
+                    FINAL_STATUS="success"
+                  elif [ "$STATUS" = "skipped" ] || [ "${{ inputs.enabled }}" != "true" ]; then
+                    FINAL_STATUS="skipped"
+                  else
+                    FINAL_STATUS="failure"
+                  fi
+
+                  # Create JSON file with lock result
+                  cat > lock-result.json << EOF
+                  {
+                    "key": "${{ inputs.key }}",
+                    "full_key": "${{ inputs.key_prefix }}${{ inputs.key }}",
+                    "status": "$FINAL_STATUS",
+                    "outcome": "$STATUS",
+                    "enabled": ${{ inputs.enabled }},
+                    "owner": "${{ inputs.key_owner }}"
+                  }
+                  EOF
+
+                  echo "Lock result:"
+                  cat lock-result.json
+
+            - name: upload-lock-result-artifact
+              uses: actions/upload-artifact@v4
+              if: always() && inputs.upload_result_artifact == true
+              with:
+                  name: lock-result-${{ inputs.key }}
+                  path: lock-result.json
+                  retention-days: 1
