@@ -13,4 +13,4 @@ jobs:
         with:
             environments: '["d", "n", "p"]'
             deploy_label_prefix: "deploy-"
-            key_prefix: hotfix/
+            key_prefix: test/
