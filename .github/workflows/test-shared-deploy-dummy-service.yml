@@ -3,6 +3,11 @@ name: test-shared-deploy-dummy-service
 on:
     workflow_call:
         inputs:
+            enabled:
+                description: "Whether to run the job"
+                required: false
+                type: boolean
+                default: true
             name:
                 description: "Name for the test job"
                 required: false
@@ -14,6 +19,7 @@ permissions:
 
 jobs:
     test:
+        if: ${{ inputs.enabled == true }}
         name: ${{ inputs.name }}
         runs-on: ubuntu-latest
         steps:

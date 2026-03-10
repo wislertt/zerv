@@ -65,6 +65,7 @@ jobs:
                       env: p
         uses: ./.github/workflows/test-shared-deploy-dummy-service.yml
         with:
+            enabled: ${{ fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys)[matrix.env] != null }}
             name: deploy-${{ matrix.dir }}-${{ matrix.env }}
 
     # ====================================================
