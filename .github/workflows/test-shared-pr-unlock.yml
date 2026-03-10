@@ -8,9 +8,6 @@ permissions:
     contents: write
 
 jobs:
-    # ====================================================
-    # Unlock environments
-    # ====================================================
     unlock-environments:
         uses: ./.github/workflows/shared-pr-unlock.yml
         with:
@@ -18,9 +15,6 @@ jobs:
             deploy_label_prefix: "deploy-"
             key_prefix: test/
 
-    # ====================================================
-    # Unlock services (service-level locks)
-    # ====================================================
     unlock-services:
         uses: ./.github/workflows/shared-pr-unlock.yml
         with:

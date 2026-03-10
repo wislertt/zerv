@@ -21,9 +21,6 @@ permissions:
     contents: write
 
 jobs:
-    # ====================================================
-    # Deploy services with embedded lock/unlock
-    # ====================================================
     deploy-services:
         name: deploy-${{ matrix.service }}-${{ matrix.env }}
         strategy:

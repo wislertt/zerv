@@ -31,8 +31,8 @@ wheels = [
 
 [[package]]
 name = "bakefile"
-version = "0.0.0"
-source = { editable = "../bakefile" }
+version = "0.0.37"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautysh" },
     { name = "click" },
@@ -49,39 +49,9 @@ dependencies = [
     { name = "typer" },
     { name = "uv" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "beautysh", specifier = ">=6.4.2" },
-    { name = "click", specifier = ">=8.3.1" },
-    { name = "keyring", marker = "extra == 'lib'", specifier = ">=25.7.0" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "orjson", specifier = ">=3.11.5" },
-    { name = "pathspec", marker = "extra == 'lib'", specifier = ">=1.0.3" },
-    { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pydantic-settings", specifier = ">=2.0.0" },
-    { name = "python-dotenv", specifier = ">=1.2.1" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "rich", specifier = ">=14.2.0" },
-    { name = "ruff", specifier = ">=0.14.10" },
-    { name = "tenacity", marker = "extra == 'lib'", specifier = ">=9.1.2" },
-    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
-    { name = "ty", specifier = ">=0.0.8" },
-    { name = "typer", specifier = ">=0.21.0" },
-    { name = "uv", specifier = ">=0.9.20" },
-    { name = "zerv-version", marker = "extra == 'lib'", specifier = ">=0.8.0" },
-]
-provides-extras = ["lib"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "deptry", specifier = ">=0.24.0" },
-    { name = "pandas", specifier = ">=2.3.3" },
-    { name = "pre-commit", specifier = ">=4.5.1" },
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
-    { name = "python-package", editable = "../bakefile/examples/python-package" },
-    { name = "toml-sort", specifier = ">=0.24.3" },
+sdist = { url = "https://files.pythonhosted.org/packages/87/5d/14c0831ba0bbdae2f0cc2b1bd23e6f17e6265e07f343169f07d0d4913a06/bakefile-0.0.37.tar.gz", hash = "sha256:9bef9975f929e48becfbcc9391e55ed11c63be054c904aa172506dc8b05de5bc", size = 54002, upload-time = "2026-03-09T01:37:13.529Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/55/38/3ed7df2757c6a4cc67e36c6e8c052462be08399de1febd4d629d1ba6b378/bakefile-0.0.37-py3-none-any.whl", hash = "sha256:30916ba9a76856faf8b63154f42ad7d43008736f4e6fcf1741a9cf7d7ef25250", size = 80448, upload-time = "2026-03-09T01:37:14.321Z" },
 ]
 
 [[package]]
@@ -1300,7 +1270,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "bakefile", editable = "../bakefile" },
+    { name = "bakefile", specifier = ">=0.0.14" },
     { name = "deptry", specifier = ">=0.24.0" },
     { name = "keyring", specifier = ">=25.7.0" },
     { name = "maturin", specifier = ">=1.11.5" },
