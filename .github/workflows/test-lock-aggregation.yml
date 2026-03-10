@@ -8,7 +8,7 @@ on:
                 required: false
                 type: string
                 default: '{"deploy-d": true, "deploy-n": true}'
-            lock_key_owner:
+            key_owner:
                 description: "Key owner for lock"
                 required: false
                 type: string
@@ -19,58 +19,69 @@ permissions:
 
 jobs:
     # ====================================================
-    # Phase 1: Lock all environments and aggregate results
+    # Phase 1: Lock with matrix
     # ====================================================
-    matrix-lock:
-        name: matrix-lock
-        uses: ./.github/workflows/shared-matrix-lock.yml
+    lock:
+        if: ${{ inputs.deploy_labels != '' && inputs.deploy_labels != '{}' }}
+        strategy:
+            fail-fast: false
+            matrix:
+                key: [d, n, p]
+        uses: ./.github/workflows/shared-lock.yml
         with:
-            deploy_labels: ${{ inputs.deploy_labels }}
-            lock_key_owner: ${{ inputs.lock_key_owner }}
+            enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.key)] != null }}
+            key: ${{ matrix.key }}
             key_prefix: test/
-            environments: '["d", "n", "p"]'
+            key_owner: ${{ inputs.key_owner }}
+            job_name: lock-${{ matrix.key }}
+            upload_result_artifact: true
 
     # ====================================================
-    # Phase 2: Dummy jobs that check lock status (MATRIX VERSION)
+    # Phase 2: Aggregate lock results
     # ====================================================
-    # Note: This matches the pattern used in terraform-run-all.yml where
-    # jobs use matrix.env to dynamically check their specific environment's status
+    aggregate-lock-results:
+        needs: lock
+        if: always()
+        uses: ./.github/workflows/shared-aggregate-lock-results.yml
+
+    # ====================================================
+    # Phase 3: Dummy jobs that check lock status
+    # ====================================================
     dummy-job:
-        name: dummy-job
-        needs: matrix-lock
+        needs: [lock, aggregate-lock-results]
         if: always()
         strategy:
             fail-fast: false
             matrix:
-                env: [d, n, p]
+                key: [d, n, p]
         runs-on: ubuntu-latest
         steps:
             - name: check-status
-              if: contains(fromJson(needs.matrix-lock.outputs.successful_locks), matrix.env)
+              if: contains(fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys), matrix.key)
               run: |
-                  LOCK_STATUS='${{ needs.matrix-lock.outputs.successful_locks }}'
-                  ENV="${{ matrix.env }}"
+                  LOCK_STATUS='${{ needs.aggregate-lock-results.outputs.successful_lock_keys }}'
+                  KEY="${{ matrix.key }}"
                   echo "Successful lock keys: $LOCK_STATUS"
-                  echo "Current environment: $ENV"
-                  echo "✓ Environment $ENV lock succeeded - can proceed"
+                  echo "Current key: $KEY"
+                  echo "✓ Lock for key $KEY succeeded - can proceed"
 
     # ====================================================
-    # Phase 3: Unlock after dummy jobs
+    # Phase 4: Unlock after dummy jobs
     # ====================================================
     unlock:
-        name: unlock
         if: always()
         strategy:
             fail-fast: false
             matrix:
-                env: [d, n, p]
+                key: [d, n, p]
         uses: ./.github/workflows/shared-unlock.yml
         needs:
-            - matrix-lock
+            - lock
             - dummy-job
+            - aggregate-lock-results
         with:
-            enabled: ${{ fromJson(inputs.deploy_labels)[format('deploy-{0}', matrix.env)] != null }}
-            key: ${{ matrix.env }}
+            enabled: ${{ fromJson(inputs.deploy_labels)[format('deploy-{0}', matrix.key)] != null }}
+            key: ${{ matrix.key }}
             key_prefix: test/
-            key_owner: ${{ inputs.lock_key_owner }}
-            job_name: unlock-${{ matrix.env }}
+            key_owner: ${{ inputs.key_owner }}
+            job_name: unlock-${{ matrix.key }}
