@@ -128,9 +128,6 @@ jobs:
     # jobs use matrix.env to dynamically check their specific environment's status
     dummy-job:
         needs: [lock, aggregate-lock-results]
-        if: |
-            always() &&
-            fromJson(needs.aggregate-lock-results.outputs.lock-status)[matrix.env] != 'failure'
         strategy:
             fail-fast: false
             matrix:
@@ -138,6 +135,9 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: check-status
+              if: |
+                  always() &&
+                  fromJson(needs.aggregate-lock-results.outputs.lock-status)[matrix.env] != 'failure'
               run: |
                   LOCK_STATUS='${{ needs.aggregate-lock-results.outputs.lock-status }}'
                   ENV="${{ matrix.env }}"
