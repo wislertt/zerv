@@ -26,9 +26,6 @@ permissions:
     contents: write
 
 jobs:
-    # ====================================================
-    # Phase 1: Lock with matrix
-    # ====================================================
     lock:
         if: ${{ inputs.deploy_labels != '' && inputs.deploy_labels != '{}' }}
         strategy:
@@ -45,17 +42,11 @@ jobs:
             delay_before_start_in_sec: ${{ inputs.delay_before_lock_in_sec }}
             upload_result_artifact: true
 
-    # ====================================================
-    # Phase 2: Aggregate lock results
-    # ====================================================
     aggregate-lock-results:
         needs: lock
         if: always()
         uses: ./.github/workflows/shared-aggregate-lock-results.yml
 
-    # ====================================================
-    # Phase 3: Deploy all dummy services (test)
-    # ====================================================
     deploy-all-dummy-services:
         name: deploy-${{ matrix.dir }}-${{ matrix.env }}
         needs: [lock, aggregate-lock-results]
@@ -83,9 +74,6 @@ jobs:
             enabled: ${{ contains(fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys), matrix.env) }}
             name: deploy-${{ matrix.dir }}-${{ matrix.env }}
 
-    # ====================================================
-    # Phase 4: Unlock after dummy jobs
-    # ====================================================
     unlock:
         if: always() && inputs.unlock_after_deploy == true
         strategy:
