@@ -41,7 +41,7 @@ jobs:
             enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.env)] != null }}
             key: ${{ matrix.env }}
             key_prefix: test/
-            lock_key_owner: ${{ inputs.lock_key_owner }}
+            key_owner: ${{ inputs.lock_key_owner }}
             job_name: lock-${{ matrix.env }}
             delay_before_start_in_sec: ${{ inputs.delay_before_lock_in_sec }}
             upload_result_artifact: true
