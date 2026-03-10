@@ -68,32 +68,13 @@ jobs:
             - name: aggregate-results
               id: aggregate
               run: |
-                  # Combine all lock results into single JSON
-                  echo '{' > lock-status.json
+                  # Combine all lock results into single JSON using jq
+                  # -s (slurp) reads all files into an array
+                  # map({(.key): .status}) transforms each item to {key: status}
+                  # add merges all objects into one
+                  jq -s 'map({(.key): .status}) | add' \
+                      lock-results/lock-result-*/lock-result.json > lock-status.json
 
-                  first=true
-                  for file in lock-results/lock-result-*/lock-result.json; do
-                    if [ -f "$file" ]; then
-                      if [ "$first" = true ]; then
-                        first=false
-                      else
-                        echo ',' >> lock-status.json
-                      fi
-
-                      # Extract key and status from individual file
-                      key=$(jq -r '.key' "$file")
-                      status=$(jq -r '.status' "$file")
-
-                      echo "Processing: key=$key, status=$status"
-
-                      # Append to combined JSON
-                      echo -n "\"$key\": \"$status\"" >> lock-status.json
-                    fi
-                  done
-
-                  echo '}' >> lock-status.json
-
-                  echo ""
                   echo "=== Aggregated lock status ==="
                   cat lock-status.json
 
@@ -104,13 +85,6 @@ jobs:
                     echo "✗ JSON is invalid"
                     exit 1
                   fi
-
-            - name: upload-aggregated-status
-              uses: actions/upload-artifact@v4
-              with:
-                  name: lock-status-aggregated
-                  path: lock-status.json
-                  retention-days: 1
 
             - name: set-output
               id: output
