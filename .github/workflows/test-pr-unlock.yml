@@ -1,0 +1,30 @@
+name: test-pr-unlock
+
+on:
+    pull_request:
+        types: [closed, unlabeled]
+
+permissions:
+    contents: write
+
+jobs:
+    # ====================================================
+    # Unlock environments
+    # ====================================================
+    unlock-environments:
+        uses: ./.github/workflows/shared-pr-unlock.yml
+        with:
+            environments: '["d", "n", "p"]'
+            deploy_label_prefix: "deploy-"
+            key_prefix: test/
+
+    # ====================================================
+    # Unlock services (service-level locks)
+    # ====================================================
+    unlock-services:
+        uses: ./.github/workflows/shared-pr-unlock.yml
+        with:
+            environments: '["d", "n", "p"]'
+            service_names: '["dummy-service-1", "dummy-service-2"]'
+            deploy_label_prefix: "deploy-"
+            key_prefix: test/

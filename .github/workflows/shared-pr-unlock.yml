@@ -8,6 +8,13 @@ on:
                 required: true
                 description: "JSON array of environment codes"
                 # Example input: '["d", "n", "p"]'
+            service_names:
+                type: string
+                required: false
+                description: "JSON array of service names for service-level locks"
+                # Example input: '["dummy-service-1", "dummy-service-2"]'
+                # Use '[""]' for environment-level locks only
+                default: '[""]'
             deploy_label_prefix:
                 type: string
                 required: true
@@ -29,13 +36,14 @@ jobs:
             fail-fast: false
             matrix:
                 env: ${{ fromJson(inputs.environments) }}
+                service: ${{ fromJson(inputs.service_names) }}
         uses: ./.github/workflows/shared-unlock.yml
         with:
-            key: ${{ matrix.env }}
+            key: ${{ matrix.service == '' && matrix.env || format('{0}-{1}', matrix.env, matrix.service) }}
             key_prefix: ${{ inputs.key_prefix }}
             key_owner: refs/pull/${{ github.event.number }}/merge
             fail_if_owner_mismatch: false
-            job_name: unlock-${{ matrix.env }}
+            job_name: ${{ matrix.service == '' && format('unlock-{0}', matrix.env) || format('unlock-{0}-{1}', matrix.service, matrix.env) }}
 
     check-deploy-labels:
         if: github.event.action == 'unlabeled'
@@ -47,45 +55,49 @@ jobs:
         needs: check-deploy-labels
         runs-on: ubuntu-latest
         outputs:
-            missing_envs: ${{ steps.check-missing.outputs.missing_envs }}
+            unlock_combinations: ${{ steps.check-missing.outputs.unlock_combinations }}
         steps:
-            - name: check-which-environments-to-unlock
+            - name: check-what-to-unlock
               id: check-missing
               run: |
                   LABELS='${{ needs.check-deploy-labels.outputs.labels }}'
                   LABEL_PREFIX="${{ inputs.deploy_label_prefix }}"
-                  MISSING_ENVS=()
+                  COMBINATIONS=()
 
-                  # Use jq to parse the environments array and iterate
+                  # Iterate through environments and services to find missing labels
                   for ENV in $(echo '${{ inputs.environments }}' | jq -r '.[]'); do
+                      # Check if the deploy label exists for this environment
                       if ! echo "$LABELS" | jq -e "has(\"${LABEL_PREFIX}${ENV}\")" > /dev/null 2>&1; then
-                          MISSING_ENVS+=("$ENV")
-                          echo "Missing ${LABEL_PREFIX}${ENV} label"
+                          echo "Missing ${LABEL_PREFIX}${ENV} label, will unlock all services for this env"
+                          # For each service, create a combination
+                          for SERVICE in $(echo '${{ inputs.service_names }}' | jq -r '.[]'); do
+                              COMBINATIONS+=("{\"env\":\"$ENV\",\"service\":\"$SERVICE\"}")
+                          done
                       fi
                   done
 
-                  # Convert array to JSON array
-                  ENV_ARRAY=$(printf '%s\n' "${MISSING_ENVS[@]}" | jq -R . | jq -s .)
-                  echo "Environments to unlock: $ENV_ARRAY"
+                  # Convert to JSON array
+                  COMB_ARRAY=$(printf '%s\n' "${COMBINATIONS[@]}" | jq -s .)
+                  echo "Unlock combinations: $COMB_ARRAY"
 
                   # Output as GitHub Actions variable
                   {
-                      echo "missing_envs<<EOF"
-                      echo "$ENV_ARRAY"
+                      echo "unlock_combinations<<EOF"
+                      echo "$COMB_ARRAY"
                       echo "EOF"
                   } >> $GITHUB_OUTPUT
 
     unlock-on-unlabel:
         needs: get-missing-deploy-labels
-        if: needs.get-missing-deploy-labels.outputs.missing_envs != '[]'
+        if: needs.get-missing-deploy-labels.outputs.unlock_combinations != '[]'
         strategy:
             fail-fast: false
             matrix:
-                env: ${{ fromJson(needs.get-missing-deploy-labels.outputs.missing_envs) }}
+                combination: ${{ fromJson(needs.get-missing-deploy-labels.outputs.unlock_combinations) }}
         uses: ./.github/workflows/shared-unlock.yml
         with:
-            key: ${{ matrix.env }}
+            key: ${{ matrix.combination.service == '' && matrix.combination.env || format('{0}-{1}', matrix.combination.env, matrix.combination.service) }}
             key_prefix: ${{ inputs.key_prefix }}
             key_owner: ${{ github.ref }}
             fail_if_owner_mismatch: false
-            job_name: unlock-${{ matrix.env }}
+            job_name: ${{ matrix.combination.service == '' && format('unlock-{0}', matrix.combination.env) || format('unlock-{0}-{1}', matrix.combination.service, matrix.combination.env) }}
