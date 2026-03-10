@@ -1,4 +1,4 @@
-name: test-pr-unlock
+name: test-shared-pr-unlock
 
 on:
     pull_request:
