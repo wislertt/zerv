@@ -1,7 +1,7 @@
 name: test-lock-aggregation
 
 on:
-    workflow_dispatch:
+    workflow_call:
         inputs:
             deploy_labels:
                 description: 'JSON object with deploy flags (e.g., {"deploy-d": true, "deploy-n": true})'
