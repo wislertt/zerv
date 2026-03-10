@@ -65,6 +65,11 @@ jobs:
                   echo "Current key: $KEY"
                   echo "✓ Lock for key $KEY succeeded - can proceed"
 
+            - name: job-start
+              if: contains(fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys), matrix.key)
+              run: |
+                  echo "✓ Dummy job for key ${{ matrix.key }} completed successfully"
+
     # ====================================================
     # Phase 4: Unlock after dummy jobs
     # ====================================================
