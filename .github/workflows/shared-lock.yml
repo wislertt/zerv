@@ -203,16 +203,27 @@ jobs:
                   echo "Status: ${{ steps.lock.outcome }}"
                   echo "Verified ownership: ${{ steps.recheck-lock.outputs.is_owned_by_us || 'N/A' }}"
 
-            - name: create-lock-result-json
+            - name: create-lock-result
               if: always() && inputs.upload_result_artifact == true
+              id: output
               run: |
+                  CHECK_LOCK_OUTCOME="${{ steps.check-lock.outcome }}"
+                  LOCK_OUTCOME="${{ steps.lock.outcome }}"
+
                   # Determine final status
-                  STATUS="${{ steps.lock.outcome }}"
-                  if [ "$STATUS" = "success" ]; then
+                  if [ "$LOCK_OUTCOME" = "success" ]; then
                     FINAL_STATUS="success"
-                  elif [ "$STATUS" = "skipped" ] || [ "${{ inputs.enabled }}" != "true" ]; then
+                  elif [ "$CHECK_LOCK_OUTCOME" = "failure" ]; then
+                    # Lock check failed - this is a lock contention failure
+                    FINAL_STATUS="failure"
+                  elif [ "$LOCK_OUTCOME" = "failure" ]; then
+                    # Lock step itself failed
+                    FINAL_STATUS="failure"
+                  elif [ "${{ inputs.enabled }}" != "true" ]; then
+                    # Explicitly disabled
                     FINAL_STATUS="skipped"
                   else
+                    # Lock was skipped for unknown reason (treat as failure)
                     FINAL_STATUS="failure"
                   fi
 
@@ -222,7 +233,7 @@ jobs:
                     "key": "${{ inputs.key }}",
                     "full_key": "${{ inputs.key_prefix }}${{ inputs.key }}",
                     "status": "$FINAL_STATUS",
-                    "outcome": "$STATUS",
+                    "outcome": "$LOCK_OUTCOME",
                     "enabled": ${{ inputs.enabled }},
                     "owner": "${{ inputs.key_owner }}"
                   }
@@ -230,20 +241,6 @@ jobs:
 
                   echo "Lock result:"
                   cat lock-result.json
-
-            - name: set-job-output
-              if: always() && inputs.upload_result_artifact == true
-              id: output
-              run: |
-                  # Determine final status for output
-                  STATUS="${{ steps.lock.outcome }}"
-                  if [ "$STATUS" = "success" ]; then
-                    FINAL_STATUS="success"
-                  elif [ "$STATUS" = "skipped" ] || [ "${{ inputs.enabled }}" != "true" ]; then
-                    FINAL_STATUS="skipped"
-                  else
-                    FINAL_STATUS="failure"
-                  fi
 
                   # Set job output (demonstrates "last wins" limitation with matrix)
                   echo "lock_status=$FINAL_STATUS" >> $GITHUB_OUTPUT
