@@ -88,6 +88,23 @@ jobs:
                       echo "EOF"
                   } >> $GITHUB_OUTPUT
 
+    debug-unlock-combinations:
+        needs: get-missing-deploy-labels
+        runs-on: ubuntu-latest
+        if: always()
+        steps:
+            - name: debug-output
+              run: |
+                  echo "=== Unlock combinations ==="
+                  echo "${{ needs.get-missing-deploy-labels.outputs.unlock_combinations }}"
+                  echo ""
+                  echo "=== Is empty? ==="
+                  if [ "${{ needs.get-missing-deploy-labels.outputs.unlock_combinations }}" = "[]" ]; then
+                      echo "YES - unlock_combinations is empty"
+                  else
+                      echo "NO - unlock_combinations has values"
+                  fi
+
     unlock-on-unlabel:
         needs: get-missing-deploy-labels
         if: needs.get-missing-deploy-labels.outputs.unlock_combinations != '[]'
