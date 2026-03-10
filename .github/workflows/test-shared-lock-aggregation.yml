@@ -58,14 +58,20 @@ jobs:
                     - dir: dummy-service-1
                       env: d
                     - dir: dummy-service-1
+                      env: n
+                    - dir: dummy-service-1
                       env: p
+
                     - dir: dummy-service-2
                       env: d
                     - dir: dummy-service-2
+                      env: n
+                    - dir: dummy-service-2
                       env: p
+
         uses: ./.github/workflows/test-shared-deploy-dummy-service.yml
         with:
-            enabled: ${{ fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys)[matrix.env] != null }}
+            enabled: ${{ contains(fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys), matrix.env) }}
             name: deploy-${{ matrix.dir }}-${{ matrix.env }}
 
     # ====================================================
