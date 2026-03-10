@@ -65,6 +65,19 @@ jobs:
                     fi
                   done
 
+            - name: demonstrate-outputs-limitation
+              run: |
+                  echo "=== Demonstrating GitHub Actions Outputs Limitation ==="
+                  echo "When using reusable workflow with matrix, only ONE output is returned."
+                  echo "The output comes from whichever matrix instance completes LAST."
+                  echo ""
+                  echo "Lock job outputs (should show same value for all - last wins):"
+                  echo "  lock-d output: ${{ needs.lock.outputs.lock_status }}"
+                  echo "  lock-n output: ${{ needs.lock.outputs.lock_status }}"
+                  echo "  lock-p output: ${{ needs.lock.outputs.lock_status }}"
+                  echo ""
+                  echo "This is why we need artifacts for per-environment tracking."
+
             - name: aggregate-results
               id: aggregate
               run: |
@@ -89,11 +102,12 @@ jobs:
             - name: set-output
               id: output
               run: |
-                  CONTENT=$(cat lock-status.json)
-                  echo "status=$CONTENT" >> $GITHUB_OUTPUT
+                  # Use jq -c to compact JSON to single line and properly escape
+                  CONTENT=$(jq -c . lock-status.json)
+                  echo "lock-status=$CONTENT" >> $GITHUB_OUTPUT
 
         outputs:
-            lock-status: ${{ steps.output.outputs.status }}
+            lock-status: ${{ steps.output.outputs.lock-status }}
 
     # ====================================================
     # Phase 3: Dummy jobs that check lock status (MATRIX VERSION)

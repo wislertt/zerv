@@ -45,6 +45,10 @@ on:
                 required: false
                 type: boolean
                 default: false
+        outputs:
+            lock_status:
+                description: "Lock status for this key (NOTE: with matrix, only last instance's output is returned)"
+                value: ${{ jobs.lock.outputs.lock_status }}
 
 permissions:
     contents: write
@@ -227,6 +231,24 @@ jobs:
                   echo "Lock result:"
                   cat lock-result.json
 
+            - name: set-job-output
+              if: always() && inputs.upload_result_artifact == true
+              id: output
+              run: |
+                  # Determine final status for output
+                  STATUS="${{ steps.lock.outcome }}"
+                  if [ "$STATUS" = "success" ]; then
+                    FINAL_STATUS="success"
+                  elif [ "$STATUS" = "skipped" ] || [ "${{ inputs.enabled }}" != "true" ]; then
+                    FINAL_STATUS="skipped"
+                  else
+                    FINAL_STATUS="failure"
+                  fi
+
+                  # Set job output (demonstrates "last wins" limitation with matrix)
+                  echo "lock_status=$FINAL_STATUS" >> $GITHUB_OUTPUT
+                  echo "Set output: lock_status=$FINAL_STATUS"
+
             - name: upload-lock-result-artifact
               uses: actions/upload-artifact@v4
               if: always() && inputs.upload_result_artifact == true
@@ -234,3 +256,6 @@ jobs:
                   name: lock-result-${{ inputs.key }}
                   path: lock-result.json
                   retention-days: 1
+
+        outputs:
+            lock_status: ${{ steps.output.outputs.lock_status }}
