@@ -49,24 +49,14 @@ jobs:
     # ====================================================
     dummy-job:
         needs: [lock, aggregate-lock-results]
-        if: always()
+        if: always() && contains(fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys), matrix.key)
         strategy:
             fail-fast: false
             matrix:
                 key: [d, n, p]
         runs-on: ubuntu-latest
         steps:
-            - name: check-status
-              if: contains(fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys), matrix.key)
-              run: |
-                  LOCK_STATUS='${{ needs.aggregate-lock-results.outputs.successful_lock_keys }}'
-                  KEY="${{ matrix.key }}"
-                  echo "Successful lock keys: $LOCK_STATUS"
-                  echo "Current key: $KEY"
-                  echo "✓ Lock for key $KEY succeeded - can proceed"
-
-            - name: job-start
-              if: contains(fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys), matrix.key)
+            - name: job-complete
               run: |
                   echo "✓ Dummy job for key ${{ matrix.key }} completed successfully"
 
