@@ -72,23 +72,23 @@ jobs:
                   echo "The output comes from whichever matrix instance completes LAST."
                   echo ""
                   echo "Lock job outputs (should show same value for all - last wins):"
-                  echo "  lock-d output: ${{ needs.lock.outputs.lock_status }}"
-                  echo "  lock-n output: ${{ needs.lock.outputs.lock_status }}"
-                  echo "  lock-p output: ${{ needs.lock.outputs.lock_status }}"
+                  echo "  lock output: ${{ needs.lock.outputs.lock_status }}"
                   echo ""
                   echo "This is why we need artifacts for per-environment tracking."
+                  echo "Artifacts allow us to aggregate results into a simple array like:"
+                  echo '  ["d", "p"]  ← only successful lock keys'
 
             - name: aggregate-results
               id: aggregate
               run: |
-                  # Combine all lock results into single JSON using jq
+                  # Extract only successful lock keys as an array
                   # -s (slurp) reads all files into an array
-                  # map({(.key): .status}) transforms each item to {key: status}
-                  # add merges all objects into one
-                  jq -s 'map({(.key): .status}) | add' \
+                  # map(select(.status == "success")) filters only successful locks
+                  # map(.key) extracts just the keys
+                  jq -s 'map(select(.status == "success")) | map(.key)' \
                       lock-results/lock-result-*/lock-result.json > lock-status.json
 
-                  echo "=== Aggregated lock status ==="
+                  echo "=== Successful lock keys ==="
                   cat lock-status.json
 
                   # Validate JSON
@@ -123,21 +123,13 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: check-status
-              if: |
-                  always() &&
-                  fromJson(needs.aggregate-lock-results.outputs.lock-status)[matrix.env] != 'failure'
+              if: contains(fromJson(needs.aggregate-lock-results.outputs.lock-status), matrix.env)
               run: |
                   LOCK_STATUS='${{ needs.aggregate-lock-results.outputs.lock-status }}'
                   ENV="${{ matrix.env }}"
-                  echo "Lock status: $LOCK_STATUS"
-                  ENV_STATUS=$(echo "$LOCK_STATUS" | jq -r --arg env "$ENV" '.[$env]')
-                  echo "Environment $ENV lock status: $ENV_STATUS"
-                  if [ "$ENV_STATUS" = "success" ] || [ "$ENV_STATUS" = "skipped" ]; then
-                      echo "✓ Can proceed with $ENV environment"
-                  else
-                      echo "✗ Cannot proceed with $ENV environment"
-                      exit 1
-                  fi
+                  echo "Successful lock keys: $LOCK_STATUS"
+                  echo "Current environment: $ENV"
+                  echo "✓ Environment $ENV lock succeeded - can proceed"
 
     # ====================================================
     # Phase 4: Unlock after dummy jobs
