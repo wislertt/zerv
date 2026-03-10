@@ -4,10 +4,9 @@ on:
     workflow_call:
         inputs:
             deploy_labels:
-                description: 'JSON object with deploy flags (e.g., {"deploy-d": true, "deploy-n": true})'
+                description: 'JSON object with deploy-d/deploy-n/deploy-p flags (e.g., ''{"deploy-d": true}'')'
                 required: false
                 type: string
-                default: '{"deploy-d": true, "deploy-n": true}'
             lock_key_owner:
                 description: "Key owner for environment lock"
                 required: false
@@ -15,13 +14,13 @@ on:
             unlock_after_deploy:
                 description: "Whether to unlock after deployment"
                 required: false
-                type: boolean
                 default: true
+                type: boolean
             delay_before_lock_in_sec:
-                description: "Delay in seconds before starting lock operations (allows previous lock/unlock to propagate)"
+                description: "Delay in seconds before lock operations (allows previous lock/unlock to propagate)"
                 required: false
-                type: number
                 default: 0
+                type: number
 
 permissions:
     contents: write

@@ -59,6 +59,7 @@ jobs:
         with:
             deploy_labels: '{"deploy-d": true, "deploy-n": true, "deploy-p": true}'
             lock_key_owner: ${{ github.ref }}
+            unlock_after_deploy: true
             delay_before_lock_in_sec: 30
 
     # ====================================================
