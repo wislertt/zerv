@@ -207,23 +207,14 @@ jobs:
               if: always() && inputs.upload_result_artifact == true
               id: output
               run: |
-                  CHECK_LOCK_OUTCOME="${{ steps.check-lock.outcome }}"
+                  RECHECK_LOCK_OUTCOME="${{ steps.recheck-lock.outcome }}"
                   LOCK_OUTCOME="${{ steps.lock.outcome }}"
 
                   # Determine final status
-                  if [ "$LOCK_OUTCOME" = "success" ]; then
+                  # Success only when recheck-lock succeeds (or lock succeeds if recheck is disabled)
+                  if [ "$RECHECK_LOCK_OUTCOME" = "success" ] || ([ "$RECHECK_LOCK_OUTCOME" = "skipped" ] && [ "$LOCK_OUTCOME" = "success" ]); then
                     FINAL_STATUS="success"
-                  elif [ "$CHECK_LOCK_OUTCOME" = "failure" ]; then
-                    # Lock check failed - this is a lock contention failure
-                    FINAL_STATUS="failure"
-                  elif [ "$LOCK_OUTCOME" = "failure" ]; then
-                    # Lock step itself failed
-                    FINAL_STATUS="failure"
-                  elif [ "${{ inputs.enabled }}" != "true" ]; then
-                    # Explicitly disabled
-                    FINAL_STATUS="skipped"
                   else
-                    # Lock was skipped for unknown reason (treat as failure)
                     FINAL_STATUS="failure"
                   fi
 
@@ -233,8 +224,6 @@ jobs:
                     "key": "${{ inputs.key }}",
                     "full_key": "${{ inputs.key_prefix }}${{ inputs.key }}",
                     "status": "$FINAL_STATUS",
-                    "outcome": "$LOCK_OUTCOME",
-                    "enabled": ${{ inputs.enabled }},
                     "owner": "${{ inputs.key_owner }}"
                   }
                   EOF
@@ -242,7 +231,7 @@ jobs:
                   echo "Lock result:"
                   cat lock-result.json
 
-                  # Set job output (demonstrates "last wins" limitation with matrix)
+                  # Set job output
                   echo "lock_status=$FINAL_STATUS" >> $GITHUB_OUTPUT
                   echo "Set output: lock_status=$FINAL_STATUS"
 

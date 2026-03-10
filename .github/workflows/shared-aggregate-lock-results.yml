@@ -18,6 +18,9 @@ on:
             lock_results_raw:
                 description: "Raw aggregated lock results as JSON object (e.g., {'d': {...}, 'p': {...}})"
                 value: ${{ jobs.aggregate-lock-results.outputs.lock_results_raw }}
+            lock_results_simple:
+                description: "Simple status map (e.g., {'d': 'success', 'n': 'failure', 'p': 'success'})"
+                value: ${{ jobs.aggregate-lock-results.outputs.lock_results_simple }}
 
 permissions:
     contents: read
@@ -29,6 +32,7 @@ jobs:
             successful_lock_keys: ${{ steps.output.outputs.successful_lock_keys }}
             failed_lock_keys: ${{ steps.output.outputs.failed_lock_keys }}
             lock_results_raw: ${{ steps.output.outputs.lock_results_raw }}
+            lock_results_simple: ${{ steps.output.outputs.lock_results_simple }}
         steps:
             - name: download-lock-artifacts
               uses: actions/download-artifact@v8
@@ -59,6 +63,7 @@ jobs:
                     echo "[]" > successful-lock-keys.json
                     echo "[]" > failed-lock-keys.json
                     echo "{}" > lock-results-raw.json
+                    echo "{}" > lock-results-simple.json
                   else
                     # Extract successful lock keys
                     find lock-results -name "lock-result.json" -type f -exec jq -s 'map(select(.status == "success")) | map(.key)' {} + > successful-lock-keys.json
@@ -68,6 +73,9 @@ jobs:
 
                     # Create raw aggregated JSON object with all details
                     find lock-results -name "lock-result.json" -type f -exec jq -s 'map({(.key): .}) | add' {} + > lock-results-raw.json
+
+                    # Create simple status map: {"d": "success", "n": "failure", "p": "success"}
+                    find lock-results -name "lock-result.json" -type f -exec jq -s 'map({(.key): .status}) | add' {} + > lock-results-simple.json
                   fi
 
                   echo "=== Successful lock keys ==="
@@ -79,10 +87,14 @@ jobs:
                   echo "=== Raw aggregated lock results ==="
                   cat lock-results-raw.json
 
+                  echo "=== Simple status map ==="
+                  cat lock-results-simple.json
+
                   # Validate JSON
                   if jq empty successful-lock-keys.json 2>/dev/null && \
                      jq empty failed-lock-keys.json 2>/dev/null && \
-                     jq empty lock-results-raw.json 2>/dev/null; then
+                     jq empty lock-results-raw.json 2>/dev/null && \
+                     jq empty lock-results-simple.json 2>/dev/null; then
                     echo "✓ JSON is valid"
                   else
                     echo "✗ JSON is invalid"
@@ -95,6 +107,8 @@ jobs:
                   SUCCESSFUL=$(jq -c . successful-lock-keys.json)
                   FAILED=$(jq -c . failed-lock-keys.json)
                   RAW=$(jq -c . lock-results-raw.json)
+                  SIMPLE=$(jq -c . lock-results-simple.json)
                   echo "successful_lock_keys=$SUCCESSFUL" >> $GITHUB_OUTPUT
                   echo "failed_lock_keys=$FAILED" >> $GITHUB_OUTPUT
                   echo "lock_results_raw=$RAW" >> $GITHUB_OUTPUT
+                  echo "lock_results_simple=$SIMPLE" >> $GITHUB_OUTPUT
