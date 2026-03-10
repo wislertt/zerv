@@ -2,7 +2,8 @@ name: test-shared-pr-unlock
 
 on:
     pull_request:
-        types: [closed, unlabeled]
+        # types: [closed, unlabeled]
+        types: [closed, labeled, unlabeled, opened, synchronize, reopened]
 
 permissions:
     contents: write

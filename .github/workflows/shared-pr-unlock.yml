@@ -64,7 +64,7 @@ jobs:
                   LABEL_PREFIX="${{ inputs.deploy_label_prefix }}"
 
                   # Build combinations using jq (avoiding subshell issues)
-                  COMB_ARRAY=$(echo '{}' | jq -c --arg labels "$LABELS" \
+                  COMB_ARRAY=$(echo '{}' | jq -c --argjson labels "$LABELS" \
                                               --arg prefix "$LABEL_PREFIX" \
                                               --argjson envs '${{ inputs.environments }}' \
                                               --argjson services '${{ inputs.service_names }}' \
