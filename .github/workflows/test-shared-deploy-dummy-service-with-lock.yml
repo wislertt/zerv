@@ -26,6 +26,11 @@ on:
                 required: false
                 type: boolean
                 default: true
+            delay_before_lock_in_sec:
+                description: "Delay in seconds before lock operations (allows previous lock/unlock to propagate)"
+                required: false
+                default: 0
+                type: number
 
 permissions:
     contents: write
@@ -40,6 +45,7 @@ jobs:
             key_prefix: test/
             key_owner: ${{ inputs.lock_key_owner }}
             job_name: lock-${{ inputs.lock_key }}
+            delay_before_start_in_sec: ${{ inputs.delay_before_lock_in_sec }}
 
     deploy:
         name: ${{ inputs.name }}

@@ -76,6 +76,7 @@ jobs:
             deploy_labels: ${{ needs.check-deploy-env-labels.outputs.labels }}
             lock_key_owner: ${{ github.ref }}
             unlock_after_deploy: false
+            delay_before_lock_in_sec: 0
 
     # ====================================================
     # Deployment
