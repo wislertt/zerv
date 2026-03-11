@@ -1,0 +1,92 @@
+name: test-shared-lock-aggregation
+
+on:
+    workflow_call:
+        inputs:
+            deploy_labels:
+                description: 'JSON object with deploy-d/deploy-n/deploy-p flags (e.g., ''{"deploy-d": true}'')'
+                required: false
+                type: string
+            lock_key_owner:
+                description: "Key owner for environment lock"
+                required: false
+                type: string
+            unlock_after_deploy:
+                description: "Whether to unlock after deployment"
+                required: false
+                default: true
+                type: boolean
+            delay_before_lock_in_sec:
+                description: "Delay in seconds before lock operations (allows previous lock/unlock to propagate)"
+                required: false
+                default: 0
+                type: number
+
+permissions:
+    contents: write
+
+jobs:
+    lock:
+        if: ${{ inputs.deploy_labels != '' && inputs.deploy_labels != '{}' }}
+        strategy:
+            fail-fast: false
+            matrix:
+                env: [d, n, p]
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.env)] != null }}
+            key: ${{ matrix.env }}
+            key_prefix: test/
+            key_owner: ${{ inputs.lock_key_owner }}
+            job_name: lock-${{ matrix.env }}
+            delay_before_start_in_sec: ${{ inputs.delay_before_lock_in_sec }}
+            upload_result_artifact: true
+
+    aggregate-lock-results:
+        needs: lock
+        if: always()
+        uses: ./.github/workflows/shared-aggregate-lock-results.yml
+
+    deploy-all-dummy-services:
+        name: deploy-${{ matrix.dir }}-${{ matrix.env }}
+        needs: [lock, aggregate-lock-results]
+        if: always()
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - dir: dummy-service-1
+                      env: d
+                    - dir: dummy-service-1
+                      env: n
+                    - dir: dummy-service-1
+                      env: p
+
+                    - dir: dummy-service-2
+                      env: d
+                    - dir: dummy-service-2
+                      env: n
+                    - dir: dummy-service-2
+                      env: p
+
+        uses: ./.github/workflows/test-shared-deploy-dummy-service.yml
+        with:
+            enabled: ${{ contains(fromJson(needs.aggregate-lock-results.outputs.successful_lock_keys), matrix.env) }}
+            name: deploy-${{ matrix.dir }}-${{ matrix.env }}
+
+    unlock:
+        if: always() && inputs.unlock_after_deploy == true
+        strategy:
+            fail-fast: false
+            matrix:
+                env: [d, n, p]
+        uses: ./.github/workflows/shared-unlock.yml
+        needs:
+            - lock
+            - aggregate-lock-results
+        with:
+            enabled: ${{ fromJson(inputs.deploy_labels)[format('deploy-{0}', matrix.env)] != null }}
+            key: ${{ matrix.env }}
+            key_prefix: test/
+            key_owner: ${{ inputs.lock_key_owner }}
+            job_name: unlock-${{ matrix.env }}
