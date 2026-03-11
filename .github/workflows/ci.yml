@@ -50,6 +50,34 @@ jobs:
         uses: ./.github/workflows/build-bin.yml
 
     # ====================================================
+    # Deployment with environment
+    # ====================================================
+    check-deploy-env-labels:
+        name: check-deploy-env-labels
+        uses: ./.github/workflows/shared-check-pr-labels-with-prefix.yml
+        with:
+            prefix: "deploy-"
+
+    test-shared-global-lock:
+        name: test-shared-global-lock
+        needs: check-deploy-env-labels
+        uses: ./.github/workflows/test-shared-global-lock.yml
+        with:
+            deploy_labels: ${{ needs.check-deploy-env-labels.outputs.labels }}
+            lock_key_owner: ${{ github.ref }}
+            unlock_after_deploy: false
+            delay_before_lock_in_sec: 0
+
+    test-shared-service-lock:
+        name: test-shared-service-lock
+        needs: check-deploy-env-labels
+        uses: ./.github/workflows/test-shared-service-lock.yml
+        with:
+            deploy_labels: ${{ needs.check-deploy-env-labels.outputs.labels }}
+            lock_key_owner: ${{ github.ref }}
+            unlock_after_deploy: false
+
+    # ====================================================
     # Deployment
     # ====================================================
     publish-test-pypi:

@@ -40,6 +40,15 @@ on:
                 required: false
                 type: number
                 default: 0
+            upload_result_artifact:
+                description: "Whether to upload lock result as an artifact (useful for matrix aggregation)"
+                required: false
+                type: boolean
+                default: false
+        outputs:
+            lock_status:
+                description: "Lock status for this key (NOTE: with matrix, only last instance's output is returned)"
+                value: ${{ jobs.lock.outputs.lock_status }}
 
 permissions:
     contents: write
@@ -193,3 +202,46 @@ jobs:
                   echo "Owner: ${{ inputs.key_owner }}"
                   echo "Status: ${{ steps.lock.outcome }}"
                   echo "Verified ownership: ${{ steps.recheck-lock.outputs.is_owned_by_us || 'N/A' }}"
+
+            - name: create-lock-result
+              if: always() && inputs.upload_result_artifact == true
+              id: output
+              run: |
+                  RECHECK_LOCK_OUTCOME="${{ steps.recheck-lock.outcome }}"
+                  LOCK_OUTCOME="${{ steps.lock.outcome }}"
+
+                  # Determine final status
+                  # Success only when recheck-lock succeeds (or lock succeeds if recheck is disabled)
+                  if [ "$RECHECK_LOCK_OUTCOME" = "success" ] || ([ "$RECHECK_LOCK_OUTCOME" = "skipped" ] && [ "$LOCK_OUTCOME" = "success" ]); then
+                    FINAL_STATUS="success"
+                  else
+                    FINAL_STATUS="failure"
+                  fi
+
+                  # Create JSON file with lock result
+                  cat > lock-result.json << EOF
+                  {
+                    "key": "${{ inputs.key }}",
+                    "full_key": "${{ inputs.key_prefix }}${{ inputs.key }}",
+                    "status": "$FINAL_STATUS",
+                    "owner": "${{ inputs.key_owner }}"
+                  }
+                  EOF
+
+                  echo "Lock result:"
+                  cat lock-result.json
+
+                  # Set job output
+                  echo "lock_status=$FINAL_STATUS" >> $GITHUB_OUTPUT
+                  echo "Set output: lock_status=$FINAL_STATUS"
+
+            - name: upload-lock-result-artifact
+              uses: actions/upload-artifact@v7
+              if: always() && inputs.upload_result_artifact == true
+              with:
+                  name: lock-result-${{ inputs.key }}
+                  path: lock-result.json
+                  retention-days: 1
+
+        outputs:
+            lock_status: ${{ steps.output.outputs.lock_status }}
