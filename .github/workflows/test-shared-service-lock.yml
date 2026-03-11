@@ -16,6 +16,11 @@ on:
                 required: false
                 type: boolean
                 default: true
+            delay_before_lock_in_sec:
+                description: "Delay in seconds before lock operations (allows previous lock/unlock to propagate)"
+                required: false
+                default: 0
+                type: number
 
 permissions:
     contents: write
@@ -48,3 +53,4 @@ jobs:
             lock_key: ${{ matrix.env }}-${{ matrix.service }}
             lock_key_owner: ${{ inputs.lock_key_owner }}
             unlock_after_deploy: ${{ inputs.unlock_after_deploy }}
+            delay_before_lock_in_sec: ${{ inputs.delay_before_lock_in_sec }}
