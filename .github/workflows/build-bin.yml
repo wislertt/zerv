@@ -61,7 +61,7 @@ jobs:
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: setup-mise
-              uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
+              uses: jdx/mise-action@c1ecc8f748cd28cdeabf76dab3cccde4ce692fe4 # v4.0.0
 
             - name: verify-rust-toolchain
               # Workaround for Windows rustup bug: https://github.com/rust-lang/rustup/issues/3104
@@ -80,10 +80,11 @@ jobs:
 
             - name: install-cross-compilation-dependencies
               if: matrix.target == 'aarch64-unknown-linux-gnu'
+              shell: bash
               run: |
                   sudo apt-get update
                   sudo apt-get install -y gcc-aarch64-linux-gnu
-                  echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+                  echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
 
             - name: update-cargo-toml-version
               if: inputs.version != ''
@@ -96,7 +97,7 @@ jobs:
 
             - name: upload-binary-to-release
               if: inputs.upload_to_release == true && inputs.tag != ''
-              uses: svenstaro/upload-release-action@b98a3b12e86552593f3e4e577ca8a62aa2f3f22b # 2.11.4
+              uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # 2.11.5
               with:
                   repo_token: ${{ secrets.GITHUB_TOKEN }}
                   file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}

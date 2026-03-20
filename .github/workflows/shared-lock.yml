@@ -149,11 +149,12 @@ jobs:
             # Lock
             - name: prepare-lock-reason
               id: lock-reason
+              shell: bash
               run: |
                   # Simple reason with owner information
                   REASON="owner:${{ inputs.key_owner }}"
                   echo "Lock reason: $REASON"
-                  echo "reason=$REASON" >> $GITHUB_OUTPUT
+                  echo "reason=$REASON" >> "$GITHUB_OUTPUT"
               if: steps.check-lock.outputs.should_proceed == 'true'
 
             - name: lock
@@ -206,13 +207,14 @@ jobs:
             - name: create-lock-result
               if: always() && inputs.upload_result_artifact == true
               id: output
+              shell: bash
               run: |
                   RECHECK_LOCK_OUTCOME="${{ steps.recheck-lock.outcome }}"
                   LOCK_OUTCOME="${{ steps.lock.outcome }}"
 
                   # Determine final status
                   # Success only when recheck-lock succeeds (or lock succeeds if recheck is disabled)
-                  if [ "$RECHECK_LOCK_OUTCOME" = "success" ] || ([ "$RECHECK_LOCK_OUTCOME" = "skipped" ] && [ "$LOCK_OUTCOME" = "success" ]); then
+                  if [ "$RECHECK_LOCK_OUTCOME" = "success" ] || { [ "$RECHECK_LOCK_OUTCOME" = "skipped" ] && [ "$LOCK_OUTCOME" = "success" ]; }; then
                     FINAL_STATUS="success"
                   else
                     FINAL_STATUS="failure"
@@ -232,11 +234,11 @@ jobs:
                   cat lock-result.json
 
                   # Set job output
-                  echo "lock_status=$FINAL_STATUS" >> $GITHUB_OUTPUT
+                  echo "lock_status=$FINAL_STATUS" >> "$GITHUB_OUTPUT"
                   echo "Set output: lock_status=$FINAL_STATUS"
 
             - name: upload-lock-result-artifact
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
               if: always() && inputs.upload_result_artifact == true
               with:
                   name: lock-result-${{ inputs.key }}

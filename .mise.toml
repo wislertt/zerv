@@ -3,12 +3,14 @@ cargo.binstall = true
 pipx.uvx = true
 
 [tools]
+actionlint = "latest"
 "aqua:cargo-bins/cargo-binstall" = "latest"
 "aqua:rust-lang/rustup" = "latest"
 bun = "latest"
 "cargo:cargo-audit" = "latest"
 "cargo:cargo-sort" = "latest"
 "cargo:cargo-tarpaulin" = "latest"
+"npm:actions-up" = "latest"
 "pipx:bakefile" = "latest"
 "pipx:pre-commit" = "latest"
 "pipx:toml-sort" = "latest"

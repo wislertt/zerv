@@ -80,7 +80,7 @@ jobs:
                       echo "unlock_combinations<<EOF"
                       echo "$COMB_ARRAY"
                       echo "EOF"
-                  } >> $GITHUB_OUTPUT
+                  } >> "$GITHUB_OUTPUT"
 
     debug-unlock-combinations:
         needs: get-missing-deploy-labels
