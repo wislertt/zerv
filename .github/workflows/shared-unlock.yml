@@ -61,10 +61,10 @@ jobs:
                   echo "Unlock owner provided: $UNLOCK_OWNER"
                   if [ "$LOCKED" != "true" ]; then
                       echo "✓ Key is not locked"
-                      echo "should_unlock=true" >> $GITHUB_OUTPUT
+                      echo "should_unlock=true" >> "$GITHUB_OUTPUT"
                   elif [ -z "$UNLOCK_OWNER" ]; then
                       echo "✓ No owner validation required, unlocking"
-                      echo "should_unlock=true" >> $GITHUB_OUTPUT
+                      echo "should_unlock=true" >> "$GITHUB_OUTPUT"
                   else
                       echo "Lock exists, validating owner..."
                       LOCK_OWNER=$(echo "$LOCK_REASON" | grep -o 'owner:[^,]*' | cut -d: -f2 || true)
@@ -72,10 +72,10 @@ jobs:
                       echo "Requested unlock by: $UNLOCK_OWNER"
                       if [ "$LOCK_OWNER" = "$UNLOCK_OWNER" ]; then
                           echo "✓ Owner matches, unlocking"
-                          echo "should_unlock=true" >> $GITHUB_OUTPUT
+                          echo "should_unlock=true" >> "$GITHUB_OUTPUT"
                       else
                           echo "✗ Owner mismatch, cannot unlock"
-                          echo "should_unlock=false" >> $GITHUB_OUTPUT
+                          echo "should_unlock=false" >> "$GITHUB_OUTPUT"
 
                           if [ "${{ inputs.fail_if_owner_mismatch }}" = "true" ]; then
                               echo "::error::Cannot unlock key '$KEY' - owned by $LOCK_OWNER, unlock requested by $UNLOCK_OWNER"

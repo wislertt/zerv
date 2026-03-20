@@ -5,11 +5,10 @@ from typing import Annotated
 import typer
 import zerv
 from bake import command, console
-from bakelib import PythonSpace, RustSpace
+from bakelib import GitHubActionsTools, PythonSpace, RustSpace, params
 from bakelib.publisher.crates import CratesPublisher
 from bakelib.publisher.pypi import PyPIPublisher as _PyPIPublisher
 from bakelib.space.lib import BaseLibSpace
-from bakelib.space.params import publish_token_option, publish_version_option
 
 from tests.python.utils import symlink_zerv_to_venv_bin
 
@@ -28,7 +27,7 @@ class PyPIPublisher(_PyPIPublisher):
         self.ctx.run(cmd)
 
 
-class MyBakebook(RustSpace, PythonSpace, BaseLibSpace):
+class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
     zerv_test_native_git: bool = False
     zerv_test_docker: bool = True
     zerv_force_rust_log_off: bool = False
@@ -141,8 +140,8 @@ class MyBakebook(RustSpace, PythonSpace, BaseLibSpace):
             str,
             typer.Option(help="Publish registry (test-pypi, pypi, or crates)"),
         ] = "test-pypi",
-        token: publish_token_option = None,
-        version: publish_version_option = None,
+        token: params.PublishTokenOption = None,
+        version: params.PublishVersionOption = None,
         target: Annotated[
             str | None,
             typer.Option(

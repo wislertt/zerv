@@ -87,7 +87,7 @@ jobs:
                   fetch-depth: 0
 
             - name: setup-uv
-              uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7.4.0
+              uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
               with:
                   python-version: "3.14"
                   version: "latest"
@@ -101,12 +101,13 @@ jobs:
 
             - name: generate-zerv-ron
               id: zerv-ron
+              env:
+                  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+                  COMMIT_HASH: ${{ github.event.pull_request.head.sha || github.sha }}
               # Support github.event_name == 'pull_request' or 'push'
+              shell: bash
               run: |
-                  BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
-                  COMMIT_HASH="${{ github.event.pull_request.head.sha || github.sha }}"
-
-                  git checkout $COMMIT_HASH
+                  git checkout "$COMMIT_HASH"
 
                   if [ -n "${{ inputs.overridden_tag_version }}" ]; then
                       OVERRIDDEN_TAG_VERSION_FLAG="--tag-version ${{ inputs.overridden_tag_version }}"
@@ -142,9 +143,11 @@ jobs:
                   echo "$ZERV_RON"
                   echo "========================"
 
-                  echo "zerv_ron<<EOF" >> $GITHUB_OUTPUT
-                  echo "$ZERV_RON" >> $GITHUB_OUTPUT
-                  echo "EOF" >> $GITHUB_OUTPUT
+                  {
+                      echo "zerv_ron<<EOF"
+                      echo "$ZERV_RON"
+                      echo "EOF"
+                  } >> "$GITHUB_OUTPUT"
 
             - name: convert-inputs-to-final-dictionary
               id: convert-inputs
@@ -195,10 +198,11 @@ jobs:
                       echo "version_outputs<<EOF"
                       echo "$ALL_OUTPUTS"
                       echo "EOF"
-                  } >> $GITHUB_OUTPUT
+                  } >> "$GITHUB_OUTPUT"
 
             - name: generate-versions
               id: generate-versions
+              shell: bash
               run: |
                   # Get ZERV_RON from previous step
                   ZERV_RON='${{ steps.zerv-ron.outputs.zerv_ron }}'
@@ -212,11 +216,11 @@ jobs:
                   # Process all outputs and build the JSON
                   while IFS= read -r entry; do
                       _jq() {
-                          echo ${entry} | base64 --decode | jq -r ${1}
+                          echo "$entry" | base64 --decode | jq -r "${1}"
                       }
                       key=$(_jq '.key')
                       args=$(_jq '.value')
-                      value=$(echo "$ZERV_RON" | eval zerv version --source stdin $args)
+                      value=$(echo "$ZERV_RON" | eval zerv version --source stdin "$args")
                       VERSIONS_JSON=$(echo "$VERSIONS_JSON" | jq --arg key "$key" --arg value "$value" '. + {($key): $value}')
                   done < <(echo "$VERSION_OUTPUTS" | jq -r 'to_entries[] | @base64')
 
@@ -226,7 +230,7 @@ jobs:
                       echo "versions<<EOF"
                       echo "$VERSIONS_JSON_COMPACT"
                       echo "EOF"
-                  } >> $GITHUB_OUTPUT
+                  } >> "$GITHUB_OUTPUT"
 
             - name: display-generated-versions
               run: |

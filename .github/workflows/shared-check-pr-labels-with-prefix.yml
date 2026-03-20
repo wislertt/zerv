@@ -53,7 +53,7 @@ jobs:
                     echo "filtered-labels<<EOF"
                     echo "$JSON_RESULT"
                     echo "EOF"
-                  } >> $GITHUB_OUTPUT
+                  } >> "$GITHUB_OUTPUT"
 
             - name: display-filter-result
               run: |

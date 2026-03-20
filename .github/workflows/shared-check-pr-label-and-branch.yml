@@ -54,7 +54,7 @@ jobs:
                     '[.[] | select(.name == $target)] | length > 0')
 
                   echo "Has label: $HAS_LABEL"
-                  echo "has_label=$HAS_LABEL" >> $GITHUB_OUTPUT
+                  echo "has_label=$HAS_LABEL" >> "$GITHUB_OUTPUT"
 
                   if [ "$HAS_LABEL" = "true" ]; then
                     echo "✅ Label '$TARGET_LABEL' found"
@@ -64,10 +64,11 @@ jobs:
 
             - name: check-branch-exact
               id: check-branch-exact
+              env:
+                  CURRENT_BRANCH: ${{ github.head_ref }}
               run: |
                   # Escape JSON properly for bash
                   BRANCH_NAMES='${{ inputs.branch_names }}'
-                  CURRENT_BRANCH="${{ github.head_ref }}"
 
                   echo "Checking exact branch names: $BRANCH_NAMES"
                   echo "Current branch: $CURRENT_BRANCH"
@@ -79,7 +80,7 @@ jobs:
                       '[.[] | select(. == $branch)] | length > 0')
 
                     echo "Has exact match: $EXACT_MATCH"
-                    echo "has_exact_match=$EXACT_MATCH" >> $GITHUB_OUTPUT
+                    echo "has_exact_match=$EXACT_MATCH" >> "$GITHUB_OUTPUT"
 
                     if [ "$EXACT_MATCH" = "true" ]; then
                       echo "✅ Branch name matches exactly"
@@ -88,15 +89,16 @@ jobs:
                     fi
                   else
                     echo "ℹ️ No exact branch name restrictions"
-                    echo "has_exact_match=false" >> $GITHUB_OUTPUT
+                    echo "has_exact_match=false" >> "$GITHUB_OUTPUT"
                   fi
 
             - name: check-branch-prefixes
               id: check-branch-prefixes
+              env:
+                  CURRENT_BRANCH: ${{ github.head_ref }}
               run: |
                   # Escape JSON properly for bash
                   BRANCH_PREFIXES='${{ inputs.branch_prefixes }}'
-                  CURRENT_BRANCH="${{ github.head_ref }}"
 
                   echo "Checking branch prefixes: $BRANCH_PREFIXES"
                   echo "Current branch: $CURRENT_BRANCH"
@@ -114,7 +116,7 @@ jobs:
                     done < <(echo "$BRANCH_PREFIXES" | jq -r '.[]')
 
                     echo "Has prefix match: $PREFIX_MATCH"
-                    echo "has_prefix_match=$PREFIX_MATCH" >> $GITHUB_OUTPUT
+                    echo "has_prefix_match=$PREFIX_MATCH" >> "$GITHUB_OUTPUT"
 
                     if [ "$PREFIX_MATCH" = "true" ]; then
                       echo "✅ Branch prefix matches"
@@ -123,7 +125,7 @@ jobs:
                     fi
                   else
                     echo "ℹ️ No branch prefix restrictions"
-                    echo "has_prefix_match=false" >> $GITHUB_OUTPUT
+                    echo "has_prefix_match=false" >> "$GITHUB_OUTPUT"
                   fi
 
             - name: combine-results
@@ -160,7 +162,7 @@ jobs:
                     echo "Branch not valid (no match found)"
                   fi
 
-                  echo "is_valid_branch=$IS_VALID_BRANCH" >> $GITHUB_OUTPUT
+                  echo "is_valid_branch=$IS_VALID_BRANCH" >> "$GITHUB_OUTPUT"
 
                   # Final validation requires both label and valid branch
                   if [ "$HAS_LABEL" = "true" ] && [ "$IS_VALID_BRANCH" = "true" ]; then
@@ -177,9 +179,11 @@ jobs:
                     fi
                   fi
 
-                  echo "is_valid=$IS_VALID" >> $GITHUB_OUTPUT
+                  echo "is_valid=$IS_VALID" >> "$GITHUB_OUTPUT"
 
             - name: display-results
+              env:
+                  CURRENT_BRANCH: ${{ github.head_ref }}
               run: |
                   echo "=========================================="
                   echo "          VALIDATION SUMMARY"
@@ -190,7 +194,7 @@ jobs:
                   echo "  - Has label: ${{ steps.check-label.outputs.has_label }}"
                   echo ""
                   echo "Branch Validation:"
-                  echo "  - Current branch: ${{ github.head_ref }}"
+                  echo "  - Current branch: $CURRENT_BRANCH"
                   echo "  - Exact match: ${{ steps.check-branch-exact.outputs.has_exact_match }}"
                   echo "  - Prefix match: ${{ steps.check-branch-prefixes.outputs.has_prefix_match }}"
                   echo "  - Valid branch: ${{ steps.combine-results.outputs.is_valid_branch }}"
