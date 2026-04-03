@@ -170,8 +170,7 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
 
     @_version.setter
     def _version(self, value: str) -> None:
-        RustSpace._version.fset(self, value)
-        PythonSpace._version.fset(self, value)
+        self._version_setter(value)
 
     def _pre_publish_setup(self) -> None:
         """Custom pre-publish setup for zerv - handles both Rust and Python."""

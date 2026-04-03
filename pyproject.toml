@@ -22,7 +22,7 @@ classifiers = [
 
 [dependency-groups]
 dev = [
-  "bakefile>=0.0.14", # Skip lib extras to avoid circular dependency (lib includes zerv-version)
+  "bakefile>=0.0.42a0", # Skip lib extras to avoid circular dependency (lib includes zerv-version)
   "deptry>=0.24.0",
   "keyring>=25.7.0", # bakefile[lib]
   "maturin>=1.11.5",
@@ -87,9 +87,10 @@ url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
 
-# Debug with local bakefile in editable mode
+# Debug bakefile
 # =============================================
 # # Debug
 # [tool.uv.sources]
 # bakefile = {path = "../bakefile", editable = true}
+# bakefile = {index = "test-pypi"}
 # =============================================
