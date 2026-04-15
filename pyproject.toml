@@ -22,7 +22,7 @@ classifiers = [
 
 [dependency-groups]
 dev = [
-  "bakefile>=0.0.42a0", # Skip lib extras to avoid circular dependency (lib includes zerv-version)
+  "bakefile>=0.0.42", # Skip lib extras to avoid circular dependency (lib includes zerv-version)
   "deptry>=0.24.0",
   "keyring>=25.7.0", # bakefile[lib]
   "maturin>=1.11.5",

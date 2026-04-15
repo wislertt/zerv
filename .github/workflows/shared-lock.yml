@@ -238,7 +238,7 @@ jobs:
                   echo "Set output: lock_status=$FINAL_STATUS"
 
             - name: upload-lock-result-artifact
-              uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               if: always() && inputs.upload_result_artifact == true
               with:
                   name: lock-result-${{ inputs.key }}
