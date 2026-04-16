@@ -18,11 +18,8 @@ jobs:
             - name: setup-mise
               uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
 
-            - name: setup-rust-toolchain
-              uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # need manually update
-              with:
-                  toolchain: nightly
-                  components: rustfmt, clippy
+            - name: install-rust-toolchain
+              run: rustup toolchain install nightly --component rustfmt --component clippy
 
             - name: cache-deps
               env:
