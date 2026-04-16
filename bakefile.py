@@ -188,10 +188,6 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
             if p.is_dir():
                 shutil.rmtree(p)
 
-    def _actions_up(self):
-        # dtolnay/rust-toolchain do not update tag version.
-        self.ctx.run("actions-up --yes --min-age 7 --exclude dtolnay/rust-toolchain")
-
 
 bakebook = MyBakebook()
 
