@@ -51,7 +51,7 @@ tracing = "^0.1"
 tracing-subscriber = { version = "^0.3", features = ["env-filter"] }
 
 [dev-dependencies]
-ctor = "^0.10.0"
+ctor = "^1.0.0"
 dotenvy = "^0.15"
 rstest = "^0.26.0"
 serial_test = "^3.0"
