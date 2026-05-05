@@ -13,7 +13,7 @@ pub mod version;
 #[cfg(test)]
 mod test_setup {
 
-    #[ctor::ctor]
+    #[ctor::ctor(unsafe)]
     fn init_test_logging() {
         let _ = dotenvy::dotenv().ok();
         crate::logging::init_logging(false);

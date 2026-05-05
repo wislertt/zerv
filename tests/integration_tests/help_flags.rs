@@ -196,3 +196,15 @@ fn test_invalid_command_shows_help() {
         "Should suggest help"
     );
 }
+
+#[test]
+fn test_no_subcommand_shows_help_and_exits_nonzero() {
+    let test_output = TestCommand::new().assert_failure();
+    let stdout = test_output.stdout();
+    let exit_code = test_output.exit_code();
+
+    assert!(!exit_code.success(), "Should exit non-zero");
+    assert!(stdout.contains("Usage: zerv"), "Should show usage");
+    assert!(stdout.contains("Commands:"), "Should show commands list");
+    assert!(stdout.contains("--help"), "Should show --help option");
+}

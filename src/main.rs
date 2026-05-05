@@ -1,5 +1,5 @@
 use zerv::cli::run;
 
 fn main() {
-    run();
+    std::process::exit(run());
 }

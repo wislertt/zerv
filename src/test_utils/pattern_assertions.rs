@@ -33,10 +33,8 @@ mod readable_regex {
         let mut i = 0;
 
         while i < chars.len() {
-            match process_next_token(&chars, &mut i) {
-                Ok(token) => result.push_str(&token),
-                Err(e) => return Err(e),
-            }
+            let token = process_next_token(&chars, &mut i)?;
+            result.push_str(&token);
         }
 
         Ok(result)
