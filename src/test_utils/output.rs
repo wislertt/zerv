@@ -1,5 +1,14 @@
 use std::process::Output;
 
+fn strip_ansi(s: &str) -> String {
+    Regex::new("\x1b\\[[0-9;]*[A-Za-z]")
+        .expect("valid regex")
+        .replace_all(s, "")
+        .to_string()
+}
+
+use regex::Regex;
+
 /// Wrapper for command output with assertion helpers
 pub struct TestOutput {
     output: Output,
@@ -10,15 +19,20 @@ impl TestOutput {
         Self { output }
     }
 
-    /// Get stdout as string
-    pub fn stdout(&self) -> String {
-        String::from_utf8_lossy(&self.output.stdout).to_string()
+    /// Get exit status
+    pub fn exit_code(&self) -> std::process::ExitStatus {
+        self.output.status
     }
 
-    /// Get stderr as string
+    /// Get stdout as string with ANSI escape codes stripped
+    pub fn stdout(&self) -> String {
+        strip_ansi(&String::from_utf8_lossy(&self.output.stdout))
+    }
+
+    /// Get stderr as string with ANSI escape codes stripped
     #[allow(dead_code)]
     pub fn stderr(&self) -> String {
-        String::from_utf8_lossy(&self.output.stderr).to_string()
+        strip_ansi(&String::from_utf8_lossy(&self.output.stderr))
     }
 
     /// Assert stdout contains text

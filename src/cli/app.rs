@@ -4,7 +4,10 @@ use std::io::{
     Write,
 };
 
-use clap::Parser;
+use clap::{
+    CommandFactory,
+    Parser,
+};
 
 use crate::cli::check::run_check_command;
 use crate::cli::flow::run_flow_pipeline;
@@ -53,12 +56,22 @@ pub fn run_with_args<W: Write>(
             writeln!(writer, "{output}")?;
         }
         None => {
-            // No subcommand provided, but --llm-help was not used either
-            // This will be handled by clap's default behavior
+            return Err(Box::new(NoSubcommand));
         }
     }
     Ok(())
 }
+
+#[derive(Debug)]
+struct NoSubcommand;
+
+impl std::fmt::Display for NoSubcommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "no subcommand provided")
+    }
+}
+
+impl std::error::Error for NoSubcommand {}
 
 /// Extract stdin content once, regardless of command
 /// Returns Ok(Some(String)) if stdin is available, Ok(None) otherwise
@@ -84,15 +97,15 @@ fn extract_stdin_once() -> Result<Option<String>, Box<dyn std::error::Error>> {
 pub fn run() {
     let args: Vec<String> = std::env::args().collect();
     if let Err(e) = run_with_args(args, std::io::stdout()) {
-        // Check if it's a clap help/version exit
+        if e.downcast_ref::<NoSubcommand>().is_some() {
+            let mut cmd = Cli::command();
+            cmd.print_long_help().unwrap_or_default();
+            std::io::stdout().flush().unwrap_or_default();
+            eprintln!();
+            std::process::exit(2);
+        }
         if let Some(clap_err) = e.downcast_ref::<clap::Error>() {
-            match clap_err.kind() {
-                clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion => {
-                    print!("{clap_err}");
-                    return;
-                }
-                _ => {}
-            }
+            clap_err.exit();
         }
         eprintln!("Error: {e}");
         std::process::exit(1);
