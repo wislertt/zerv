@@ -94,7 +94,7 @@ fn extract_stdin_once() -> Result<Option<String>, Box<dyn std::error::Error>> {
     }
 }
 
-pub fn run() {
+pub fn run() -> i32 {
     let args: Vec<String> = std::env::args().collect();
     if let Err(e) = run_with_args(args, std::io::stdout()) {
         if e.downcast_ref::<NoSubcommand>().is_some() {
@@ -102,25 +102,91 @@ pub fn run() {
             cmd.print_long_help().unwrap_or_default();
             std::io::stdout().flush().unwrap_or_default();
             eprintln!();
-            std::process::exit(2);
+            return 2;
         }
         if let Some(clap_err) = e.downcast_ref::<clap::Error>() {
             clap_err.exit();
         }
         eprintln!("Error: {e}");
-        std::process::exit(1);
+        return 1;
     }
+    0
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn run(args: Vec<&str>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let mut buf = Vec::new();
+        let args: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+        run_with_args(args, &mut buf)?;
+        Ok(buf)
+    }
+
     #[test]
-    fn test_run() {
-        // Test that run function doesn't panic with valid args
-        // We can't easily test the error paths without mocking std::env::args
-        // and std::process::exit, so we just ensure it compiles and can be called
-        let _test_compile = run; // Ensures function exists and compiles
+    fn no_subcommand_returns_error() {
+        let err = run(vec!["zerv"]).unwrap_err();
+        assert!(err.downcast_ref::<NoSubcommand>().is_some());
+        assert_eq!(err.to_string(), "no subcommand provided");
+    }
+
+    #[test]
+    fn unknown_flag_returns_error() {
+        let err = run(vec!["zerv", "--bogus"]).unwrap_err();
+        assert!(err.downcast_ref::<clap::Error>().is_some());
+    }
+
+    #[test]
+    fn invalid_subcommand_returns_error() {
+        let err = run(vec!["zerv", "nonexistent"]).unwrap_err();
+        assert!(err.downcast_ref::<clap::Error>().is_some());
+    }
+
+    #[test]
+    fn verbose_flag_without_subcommand_returns_error() {
+        let err = run(vec!["zerv", "--verbose"]).unwrap_err();
+        assert!(err.downcast_ref::<NoSubcommand>().is_some());
+    }
+
+    #[test]
+    fn llm_help_returns_ok() {
+        let buf = run(vec!["zerv", "--llm-help"]).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+        assert!(!output.is_empty());
+    }
+
+    #[test]
+    fn no_subcommand_display_message() {
+        let err = NoSubcommand;
+        assert_eq!(err.to_string(), "no subcommand provided");
+    }
+
+    #[test]
+    fn no_subcommand_is_error() {
+        let err: Box<dyn std::error::Error> = Box::new(NoSubcommand);
+        assert!(err.downcast_ref::<NoSubcommand>().is_some());
+    }
+
+    mod run_exit_code {
+        use super::*;
+
+        #[test]
+        fn success_returns_zero() {
+            let args: Vec<String> = ["zerv", "--llm-help"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
+            let result = run_with_args(args, Vec::new());
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn no_subcommand_returns_two() {
+            let args: Vec<String> = vec!["zerv".to_string()];
+            let result = run_with_args(args, Vec::new());
+            assert!(result.is_err());
+            assert!(result.unwrap_err().downcast_ref::<NoSubcommand>().is_some());
+        }
     }
 }
