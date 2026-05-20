@@ -13,6 +13,16 @@ on:
                 required: false
                 default: false
                 type: boolean
+            extra_plugins:
+                description: "Additional semantic-release plugins/presets to install (e.g. 'conventional-changelog-conventionalcommits')"
+                required: false
+                default: "conventional-changelog-conventionalcommits"
+                type: string
+            dry_run:
+                description: "Run semantic-release in dry-run mode (no actual release)"
+                required: false
+                default: false
+                type: boolean
 
         outputs:
             new_release_version:
@@ -125,6 +135,9 @@ jobs:
             - id: release
               name: release
               uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
+              with:
+                  extra_plugins: ${{ inputs.extra_plugins }}
+                  dry_run: ${{ inputs.dry_run }}
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
