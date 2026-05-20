@@ -600,3 +600,5 @@ python/*.data/
 
 # macOS debug symbol directories
 *.dSYM/
+
+.playwright-mcp
