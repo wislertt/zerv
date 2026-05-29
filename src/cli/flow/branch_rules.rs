@@ -169,6 +169,12 @@ impl BranchRules {
                 post_mode: PostMode::Commit,
             },
             BranchRule {
+                pattern: "beta/*".to_string(),
+                pre_release_label: PreReleaseLabel::Beta,
+                pre_release_num: None, // Extract from branch name
+                post_mode: PostMode::Commit,
+            },
+            BranchRule {
                 pattern: "release/*".to_string(),
                 pre_release_label: PreReleaseLabel::Rc,
                 pre_release_num: None, // Extract from branch name
@@ -369,6 +375,12 @@ mod tests {
     #[case("hotfix/*", "hotfix/123", true)]
     #[case("hotfix/*", "hotfix/urgent-fix", true)]
     #[case("hotfix/*", "hotfix", false)]
+    // Test for pattern "beta/*" (default rule)
+    #[case("beta/*", "beta/1", true)]
+    #[case("beta/*", "beta/99", true)]
+    #[case("beta/*", "beta/abc", true)]
+    #[case("beta/*", "beta", false)]
+    #[case("beta/*", "develop", false)]
     // Test for pattern "*" (universal wildcard)
     #[case("*", "any-branch", true)]
     #[case("*", "1234/test", true)]
@@ -415,6 +427,13 @@ mod tests {
     #[case("hotfix/*", "hotfix/123_fix", None)]
     // Edge cases with no numbers
     #[case("feature/*", "feature/username", None)]
+    // Test for pattern "beta/*" (default rule)
+    #[case("beta/*", "beta/5", Some(5))]
+    #[case("beta/*", "beta/99", Some(99))]
+    #[case("beta/*", "beta/0", Some(0))]
+    #[case("beta/*", "beta/abc", None)]
+    #[case("beta/*", "beta/1/feature", Some(1))]
+    #[case("beta/*", "beta/feature/42", Some(42))]
     // Test for pattern "*" (universal wildcard)
     #[case("*", "1234/test-sth", Some(1234))]
     #[case("*", "xxxx/1234/test-sth", Some(1234))]
@@ -482,14 +501,20 @@ mod tests {
     fn test_branch_rules_default() {
         let rules = BranchRules::default_rules();
 
-        // Should have exactly 3 default rules
-        assert_eq!(rules.rules.len(), 3);
+        // Should have exactly 4 default rules
+        assert_eq!(rules.rules.len(), 4);
 
         // Check develop rule
         let develop_rule = rules.find_rule("develop").unwrap();
         assert_eq!(develop_rule.pre_release_label, PreReleaseLabel::Beta);
         assert_eq!(develop_rule.pre_release_num, Some(1));
         assert_eq!(develop_rule.post_mode, PostMode::Commit);
+
+        // Check beta wildcard rule
+        let beta_rule = rules.find_rule("beta/1").unwrap();
+        assert_eq!(beta_rule.pre_release_label, PreReleaseLabel::Beta);
+        assert_eq!(beta_rule.pre_release_num, None);
+        assert_eq!(beta_rule.post_mode, PostMode::Commit);
 
         // Check release rule
         let release_rule = rules.find_rule("release/1").unwrap();
@@ -502,6 +527,27 @@ mod tests {
         assert_eq!(universal_rule.pre_release_label, PreReleaseLabel::Alpha);
         assert_eq!(universal_rule.pre_release_num, None);
         assert_eq!(universal_rule.post_mode, PostMode::Commit);
+    }
+
+    #[test]
+    fn test_default_rules_priority_ordering() {
+        let rules = BranchRules::default_rules();
+
+        // develop is exact match, should NOT match beta/* or * rules
+        let develop_rule = rules.find_rule("develop").unwrap();
+        assert_eq!(develop_rule.pattern, "develop");
+
+        // beta/1 should match beta/* rule, not * universal rule
+        let beta_rule = rules.find_rule("beta/1").unwrap();
+        assert_eq!(beta_rule.pattern, "beta/*");
+
+        // release/1 should match release/* rule, not * universal rule
+        let release_rule = rules.find_rule("release/1").unwrap();
+        assert_eq!(release_rule.pattern, "release/*");
+
+        // Unmatched branch falls through to universal * rule
+        let universal_rule = rules.find_rule("feature/auth").unwrap();
+        assert_eq!(universal_rule.pattern, "*");
     }
 
     #[test]
@@ -583,9 +629,7 @@ mod tests {
         let rules = BranchRules::default_rules();
 
         // Should create successfully (panic if invalid)
-        assert_eq!(rules.rules.len(), 3);
-
-        // Default rules should be valid
+        assert_eq!(rules.rules.len(), 4);
         for rule in &rules.rules {
             assert!(rule.validate().is_ok());
         }
@@ -600,6 +644,12 @@ mod tests {
         assert_eq!(develop_args.pre_release_label, PreReleaseLabel::Beta);
         assert_eq!(develop_args.pre_release_num, Some(1));
         assert_eq!(develop_args.post_mode, PostMode::Commit);
+
+        // Beta wildcard branch should extract number from branch name
+        let beta_args = rules.resolve_for_branch(Some("beta/2"));
+        assert_eq!(beta_args.pre_release_label, PreReleaseLabel::Beta);
+        assert_eq!(beta_args.pre_release_num, Some(2)); // Extracted from branch name
+        assert_eq!(beta_args.post_mode, PostMode::Commit);
 
         // Unmapped branch should now use universal wildcard rule
         let feature_args = rules.resolve_for_branch(Some("feature/auth"));
@@ -753,6 +803,41 @@ mod tests {
     }
 
     #[test]
+    fn test_workflow_default_matches_rust_default() {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let yaml_path = std::path::Path::new(&manifest_dir)
+            .join(".github/workflows/shared-zerv-versioning.yml");
+        let yaml_content =
+            std::fs::read_to_string(&yaml_path).expect("Failed to read workflow YAML");
+
+        // Extract RON array from branch_rules default section
+        let after_branch_rules = yaml_content
+            .split("branch_rules:")
+            .nth(1)
+            .expect("branch_rules key not found in YAML");
+        let after_default_pipe = after_branch_rules
+            .split("default: |")
+            .nth(1)
+            .expect("default: | not found under branch_rules");
+        let ron_str = after_default_pipe
+            .split("output_formats:")
+            .next()
+            .expect("output_formats key not found after branch_rules")
+            .trim();
+
+        let yaml_rules: BranchRules = ron_str
+            .parse()
+            .expect("Failed to parse YAML branch_rules RON");
+        let rust_defaults = BranchRules::default_rules();
+
+        assert_eq!(
+            yaml_rules.to_string(),
+            rust_defaults.to_string(),
+            "Workflow default branch_rules must match Rust default_rules()"
+        );
+    }
+
+    #[test]
     fn test_branch_rules_display_format() {
         // Test that Display produces expected RON format
         let rules = BranchRules::default_rules();
@@ -760,11 +845,16 @@ mod tests {
 
         // Should exactly match the expected GitFlow rules RON format (compact)
         let develop_rule = r#"(pattern:"develop",pre_release_label:beta,pre_release_num:Some(1),post_mode:commit)"#;
+        let beta_rule =
+            r#"(pattern:"beta/*",pre_release_label:beta,pre_release_num:None,post_mode:commit)"#;
         let release_rule =
             r#"(pattern:"release/*",pre_release_label:rc,pre_release_num:None,post_mode:tag)"#;
         let universal_rule =
             r#"(pattern:"*",pre_release_label:alpha,pre_release_num:None,post_mode:commit)"#;
-        let expected = format!("[{},{},{}]", develop_rule, release_rule, universal_rule);
+        let expected = format!(
+            "[{},{},{},{}]",
+            develop_rule, beta_rule, release_rule, universal_rule
+        );
 
         assert_eq!(display_output, expected);
     }
