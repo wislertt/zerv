@@ -25,6 +25,11 @@ on:
                             post_mode: commit
                         ),
                         (
+                            pattern: "beta/*",
+                            pre_release_label: beta,
+                            post_mode: commit
+                        ),
+                        (
                             pattern: "release/*",
                             pre_release_label: rc,
                             pre_release_num: None,

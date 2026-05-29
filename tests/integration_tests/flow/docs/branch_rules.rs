@@ -67,7 +67,60 @@ fn test_branch_rules_documentation_examples() {
     _ = develop_branch_scenario;
     _ = feature_branch_scenario;
     _ = release_no_number_branch_scenario;
+}
 
+#[test]
+fn test_beta_wildcard_default_branch_rules() {
+    // Test beta/3 branch with default rules — should extract 3 as pre_release_num
+    let mut beta_scenario = TestScenario::new()
+        .expect("Failed to create test scenario")
+        .create_tag("v1.0.0")
+        .create_branch("beta/3")
+        .checkout("beta/3")
+        .commit();
+
+    beta_scenario = beta_scenario.assert_command(
+        "flow --source stdin",
+        "1.0.1-beta.3.post.1+beta.3.1.g{hex:7}",
+    );
+
+    // Test beta/99 branch with default rules
+    let mut beta_99_scenario = TestScenario::new()
+        .expect("Failed to create test scenario")
+        .create_tag("v1.0.0")
+        .create_branch("beta/99")
+        .checkout("beta/99")
+        .commit();
+
+    beta_99_scenario = beta_99_scenario.assert_command(
+        "flow --source stdin",
+        "1.0.1-beta.99.post.1+beta.99.1.g{hex:7}",
+    );
+
+    // Test beta/no-number branch — should get beta label but no pre_release_num
+    let mut beta_no_num_scenario = TestScenario::new()
+        .expect("Failed to create test scenario")
+        .create_tag("v1.0.0")
+        .create_branch("beta/feature-x")
+        .checkout("beta/feature-x")
+        .commit();
+
+    let beta_feature_hash = expect_branch_hash("beta/feature-x", 5, "33535");
+    beta_no_num_scenario = beta_no_num_scenario.assert_command(
+        "flow --source stdin",
+        &format!(
+            "1.0.1-beta.{}.post.1+beta.feature.x.1.g{{hex:7}}",
+            beta_feature_hash
+        ),
+    );
+
+    _ = beta_scenario;
+    _ = beta_99_scenario;
+    _ = beta_no_num_scenario;
+}
+
+#[test]
+fn test_branch_rules_custom_rules() {
     // Custom branch rules configuration
     let custom_rules = r#"[
         (pattern: "staging", pre_release_label: rc, pre_release_num: 1, post_mode: commit),
