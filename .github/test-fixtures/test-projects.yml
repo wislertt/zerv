@@ -1,0 +1,13 @@
+# Test fixture for test-shared-affected-projects.yml.
+# Not a real project registry — zerv is a single CLI tool. Exists only so the
+# reusable affected-projects workflow has a projects.yml to read on its fresh
+# checkout runner. Exercises: multiple projects (manual-pattern + affected-only
+# distinction), shared_paths (shared-filter branch), omitted metadata (|| {} fallback).
+projects:
+    - project_name: project-a
+      paths: ["project-a/**"]
+      environments: [d]
+    - project_name: project-b
+      paths: ["project-b/**"]
+      environments: [d]
+shared_paths: ["shared/**"]

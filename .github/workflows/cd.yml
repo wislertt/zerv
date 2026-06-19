@@ -50,6 +50,10 @@ jobs:
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
 
+    test-shared-affected-projects:
+        name: test-shared-affected-projects
+        uses: ./.github/workflows/test-shared-affected-projects.yml
+
     # ====================================================
     # Deployment with environment
     # ====================================================

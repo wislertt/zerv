@@ -1,0 +1,161 @@
+name: affected-projects
+
+on:
+    workflow_call:
+        inputs:
+            # Path to projects registry file
+            projects_path:
+                description: "Path to projects registry file"
+                required: false
+                type: string
+                default: ".github/projects.yml"
+            # Detection scope: affected-only (default), all, manual-pattern
+            # - affected-only: Only projects with changed files
+            # - all: All projects in registry
+            # - manual-pattern: Projects matching project_patterns (comma-separated, * = wildcard)
+            scope:
+                description: "Detection scope"
+                required: false
+                type: string
+                default: "affected-only"
+            # Project patterns (only used when scope=manual-pattern)
+            # Comma-separated glob patterns, e.g., "ingestion*,ingestion-us-*,*-network-checker*"
+            project_patterns:
+                description: "Project patterns (comma-separated, * = wildcard)"
+                required: false
+                type: string
+                default: ""
+        outputs:
+            projects:
+                description: "JSON array of affected projects"
+                value: ${{ jobs.affected-projects.outputs.projects }}
+            project-envs:
+                description: "JSON array of project × environment combinations"
+                value: ${{ jobs.affected-projects.outputs.project-envs }}
+            lock-names:
+                description: "JSON array of lock names for all projects"
+                value: ${{ jobs.affected-projects.outputs.lock-names }}
+
+jobs:
+    affected-projects:
+        runs-on: ubuntu-latest
+        outputs:
+            projects: ${{ steps.affected-projects.outputs.projects }}
+            project-envs: ${{ steps.affected-projects.outputs.project-envs }}
+            lock-names: ${{ steps.affected-projects.outputs.lock-names }}
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+              with:
+                  fetch-depth: 0
+
+            # Build filters dynamically from projects.yml using yq
+            - name: generate-filters
+              if: inputs.scope == 'affected-only'
+              run: |
+                  # Create cache directory
+                  mkdir -p .cache
+                  # Generate filters using lock_name (project_name with / replaced by --) as key
+                  {
+                      echo "# Auto-generated from projects.yml"
+                      yq eval -o=json '${{ inputs.projects_path }}' | jq -r '
+                        .projects[] |
+                        (.project_name | gsub("/"; "--")) as $key |
+                        "\($key):\n" + (.paths | map("  - \(.)") | join("\n"))
+                      '
+                      # Only add shared filter if shared_paths has items
+                      SHARED_COUNT=$(yq eval '.shared_paths | length' '${{ inputs.projects_path }}')
+                      if [ "$SHARED_COUNT" -gt 0 ]; then
+                          echo "shared:"
+                          yq eval '.shared_paths' '${{ inputs.projects_path }}' | sed 's/^/  /'
+                      fi
+                  } > .cache/filters.yml
+                  echo "Generated filters:"
+                  cat .cache/filters.yml
+              shell: bash
+
+            # For affected-only scope, use dorny/paths-filter with dynamically generated filters
+            - name: detect-changed-paths
+              if: inputs.scope == 'affected-only'
+              id: paths-filter
+              uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+              with:
+                  filters: .cache/filters.yml
+
+            # Inline JavaScript using actions/github-script (no Node.js setup needed)
+            - name: find-affected-projects
+              id: affected-projects
+              uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+              env:
+                  PROJECTS_PATH: ${{ inputs.projects_path }}
+                  SCOPE: ${{ inputs.scope }}
+                  PATTERNS: ${{ inputs.project_patterns }}
+                  FILTER_OUTPUTS: ${{ toJSON(steps.paths-filter.outputs) }}
+              with:
+                  script: |
+                      const { execSync } = require('child_process');
+
+                      const projectsConfig = JSON.parse(execSync(`yq eval -o=json ${process.env.PROJECTS_PATH}`, { encoding: 'utf-8' }));
+
+                      const toLockName = name => name.replace(/\//g, '--');
+
+                      const toProject = config => ({
+                          name: config.project_name,
+                          lock_name: toLockName(config.project_name),
+                          metadata: config.metadata || {}
+                      });
+
+                      // Lock names for ALL projects (used by pr-unlock)
+                      const lockNames = projectsConfig.projects.map(p => toLockName(p.project_name));
+
+                      // Determine affected projects based on scope
+                      const scope = process.env.SCOPE;
+                      const patterns = process.env.PATTERNS || '';
+
+                      let projects;
+
+                      if (scope === 'all') {
+                          projects = projectsConfig.projects.map(toProject);
+                      } else if (scope === 'manual-pattern') {
+                          const regexes = patterns.split(',').map(p => new RegExp('^' + p.trim().replace(/\*/g, '.*') + '$'));
+                          projects = projectsConfig.projects
+                              .filter(config => regexes.some(re => re.test(config.project_name)))
+                              .map(toProject);
+                      } else {
+                          // affected-only — filter keys are lock_names
+                          const filters = JSON.parse(process.env.FILTER_OUTPUTS || '{}');
+                          const matched = Object.entries(filters).filter(([_, v]) => v === 'true').map(([k]) => k);
+
+                          if (matched.includes('shared')) {
+                              projects = projectsConfig.projects.map(toProject);
+                          } else {
+                              projects = matched
+                                  .filter(f => f !== 'shared')
+                                  .map(filter => {
+                                      const config = projectsConfig.projects.find(p => toLockName(p.project_name) === filter);
+                                      return config ? toProject(config) : null;
+                                  })
+                                  .filter(Boolean);
+                          }
+                      }
+
+                      // Build project-envs
+                      const projectEnvs = projects.flatMap(project => {
+                          const config = projectsConfig.projects.find(p => p.project_name === project.name);
+                          return config.environments.map(environment => ({
+                              name: project.name,
+                              lock_name: project.lock_name,
+                              environment: environment,
+                              metadata: config.metadata || {}
+                          }));
+                      });
+
+                      core.setOutput('projects', JSON.stringify(projects, null, 2));
+                      core.setOutput('project-envs', JSON.stringify(projectEnvs, null, 2));
+                      core.setOutput('lock-names', JSON.stringify(lockNames));
+
+                      console.log('=== Projects ===');
+                      console.log(JSON.stringify(projects, null, 2));
+                      console.log('=== Project-Envs ===');
+                      console.log(JSON.stringify(projectEnvs, null, 2));
+                      console.log('=== Lock Names ===');
+                      console.log(JSON.stringify(lockNames, null, 2));

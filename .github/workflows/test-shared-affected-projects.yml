@@ -1,0 +1,69 @@
+name: test-shared-affected-projects
+
+on:
+    workflow_dispatch:
+    workflow_call:
+
+jobs:
+    # One job per scope (not a matrix): a reusable-workflow `uses:` call only
+    # propagates the last matrix instance's outputs, so a matrix would make
+    # per-scope assertions in `verify` unreliable. Explicit jobs keep outputs clean.
+    detect-all:
+        uses: ./.github/workflows/shared-affected-projects.yml
+        with:
+            projects_path: .github/test-fixtures/test-projects.yml
+            scope: all
+
+    detect-manual-pattern:
+        uses: ./.github/workflows/shared-affected-projects.yml
+        with:
+            projects_path: .github/test-fixtures/test-projects.yml
+            scope: manual-pattern
+            project_patterns: "project-a*"
+
+    detect-affected-only:
+        uses: ./.github/workflows/shared-affected-projects.yml
+        with:
+            projects_path: .github/test-fixtures/test-projects.yml
+            scope: affected-only
+
+    verify:
+        needs: [detect-all, detect-manual-pattern, detect-affected-only]
+        runs-on: ubuntu-latest
+        steps:
+            - name: assert-valid-json-and-counts
+              env:
+                  ALL_PROJECTS: ${{ needs.detect-all.outputs.projects }}
+                  ALL_ENVS: ${{ needs.detect-all.outputs.project-envs }}
+                  ALL_LOCKS: ${{ needs.detect-all.outputs.lock-names }}
+                  MANUAL_PROJECTS: ${{ needs.detect-manual-pattern.outputs.projects }}
+                  MANUAL_ENVS: ${{ needs.detect-manual-pattern.outputs.project-envs }}
+                  MANUAL_LOCKS: ${{ needs.detect-manual-pattern.outputs.lock-names }}
+                  AFFECTED_PROJECTS: ${{ needs.detect-affected-only.outputs.projects }}
+                  AFFECTED_ENVS: ${{ needs.detect-affected-only.outputs.project-envs }}
+                  AFFECTED_LOCKS: ${{ needs.detect-affected-only.outputs.lock-names }}
+              run: |
+                  set -euo pipefail
+
+                  # Every output from every scope must be valid JSON.
+                  for v in "$ALL_PROJECTS" "$ALL_ENVS" "$ALL_LOCKS" \
+                           "$MANUAL_PROJECTS" "$MANUAL_ENVS" "$MANUAL_LOCKS" \
+                           "$AFFECTED_PROJECTS" "$AFFECTED_ENVS" "$AFFECTED_LOCKS"; do
+                      echo "$v" | jq -e . >/dev/null || { echo "invalid JSON: $v"; exit 1; }
+                  done
+
+                  # scope=all: registry has exactly 2 projects → deterministic.
+                  [ "$(echo "$ALL_PROJECTS" | jq 'length')" -eq 2 ] || { echo "scope=all expected 2 projects, got:"; echo "$ALL_PROJECTS"; exit 1; }
+                  # lock-names covers ALL projects regardless of scope.
+                  [ "$(echo "$ALL_LOCKS" | jq 'length')" -eq 2 ] || { echo "lock-names expected 2 entries, got:"; echo "$ALL_LOCKS"; exit 1; }
+
+                  # scope=manual-pattern "project-a*" matches exactly project-a.
+                  [ "$(echo "$MANUAL_PROJECTS" | jq 'length')" -eq 1 ] || { echo "scope=manual-pattern expected 1 project, got:"; echo "$MANUAL_PROJECTS"; exit 1; }
+                  [ "$(echo "$MANUAL_PROJECTS" | jq -r '.[0].name')" = "project-a" ] || { echo "scope=manual-pattern expected project-a, got:"; echo "$MANUAL_PROJECTS"; exit 1; }
+
+                  # scope=affected-only: which projects match depends on what changed in
+                  # the dispatch commit, so only assert valid JSON + that lock-names still
+                  # reports all projects (lock-names is scope-independent).
+                  [ "$(echo "$AFFECTED_LOCKS" | jq 'length')" -eq 2 ] || { echo "affected-only lock-names expected 2 entries, got:"; echo "$AFFECTED_LOCKS"; exit 1; }
+
+                  echo "✓ all assertions passed"
