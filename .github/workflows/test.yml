@@ -56,7 +56,7 @@ jobs:
               id: restore-cache-cargo
               env:
                   CACHE_KEY_PREFIX: cargo-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
-              uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -68,7 +68,7 @@ jobs:
               env:
                   CACHE_KEY_PREFIX: venv-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}
                   CACHE_KEY_DEPS: ${{ hashFiles('uv.lock') }}
-              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
               with:
                   path: |
                       ~/.local/share/uv
@@ -97,7 +97,7 @@ jobs:
 
             - name: save-cache-cargo
               if: always()
-              uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}
@@ -133,7 +133,7 @@ jobs:
               id: restore-cache-cargo
               env:
                   CACHE_KEY_PREFIX: cargo-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
-              uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -162,7 +162,7 @@ jobs:
               env:
                   CACHE_KEY_PREFIX: venv-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-py${{ matrix.python_version }}
                   CACHE_KEY_DEPS: ${{ hashFiles('uv.lock') }}
-              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
               with:
                   path: |
                       ~/.local/share/uv
@@ -190,7 +190,7 @@ jobs:
 
             - name: save-cache-cargo
               if: always()
-              uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}
