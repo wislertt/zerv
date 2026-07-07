@@ -94,7 +94,7 @@ where
     fn create_context(&self, zerv: Option<&Zerv>) -> Result<tera::Context, ZervError> {
         if let Some(z) = zerv {
             let template_context = ZervTemplateContext::from_zerv(z);
-            tera::Context::from_serialize(template_context)
+            tera::Context::from_serialize(&template_context)
                 .map_err(|e| ZervError::TemplateError(format!("Serialization error: {e}")))
         } else {
             Ok(tera::Context::new())

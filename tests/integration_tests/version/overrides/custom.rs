@@ -265,7 +265,7 @@ mod error_handling {
             zerv_ron,
         );
 
-        assert_eq!(output, "[v1, v2]");
+        assert_eq!(output, "[\"v1\", \"v2\"]");
     }
 
     #[rstest]

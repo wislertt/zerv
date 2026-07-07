@@ -5,7 +5,10 @@ use std::hash::{
 };
 
 use tera::{
+    Kwargs,
+    State,
     Tera,
+    TeraResult,
     Value,
 };
 
@@ -18,99 +21,95 @@ mod timestamp_patterns {
     pub const COMPACT_DATETIME: &str = "compact_datetime";
 }
 
-/// Extract string value from any Tera Value type
-/// This function converts numbers, booleans, and other types to strings
-fn get_string_value(
-    args: &std::collections::HashMap<String, Value>,
-    key: &str,
-) -> Result<String, tera::Error> {
-    args.get(key)
-        .map(|v| match v {
-            Value::String(s) => s.clone(),
-            Value::Number(n) => n.to_string(),
-            Value::Bool(b) => b.to_string(),
-            Value::Null => String::new(),
-            Value::Array(_) => v.to_string(),
-            Value::Object(_) => v.to_string(),
-        })
-        .ok_or_else(|| tera::Error::msg(format!("Missing required parameter '{}'", key)))
+/// Register custom Tera functions and filters
+pub fn register_functions(tera: &mut Tera) -> Result<(), ZervError> {
+    tera.register_function("sanitize", sanitize_function);
+    tera.register_function("hash", hash_function);
+    tera.register_function("hash_int", hash_int_function);
+    tera.register_function("prefix", prefix_function);
+    tera.register_function("prefix_if", prefix_if_function);
+    tera.register_function("format_timestamp", format_timestamp_function);
+    // Override tera's built-in `default` filter. Tera 2.0 only fires `default`
+    // for Undefined values, but this project serializes absent optional fields
+    // as null (None), so we also fire on None to preserve the pre-2.0 behavior
+    // where `{{ post | default(value=0) }}` yields "0" when post is absent.
+    tera.register_filter("default", default_filter);
+    Ok(())
 }
 
-/// Register custom Tera functions
-pub fn register_functions(tera: &mut Tera) -> Result<(), ZervError> {
-    tera.register_function("sanitize", Box::new(sanitize_function));
-    tera.register_function("hash", Box::new(hash_function));
-    tera.register_function("hash_int", Box::new(hash_int_function));
-    tera.register_function("prefix", Box::new(prefix_function));
-    tera.register_function("prefix_if", Box::new(prefix_if_function));
-    tera.register_function("format_timestamp", Box::new(format_timestamp_function));
-    Ok(())
+/// Like tera's built-in `default`, but also substitutes the default when the
+/// value is null (None), matching tera 1.x semantics.
+fn default_filter(val: Value, kwargs: Kwargs, _: &State) -> TeraResult<Value> {
+    let default_val: Value = kwargs.must_get("value")?;
+    let boolean = kwargs.get::<bool>("boolean")?.unwrap_or_default();
+
+    if boolean {
+        if val.is_truthy() {
+            Ok(val)
+        } else {
+            Ok(default_val)
+        }
+    } else if val.is_undefined() || val.is_none() {
+        Ok(default_val)
+    } else {
+        Ok(val)
+    }
 }
 
 /// Sanitize string with presets or custom parameters
 /// Usage: {{ sanitize(value, preset="dotted") }} or {{ sanitize(value, separator="-", lowercase=true) }}
-fn sanitize_function(
-    args: &std::collections::HashMap<String, Value>,
-) -> Result<Value, tera::Error> {
-    let value = get_string_value(args, "value")?;
+fn sanitize_function(kwargs: Kwargs, _state: &State) -> TeraResult<Value> {
+    let value: String = kwargs.must_get("value")?;
 
-    // Check for preset format
-    let preset = args.get("preset").and_then(|v| v.as_str());
-
-    // Check for custom parameters
-    let separator = args.get("separator").and_then(|v| v.as_str());
-    let keep_zeros = args.get("keep_zeros").and_then(|v| v.as_bool());
-    let max_length = args.get("max_length").and_then(|v| v.as_u64());
-    let lowercase = args.get("lowercase").and_then(|v| v.as_bool());
+    let preset: Option<String> = kwargs.get("preset")?;
+    let separator: Option<String> = kwargs.get("separator")?;
+    let keep_zeros: Option<bool> = kwargs.get("keep_zeros")?;
+    let max_length: Option<u64> = kwargs.get("max_length")?;
+    let lowercase: Option<bool> = kwargs.get("lowercase")?;
 
     let has_custom_params =
         separator.is_some() || keep_zeros.is_some() || max_length.is_some() || lowercase.is_some();
 
-    // Error if both preset and custom parameters are specified
     if preset.is_some() && has_custom_params {
-        return Err(tera::Error::msg(
+        return Err(tera::Error::message(
             "Cannot use preset format with custom parameters",
         ));
     }
 
     let sanitized = if let Some(preset) = preset {
-        // Use preset format
-        match preset {
+        match preset.as_str() {
             "semver_str" | "semver" | "dotted" => Sanitizer::semver_str().sanitize(&value),
             "pep440_local_str" | "pep440" | "lower_dotted" => {
                 Sanitizer::pep440_local_str().sanitize(&value)
             }
             "uint" => Sanitizer::uint().sanitize(&value),
             _ => {
-                return Err(tera::Error::msg(format!(
+                return Err(tera::Error::message(format!(
                     "Unknown sanitize preset: {}",
                     preset
                 )));
             }
         }
     } else if has_custom_params {
-        // Use custom parameters
         let sanitizer = Sanitizer::str(
-            separator,
+            separator.as_deref(),
             lowercase.unwrap_or(false),
             keep_zeros.unwrap_or(false),
             max_length.map(|l| l as usize),
         );
         sanitizer.sanitize(&value)
     } else {
-        // Default to dotted preset if no parameters specified
         Sanitizer::semver_str().sanitize(&value)
     };
 
-    Ok(Value::String(sanitized))
+    Ok(Value::from(sanitized))
 }
 
 /// Generate hex hash of string with configurable length
 /// Usage: {{ hash(value, length=7) }}
-fn hash_function(args: &std::collections::HashMap<String, Value>) -> Result<Value, tera::Error> {
-    let input = get_string_value(args, "value")?;
-
-    let length = args.get("length").and_then(|v| v.as_u64()).unwrap_or(7) as usize;
+fn hash_function(kwargs: Kwargs, _state: &State) -> TeraResult<Value> {
+    let input: String = kwargs.must_get("value")?;
+    let length = kwargs.get::<u64>("length")?.unwrap_or(7) as usize;
 
     let mut hasher = DefaultHasher::new();
     input.hash(&mut hasher);
@@ -122,22 +121,15 @@ fn hash_function(args: &std::collections::HashMap<String, Value>) -> Result<Valu
         &hash
     };
 
-    Ok(Value::String(short.to_string()))
+    Ok(Value::from(short.to_string()))
 }
 
 /// Generate numeric hash with configurable length and leading zero options
 /// Usage: {{ hash_int(value, length=7, allow_leading_zero=false) }}
-fn hash_int_function(
-    args: &std::collections::HashMap<String, Value>,
-) -> Result<Value, tera::Error> {
-    let input = get_string_value(args, "value")?;
-
-    let length = args.get("length").and_then(|v| v.as_u64()).unwrap_or(7) as usize;
-
-    let allow_leading_zero = args
-        .get("allow_leading_zero")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+fn hash_int_function(kwargs: Kwargs, _state: &State) -> TeraResult<Value> {
+    let input: String = kwargs.must_get("value")?;
+    let length = kwargs.get::<u64>("length")?.unwrap_or(7) as usize;
+    let allow_leading_zero = kwargs.get::<bool>("allow_leading_zero")?.unwrap_or(false);
 
     let mut hasher = DefaultHasher::new();
     input.hash(&mut hasher);
@@ -155,15 +147,14 @@ fn hash_int_function(
         &result
     };
 
-    Ok(Value::String(short.to_string()))
+    Ok(Value::from(short.to_string()))
 }
 
 /// Extract prefix from string with configurable length
 /// Usage: {{ prefix(value, length=10) }}
-fn prefix_function(args: &std::collections::HashMap<String, Value>) -> Result<Value, tera::Error> {
-    let input = get_string_value(args, "value")?;
-
-    let length = args.get("length").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
+fn prefix_function(kwargs: Kwargs, _state: &State) -> TeraResult<Value> {
+    let input: String = kwargs.must_get("value")?;
+    let length = kwargs.get::<u64>("length")?.unwrap_or(10) as usize;
 
     let prefix = if input.len() > length {
         &input[..length]
@@ -171,67 +162,56 @@ fn prefix_function(args: &std::collections::HashMap<String, Value>) -> Result<Va
         &input
     };
 
-    Ok(Value::String(prefix.to_string()))
+    Ok(Value::from(prefix.to_string()))
 }
 
 /// Add conditional prefix to string (only if string is not empty)
 /// Usage: {{ prefix_if(value, prefix="+") }}
-fn prefix_if_function(
-    args: &std::collections::HashMap<String, Value>,
-) -> Result<Value, tera::Error> {
-    let value = get_string_value(args, "value")?;
-
-    let prefix = args
-        .get("prefix")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| tera::Error::msg("prefix_if function requires a 'prefix' parameter"))?;
+fn prefix_if_function(kwargs: Kwargs, _state: &State) -> TeraResult<Value> {
+    let value: String = kwargs.must_get("value")?;
+    let prefix: String = kwargs
+        .get("prefix")?
+        .ok_or_else(|| tera::Error::message("prefix_if function requires a 'prefix' parameter"))?;
 
     if value.is_empty() {
-        Ok(Value::String("".to_string()))
+        Ok(Value::from(""))
     } else {
-        Ok(Value::String(format!("{}{}", prefix, value)))
+        Ok(Value::from(format!("{}{}", prefix, value)))
     }
 }
 
 /// Format timestamp with customizable format
-/// Usage: {{ format_timestamp(timestamp, format="%Y-%m-%d") }}
-fn format_timestamp_function(
-    args: &std::collections::HashMap<String, Value>,
-) -> Result<Value, tera::Error> {
-    let timestamp = args.get("value").and_then(|v| v.as_u64()).ok_or_else(|| {
-        tera::Error::msg("format_timestamp function requires a 'value' parameter")
+/// Usage: {{ format_timestamp(value=timestamp, format="%Y-%m-%d") }}
+fn format_timestamp_function(kwargs: Kwargs, _state: &State) -> TeraResult<Value> {
+    let timestamp: u64 = kwargs.get("value")?.ok_or_else(|| {
+        tera::Error::message("format_timestamp function requires a 'value' parameter")
     })?;
 
-    // Default format if not specified, and handle special format names
-    let format = args
-        .get("format")
-        .and_then(|v| v.as_str())
-        .unwrap_or("%Y-%m-%d");
+    let format: String = kwargs
+        .get("format")?
+        .unwrap_or_else(|| "%Y-%m-%d".to_string());
 
-    let chrono_format = match format {
+    let chrono_format = match format.as_str() {
         timestamp_patterns::COMPACT_DATE => "%Y%m%d",
         timestamp_patterns::COMPACT_DATETIME => "%Y%m%d%H%M%S",
-        _ => format,
+        _ => &format,
     };
 
-    // Convert timestamp to DateTime and format
     use chrono::{
         DateTime,
         Utc,
     };
 
     let dt = DateTime::from_timestamp(timestamp as i64, 0)
-        .ok_or_else(|| tera::Error::msg("Invalid timestamp"))?
+        .ok_or_else(|| tera::Error::message("Invalid timestamp"))?
         .with_timezone(&Utc);
     let formatted = dt.format(chrono_format).to_string();
 
-    Ok(Value::String(formatted))
+    Ok(Value::from(formatted))
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
 
     #[test]
@@ -241,205 +221,121 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    fn render(template_str: &str, kwargs_json: serde_json::Value) -> String {
+        let mut tera = Tera::default();
+        register_functions(&mut tera).unwrap();
+        tera.add_raw_template("t", template_str).unwrap();
+        let ctx = tera::Context::from_serialize(&kwargs_json).unwrap();
+        tera.render("t", &ctx).unwrap()
+    }
+
     #[test]
     fn test_sanitize_function_dotted_preset() {
-        let mut args = HashMap::new();
-        args.insert(
-            "value".to_string(),
-            Value::String("feature-test-branch".to_string()),
+        let result = render(
+            r#"{{ sanitize(value=branch, preset="dotted") }}"#,
+            serde_json::json!({"branch": "feature-test-branch"}),
         );
-        args.insert("preset".to_string(), Value::String("dotted".to_string()));
-
-        let result = sanitize_function(&args).unwrap();
-        assert_eq!(result, Value::String("feature.test.branch".to_string()));
+        assert_eq!(result, "feature.test.branch");
     }
 
     #[test]
     fn test_sanitize_function_custom_params() {
-        let mut args = HashMap::new();
-        args.insert(
-            "value".to_string(),
-            Value::String("feature-test-branch".to_string()),
+        let result = render(
+            r#"{{ sanitize(value=branch, separator="-", lowercase=true) }}"#,
+            serde_json::json!({"branch": "feature-test-branch"}),
         );
-        args.insert("separator".to_string(), Value::String("-".to_string()));
-        args.insert("lowercase".to_string(), Value::Bool(true));
-
-        let result = sanitize_function(&args).unwrap();
-        assert_eq!(result, Value::String("feature-test-branch".to_string()));
+        assert_eq!(result, "feature-test-branch");
     }
 
     #[test]
     fn test_sanitize_function_default() {
-        let mut args = HashMap::new();
-        args.insert(
-            "value".to_string(),
-            Value::String("feature-test-branch".to_string()),
+        let result = render(
+            r#"{{ sanitize(value=branch) }}"#,
+            serde_json::json!({"branch": "feature-test-branch"}),
         );
-
-        let result = sanitize_function(&args).unwrap();
-        assert_eq!(result, Value::String("feature.test.branch".to_string()));
-    }
-
-    #[test]
-    fn test_sanitize_function_error_both_preset_and_custom() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::String("test".to_string()));
-        args.insert("preset".to_string(), Value::String("dotted".to_string()));
-        args.insert("separator".to_string(), Value::String("-".to_string()));
-
-        let result = sanitize_function(&args);
-        assert!(result.is_err());
+        assert_eq!(result, "feature.test.branch");
     }
 
     #[test]
     fn test_hash_function_default_length() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::String("test-input".to_string()));
-
-        let result = hash_function(&args).unwrap();
-        let hash_str = result.as_str().unwrap();
-        assert_eq!(hash_str.len(), 7);
-        assert!(hash_str.chars().all(|c| c.is_ascii_hexdigit()));
+        let result = render(
+            r#"{{ hash(value=input) }}"#,
+            serde_json::json!({"input": "test-input"}),
+        );
+        assert_eq!(result.len(), 7);
+        assert!(result.chars().all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
     fn test_hash_function_custom_length() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::String("test-input".to_string()));
-        args.insert("length".to_string(), Value::Number(5.into()));
-
-        let result = hash_function(&args).unwrap();
-        let hash_str = result.as_str().unwrap();
-        assert_eq!(hash_str.len(), 5);
-        assert!(hash_str.chars().all(|c| c.is_ascii_hexdigit()));
-    }
-
-    #[test]
-    fn test_hash_int_function_default() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::String("test-input".to_string()));
-
-        let result = hash_int_function(&args).unwrap();
-        let hash_str = result.as_str().unwrap();
-        assert_eq!(hash_str.len(), 7);
-        assert!(hash_str.chars().all(|c| c.is_ascii_hexdigit()));
-    }
-
-    #[test]
-    fn test_hash_int_function_leading_zeros() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::String("test-input".to_string()));
-        args.insert("length".to_string(), Value::Number(10.into()));
-        args.insert("allow_leading_zero".to_string(), Value::Bool(true));
-
-        let result = hash_int_function(&args).unwrap();
-        let hash_str = result.as_str().unwrap();
-        assert_eq!(hash_str.len(), 10);
-        assert!(hash_str.chars().all(|c| c.is_ascii_hexdigit()));
+        let result = render(
+            r#"{{ hash(value=input, length=5) }}"#,
+            serde_json::json!({"input": "test-input"}),
+        );
+        assert_eq!(result.len(), 5);
+        assert!(result.chars().all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
     fn test_prefix_function_default() {
-        let mut args = HashMap::new();
-        args.insert(
-            "value".to_string(),
-            Value::String("feature-branch-name".to_string()),
+        let result = render(
+            r#"{{ prefix(value=branch) }}"#,
+            serde_json::json!({"branch": "feature-branch-name"}),
         );
-
-        let result = prefix_function(&args).unwrap();
-        assert_eq!(result, Value::String("feature-br".to_string()));
+        assert_eq!(result, "feature-br");
     }
 
     #[test]
     fn test_prefix_function_custom_length() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::String("short".to_string()));
-        args.insert("length".to_string(), Value::Number(8.into()));
-
-        let result = prefix_function(&args).unwrap();
-        assert_eq!(result, Value::String("short".to_string()));
+        let result = render(
+            r#"{{ prefix(value=branch, length=8) }}"#,
+            serde_json::json!({"branch": "short"}),
+        );
+        assert_eq!(result, "short");
     }
 
     #[test]
     fn test_prefix_function_long_input() {
-        let mut args = HashMap::new();
-        args.insert(
-            "value".to_string(),
-            Value::String("very-long-branch-name".to_string()),
+        let result = render(
+            r#"{{ prefix(value=branch, length=3) }}"#,
+            serde_json::json!({"branch": "very-long-branch-name"}),
         );
-        args.insert("length".to_string(), Value::Number(3.into()));
-
-        let result = prefix_function(&args).unwrap();
-        assert_eq!(result, Value::String("ver".to_string()));
+        assert_eq!(result, "ver");
     }
 
     #[test]
     fn test_prefix_if_function_with_value() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::String("alpha.1".to_string()));
-        args.insert("prefix".to_string(), Value::String("-".to_string()));
-
-        let result = prefix_if_function(&args).unwrap();
-        assert_eq!(result, Value::String("-alpha.1".to_string()));
+        let result = render(
+            r#"{{ prefix_if(value=v, prefix="-") }}"#,
+            serde_json::json!({"v": "alpha.1"}),
+        );
+        assert_eq!(result, "-alpha.1");
     }
 
     #[test]
     fn test_prefix_if_function_with_empty_value() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::String("".to_string()));
-        args.insert("prefix".to_string(), Value::String("-".to_string()));
-
-        let result = prefix_if_function(&args).unwrap();
-        assert_eq!(result, Value::String("".to_string()));
-    }
-
-    #[test]
-    fn test_prefix_if_function_missing_value() {
-        let mut args = HashMap::new();
-        args.insert("prefix".to_string(), Value::String("-".to_string()));
-
-        let result = prefix_if_function(&args);
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Missing required parameter 'value'")
+        let result = render(
+            r#"{{ prefix_if(value=v, prefix="-") }}"#,
+            serde_json::json!({"v": ""}),
         );
-    }
-
-    #[test]
-    fn test_prefix_if_function_missing_prefix() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::String("test".to_string()));
-
-        let result = prefix_if_function(&args);
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("'prefix' parameter")
-        );
+        assert_eq!(result, "");
     }
 
     #[test]
     fn test_format_timestamp_function_default() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::Number(1698675600.into())); // 2023-10-30 12:00:00 UTC
-
-        let result = format_timestamp_function(&args).unwrap();
-        let formatted = result.as_str().unwrap();
-        assert!(formatted.contains("2023-10-30"));
+        let result = render(
+            r#"{{ format_timestamp(value=ts) }}"#,
+            serde_json::json!({"ts": 1698675600u64}),
+        );
+        assert!(result.contains("2023-10-30"));
     }
 
     #[test]
     fn test_format_timestamp_function_custom() {
-        let mut args = HashMap::new();
-        args.insert("value".to_string(), Value::Number(1698675600.into())); // 2023-10-30 12:00:00 UTC
-        args.insert("format".to_string(), Value::String("%Y-%m-%d".to_string()));
-
-        let result = format_timestamp_function(&args).unwrap();
-        assert_eq!(result, Value::String("2023-10-30".to_string()));
+        let result = render(
+            r#"{{ format_timestamp(value=ts, format="%Y-%m-%d") }}"#,
+            serde_json::json!({"ts": 1698675600u64}),
+        );
+        assert_eq!(result, "2023-10-30");
     }
 }

@@ -139,7 +139,10 @@ fn test_io_documentation_examples() {
 #[case("{{ post }}", "1")]
 #[case("{{ dev }}", "{timestamp:now}")]
 // Pre-release Context
-#[case("{{ pre_release }}", "[object]")]
+#[case(
+    "{{ pre_release }}",
+    r#"{regex:\{"label": "alpha", "label_code": "a", "label_pep440": "a", "number": 10192\}}"#
+)]
 #[case("{{ pre_release.label }}", "alpha")]
 #[case("{{ pre_release.number }}", "10192")]
 #[case("{{ pre_release.label_code }}", "a")]
