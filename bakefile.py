@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 import zerv
-from bake import command, console
+from bake import Context, command, console
 from bakelib import GitHubActionsTools, PythonSpace, RustSpace, params
 from bakelib.publisher.crates import CratesPublisher
 from bakelib.publisher.pypi import PyPIPublisher as _PyPIPublisher
@@ -18,13 +18,13 @@ class PyPIPublisher(_PyPIPublisher):
 
     _target: str | None = None
 
-    def _build_for_publish(self) -> None:
+    def _build_for_publish(self, ctx: Context) -> None:
         cmd = "maturin build --release --strip --out dist/"
 
         if self._target:
             cmd += f" --target {self._target}"
 
-        self.ctx.run(cmd)
+        ctx.run(cmd)
 
 
 class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
@@ -39,11 +39,11 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
     def get_publisher(self, registry: str) -> PyPIPublisher | CratesPublisher:
         """Return the appropriate publisher, using custom PyPIPublisher for maturin builds."""
         if registry in PyPIPublisher.valid_registries:
-            publisher = PyPIPublisher(self.ctx, registry)
+            publisher = PyPIPublisher(registry)
             publisher._target = self._target
             return publisher
         if registry in CratesPublisher.valid_registries:
-            return CratesPublisher(self.ctx, registry)
+            return CratesPublisher(registry)
 
         valid = (*PyPIPublisher.valid_registries, *CratesPublisher.valid_registries)
         console.error(f"Invalid registry: {registry!r}. Expected one of {valid}.")

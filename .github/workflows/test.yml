@@ -31,7 +31,7 @@ jobs:
             PYTHON_VERSION: "3.14"
         steps:
             - name: checkout-repository
-              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
               with:
                   fetch-depth: 0
 
@@ -39,7 +39,7 @@ jobs:
               run: echo "${{ env.PYTHON_VERSION }}" > .python-version
 
             - name: setup-mise
-              uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+              uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
 
             - name: verify-rust-toolchain
               # Workaround for Windows rustup bug: https://github.com/rust-lang/rustup/issues/3104
@@ -56,7 +56,7 @@ jobs:
               id: restore-cache-cargo
               env:
                   CACHE_KEY_PREFIX: cargo-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
-              uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -68,7 +68,7 @@ jobs:
               env:
                   CACHE_KEY_PREFIX: venv-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-py${{ env.PYTHON_VERSION }}
                   CACHE_KEY_DEPS: ${{ hashFiles('uv.lock') }}
-              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: |
                       ~/.local/share/uv
@@ -97,7 +97,7 @@ jobs:
 
             - name: save-cache-cargo
               if: always()
-              uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}
@@ -125,7 +125,7 @@ jobs:
         runs-on: ${{ matrix.os }}
         steps:
             - name: checkout-repository
-              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
               with:
                   fetch-depth: 0
 
@@ -133,7 +133,7 @@ jobs:
               id: restore-cache-cargo
               env:
                   CACHE_KEY_PREFIX: cargo-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}
-              uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ env.CACHE_KEY_PREFIX }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -145,7 +145,7 @@ jobs:
               run: echo "${{ matrix.python_version }}" > .python-version
 
             - name: setup-mise
-              uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+              uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
 
             - name: verify-rust-toolchain
               # Workaround for Windows rustup bug: https://github.com/rust-lang/rustup/issues/3104
@@ -162,7 +162,7 @@ jobs:
               env:
                   CACHE_KEY_PREFIX: venv-${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-py${{ matrix.python_version }}
                   CACHE_KEY_DEPS: ${{ hashFiles('uv.lock') }}
-              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: |
                       ~/.local/share/uv
@@ -190,7 +190,7 @@ jobs:
 
             - name: save-cache-cargo
               if: always()
-              uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}
