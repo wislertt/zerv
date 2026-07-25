@@ -54,7 +54,7 @@ tracing-subscriber = { version = "^0.3", features = ["env-filter"] }
 ctor = "^1.0.1"
 dotenvy = "^0.15"
 rstest = "^0.26.0"
-serial_test = "^3.0"
+serial_test = "^4.0.0"
 shlex = "^2.0"
 tempfile = "^3.0"
 zerv = { path = ".", features = ["test-utils"] }
