@@ -52,6 +52,8 @@ pub enum ZervError {
     NotImplemented(String),
     /// Template processing error
     TemplateError(String),
+    /// Config file (`zerv.toml`) parse error
+    ConfigParseError(String),
 
     // System errors
     /// IO error
@@ -104,6 +106,7 @@ impl std::fmt::Display for ZervError {
             }
             ZervError::NotImplemented(msg) => write!(f, "Not implemented: {msg}"),
             ZervError::TemplateError(msg) => write!(f, "Template error: {msg}"),
+            ZervError::ConfigParseError(msg) => write!(f, "Config parse error: {msg}"),
 
             // System errors
             ZervError::Io(err) => write!(f, "IO error: {err}"),
@@ -174,6 +177,7 @@ impl PartialEq for ZervError {
             }
             (ZervError::NotImplemented(a), ZervError::NotImplemented(b)) => a == b,
             (ZervError::TemplateError(a), ZervError::TemplateError(b)) => a == b,
+            (ZervError::ConfigParseError(a), ZervError::ConfigParseError(b)) => a == b,
             _ => false,
         }
     }

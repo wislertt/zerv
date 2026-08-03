@@ -1,12 +1,16 @@
 [![tests](https://img.shields.io/github/actions/workflow/status/wislertt/zerv/cd.yml?branch=main&label=tests&logo=github)](https://github.com/wislertt/zerv/actions/workflows/cd.yml)
 [![release](https://img.shields.io/github/actions/workflow/status/wislertt/zerv/cd.yml?branch=main&label=release&logo=github)](https://github.com/wislertt/zerv/actions/workflows/cd.yml)
-[![quality gate status](https://sonarcloud.io/api/project_badges/measure?project=wislertt_zerv&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=wislertt_zerv)
-[![security rating](https://sonarcloud.io/api/project_badges/measure?project=wislertt_zerv&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=wislertt_zerv)
+[![quality-gate-status](https://sonarcloud.io/api/project_badges/measure?project=wislertt_zerv&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=wislertt_zerv)
+[![security-rating](https://sonarcloud.io/api/project_badges/measure?project=wislertt_zerv&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=wislertt_zerv)
 [![vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=wislertt_zerv&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=wislertt_zerv)
-[![codecov](https://img.shields.io/codecov/c/github/wislertt/zerv?token=549GL6LQBX&label=codecov&logo=codecov)](https://codecov.io/gh/wislertt/zerv)
+[![codecov](https://codecov.io/gh/wislertt/zerv/graph/badge.svg?token=549GL6LQBX)](https://codecov.io/gh/wislertt/zerv)
+[![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&color=green)](https://github.com/astral-sh/ruff)
+[![ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json&color=green)](https://github.com/astral-sh/ty)
 [![crates.io](https://img.shields.io/crates/v/zerv?color=green)](https://crates.io/crates/zerv)
 [![pypi](https://img.shields.io/pypi/v/zerv-version.svg?color=blue)](https://pypi.python.org/pypi/zerv-version)
-[![pypi downloads](https://static.pepy.tech/personalized-badge/zerv-version?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pypi%20downloads)](https://pepy.tech/projects/zerv-version)
+[![status](https://img.shields.io/pypi/status/zerv-version)](https://pypi.python.org/pypi/zerv-version)
+[![license](https://img.shields.io/pypi/l/zerv-version)](https://pypi.python.org/pypi/zerv-version)
+[![downloads](https://static.pepy.tech/personalized-badge/zerv-version?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pypi%20downloads)](https://pepy.tech/projects/zerv-version)
 [![python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?logo=python)](https://github.com/wislertt/zerv/)
 
 # zerv
@@ -99,6 +103,7 @@ echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | defa
 - **zerv flow**: Opinionated, automated pre-release management based on Git branches
 - **Smart Schema System**: Auto-detects clean releases, pre-releases, and build context
 - **Multiple Formats**: SemVer, PEP440 (Python), CalVer, custom schemas
+- **Config File**: Commit your repo's stable version policy to a `zerv.toml` once — shared by `version` and `flow`, with CLI flags still winning
 - **CI/CD Integration**: Complements semantic release with branch-based pre-releases and full override control
 
 ## Usage Examples
@@ -954,6 +959,84 @@ zerv version --source none --tag-version 1.2.3 --distance 5
 - `format_timestamp(value=timestamp, format="compact_date")` - "20231230"
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_template_documentation_examples -->
+
+#### Config File: Commit repo policy once (shared by `version` and `flow`)
+
+**Purpose**: Commit your repo's stable version policy to a `zerv.toml` once instead of repeating the same flags on every `zerv` invocation.
+
+**Discovery**: `zerv` walks up from the current directory to the nearest VCS repository root (Git's `.git` today) and reads `zerv.toml` there — or the hidden `.zerv.toml` fallback. Config is **repo-scoped**: one policy per repo, no subdirectory shadowing, so a version never depends on which directory you run from.
+
+```bash
+# Commit a zerv.toml at your repo root (stable fields only)
+cat > zerv.toml <<'EOF'
+source          = "stdin"
+output_template = "v{{ major }}.{{ minor }}.{{ patch }}"
+EOF
+
+# zerv reads zerv.toml automatically — no flags repeated
+# (stdin carries the version payload; in a git repo use source = "git")
+zerv version
+# → v1.2.3
+
+# Shared-top fields shape `flow` too
+zerv flow --schema standard
+# → v1.2.3
+
+# A CLI flag still wins over the file
+zerv version --output-template "release-{{ major }}"
+# → release-1
+```
+
+<!-- Corresponding test: tests/integration_tests/config_file/docs.rs:test_config_file_documentation_examples -->
+
+**Precedence** (top wins):
+
+```
+CLI flag  >  --config-file <path>  >  discovered zerv.toml  >  builtin default
+```
+
+`--config-file <path>` reads that file **instead of** discovering `zerv.toml` — the discovered file is never read. Pass `/dev/null` to disable config entirely: the empty file yields no overrides, restoring builtin behavior. There is no `--no-config` flag; `/dev/null` is the escape hatch.
+
+```bash
+# An explicit --config-file is read instead of discovering zerv.toml
+cat > explicit.toml <<'EOF'
+source          = "stdin"
+output_template = "EXPL{{ major }}"
+EOF
+
+zerv --config-file ./explicit.toml version
+# → EXPL1
+
+# /dev/null disables all config (the empty file yields no overrides)
+zerv --config-file /dev/null version
+# → 1.2.3
+```
+
+<!-- Corresponding test: tests/integration_tests/config_file/docs.rs:test_config_file_overrides_documentation_examples -->
+
+**File structure**: stable fields live at the shared top (apply to both subcommands); `[version]` and `[flow]` sections override per-subcommand:
+
+```toml
+# shared top — applies to every subcommand
+source          = "stdin"
+output_format   = "semver"
+output_template = "v{{ major }}.{{ minor }}.{{ patch }}"
+schema          = "standard-context"
+
+[version]                 # optional: override the shared schema for `version` only
+schema = "standard-no-context"
+
+[flow]                    # flow-only stable policy
+post_mode         = "tag"
+pre_release_label = "beta"
+hash_branch_len   = 7
+```
+
+<!-- Corresponding test: src/config/merge.rs:version_section_schema_overrides_shared_top -->
+
+> **`output_prefix` and `output_template` conflict** — they cannot both be set. Put the prefix directly in the template (`"v{{ major }}..."`), or use `output_prefix` with `output_format` and no template.
+
+Ephemeral per-build fields (`--dirty`, `--bump-minor`, `--major`, …) are **not** allowed in the file — a typo'd or stale key fails loud at parse (`deny_unknown_fields`) rather than shipping silently on the next CI run.
 
 ### zerv check: Validate version formats
 

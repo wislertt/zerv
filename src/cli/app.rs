@@ -6,7 +6,7 @@ use std::io::{
 
 use clap::{
     CommandFactory,
-    Parser,
+    FromArgMatches,
 };
 
 use crate::cli::check::run_check_command;
@@ -18,46 +18,62 @@ use crate::cli::parser::{
 };
 use crate::cli::render::run_render;
 use crate::cli::version::run_version_pipeline;
+use crate::config::merge;
 
 pub fn run_with_args<W: Write>(
     args: Vec<String>,
     mut writer: W,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let cli = Cli::try_parse_from(args)?;
+    // Hand-parse to retain ArgMatches — the merge layer reads value_source to
+    // tell CLI flags from clap defaults.
+    let matches = Cli::command().try_get_matches_from(args)?;
+    let cli = Cli::from_arg_matches(&matches)?;
 
     crate::logging::init_logging(cli.verbose);
 
     tracing::debug!("Zerv started with args: {:?}", cli);
 
-    // Handle --llm-help flag
     if cli.llm_help {
         display_llm_help(&mut writer)?;
         return Ok(());
     }
 
-    // Extract stdin content once at the beginning
     let stdin_content = extract_stdin_once()?;
 
-    match cli.command {
-        Some(Commands::Version(version_args)) => {
+    // Dispatch on the typed command + raw sub_matches (borrowed so the merge
+    // layer reads provenance).
+    let sub = matches.subcommand();
+    // --config-file is global: read once from the top-level matches and forward.
+    let config_file: Option<&str> = matches
+        .get_one::<String>(crate::utils::constants::arg_ids::CONFIG_FILE)
+        .map(String::as_str);
+    match (cli.command, sub) {
+        (Some(Commands::Version(mut version_args)), Some((_, sub_matches))) => {
+            if let Some(file) = &merge::load_for(sub_matches, config_file)? {
+                merge::apply_to_version(&mut version_args, sub_matches, file);
+            }
             let output = run_version_pipeline(*version_args, stdin_content.as_deref())?;
             writeln!(writer, "{output}")?;
         }
-        Some(Commands::Flow(flow_args)) => {
+        (Some(Commands::Flow(mut flow_args)), Some((_, sub_matches))) => {
+            if let Some(file) = &merge::load_for(sub_matches, config_file)? {
+                merge::apply_to_flow(&mut flow_args, sub_matches, file)?;
+            }
             let output = run_flow_pipeline(*flow_args, stdin_content.as_deref())?;
             writeln!(writer, "{output}")?;
         }
-        Some(Commands::Check(check_args)) => {
+        (Some(Commands::Check(check_args)), _) => {
             let output = run_check_command(check_args)?;
             writeln!(writer, "{output}")?;
         }
-        Some(Commands::Render(render_args)) => {
+        (Some(Commands::Render(render_args)), _) => {
             let output = run_render(*render_args)?;
             writeln!(writer, "{output}")?;
         }
-        None => {
+        (None, _) => {
             return Err(Box::new(NoSubcommand));
         }
+        _ => return Err(Box::new(NoSubcommand)),
     }
     Ok(())
 }
@@ -73,8 +89,6 @@ impl std::fmt::Display for NoSubcommand {
 
 impl std::error::Error for NoSubcommand {}
 
-/// Extract stdin content once, regardless of command
-/// Returns Ok(Some(String)) if stdin is available, Ok(None) otherwise
 fn extract_stdin_once() -> Result<Option<String>, Box<dyn std::error::Error>> {
     // Check if stdin is being piped
     if std::io::stdin().is_terminal() {

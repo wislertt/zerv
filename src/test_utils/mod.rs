@@ -34,16 +34,16 @@ pub use zerv::{
     ZervVarsFixture,
 };
 
-use crate::config::ZervConfig;
+use crate::config::ZervRuntimeConfig;
 
 pub fn should_use_native_git() -> bool {
-    ZervConfig::load()
+    ZervRuntimeConfig::load()
         .map(|config| config.should_use_native_git())
         .unwrap_or(false)
 }
 
 pub fn should_run_docker_tests() -> bool {
-    ZervConfig::load()
+    ZervRuntimeConfig::load()
         .map(|config| config.should_run_docker_tests())
         .unwrap_or(false)
 }

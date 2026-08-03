@@ -47,14 +47,15 @@ serde_json = "^1.0"
 strum = { version = "^0.28.0", features = ["derive"] }
 tempfile = { version = "^3.0", optional = true }
 tera = { version = "^2.0.0", default-features = false }
+toml = "^1.1"
 tracing = "^0.1"
 tracing-subscriber = { version = "^0.3", features = ["env-filter"] }
 
 [dev-dependencies]
-ctor = "^1.0.1"
+ctor = "^1.0"
 dotenvy = "^0.15"
 rstest = "^0.26.0"
-serial_test = "^3.0"
+serial_test = "^4.0"
 shlex = "^2.0"
 tempfile = "^3.0"
 zerv = { path = ".", features = ["test-utils"] }

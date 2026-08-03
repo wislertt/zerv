@@ -16,7 +16,7 @@ use crate::config::EnvVars;
 /// 2. --verbose flag - enables debug level
 /// 3. Default - error level only (Rust standard)
 pub fn init_logging(verbose: bool) {
-    let config = crate::config::ZervConfig::load().unwrap_or_default();
+    let config = crate::config::ZervRuntimeConfig::load().unwrap_or_default();
     let filter = if config.should_force_rust_log_off() {
         // ZERV_FORCE_RUST_LOG_OFF is set to true/1 - force logging off for CI
         EnvFilter::new("off")

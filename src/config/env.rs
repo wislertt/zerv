@@ -1,3 +1,6 @@
+//! Environment-sourced runtime behavior: env-var name constants and the
+//! runtime config parsed from them (test backends, log forcing).
+
 use std::env;
 
 /// Centralized environment variable names used throughout Zerv.
@@ -43,19 +46,19 @@ impl EnvVars {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct ZervConfig {
+pub struct ZervRuntimeConfig {
     pub test_native_git: bool,
     pub test_docker: bool,
     pub force_rust_log_off: bool,
 }
 
-impl ZervConfig {
+impl ZervRuntimeConfig {
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
         let test_native_git = Self::parse_bool_env(EnvVars::ZERV_TEST_NATIVE_GIT, false)?;
         let test_docker = Self::parse_bool_env(EnvVars::ZERV_TEST_DOCKER, true)?;
         let force_rust_log_off = Self::parse_bool_env(EnvVars::ZERV_FORCE_RUST_LOG_OFF, false)?;
 
-        Ok(ZervConfig {
+        Ok(ZervRuntimeConfig {
             test_native_git,
             test_docker,
             force_rust_log_off,
@@ -134,7 +137,7 @@ mod tests {
             env::remove_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF);
         }
 
-        let config = ZervConfig::load().expect("Failed to load default config");
+        let config = ZervRuntimeConfig::load().expect("Failed to load default config");
         assert!(!config.should_use_native_git());
         assert!(config.should_run_docker_tests());
         assert!(!config.should_force_rust_log_off());
@@ -154,7 +157,8 @@ mod tests {
             env::set_var(EnvVars::ZERV_TEST_NATIVE_GIT, "true");
         }
 
-        let config = ZervConfig::load().expect("Failed to load config with native git enabled");
+        let config =
+            ZervRuntimeConfig::load().expect("Failed to load config with native git enabled");
         assert!(config.should_use_native_git());
         assert!(config.should_run_docker_tests());
         assert!(!config.should_force_rust_log_off());
@@ -174,7 +178,8 @@ mod tests {
             env::set_var(EnvVars::ZERV_TEST_DOCKER, "true");
         }
 
-        let config = ZervConfig::load().expect("Failed to load config with docker tests enabled");
+        let config =
+            ZervRuntimeConfig::load().expect("Failed to load config with docker tests enabled");
         assert!(!config.should_use_native_git());
         assert!(config.should_run_docker_tests());
         assert!(!config.should_force_rust_log_off());
@@ -194,7 +199,8 @@ mod tests {
             env::remove_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF);
         }
 
-        let config = ZervConfig::load().expect("Failed to load config with both env vars set");
+        let config =
+            ZervRuntimeConfig::load().expect("Failed to load config with both env vars set");
         assert!(config.should_use_native_git());
         assert!(config.should_run_docker_tests());
         assert!(!config.should_force_rust_log_off());
@@ -214,7 +220,7 @@ mod tests {
             env::set_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF, "false");
         }
 
-        let config = ZervConfig::load().expect("Failed to load config with false values");
+        let config = ZervRuntimeConfig::load().expect("Failed to load config with false values");
         assert!(!config.should_use_native_git());
         assert!(!config.should_run_docker_tests());
         assert!(!config.should_force_rust_log_off());
@@ -234,8 +240,8 @@ mod tests {
             env::set_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF, "true");
         }
 
-        let config =
-            ZervConfig::load().expect("Failed to load config with force rust log off enabled");
+        let config = ZervRuntimeConfig::load()
+            .expect("Failed to load config with force rust log off enabled");
         assert!(!config.should_use_native_git());
         assert!(config.should_run_docker_tests());
         assert!(config.should_force_rust_log_off());

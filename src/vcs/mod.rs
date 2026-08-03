@@ -21,6 +21,12 @@ pub trait Vcs {
 
     /// Check if this VCS type is available in the given directory
     fn is_available(&self, path: &Path) -> bool;
+
+    /// Files/dirs marking this VCS's repository root (e.g. Git's `.git`); config
+    /// discovery stops at the nearest ancestor holding one.
+    fn boundary_markers() -> &'static [&'static str]
+    where
+        Self: Sized;
 }
 
 /// Detect and create appropriate VCS implementation
@@ -40,6 +46,19 @@ pub fn detect_vcs_with_limit(path: &Path, max_depth: Option<usize>) -> Result<Bo
     ))
 }
 
+/// Boundary markers for every supported VCS; the nearest ancestor holding one
+/// bounds discovery. Add a new VCS's markers here (a second VCS would also want
+/// its own root finder).
+fn all_boundary_markers() -> &'static [&'static str] {
+    git::GitVcs::boundary_markers()
+}
+
+fn is_vcs_boundary(dir: &Path) -> bool {
+    all_boundary_markers()
+        .iter()
+        .any(|marker| dir.join(marker).exists())
+}
+
 /// Find the root directory of the VCS repository
 pub fn find_vcs_root(start_path: &Path) -> Result<PathBuf> {
     find_vcs_root_with_limit(start_path, None)
@@ -56,8 +75,7 @@ pub fn find_vcs_root_with_limit(start_path: &Path, max_depth: Option<usize>) -> 
 
     let mut depth = 0;
     loop {
-        // Check for .git directory
-        if current.join(".git").exists() {
+        if is_vcs_boundary(&current) {
             return Ok(current);
         }
 
