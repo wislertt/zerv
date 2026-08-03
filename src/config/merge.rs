@@ -708,4 +708,43 @@ mod tests {
         // Discovery result depends on the host cwd — assert only no-error.
         let _ = load_for(&sub, None).expect("load_for with no explicit path must not error");
     }
+
+    #[test]
+    fn load_returns_none_when_start_dir_missing() {
+        // Missing start dir collapses to Ok(None): discovery is advisory.
+        let result = load(Path::new("/nonexistent/zerv/missing/start/dir"));
+        assert!(
+            result.is_ok(),
+            "missing start dir must not error: {result:?}"
+        );
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn load_errors_when_config_path_is_a_directory() {
+        use std::fs;
+
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path().canonicalize().unwrap();
+        fs::create_dir_all(root.join(crate::utils::constants::vcs_markers::GIT)).unwrap();
+        // A dir named zerv.toml is "found" by name but read_to_string fails on it.
+        fs::create_dir_all(root.join(crate::utils::constants::config_files::PRIMARY)).unwrap();
+        let err = load(&root).unwrap_err();
+        assert!(
+            matches!(err, ZervError::Io(_)),
+            "unreadable discovered config must surface as Io: {err}"
+        );
+        assert!(
+            err.to_string().contains("Failed to read config file"),
+            "error must name the read failure: {err}"
+        );
+    }
+
+    #[test]
+    fn load_for_uses_directory_arg_as_start_dir() {
+        let (_, sub) = version_with(&["--directory", "/tmp"]);
+        let result = load_for(&sub, None).expect("load_for with --directory=/tmp must not error");
+        assert!(result.is_none(), "/tmp has no zerv.toml → no config");
+    }
 }

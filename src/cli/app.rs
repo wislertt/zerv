@@ -182,6 +182,75 @@ mod tests {
         assert!(err.downcast_ref::<NoSubcommand>().is_some());
     }
 
+    #[test]
+    fn check_subcommand_dispatches() {
+        let buf = run(vec!["zerv", "check", "1.2.3"]).expect("check must validate 1.2.3");
+        assert!(!buf.is_empty(), "check must emit output");
+    }
+
+    #[test]
+    fn render_subcommand_dispatches() {
+        let buf = run(vec!["zerv", "render", "1.2.3"]).expect("render must render 1.2.3");
+        assert!(!buf.is_empty(), "render must emit output");
+    }
+
+    #[test]
+    fn version_subcommand_applies_config_file_template() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        let cfg = tmp.path().join("zerv.toml");
+        std::fs::write(&cfg, "output_template = \"v{{major}}\"\n").unwrap();
+        // --source none avoids stdin/git so the file template reaches output only via the merge layer.
+        let args: Vec<String> = [
+            "zerv",
+            "--config-file",
+            cfg.to_str().unwrap(),
+            "version",
+            "--source",
+            "none",
+            "--tag-version",
+            "v1.2.3",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        let mut buf = Vec::new();
+        run_with_args(args, &mut buf).expect("version --source none must succeed");
+        assert_eq!(
+            String::from_utf8(buf).unwrap().trim(),
+            "v1",
+            "the file's output_template must apply via the merge layer"
+        );
+    }
+
+    #[test]
+    fn flow_subcommand_runs_merge_layer() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        let cfg = tmp.path().join("zerv.toml");
+        std::fs::write(&cfg, "").unwrap();
+        // --source none keeps flow off stdin; a clean run proves the flow arm wires config.
+        let args: Vec<String> = [
+            "zerv",
+            "--config-file",
+            cfg.to_str().unwrap(),
+            "flow",
+            "--source",
+            "none",
+            "--schema",
+            "standard",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        let mut buf = Vec::new();
+        run_with_args(args, &mut buf).expect("flow --source none must succeed");
+        assert!(
+            !buf.is_empty(),
+            "flow must emit output after the merge layer applies"
+        );
+    }
+
     mod run_exit_code {
         use super::*;
 

@@ -78,4 +78,21 @@ mod tests {
             "init_logging should not panic with RUST_LOG set"
         );
     }
+
+    #[test]
+    fn test_init_logging_with_force_rust_log_off() {
+        unsafe {
+            std::env::set_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF, "true");
+        }
+        let result = std::panic::catch_unwind(|| {
+            init_logging(false);
+        });
+        unsafe {
+            std::env::remove_var(EnvVars::ZERV_FORCE_RUST_LOG_OFF);
+        }
+        assert!(
+            result.is_ok(),
+            "init_logging should not panic with ZERV_FORCE_RUST_LOG_OFF set"
+        );
+    }
 }
