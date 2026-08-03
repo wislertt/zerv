@@ -9,6 +9,7 @@ use crate::error::{
     Result,
     ZervError,
 };
+use crate::utils::constants::vcs_markers;
 use crate::vcs::{
     Vcs,
     VcsData,
@@ -17,8 +18,6 @@ use crate::vcs::{
 /// Git VCS implementation
 pub struct GitVcs {
     repo_path: PathBuf,
-    // TODO: Add optional tag_branch parameter for future extension
-    // tag_branch: Option<String>,
 }
 
 impl GitVcs {
@@ -258,7 +257,10 @@ impl GitVcs {
 
     /// Check for shallow clone and warn user
     fn check_shallow_clone(&self) -> bool {
-        self.repo_path.join(".git/shallow").exists()
+        self.repo_path
+            .join(vcs_markers::GIT)
+            .join("shallow")
+            .exists()
     }
 }
 
@@ -306,7 +308,14 @@ impl Vcs for GitVcs {
         }
 
         // Check if we're in a git repository
-        path.join(".git").exists() || crate::vcs::find_vcs_root(path).is_ok()
+        path.join(vcs_markers::GIT).exists() || crate::vcs::find_vcs_root(path).is_ok()
+    }
+
+    fn boundary_markers() -> &'static [&'static str]
+    where
+        Self: Sized,
+    {
+        &[vcs_markers::GIT]
     }
 }
 

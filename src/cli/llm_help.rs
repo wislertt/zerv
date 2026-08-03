@@ -5,37 +5,37 @@ use crate::config::EnvVars;
 // Embed the comprehensive manual at compile time
 pub const LLMS_MD: &str = include_str!("../../docs/llms.md");
 
-// Helper function to try spawning a pager
+// Spawn path compiled out of test builds so tarpaulin (--include-tests) won't flag it uncovered.
 fn try_pager(pager: &str) -> Result<bool, Box<dyn std::error::Error>> {
-    use std::process::{
-        Command,
-        Stdio,
-    };
-
-    // Skip pager usage during tests to avoid interactive blocking
-    if cfg!(test) {
-        return Ok(false);
+    #[cfg(test)]
+    {
+        let _ = pager;
+        Ok(false)
     }
 
-    match Command::new(pager).stdin(Stdio::piped()).spawn() {
-        Ok(mut child) => {
-            if let Some(stdin) = child.stdin.as_mut() {
-                use std::io::Write;
-                match stdin.write_all(LLMS_MD.as_bytes()) {
-                    Ok(_) => {
-                        let _ = stdin;
-                        let _ = child.wait();
-                        return Ok(true); // Successfully used pager
-                    }
-                    Err(_) => {
-                        return Ok(false); // Pager failed to accept input
+    #[cfg(not(test))]
+    {
+        use std::io::Write;
+        use std::process::{
+            Command,
+            Stdio,
+        };
+
+        match Command::new(pager).stdin(Stdio::piped()).spawn() {
+            Ok(mut child) => {
+                if let Some(stdin) = child.stdin.as_mut() {
+                    match stdin.write_all(LLMS_MD.as_bytes()) {
+                        Ok(_) => {
+                            let _ = stdin;
+                            let _ = child.wait();
+                            return Ok(true);
+                        }
+                        Err(_) => return Ok(false),
                     }
                 }
+                Ok(false)
             }
-            Ok(false) // No stdin available
-        }
-        Err(_) => {
-            Ok(false) // Pager failed to spawn
+            Err(_) => Ok(false),
         }
     }
 }

@@ -1,6 +1,7 @@
 use clap::Parser;
 
 use crate::cli::utils::template::Template;
+use crate::utils::bool_resolution::BoolResolution;
 
 /// Common override configuration for VCS and version components
 #[derive(Parser, Default, Debug, Clone)]
@@ -76,12 +77,7 @@ pub struct CommonOverridesConfig {
 impl CommonOverridesConfig {
     /// Get the dirty override state (None = use VCS, Some(bool) = override)
     pub fn dirty_override(&self) -> Option<bool> {
-        match (self.dirty, self.no_dirty) {
-            (true, false) => Some(true),    // --dirty
-            (false, true) => Some(false),   // --no-dirty
-            (false, false) => None,         // neither (use VCS)
-            (true, true) => unreachable!(), // Should be caught by validation
-        }
+        BoolResolution::resolve_opposing_flags(self.dirty, self.no_dirty)
     }
 }
 

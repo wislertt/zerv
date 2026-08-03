@@ -34,16 +34,16 @@ pub use zerv::{
     ZervVarsFixture,
 };
 
-use crate::config::ZervConfig;
+use crate::config::ZervRuntimeConfig;
 
 pub fn should_use_native_git() -> bool {
-    ZervConfig::load()
+    ZervRuntimeConfig::load()
         .map(|config| config.should_use_native_git())
         .unwrap_or(false)
 }
 
 pub fn should_run_docker_tests() -> bool {
-    ZervConfig::load()
+    ZervRuntimeConfig::load()
         .map(|config| config.should_run_docker_tests())
         .unwrap_or(false)
 }
@@ -55,4 +55,11 @@ pub fn get_git_impl() -> Box<dyn GitOperations> {
     } else {
         Box::new(DockerGit::new())
     }
+}
+
+/// Platform null device path — the empty-file escape hatch for `--config-file`.
+/// `/dev/null` on Unix, `NUL` on Windows (a reserved device readable from any
+/// cwd). Both read back as empty, yielding no config overrides.
+pub fn null_device_path() -> &'static str {
+    if cfg!(windows) { "NUL" } else { "/dev/null" }
 }

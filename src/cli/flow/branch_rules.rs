@@ -803,41 +803,6 @@ mod tests {
     }
 
     #[test]
-    fn test_workflow_default_matches_rust_default() {
-        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-        let yaml_path = std::path::Path::new(&manifest_dir)
-            .join(".github/workflows/shared-zerv-versioning.yml");
-        let yaml_content =
-            std::fs::read_to_string(&yaml_path).expect("Failed to read workflow YAML");
-
-        // Extract RON array from branch_rules default section
-        let after_branch_rules = yaml_content
-            .split("branch_rules:")
-            .nth(1)
-            .expect("branch_rules key not found in YAML");
-        let after_default_pipe = after_branch_rules
-            .split("default: |")
-            .nth(1)
-            .expect("default: | not found under branch_rules");
-        let ron_str = after_default_pipe
-            .split("output_formats:")
-            .next()
-            .expect("output_formats key not found after branch_rules")
-            .trim();
-
-        let yaml_rules: BranchRules = ron_str
-            .parse()
-            .expect("Failed to parse YAML branch_rules RON");
-        let rust_defaults = BranchRules::default_rules();
-
-        assert_eq!(
-            yaml_rules.to_string(),
-            rust_defaults.to_string(),
-            "Workflow default branch_rules must match Rust default_rules()"
-        );
-    }
-
-    #[test]
     fn test_branch_rules_display_format() {
         // Test that Display produces expected RON format
         let rules = BranchRules::default_rules();

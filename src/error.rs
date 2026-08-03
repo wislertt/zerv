@@ -52,6 +52,8 @@ pub enum ZervError {
     NotImplemented(String),
     /// Template processing error
     TemplateError(String),
+    /// Config file (`zerv.toml`) parse error
+    ConfigParseError(String),
 
     // System errors
     /// IO error
@@ -104,6 +106,7 @@ impl std::fmt::Display for ZervError {
             }
             ZervError::NotImplemented(msg) => write!(f, "Not implemented: {msg}"),
             ZervError::TemplateError(msg) => write!(f, "Template error: {msg}"),
+            ZervError::ConfigParseError(msg) => write!(f, "Config parse error: {msg}"),
 
             // System errors
             ZervError::Io(err) => write!(f, "IO error: {err}"),
@@ -174,6 +177,7 @@ impl PartialEq for ZervError {
             }
             (ZervError::NotImplemented(a), ZervError::NotImplemented(b)) => a == b,
             (ZervError::TemplateError(a), ZervError::TemplateError(b)) => a == b,
+            (ZervError::ConfigParseError(a), ZervError::ConfigParseError(b)) => a == b,
             _ => false,
         }
     }
@@ -189,6 +193,17 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
+    use crate::version::zerv::schema::{
+        SchemaPartName,
+        ZervSchemaPart,
+    };
+
+    fn empty_core_part() -> ZervSchemaPart {
+        ZervSchemaPart {
+            name: SchemaPartName::Core,
+            components: vec![],
+        }
+    }
 
     #[rstest]
     #[case(ZervError::VcsNotFound("git".to_string()), "VCS not found: git")]
@@ -205,6 +220,25 @@ mod tests {
     #[case(ZervError::UnknownSource("unknown".to_string()), "Unknown source: unknown")]
     #[case(ZervError::ConflictingOptions("--clean with --dirty".to_string()), "Conflicting options: --clean with --dirty")]
     #[case(ZervError::InvalidArgument("invalid value".to_string()), "Invalid argument: invalid value")]
+    #[case(ZervError::ConfigParseError("bad toml".to_string()), "Config parse error: bad toml")]
+    #[case(ZervError::NotImplemented("feature X".to_string()), "Not implemented: feature X")]
+    #[case(ZervError::TemplateError("bad template".to_string()), "Template error: bad template")]
+    #[case(
+        ZervError::InvalidBumpTarget {
+            message: "bad bump".to_string(),
+            schema_part: empty_core_part(),
+            suggestion: None,
+        },
+        "bad bump\nSchema section: core: []"
+    )]
+    #[case(
+        ZervError::InvalidBumpTarget {
+            message: "bad bump".to_string(),
+            schema_part: empty_core_part(),
+            suggestion: Some("try major instead".to_string()),
+        },
+        "bad bump\nSchema section: core: []\ntry major instead"
+    )]
     fn test_error_display(#[case] error: ZervError, #[case] expected: &str) {
         assert_eq!(error.to_string(), expected);
     }
@@ -342,6 +376,89 @@ mod tests {
         ZervError::NoTagsFound,
         ZervError::VcsNotFound("git".to_string()),
         false
+    )]
+    #[case(
+        ZervError::ConfigParseError("bad toml".to_string()),
+        ZervError::ConfigParseError("bad toml".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::ConfigParseError("bad toml".to_string()),
+        ZervError::ConfigParseError("worse toml".to_string()),
+        false
+    )]
+    #[case(
+        ZervError::InvalidBumpTarget {
+            message: "m".to_string(),
+            schema_part: empty_core_part(),
+            suggestion: None,
+        },
+        ZervError::InvalidBumpTarget {
+            message: "m".to_string(),
+            schema_part: empty_core_part(),
+            suggestion: None,
+        },
+        true
+    )]
+    #[case(
+        ZervError::InvalidBumpTarget {
+            message: "m".to_string(),
+            schema_part: empty_core_part(),
+            suggestion: None,
+        },
+        ZervError::InvalidBumpTarget {
+            message: "n".to_string(),
+            schema_part: empty_core_part(),
+            suggestion: None,
+        },
+        false
+    )]
+    #[case(
+        ZervError::InvalidBumpTarget {
+            message: "m".to_string(),
+            schema_part: ZervSchemaPart {
+                name: SchemaPartName::Core,
+                components: vec![],
+            },
+            suggestion: None,
+        },
+        ZervError::InvalidBumpTarget {
+            message: "m".to_string(),
+            schema_part: ZervSchemaPart {
+                name: SchemaPartName::Build,
+                components: vec![],
+            },
+            suggestion: None,
+        },
+        false
+    )]
+    #[case(
+        ZervError::InvalidBumpTarget {
+            message: "m".to_string(),
+            schema_part: empty_core_part(),
+            suggestion: None,
+        },
+        ZervError::InvalidBumpTarget {
+            message: "m".to_string(),
+            schema_part: empty_core_part(),
+            suggestion: Some("try major".to_string()),
+        },
+        false
+    )]
+    #[case(
+        ZervError::NotImplemented("a".to_string()),
+        ZervError::NotImplemented("a".to_string()),
+        true
+    )]
+    #[case(
+        ZervError::NotImplemented("a".to_string()),
+        ZervError::NotImplemented("b".to_string()),
+        false
+    )]
+    #[case(
+        ZervError::TemplateError("a".to_string()),
+        ZervError::TemplateError("a".to_string()),
+        true
     )]
     fn test_error_equality(
         #[case] error1: ZervError,

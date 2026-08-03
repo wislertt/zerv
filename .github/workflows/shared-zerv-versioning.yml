@@ -13,35 +13,7 @@ on:
             branch_rules:
                 type: string
                 required: false
-                # Note: This default is the same as zerv flow's built-in default.
-                # If branch_rules input is "", zerv flow will use its internal default rules
-                # and produce the same results.
-                default: |
-                    [
-                        (
-                            pattern: "develop",
-                            pre_release_label: beta,
-                            pre_release_num: Some(1),
-                            post_mode: commit
-                        ),
-                        (
-                            pattern: "beta/*",
-                            pre_release_label: beta,
-                            post_mode: commit
-                        ),
-                        (
-                            pattern: "release/*",
-                            pre_release_label: rc,
-                            pre_release_num: None,
-                            post_mode: tag
-                        ),
-                        (
-                            pattern: "*",
-                            pre_release_label: alpha,
-                            pre_release_num: None,
-                            post_mode: commit
-                        )
-                    ]
+                default: ""
             output_formats:
                 type: string
                 required: false
@@ -87,12 +59,12 @@ jobs:
             versions: ${{ steps.generate-versions.outputs.versions }}
         steps:
             - name: checkout-repository
-              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   fetch-depth: 0
 
             - name: setup-uv
-              uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+              uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
               with:
                   python-version: "3.14"
                   version: "latest"

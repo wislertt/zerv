@@ -15,6 +15,7 @@ use crate::cli::utils::template::{
     TemplateExt,
 };
 use crate::error::ZervError;
+use crate::utils::bool_resolution::BoolResolution;
 use crate::utils::constants::pre_release_labels;
 use crate::version::Zerv;
 
@@ -206,14 +207,8 @@ impl ResolvedOverrides {
     }
 
     /// Get the dirty override state (None = use VCS, Some(bool) = override)
-    // TODO: this is duplicated
     pub fn dirty_override(&self) -> Option<bool> {
-        match (self.dirty, self.no_dirty) {
-            (true, false) => Some(true),    // --dirty
-            (false, true) => Some(false),   // --no-dirty
-            (false, false) => None,         // neither (use VCS)
-            (true, true) => unreachable!(), // Should be caught by validation
-        }
+        BoolResolution::resolve_opposing_flags(self.dirty, self.no_dirty)
     }
 }
 
