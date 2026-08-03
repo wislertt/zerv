@@ -995,7 +995,7 @@ zerv version --output-template "release-{{ major }}"
 CLI flag  >  --config-file <path>  >  discovered zerv.toml  >  builtin default
 ```
 
-`--config-file <path>` reads that file **instead of** discovering `zerv.toml` — the discovered file is never read. Pass `/dev/null` to disable config entirely: the empty file yields no overrides, restoring builtin behavior. There is no `--no-config` flag; `/dev/null` is the escape hatch.
+`--config-file <path>` reads that file **instead of** discovering `zerv.toml` — the discovered file is never read. Pass the null device to disable config entirely: the empty file yields no overrides, restoring builtin behavior. There is no `--no-config` flag; the null device is the escape hatch (`/dev/null` on Unix and macOS, `NUL` on Windows).
 
 ```bash
 # An explicit --config-file is read instead of discovering zerv.toml
@@ -1007,7 +1007,8 @@ EOF
 zerv --config-file ./explicit.toml version
 # → EXPL1
 
-# /dev/null disables all config (the empty file yields no overrides)
+# The null device disables all config (the empty file yields no overrides).
+# /dev/null on Unix and macOS, NUL on Windows.
 zerv --config-file /dev/null version
 # → 1.2.3
 ```

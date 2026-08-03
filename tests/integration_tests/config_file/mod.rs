@@ -10,7 +10,10 @@ use zerv::test_utils::{
     ZervFixture,
 };
 
-use crate::util::TestCommand;
+use crate::util::{
+    TestCommand,
+    null_device_path,
+};
 
 /// Temp dir with a `.git` boundary marker (bounds discovery to the temp root).
 fn repo_root() -> TestDir {
@@ -221,14 +224,14 @@ output_template = "DISABLED{{major}}""#,
         .current_dir(dir.path())
         .stdin(stdin_version(1, 2, 3))
         .arg("--config-file")
-        .arg("/dev/null")
+        .arg(null_device_path())
         .args_from_str("version --source stdin")
         .assert_success();
 
     assert_eq!(
         output.stdout().trim(),
         "1.2.3",
-        "--config-file /dev/null must disable the discovered config: the template must not apply"
+        "--config-file <null device> must disable the discovered config: the template must not apply"
     );
 }
 

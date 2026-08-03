@@ -14,10 +14,17 @@ use std::path::{
 use clap::ArgMatches;
 use clap::parser::ValueSource;
 
+use crate::cli::common::args::{
+    InputConfig,
+    OutputConfig,
+};
 use crate::cli::flow::FlowArgs;
 use crate::cli::utils::template::Template;
 use crate::cli::version::VersionArgs;
-use crate::config::file::ZervFileConfig;
+use crate::config::file::{
+    FlowSection,
+    ZervFileConfig,
+};
 use crate::error::ZervError;
 use crate::utils::constants::arg_ids;
 
@@ -62,7 +69,8 @@ pub fn load_for(
 
 /// Read an explicit `--config-file <path>` (no discovery). Unlike [`load`], a
 /// missing path errors loud — the user named it, so silence would hide a typo.
-/// An empty file (`/dev/null`) yields no overrides (config disabled).
+/// An empty file — the null device, `/dev/null` on Unix and `NUL` on Windows —
+/// yields no overrides (config disabled).
 pub fn load_explicit(path: &Path) -> Result<Option<ZervFileConfig>, ZervError> {
     let contents = std::fs::read_to_string(path).map_err(|e| {
         ZervError::Io(std::io::Error::other(format!(
@@ -102,33 +110,36 @@ fn override_str(field: &mut String, matches: &ArgMatches, id: &str, file_val: Op
     }
 }
 
-pub fn apply_to_version(args: &mut VersionArgs, matches: &ArgMatches, file: &ZervFileConfig) {
+fn apply_to_input(input: &mut InputConfig, matches: &ArgMatches, file: &ZervFileConfig) {
     override_opt(
-        &mut args.input.source,
+        &mut input.source,
         matches,
         arg_ids::SOURCE,
         file.source.as_deref(),
     );
     override_str(
-        &mut args.input.input_format,
+        &mut input.input_format,
         matches,
         arg_ids::INPUT_FORMAT,
         file.input_format.as_deref(),
     );
     override_opt(
-        &mut args.input.directory,
+        &mut input.directory,
         matches,
         arg_ids::DIRECTORY,
         file.directory.as_deref(),
     );
+}
+
+fn apply_to_output(output: &mut OutputConfig, matches: &ArgMatches, file: &ZervFileConfig) {
     override_str(
-        &mut args.output.output_format,
+        &mut output.output_format,
         matches,
         arg_ids::OUTPUT_FORMAT,
         file.output_format.as_deref(),
     );
     override_opt(
-        &mut args.output.output_prefix,
+        &mut output.output_prefix,
         matches,
         arg_ids::OUTPUT_PREFIX,
         file.output_prefix.as_deref(),
@@ -136,8 +147,13 @@ pub fn apply_to_version(args: &mut VersionArgs, matches: &ArgMatches, file: &Zer
     if !cli_set(matches, arg_ids::OUTPUT_TEMPLATE)
         && let Some(tpl) = file.output_template.as_deref()
     {
-        args.output.output_template = Some(Template::new(tpl.to_string()));
+        output.output_template = Some(Template::new(tpl.to_string()));
     }
+}
+
+pub fn apply_to_version(args: &mut VersionArgs, matches: &ArgMatches, file: &ZervFileConfig) {
+    apply_to_input(&mut args.input, matches, file);
+    apply_to_output(&mut args.output, matches, file);
 
     let schema = file
         .version
@@ -158,48 +174,15 @@ pub fn apply_to_version(args: &mut VersionArgs, matches: &ArgMatches, file: &Zer
     );
 }
 
-/// Merge file policy into `flow` args. Errors only on an unparseable
-/// `[flow].branch_rules` RON payload (loud — see [`load`]).
+/// Errors on an unparseable `[flow].branch_rules` RON payload (unlike
+/// [`apply_to_version`], which cannot fail).
 pub fn apply_to_flow(
     args: &mut FlowArgs,
     matches: &ArgMatches,
     file: &ZervFileConfig,
 ) -> Result<(), ZervError> {
-    override_opt(
-        &mut args.input.source,
-        matches,
-        arg_ids::SOURCE,
-        file.source.as_deref(),
-    );
-    override_str(
-        &mut args.input.input_format,
-        matches,
-        arg_ids::INPUT_FORMAT,
-        file.input_format.as_deref(),
-    );
-    override_opt(
-        &mut args.input.directory,
-        matches,
-        arg_ids::DIRECTORY,
-        file.directory.as_deref(),
-    );
-    override_str(
-        &mut args.output.output_format,
-        matches,
-        arg_ids::OUTPUT_FORMAT,
-        file.output_format.as_deref(),
-    );
-    override_opt(
-        &mut args.output.output_prefix,
-        matches,
-        arg_ids::OUTPUT_PREFIX,
-        file.output_prefix.as_deref(),
-    );
-    if !cli_set(matches, arg_ids::OUTPUT_TEMPLATE)
-        && let Some(tpl) = file.output_template.as_deref()
-    {
-        args.output.output_template = Some(Template::new(tpl.to_string()));
-    }
+    apply_to_input(&mut args.input, matches, file);
+    apply_to_output(&mut args.output, matches, file);
 
     let schema = file
         .flow
@@ -220,32 +203,41 @@ pub fn apply_to_flow(
     );
 
     if let Some(flow) = &file.flow {
-        override_opt(
-            &mut args.branch_config.pre_release_label,
-            matches,
-            arg_ids::PRE_RELEASE_LABEL,
-            flow.pre_release_label.as_deref(),
-        );
-        override_opt(
-            &mut args.branch_config.post_mode,
-            matches,
-            arg_ids::POST_MODE,
-            flow.post_mode.as_deref(),
-        );
-        if !cli_set(matches, arg_ids::HASH_BRANCH_LEN)
-            && let Some(n) = flow.hash_branch_len
-        {
-            args.hash_branch_len = n;
-        }
-        if !cli_set(matches, arg_ids::BRANCH_RULES)
-            && let Some(ron) = flow.branch_rules.as_deref()
-        {
-            args.branch_config.branch_rules = ron.parse().map_err(|e| {
-                ZervError::ConfigParseError(format!(
-                    "Failed to parse branch_rules from config file: {e}"
-                ))
-            })?;
-        }
+        apply_flow_section(args, matches, flow)?;
+    }
+    Ok(())
+}
+
+fn apply_flow_section(
+    args: &mut FlowArgs,
+    matches: &ArgMatches,
+    flow: &FlowSection,
+) -> Result<(), ZervError> {
+    override_opt(
+        &mut args.branch_config.pre_release_label,
+        matches,
+        arg_ids::PRE_RELEASE_LABEL,
+        flow.pre_release_label.as_deref(),
+    );
+    override_opt(
+        &mut args.branch_config.post_mode,
+        matches,
+        arg_ids::POST_MODE,
+        flow.post_mode.as_deref(),
+    );
+    if !cli_set(matches, arg_ids::HASH_BRANCH_LEN)
+        && let Some(n) = flow.hash_branch_len
+    {
+        args.hash_branch_len = n;
+    }
+    if !cli_set(matches, arg_ids::BRANCH_RULES)
+        && let Some(ron) = flow.branch_rules.as_deref()
+    {
+        args.branch_config.branch_rules = ron.parse().map_err(|e| {
+            ZervError::ConfigParseError(format!(
+                "Failed to parse branch_rules from config file: {e}"
+            ))
+        })?;
     }
     Ok(())
 }

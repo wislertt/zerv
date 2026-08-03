@@ -10,7 +10,10 @@ use zerv::test_utils::{
 };
 use zerv::utils::constants::config_files::PRIMARY;
 
-use crate::util::TestCommand;
+use crate::util::{
+    TestCommand,
+    null_device_path,
+};
 
 /// `v1.2.3` tag at HEAD, distance 0 — deterministic output for assertions.
 fn clean_tagged_repo() -> GitRepoFixture {
@@ -55,7 +58,7 @@ fn config_devnull_disables_for_git_source() {
     let output = TestCommand::new()
         .current_dir(repo.path())
         .arg("--config-file")
-        .arg("/dev/null")
+        .arg(null_device_path())
         .args_from_str("version --source git")
         .assert_success();
 
@@ -64,7 +67,7 @@ fn config_devnull_disables_for_git_source() {
     let result = output.stdout().trim().to_string();
     assert!(
         !result.contains("DISABLED"),
-        "--config-file /dev/null must disable the discovered config on the git path. Got: {result}"
+        "--config-file <null device> must disable the discovered config on the git path. Got: {result}"
     );
     assert!(
         result.starts_with("1.2.3"),

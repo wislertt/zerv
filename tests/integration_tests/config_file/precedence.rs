@@ -26,19 +26,20 @@
 //! | —                      | `C`             | `X`      | CLI `X1`        |
 //! | `D`                    | `C`             | —        | file `C1`       |
 //! | `D`                    | `C`             | `X`      | CLI `X1`        |
-//! | `D`                    | `/dev/null`     | —        | builtin `1.2.3` |
+//! | `D`                    | null device     | —        | builtin `1.2.3` |
 //!
 //! Stdin source carries a known version so no git data is read — no Docker
 //! gating (mirrors the `config_file/mod.rs` wiring tests).
-
-use std::path::Path;
 
 use super::{
     repo_root,
     repo_with_config,
     stdin_version,
 };
-use crate::util::TestCommand;
+use crate::util::{
+    TestCommand,
+    null_device_path,
+};
 
 /// Which explicit file source `--config-file` points at, if any.
 #[derive(Clone, Copy)]
@@ -47,7 +48,8 @@ enum FileSrc {
     None,
     /// A planted `explicit.toml` whose template is `C{{major}}`.
     Explicit,
-    /// `/dev/null` — the empty file disables config (no overrides).
+    /// The null device (`/dev/null` on Unix, `NUL` on Windows) — the empty
+    /// file disables config (no overrides).
     DevNull,
 }
 
@@ -76,7 +78,7 @@ fn resolve(discovered: bool, file: FileSrc, cli: bool) -> String {
             cmd.arg("--config-file").arg(&explicit);
         }
         FileSrc::DevNull => {
-            cmd.arg("--config-file").arg(Path::new("/dev/null"));
+            cmd.arg("--config-file").arg(null_device_path());
         }
         FileSrc::None => {}
     }

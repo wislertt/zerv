@@ -56,3 +56,10 @@ pub fn get_git_impl() -> Box<dyn GitOperations> {
         Box::new(DockerGit::new())
     }
 }
+
+/// Platform null device path — the empty-file escape hatch for `--config-file`.
+/// `/dev/null` on Unix, `NUL` on Windows (a reserved device readable from any
+/// cwd). Both read back as empty, yielding no config overrides.
+pub fn null_device_path() -> &'static str {
+    if cfg!(windows) { "NUL" } else { "/dev/null" }
+}

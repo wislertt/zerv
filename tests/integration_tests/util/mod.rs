@@ -5,4 +5,5 @@ pub use command::TestCommand;
 pub use zerv::test_utils::{
     TestDir,
     TestOutput,
+    null_device_path,
 };

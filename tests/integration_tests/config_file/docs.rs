@@ -9,7 +9,10 @@ use super::{
     stdin_version,
     stdin_version_on_branch,
 };
-use crate::util::TestCommand;
+use crate::util::{
+    TestCommand,
+    null_device_path,
+};
 
 #[test]
 fn test_config_file_documentation_examples() {
@@ -83,13 +86,13 @@ output_template = "EXPL{{ major }}""#,
         .current_dir(discovered.path())
         .stdin(stdin_version(1, 2, 3))
         .arg("--config-file")
-        .arg("/dev/null")
+        .arg(null_device_path())
         .args_from_str("version --source stdin")
         .assert_success();
     assert_eq!(
         out.stdout().trim(),
         "1.2.3",
-        "--config-file /dev/null must disable the discovered config"
+        "--config-file <null device> must disable the discovered config"
     );
 
     let bad = repo_with_config("bump_minor = true");
