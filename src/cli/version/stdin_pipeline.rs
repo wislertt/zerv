@@ -24,3 +24,19 @@ pub fn process_cached_stdin_source(
         Some(zerv_from_stdin.schema),
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::version::VersionArgs;
+    use crate::error::ZervError;
+
+    #[test]
+    fn process_cached_stdin_source_returns_error_when_no_content() {
+        let args = VersionArgs::default();
+        let result = process_cached_stdin_source(&args, None);
+        let err = result.unwrap_err();
+        assert!(matches!(err, ZervError::StdinError(_)), "got {err:?}");
+        assert!(err.to_string().contains("No stdin content"));
+    }
+}

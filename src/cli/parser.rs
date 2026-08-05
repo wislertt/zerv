@@ -64,6 +64,16 @@ pub struct Cli {
     #[arg(long = "llm-help", help = "Display comprehensive CLI manual")]
     pub llm_help: bool,
 
+    /// Path to a zerv config file, overriding `zerv.toml` discovery
+    ///
+    /// When given, no discovery walk runs — only this file is read. Pass the
+    /// null device to disable config entirely (the empty file yields no
+    /// overrides): `/dev/null` on Unix and macOS, `NUL` on Windows. There is
+    /// no `--no-config` flag; the null device is the escape hatch. CLI flags
+    /// still win over values in this file.
+    #[arg(long, global = true, value_name = "PATH")]
+    pub config_file: Option<String>,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }

@@ -41,34 +41,16 @@ impl GitUtils {
         Ok(max_tag)
     }
 
-    pub fn get_format_type(version_obj: &VersionObject) -> String {
-        match version_obj {
-            VersionObject::SemVer(_) => "semver".to_string(),
-            VersionObject::PEP440(_) => "pep440".to_string(),
-        }
-    }
-
     pub fn compare_version_objects(
         a: &VersionObject,
         b: &VersionObject,
     ) -> Result<std::cmp::Ordering> {
-        if std::mem::discriminant(a) == std::mem::discriminant(b) {
-            match (a, b) {
-                (VersionObject::SemVer(a_sem), VersionObject::SemVer(b_sem)) => {
-                    Ok(a_sem.cmp(b_sem))
-                }
-                (VersionObject::PEP440(a_pep), VersionObject::PEP440(b_pep)) => {
-                    Ok(a_pep.cmp(b_pep))
-                }
-                // This case handles any other VersionObject variants that might be added in the future
-                _ => Err(ZervError::InvalidFormat(
-                    "Unsupported version object type for comparison".to_string(),
-                )),
-            }
-        } else {
-            Err(ZervError::InvalidFormat(
+        match (a, b) {
+            (VersionObject::SemVer(a_sem), VersionObject::SemVer(b_sem)) => Ok(a_sem.cmp(b_sem)),
+            (VersionObject::PEP440(a_pep), VersionObject::PEP440(b_pep)) => Ok(a_pep.cmp(b_pep)),
+            _ => Err(ZervError::InvalidFormat(
                 "Cannot compare different version object types".to_string(),
-            ))
+            )),
         }
     }
 }
@@ -78,6 +60,7 @@ mod tests {
     use rstest::rstest;
 
     use super::GitUtils;
+    use crate::error::ZervError;
     use crate::version::VersionObject;
 
     #[rstest]
@@ -311,5 +294,31 @@ mod tests {
         // Test find_max_version_tag with the filtered tags
         let actual_max_version_tag = GitUtils::find_max_version_tag(&filtered_tags).unwrap();
         assert_eq!(actual_max_version_tag, expected_max_version_tag);
+    }
+
+    #[test]
+    fn find_max_version_tag_rejects_mixed_types() {
+        let mixed = vec![
+            (
+                "v1.0.0".to_string(),
+                VersionObject::parse_semver("v1.0.0").unwrap(),
+            ),
+            (
+                "1.0.0".to_string(),
+                VersionObject::parse_pep440("1.0.0").unwrap(),
+            ),
+        ];
+        let err = GitUtils::find_max_version_tag(&mixed).unwrap_err();
+        assert!(matches!(err, ZervError::InvalidArgument(_)));
+        assert!(err.to_string().contains("same type"));
+    }
+
+    #[test]
+    fn compare_version_objects_rejects_different_types() {
+        let semver = VersionObject::parse_semver("v1.0.0").unwrap();
+        let pep440 = VersionObject::parse_pep440("1.0.0").unwrap();
+        let err = GitUtils::compare_version_objects(&semver, &pep440).unwrap_err();
+        assert!(matches!(err, ZervError::InvalidFormat(_)));
+        assert!(err.to_string().contains("different version object types"));
     }
 }

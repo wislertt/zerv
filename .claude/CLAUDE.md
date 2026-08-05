@@ -153,6 +153,16 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 - **CRITICAL**: For Git-related tests, **ALWAYS use `ZERV_TEST_NATIVE_GIT=false ZERV_TEST_DOCKER=true`**
 - **Integration tests**: Prefer `TestCommand::run_with_stdin()` (90% of cases)
 
+### Test Cadence (avoid slow full runs)
+
+- **Small/iterative change** → run **only the related test**, not the whole suite. Target the specific test or module:
+    - Unit: `cargo +nightly test --lib <module_or_name>`
+    - Integration: `cargo +nightly test --test integration -- <filter>` (e.g. `-- config_file`)
+    - Add `ZERV_TEST_NATIVE_GIT=false ZERV_TEST_DOCKER=true` only when the test touches Git data.
+- **Full `bake -c lint test`** → run **once per milestone** (phase done, feature complete) or as a **single end-of-task check** before handoff/commit, not after every edit. It is slow; do not re-run it for trivial changes.
+- **Never re-run the full suite to recover truncated output.** Capture it once to a log + exit code in the same invocation: `bake -c lint test > /tmp/zerv_bake.log 2>&1; echo "EXIT=$?"`, then `grep` the **same** log or read `$?` for the result. Piping through `tail`/`head` drops the summary lines and tempts a wasteful second run — if output is truncated, grep the log you already have. Do NOT invoke `bake` a second time for the same check.
+- Lint steps (`cargo +nightly fmt --check`, `cargo +nightly clippy -- -D warnings`) only need re-checking when production code changes, not test-only edits.
+
 **For detailed testing patterns:**
 
 @.claude/ref/testing/overview.md

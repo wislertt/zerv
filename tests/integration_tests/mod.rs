@@ -1,4 +1,5 @@
 pub mod check;
+pub mod config_file;
 pub mod flow;
 pub mod help_flags;
 pub mod logging;

@@ -147,3 +147,36 @@ pub const SUPPORTED_FORMAT_NAMES: &[&str] = &[
     format_names::SEMVER,
     format_names::ZERV,
 ];
+
+// Repo config file names (zerv.toml discovery)
+pub mod config_files {
+    /// Primary repo config filename — visible, ecosystem convention (Cargo.toml / rustfmt.toml).
+    pub const PRIMARY: &str = "zerv.toml";
+    /// Hidden fallback filename — rustfmt/mise accept-both pattern.
+    pub const FALLBACK: &str = ".zerv.toml";
+}
+
+// VCS repository-boundary markers (used by config discovery)
+pub mod vcs_markers {
+    /// Git repo marker — a directory (clone) or file (submodule gitfile /
+    /// worktree); discovery stops at the nearest ancestor holding it.
+    pub const GIT: &str = ".git";
+}
+
+// Clap arg IDs = the snake_case field name, NOT the kebab `--long`. The merge
+// layer reads these via `ArgMatches::value_source` for provenance.
+pub mod arg_ids {
+    pub const SOURCE: &str = "source";
+    pub const INPUT_FORMAT: &str = "input_format";
+    pub const DIRECTORY: &str = "directory";
+    pub const CONFIG_FILE: &str = "config_file";
+    pub const OUTPUT_FORMAT: &str = "output_format";
+    pub const OUTPUT_TEMPLATE: &str = "output_template";
+    pub const OUTPUT_PREFIX: &str = "output_prefix";
+    pub const SCHEMA: &str = "schema";
+    pub const SCHEMA_RON: &str = "schema_ron";
+    pub const POST_MODE: &str = "post_mode";
+    pub const PRE_RELEASE_LABEL: &str = "pre_release_label";
+    pub const HASH_BRANCH_LEN: &str = "hash_branch_len";
+    pub const BRANCH_RULES: &str = "branch_rules";
+}

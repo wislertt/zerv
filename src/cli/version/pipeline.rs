@@ -44,3 +44,22 @@ pub fn run_version_pipeline(
 
     Ok(output)
 }
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::*;
+    use crate::cli::version::VersionArgs;
+    use crate::error::ZervError;
+
+    #[test]
+    fn run_version_pipeline_rejects_unknown_source() {
+        // Flip source past clap's value_parser so the UnknownSource dispatch arm is reached.
+        let mut args = VersionArgs::try_parse_from(["version"]).expect("parse version args");
+        args.input.source = Some("bogus-source".to_string());
+        let err = run_version_pipeline(args, None).unwrap_err();
+        assert!(matches!(err, ZervError::UnknownSource(_)), "got {err:?}");
+        assert!(err.to_string().contains("bogus-source"));
+    }
+}

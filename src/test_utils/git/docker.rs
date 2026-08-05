@@ -211,6 +211,7 @@ impl DockerGit {
             if stderr.contains("cannot update ref")
                 || stderr.contains("nonexistent object")
                 || stderr.contains("is not a valid object")
+                || stderr.contains("unable to read tree")
             {
                 if attempt < max_attempts {
                     tracing::warn!(
