@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-import zerv
 from bake import Context, command, console
 from bakelib import GitHubActionsTools, PythonSpace, RustSpace, params
 from bakelib.publisher.crates import CratesPublisher
@@ -152,25 +151,8 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
         self._target = target
         return super().publish(registry=registry, token=token, version=version)
 
-    @property
-    def _version(self) -> str:
-        cargo_raw = RustSpace._version.fget(self)
-        pyproject_raw = PythonSpace._version.fget(self)
-
-        pyproject_semver = zerv.render(version=pyproject_raw, output_format="semver")
-        cargo_semver = zerv.render(version=cargo_raw, output_format="semver")
-
-        if pyproject_semver != cargo_semver:
-            raise ValueError(
-                f"Version mismatch: pyproject.toml={pyproject_raw} ({pyproject_semver}), "
-                f"Cargo.toml={cargo_raw} ({cargo_semver})"
-            )
-
-        return cargo_raw
-
-    @_version.setter
-    def _version(self, value: str) -> None:
-        self._version_setter(value)
+    def _get_version(self) -> str:
+        return self._get_consistent_version((RustSpace, PythonSpace))
 
     def _pre_publish_setup(self) -> None:
         """Custom pre-publish setup for zerv - handles both Rust and Python."""
