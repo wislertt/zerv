@@ -44,6 +44,10 @@
                         "href": "https://crates.io/crates/zerv"
                     },
                     {
+                        "label": "zerv-flow demo",
+                        "href": "https://github.com/wislertt/zerv-flow"
+                    },
+                    {
                         "label": "Made by Wisaroot Lertthaweedech",
                         "href": "https://wisl.dev"
                     }
