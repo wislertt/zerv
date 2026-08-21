@@ -141,6 +141,8 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 
 @.claude/ref/documentation-maintenance.md
 
+**📋 Run `/docs-sync` periodically** (after test renames/refactors, before releases, before large docs edits) to verify docs examples still match their backing tests.
+
 ---
 
 ## 🧪 Testing Standards
@@ -152,6 +154,7 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 - **Docker tests**: Always use `should_run_docker_tests()` gating
 - **CRITICAL**: For Git-related tests, **ALWAYS use `ZERV_TEST_NATIVE_GIT=false ZERV_TEST_DOCKER=true`**
 - **Integration tests**: Prefer `TestCommand::run_with_stdin()` (90% of cases)
+- **Docs-site examples**: Tests for `.mdx` page examples live in `tests/integration_tests/docs/`; README-ported examples keep their existing `flow/docs/`, `version/docs/` tests
 
 ### Test Cadence (avoid slow full runs)
 
@@ -185,6 +188,8 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 
 - `/audit` - Run code quality audit and fix violations
 - Use for: Detecting and fixing code quality violations efficiently
+- `/docs-sync` - Audit docs examples against their backing tests
+- Use for: Periodic docs↔test consistency sweep
 
 **Agents** (Complex, multi-step exploration):
 

@@ -1,0 +1,90 @@
+---
+title: Installation
+description: Install zerv from PyPI, crates.io, or a pre-built binary.
+---
+
+## Requirements
+
+- **PyPI wheel**: Python 3.10 through 3.14. The wheel bundles the compiled binary; no Rust
+  toolchain is needed.
+- **crates.io / pre-built binaries**: no runtime dependencies at all.
+
+## Install
+
+Python via uv (recommended for a global CLI tool):
+
+```bash
+uv tool install zerv-version
+```
+
+Python via pip:
+
+```bash
+pip install zerv-version
+```
+
+Python as a project dependency:
+
+```bash
+uv add zerv-version
+```
+
+Rust via cargo:
+
+```bash
+cargo install zerv
+```
+
+Installation script (latest version):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash
+```
+
+Installation script (specific version):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/wislertt/zerv/main/scripts/install.sh | bash -s vX.X.X
+```
+
+Pre-built binaries are also available on the
+[releases page](https://github.com/wislertt/zerv/releases).
+
+## Verify the install
+
+```bash
+zerv --version
+```
+
+## Use from Python
+
+The PyPI wheel also exposes a Python binding:
+
+```python
+import zerv
+
+# stdin carries a Zerv RON payload (same piping pattern as the CLI);
+# in a git repo, plain zerv.version() reads the repository instead
+zerv.version(source="stdin", stdin=ZERV_RON, output_format="semver")
+# "1.2.3"
+```
+
+{/* Corresponding test: tests/python/test_version.py:test_version_documentation_examples */}
+
+Every CLI option from [`zerv version`](/cli/version) maps to a keyword argument.
+
+## Uninstall
+
+```bash
+# Rust/cargo
+cargo uninstall zerv
+
+# Python (pip)
+pip uninstall zerv-version
+
+# Python (uv tool)
+uv tool uninstall zerv-version
+
+# Manual binary
+rm ~/.local/bin/zerv
+```

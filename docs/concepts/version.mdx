@@ -1,0 +1,98 @@
+---
+title: Version
+description: The zerv version pipeline. Input sources, VCS detection, overrides, and bumping. General-purpose version generation without opinionated logic.
+---
+
+`zerv version` is general-purpose version generation: it reads VCS state (or stdin), applies
+overrides, and renders through a [schema](/concepts/schema-system). Unlike
+[`zerv flow`](/concepts/flow), it generates versions **as-is**, with no opinionated
+auto-bumping logic. It does not automatically increment post-counts based on commits or
+tags, nor derive pre-release labels and numbers from branch patterns.
+
+## The pipeline
+
+```
+Input → VCS Detection → Version Parsing → Transformation → Format Output
+```
+
+1. **Input** - pick a source: `git` (auto-detected VCS), `stdin` (piped ZERV RON), or `none`
+   (overrides only)
+2. **VCS detection** - the latest reachable tag, its distance, the current branch and commit,
+   and whether the working directory is dirty
+3. **Parsing** - tag version and overrides resolve into the version variables
+4. **Transformation** - optional bumps (`--bump-major`, …) apply
+5. **Format output** - the [schema](/concepts/schema-system) and
+   [format/template](/concepts/formats-and-templates) render the final string
+
+## Input sources
+
+**Source auto-detection**: zerv auto-detects the input source (stdin if piped, git
+otherwise).
+
+```bash
+# Implicit source detection (auto: git if no stdin, stdin if piped)
+zerv version
+
+# Explicit git source
+zerv version --source git
+
+# Pipe between commands (implicit stdin detection)
+zerv version --output-format zerv | zerv version
+
+# Pipe between commands (explicit stdin source)
+zerv version --output-format zerv | zerv version --source stdin
+
+# No VCS - use overrides only
+zerv version --source none --tag-version 1.2.3 --distance 5
+```
+
+Piping works on the `zerv` RON format: the internal representation of a fully-resolved
+version. Generate it once with `--output-format zerv`, then re-render it into any number of
+formats downstream. See [formats and templates](/concepts/formats-and-templates).
+
+## Overrides
+
+Every value the pipeline detects can be overridden: VCS values (`--tag-version`,
+`--distance`, `--dirty`, `--bumped-branch`, `--bumped-commit-hash`, `--bumped-timestamp`) and
+version components (`--major`, `--minor`, `--patch`, `--epoch`, `--post`, `--dev`,
+`--pre-release-label`, `--pre-release-num`).
+
+Overrides make zerv reproducible in CI, where you often have a checked-out ref but want the
+version pinned to event metadata:
+
+```bash
+zerv flow --bumped-branch "$BRANCH_NAME" --bumped-commit-hash "g$COMMIT_HASH"
+```
+
+That is exactly how the [reusable GitHub Actions workflow](/cicd/github-actions) pins
+versions to the pull request head instead of whatever the runner happened to check out.
+
+See the [version CLI](/cli/version) for the full override catalog.
+
+## Bumping
+
+Two bump strategies:
+
+- **Field-based** - `--bump-major`, `--bump-minor`, `--bump-patch` (stackable), plus
+  `--bump-post`, `--bump-dev`, `--bump-epoch`, `--bump-pre-release-*`
+- **Schema-based** - `--bump-core <index>` targets a component position in the current
+  schema, so custom schemas bump correctly too
+
+```bash
+zerv version --bump-major
+# → 2.0.0
+
+zerv version --bump-major --bump-minor
+# → 2.1.0
+
+zerv version --bump-core 0
+# → 2.0.0 (schema-based bump targeting core component index 0/major)
+```
+
+{/* Corresponding test: tests/integration_tests/version/docs/version_bumping.rs:test_zerv_version_version_bumping_documentation_examples */}
+
+## Where to go next
+
+- [Version CLI](/cli/version) - every flag with tested examples
+- [Schema system](/concepts/schema-system) - how the version string is assembled
+- [Config file](/concepts/config-file) - commit your repo's policy once

@@ -61,3 +61,37 @@ from zerv import version
 def test_version_all_args(kwargs):
     result = version(**kwargs)
     assert result
+
+
+DOC_ZERV_INPUT = """(
+    schema: (
+        core: [var(Major), var(Minor), var(Patch)],
+        extra_core: [],
+        build: [],
+        precedence_order: [Major, Minor, Patch],
+    ),
+    vars: (
+        major: Some(1),
+        minor: Some(2),
+        patch: Some(3),
+        epoch: None,
+        pre_release: None,
+        post: None,
+        dev: None,
+        distance: None,
+        dirty: None,
+        bumped_branch: None,
+        bumped_commit_hash: None,
+        bumped_timestamp: None,
+        last_branch: None,
+        last_commit_hash: None,
+        last_timestamp: None,
+        last_tag_version: None,
+        custom: (),
+    ),
+)"""
+
+
+def test_version_documentation_examples():
+    result = version(source="stdin", stdin=DOC_ZERV_INPUT, output_format="semver")
+    assert result == "1.2.3"

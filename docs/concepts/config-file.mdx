@@ -1,0 +1,101 @@
+---
+title: Config file
+description: Commit your repo's version policy to zerv.toml once. Shared by version and flow; CLI flags still win.
+---
+
+Commit your repo's stable version policy to a `zerv.toml` once instead of repeating the same
+flags on every zerv invocation.
+
+## Discovery
+
+`zerv` walks up from the current directory to the nearest VCS repository root (Git's `.git`
+today) and reads `zerv.toml` there, or the hidden `.zerv.toml` fallback. Config is
+**repo-scoped**: one policy per repo, no subdirectory shadowing, so a version never depends
+on which directory you run from.
+
+```bash
+# Commit a zerv.toml at your repo root (stable fields only)
+cat > zerv.toml <<'EOF'
+source          = "stdin"
+output_template = "v{{ major }}.{{ minor }}.{{ patch }}"
+EOF
+
+# zerv reads zerv.toml automatically; no flags repeated
+# (stdin carries the version payload; in a git repo use source = "git")
+zerv version
+# → v1.2.3
+
+# Shared-top fields shape flow too
+zerv flow --schema standard
+# → v1.2.3
+
+# A CLI flag still wins over the file
+zerv version --output-template "release-{{ major }}"
+# → release-1
+```
+
+{/* Corresponding test: tests/integration_tests/config_file/docs.rs:test_config_file_documentation_examples */}
+
+## Precedence
+
+Top wins:
+
+```
+CLI flag  >  --config-file <path>  >  discovered zerv.toml  >  builtin default
+```
+
+`--config-file <path>` reads that file **instead of** discovering `zerv.toml`; the
+discovered file is never read. Pass the null device to disable config entirely: the empty
+file yields no overrides, restoring builtin behavior. There is no `--no-config` flag; the
+null device is the escape hatch (`/dev/null` on Unix and macOS, `NUL` on Windows).
+
+```bash
+# An explicit --config-file is read instead of discovering zerv.toml
+cat > explicit.toml <<'EOF'
+source          = "stdin"
+output_template = "EXPL{{ major }}"
+EOF
+
+zerv --config-file ./explicit.toml version
+# → EXPL1
+
+# The null device disables all config (the empty file yields no overrides).
+# /dev/null on Unix and macOS, NUL on Windows.
+zerv --config-file /dev/null version
+# → 1.2.3
+```
+
+{/* Corresponding test: tests/integration_tests/config_file/docs.rs:test_config_file_overrides_documentation_examples */}
+
+## File structure
+
+Stable fields live at the shared top (apply to both subcommands); `[version]` and `[flow]`
+sections override per-subcommand:
+
+```toml
+# shared top: applies to every subcommand
+source          = "stdin"
+output_format   = "semver"
+output_template = "v{{ major }}.{{ minor }}.{{ patch }}"
+schema          = "standard-context"
+
+[version]                 # optional: override the shared schema for `version` only
+schema = "standard-no-context"
+
+[flow]                    # flow-only stable policy
+post_mode         = "tag"
+pre_release_label = "beta"
+hash_branch_len   = 7
+```
+
+{/* Corresponding test: src/config/merge.rs:version_section_schema_overrides_shared_top */}
+
+<Note>
+`output_prefix` and `output_template` conflict: they cannot both be set. Put the prefix
+directly in the template (`"v{{ major }}..."`), or use `output_prefix` with `output_format`
+and no template.
+</Note>
+
+Ephemeral per-build fields (`--dirty`, `--bump-minor`, `--major`, …) are **not** allowed in
+the file: a typo'd or stale key fails loud at parse (`deny_unknown_fields`) rather than
+shipping silently on the next CI run.

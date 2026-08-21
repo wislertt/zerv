@@ -1,0 +1,97 @@
+---
+title: zerv
+description: Dynamic versioning from git. Every commit gets its version.
+---
+
+<img
+    src="/img/brand/og-card-light.png"
+    className="sd-hero sd-hero-light"
+    alt="Dynamic versioning from git. Every commit gets its version."
+/>
+
+<img
+    src="/img/brand/og-card-dark.png"
+    className="sd-hero sd-hero-dark"
+    alt="Dynamic versioning from git. Every commit gets its version."
+/>
+
+<div className="not-prose sd-badges">
+    <a href="https://github.com/wislertt/zerv/actions/workflows/cd.yml">
+        <img
+            src="https://img.shields.io/github/actions/workflow/status/wislertt/zerv/cd.yml?branch=main&label=tests&logo=github"
+            alt="tests"
+        />
+    </a>
+    <a href="https://codecov.io/gh/wislertt/zerv">
+        <img
+            src="https://codecov.io/gh/wislertt/zerv/graph/badge.svg?token=549GL6LQBX"
+            alt="codecov"
+        />
+    </a>
+    <a href="https://crates.io/crates/zerv">
+        <img src="https://img.shields.io/crates/v/zerv?color=green" alt="crates.io" />
+    </a>
+    <a href="https://pypi.python.org/pypi/zerv-version">
+        <img src="https://img.shields.io/pypi/v/zerv-version.svg?color=blue" alt="pypi" />
+    </a>
+    <a href="https://github.com/wislertt/zerv/">
+        <img
+            src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?logo=python"
+            alt="python versions"
+        />
+    </a>
+    <a href="https://pypi.python.org/pypi/zerv-version">
+        <img src="https://img.shields.io/pypi/l/zerv-version" alt="license" />
+    </a>
+</div>
+
+**Automatic versioning for every commit.** Generate semantic versions from any commit across
+all branches, or a dirty working directory, with pre-release handling and format support for
+any CI/CD workflow.
+
+## Why zerv?
+
+- **Runs next to [semantic-release](/cicd/semantic-release)** - semantic-release decides
+  releases on main; zerv versions every other build: any commit on any branch, even with
+  uncommitted changes. No build is ever unversioned.
+- **Two modes** - [`zerv flow`](/concepts/flow) automates pre-release management from Git
+  branch patterns; [`zerv version`](/concepts/version) gives full manual control with
+  schemas, overrides, and templates.
+- **Any output format** - SemVer, PEP440, CalVer, or
+  [Tera templates](/concepts/formats-and-templates). Generate every format your pipelines
+  need from a single ZERV RON payload.
+
+Read [why zerv](/getting-started/why-zerv) for the positioning story, including when to
+reach for something else.
+
+## A taste
+
+```bash
+# The current branch determines the output; no config required
+zerv flow
+# → 1.0.0 (on main branch with tag v1.0.0)
+# → 1.0.1-rc.1.post.3 (on release branch with pre-release tag)
+# → 1.0.1-beta.1.post.3+develop.3.gf297dd0 (on develop branch)
+# → 1.0.1-alpha.59394.post.1+feature.new.auth.1.g4e9af24 (on feature branch)
+# → 1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a (on dirty feature branch)
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_documentation_examples */}
+
+<CardGroup cols={2}>
+    <Card title="Installation" icon="download" href="/getting-started/installation">
+        Install from PyPI, crates.io, or a pre-built binary.
+    </Card>
+    <Card title="Quickstart" icon="rocket" href="/getting-started/quickstart">
+        Run zerv flow, then fan one ZERV RON payload out to every format you need.
+    </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+    <Card title="Flow" icon="git-branch" href="/concepts/flow">
+        How branch patterns become pre-release versions.
+    </Card>
+    <Card title="Schema system" icon="layers" href="/concepts/schema-system">
+        Presets, custom RON schemas, and how versions are assembled.
+    </Card>
+</CardGroup>

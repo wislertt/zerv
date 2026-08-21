@@ -1,0 +1,82 @@
+---
+title: Quickstart
+description: Run zerv flow in a Git repo, then fan one ZERV RON payload out to every format your pipeline needs.
+---
+
+## Version any Git state
+
+`zerv flow` versions any Git state with no manual configuration. The current branch
+determines the output:
+
+```bash
+zerv flow
+# → 1.0.0 (on main branch with tag v1.0.0)
+# → 1.0.1-rc.1.post.3 (on release branch with pre-release tag)
+# → 1.0.1-beta.1.post.3+develop.3.gf297dd0 (on develop branch)
+# → 1.0.1-alpha.59394.post.1+feature.new.auth.1.g4e9af24 (on feature branch)
+# → 1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a (on dirty feature branch)
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_documentation_examples */}
+
+See [Flow](/concepts/flow) for how branch patterns map to pre-releases, and the
+[flow CLI](/cli/flow) for every schema, branch-rule, and override flag.
+
+## Multiple format generation
+
+Generate ZERV RON once, then convert it into every format your pipeline needs. This is the
+pattern the [reusable GitHub Actions workflow](/cicd/github-actions) automates; see
+[`.github/workflows/shared-zerv-versioning.yml`](https://github.com/wislertt/zerv/blob/main/.github/workflows/shared-zerv-versioning.yml)
+for a full implementation.
+
+```bash
+# (on dirty feature branch)
+ZERV_RON=$(zerv flow --output-format zerv)
+
+# semver
+echo $ZERV_RON | zerv version --source stdin --output-format semver
+# → 1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a
+
+# pep440
+echo $ZERV_RON | zerv version --source stdin --output-format pep440
+# → 1.0.1a17015.post1.dev1764382150+feature.dirty.work.1.g54c499a
+
+# docker_tag
+echo $ZERV_RON | zerv version --source stdin --output-template "{{ semver_obj.docker }}"
+# → 1.0.1-alpha.17015.post.1.dev.1764382150-feature.dirty.work.1.g54c499a
+
+# v_semver
+echo $ZERV_RON | zerv version --source stdin --output-prefix v --output-format semver
+# → v1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a
+
+# v_major (schema-based approach)
+echo $ZERV_RON | \
+    zerv version --source stdin \
+         --schema-ron '(core:[var(Major)], extra_core:[], build:[])' \
+         --output-prefix v --output-format pep440
+# → v1
+
+# v_major_minor (schema-based approach)
+echo $ZERV_RON | \
+    zerv version --source stdin \
+         --schema-ron '(core:[var(Major), var(Minor)], extra_core:[], build:[])' \
+         --output-prefix v --output-format pep440
+# → v1.0
+
+# v_major_custom (custom template-based approach)
+echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}"
+# → v1
+
+# v_major_minor_custom (custom template-based approach)
+echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}{{ prefix_if(value=minor, prefix=\".\") }}"
+# → v1.0
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_shared_zerv_versioning_github_actions_documentation_examples */}
+
+## Where to go next
+
+- [Flow](/concepts/flow) - how any Git state becomes a version
+- [Schema system](/concepts/schema-system) - presets and custom RON schemas
+- [Formats and templates](/concepts/formats-and-templates) - output formats and Tera templates
+- [CI/CD](/cicd/github-actions) - drop-in GitHub Actions integration

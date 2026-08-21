@@ -1,0 +1,109 @@
+{
+    "$schema": "https://www.mintlify.com/docs.json",
+    "theme": "mint",
+    "name": "zerv",
+    "description": "Dynamic versioning from git. Every commit gets its version.",
+    "colors": {
+        "primary": "#F59E0B",
+        "light": "#F59E0B",
+        "dark": "#FBBF24"
+    },
+    "background": {
+        "color": {
+            "light": "#F7F5F0",
+            "dark": "#12212A"
+        }
+    },
+    "styling": {
+        "codeblocks": {
+            "theme": {
+                "light": "github-light",
+                "dark": "github-dark"
+            }
+        }
+    },
+    "seo": {
+        "metatags": {
+            "og:image": "/img/brand/og-card-light.png"
+        }
+    },
+    "footer": {
+        "socials": {
+            "github": "https://github.com/wislertt/zerv"
+        },
+        "links": [
+            {
+                "header": "Resources",
+                "items": [
+                    {
+                        "label": "PyPI",
+                        "href": "https://pypi.org/project/zerv-version/"
+                    },
+                    {
+                        "label": "crates.io",
+                        "href": "https://crates.io/crates/zerv"
+                    },
+                    {
+                        "label": "zerv-flow demo",
+                        "href": "https://github.com/wislertt/zerv-flow"
+                    },
+                    {
+                        "label": "Made by Wisaroot Lertthaweedech",
+                        "href": "https://wisl.dev"
+                    }
+                ]
+            }
+        ]
+    },
+    "favicon": "/img/brand/favicon.ico",
+    "logo": {
+        "light": "/img/brand/zerv-lockup.svg",
+        "dark": "/img/brand/zerv-lockup-dark.svg"
+    },
+    "navbar": {
+        "links": [
+            {
+                "label": "GitHub",
+                "href": "https://github.com/wislertt/zerv"
+            }
+        ]
+    },
+    "navigation": {
+        "groups": [
+            {
+                "group": "Welcome",
+                "pages": ["index"]
+            },
+            {
+                "group": "Getting Started",
+                "pages": [
+                    "getting-started/installation",
+                    "getting-started/quickstart",
+                    "getting-started/why-zerv"
+                ]
+            },
+            {
+                "group": "Concepts",
+                "pages": [
+                    "concepts/flow",
+                    "concepts/version",
+                    "concepts/schema-system",
+                    "concepts/formats-and-templates",
+                    "concepts/config-file"
+                ]
+            },
+            {
+                "group": "CI/CD",
+                "pages": ["cicd/github-actions", "cicd/semantic-release"]
+            },
+            {
+                "group": "CLI Reference",
+                "pages": ["cli/zerv", "cli/version", "cli/flow", "cli/check", "cli/render"]
+            },
+            {
+                "group": "Troubleshooting",
+                "pages": ["troubleshooting/index"]
+            }
+        ]
+    }
+}

@@ -1,0 +1,68 @@
+---
+title: zerv render
+description: Parse a version string and render it. Format conversion between SemVer and PEP440, plus templates and prefixes.
+---
+
+```bash
+zerv render [OPTIONS] <VERSION>
+```
+
+Parse an existing version string and render it. Useful for converting between formats,
+normalizing, and reshaping versions produced by other tools.
+
+## Format conversion
+
+```bash
+# Convert SemVer to PEP440
+zerv render "1.2.3-alpha.1" --output-format pep440
+# 1.2.3a1
+
+# Convert PEP440 to SemVer
+zerv render "1.2.3b2" --input-format pep440 --output-format semver
+# 1.2.3-beta.2
+
+# Auto-detect input format
+zerv render "1.2.3a1" --output-format semver
+# 1.2.3-alpha.1
+```
+
+{/* Corresponding test: tests/integration_tests/docs/render.rs:test_render_page_format_conversion_examples */}
+
+## Templates
+
+Render through a [Tera template](/concepts/formats-and-templates) for custom output:
+
+```bash
+# Custom format
+zerv render "1.2.3" --output-template "v{{major}}.{{minor}}"
+# v1.2
+
+# With pre-release
+zerv render "2.0.0-beta.2" --output-template "{{major}}.{{minor}}.{{patch}}-{{pre_release.label}}"
+# 2.0.0-beta
+```
+
+{/* Corresponding test: tests/integration_tests/docs/render.rs:test_render_page_template_examples */}
+
+## Prefixes
+
+```bash
+zerv render "1.2.3" --output-prefix "v"
+# v1.2.3
+```
+
+{/* Corresponding test: tests/integration_tests/docs/render.rs:test_render_page_prefix_examples */}
+
+## Options
+
+| Option                            | Description                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
+| `-f, --input-format <FORMAT>`     | `auto` (default), `semver`, `pep440`, or `zerv`               |
+| `--output-format <FORMAT>`        | Output format: `semver`, `pep440`, or `zerv`                  |
+| `--output-template <TEMPLATE>`    | Tera template; conflicts with `--output-prefix`                |
+| `--output-prefix <PREFIX>`        | Prefix prepended to the rendered version                      |
+
+## Where to go next
+
+- [Formats and templates](/concepts/formats-and-templates) - the template language reference
+- [`zerv check`](/cli/check) - validate instead of convert

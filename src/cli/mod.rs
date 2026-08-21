@@ -2,7 +2,6 @@ pub mod app;
 pub mod check;
 pub mod common;
 pub mod flow;
-pub mod llm_help;
 pub mod parser;
 pub mod render;
 pub mod utils;

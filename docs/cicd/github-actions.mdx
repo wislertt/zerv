@@ -1,0 +1,132 @@
+---
+title: GitHub Actions
+description: Version every CI build with the reusable zerv-versioning workflow. One call, every format as outputs.
+---
+
+zerv ships a reusable workflow, [`shared-zerv-versioning.yml`](https://github.com/wislertt/zerv/blob/main/.github/workflows/shared-zerv-versioning.yml),
+that installs zerv, generates ZERV RON for the current commit, and emits every format you
+configure as job outputs.
+
+## Basic usage
+
+Call it from any workflow in your repository:
+
+```yaml
+jobs:
+    versioning:
+        uses: wislertt/zerv/.github/workflows/shared-zerv-versioning.yml@v0.8.22
+        with:
+            schema: standard
+
+    build:
+        needs: versioning
+        runs-on: ubuntu-latest
+        steps:
+            - name: use-versions
+              run: |
+                  echo '${{ needs.versioning.outputs.versions }}' | jq .
+                  SEMVER=$(echo '${{ needs.versioning.outputs.versions }}' | jq -r '.semver')
+                  echo "Building $SEMVER"
+```
+
+`versions` is a JSON object mapping each output name to its rendered version string:
+
+```json
+{
+    "semver": "1.0.1-alpha.10192.post.1+feature.new.auth.1.g4e9af24",
+    "pep440": "1.0.1a10192.post1+feature.new.auth.1.g4e9af24",
+    "docker_tag": "1.0.1-alpha.10192.post.1-feature.new.auth.1.g4e9af24"
+}
+```
+
+## Inputs
+
+| Input                   | Type   | Default            | Description                                          |
+| ----------------------- | ------ | ------------------ | ---------------------------------------------------- |
+| `schema`                | string | none               | Zerv flow schema preset                              |
+| `overridden_tag_version`| string | none               | Override the detected tag version                    |
+| `branch_rules`          | string | `""`               | RON branch rules for `zerv flow --branch-rules`      |
+| `output_formats`        | string | semver + pep440    | JSON object mapping output names to output formats   |
+| `output_templates`      | string | docker_tag, v_major_custom, v_major_minor_custom templates | JSON object mapping output names to output templates |
+| `custom_outputs`        | string | v_semver, v_major, v_major_minor | JSON object mapping output names to full zerv command arguments |
+
+Keys must be unique across the three output inputs: the workflow fails on duplicates.
+
+Under the hood the workflow pins the version to the event metadata (pull request head SHA
+and branch name via `--bumped-branch` / `--bumped-commit-hash`) rather than whatever the
+runner checked out, so PR builds are versioned even before merge. It uses
+`actions/checkout` with `fetch-depth: 0` and installs zerv via `uv tool install zerv-version`
+followed by `uv tool upgrade --all`, so a cached install still picks up the latest release.
+
+## Three ways to shape an output
+
+The three output inputs (`output_formats`, `output_templates`, `custom_outputs`) each map an
+output name to one shaping mechanism:
+
+**1. `output_formats`**: a named output format:
+
+```json
+{
+    "semver": "semver",
+    "pep440": "pep440"
+}
+```
+
+**2. `output_templates`**: a [Tera template](/concepts/formats-and-templates) per output:
+
+```json
+{
+    "docker_tag": "{{ semver_obj.docker }}",
+    "v_major_custom": "v{{ major | default(value=\"0\") }}",
+    "v_major_minor_custom": "v{{ major | default(value=\"0\") }}{{ prefix_if(value=minor, prefix=\".\") }}"
+}
+```
+
+**3. `custom_outputs`**: full zerv command arguments, for anything that needs more than one
+flag (e.g. a [custom schema](/concepts/schema-system)):
+
+```json
+{
+    "v_semver": "--output-prefix v --output-format semver",
+    "v_major": "--schema-ron \"(core:[var(Major)], extra_core:[], build:[])\" --output-prefix v --output-format pep440",
+    "v_major_minor": "--schema-ron \"(core:[var(Major), var(Minor)], extra_core:[], build:[])\" --output-prefix v --output-format pep440"
+}
+```
+
+The rendered results, reproducible locally by piping ZERV RON:
+
+```bash
+echo $ZERV_RON | zerv version --source stdin --schema-ron '(core:[var(Major)], extra_core:[], build:[])' --output-prefix v --output-format pep440
+# → v1
+
+echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}"
+# → v1
+
+echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | default(value=\"0\") }}{{ prefix_if(value=minor, prefix=\".\") }}"
+# → v1.0
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_shared_zerv_versioning_github_actions_documentation_examples */}
+
+One payload feeds all of them. Every artifact in a CI run carries a version derived from the
+same resolved state, so a docker image and its deploy manifest can never disagree, and the
+build context (`branch.distance.g<hash>`) traces any artifact back to the exact commit. The
+[fan-out pattern](/concepts/formats-and-templates#fan-out-to-every-format) works the same way
+locally.
+
+## Pin the version
+
+Reference the workflow by a release tag rather than `main` so CI updates are deliberate:
+
+```yaml
+uses: wislertt/zerv/.github/workflows/shared-zerv-versioning.yml@v0.8.22
+```
+
+zerv's own repository runs this workflow in its CD pipeline; see
+[`cd.yml`](https://github.com/wislertt/zerv/blob/main/.github/workflows/cd.yml) for a live
+example.
+
+## Where to go next
+
+- [Coexisting with semantic-release](/cicd/semantic-release) - zerv for CI builds, semantic-release for releases
+- [zerv-flow](https://github.com/wislertt/zerv-flow) - working demo repo: PR pre-release tags and multi-environment deploys

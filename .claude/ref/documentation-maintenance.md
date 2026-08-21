@@ -6,7 +6,8 @@ This document provides guidelines for maintaining consistency between documentat
 
 ## Principle: Test-Driven Documentation
 
-**All code examples in documentation must be backed by tests.** This ensures:
+**All code examples in documentation must be backed by tests.** This covers README.md and
+the Mintlify site pages under `docs/` (`.mdx`). This ensures:
 
 - Documentation examples are always accurate and working
 - Changes to functionality automatically validate documentation
@@ -21,10 +22,20 @@ This document provides guidelines for maintaining consistency between documentat
 <!-- Corresponding test: path/to/test/file.rs:test_function_name -->
 ```
 
+### MDX Format (docs site pages)
+
+MDX rejects HTML comments, so `.mdx` pages use JSX comment syntax with the same payload:
+
+```jsx
+{
+    /* Corresponding test: path/to/test/file.rs:test_function_name */
+}
+```
+
 ### Placement
 
 - Place the comment immediately after the code block or section it validates
-- Use HTML comment format (`<!-- -->`) for markdown compatibility
+- Use HTML comment format (`<!-- -->`) in markdown; JSX format (`{/* */}`) in `.mdx`
 - Include the full test path and test function name
 
 ### Examples
@@ -103,13 +114,19 @@ Place comments after:
 ```
 tests/
 ├── integration_tests/
-│   └── docs/
-│       └── [component]/
-│           ├── mod.rs
-│           ├── test_utils.rs
-│           ├── quick_start.rs
-│           └── [other_feature].rs
+│   ├── docs/                    # tests for examples that only exist in docs-site pages
+│   │   ├── mod.rs
+│   │   ├── check.rs
+│   │   ├── render.rs
+│   │   └── troubleshooting.rs
+│   └── [command]/docs/          # tests for examples ported from the README live with
+│       └── ...                  # their command (flow/docs/, version/docs/, config_file/)
 ```
+
+Ported examples keep pointing at the test that already covers them (`flow/docs/`,
+`version/docs/`, …). Only examples introduced by a docs-site page get a new test in
+`tests/integration_tests/docs/`, mirroring the site's page structure. Python API examples
+are tested under `tests/python/`.
 
 ### Naming Conventions
 

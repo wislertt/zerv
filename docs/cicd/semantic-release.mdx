@@ -1,0 +1,107 @@
+---
+title: Coexisting with semantic-release
+description: semantic-release versions releases on main; zerv versions every other build. Run both without fighting over tags.
+---
+
+zerv is designed to be complementary to semantic-release. The tools answer different
+questions:
+
+- **semantic-release**: *what version is this release?* It reads conventional commits,
+  decides the next version, writes the changelog, tags, and publishes.
+- **zerv**: *what version is this exact Git state?* It computes a version for any commit
+  on any branch. The builds semantic-release never sees.
+
+The split in practice:
+
+| Git state                 | Who versions it  | Result                                            |
+| ------------------------- | ---------------- | ------------------------------------------------- |
+| Release commit on main    | semantic-release | `1.2.0` (tagged, changelog, published)            |
+| Pull request head         | zerv             | `1.2.0-alpha.42954.post.1+feature.auth.1.g4e9af24` |
+| develop integration build | zerv             | `1.2.0-beta.1.post.7+develop.7.ga1b2c3d`          |
+| Dirty local working tree  | zerv             | `…-alpha.…dev.<timestamp>+…`                      |
+
+zerv never writes tags or parses commit messages, so it cannot interfere with
+semantic-release's decisions. It only reads the tag semantic-release left behind.
+
+## On main: semantic-release, then zerv
+
+zerv's own CD pipeline does exactly this.
+[`cd.yml`](https://github.com/wislertt/zerv/blob/main/.github/workflows/cd.yml) calls both
+shared workflows:
+
+```yaml
+jobs:
+    semantic-release:
+        uses: ./.github/workflows/shared-semantic-release.yml
+
+    zerv-versioning:
+        needs: semantic-release
+        if: needs.semantic-release.outputs.is_valid_semantic_release == 'true'
+        uses: ./.github/workflows/shared-zerv-versioning.yml
+```
+
+(Trimmed. The real `semantic-release` job also pins workflow-dispatch guard inputs.)
+
+- The **semantic-release** job publishes and tags releases (`new_release_version`,
+  `new_release_published` outputs). The **zerv-versioning** job runs only on valid
+  semantic-release refs, via the `if:` gate shown above.
+- The **zerv-versioning** job ([GitHub Actions](/cicd/github-actions)) versions the current
+  build for artifact naming, including on commits semantic-release skips because no new
+  release was published.
+
+For builds that must match a semantic-release output exactly, pin the tag version from its
+output instead of letting zerv detect it:
+
+```yaml
+uses: ./.github/workflows/shared-zerv-versioning.yml
+with:
+    overridden_tag_version: ${{ needs.semantic-release.outputs.new_release_version }}
+```
+
+## On pull requests: zerv alone
+
+PRs never reach semantic-release, so the PR pipeline runs zerv by itself: it versions the
+PR head, optionally tags a pre-release, and feeds semver, PEP440, and docker tags to the
+deploy jobs. [zerv-flow](https://github.com/wislertt/zerv-flow) is a working demonstration
+repo (trimmed from its [`ci.yml`](https://github.com/wislertt/zerv-flow/blob/main/.github/workflows/ci.yml),
+which pins workflows by commit SHA):
+
+```yaml
+# on: pull_request
+jobs:
+    zerv-versioning:
+        needs: check-pre-release
+        uses: wislertt/zerv/.github/workflows/shared-zerv-versioning.yml@v0.8.19
+        with:
+            schema: ${{ (needs.check-pre-release.outputs.is_valid == 'true' && 'standard-base-prerelease-post') || '' }}
+
+    tag-pre-release:
+        needs: [zerv-versioning, check-pre-release]
+        if: needs.check-pre-release.outputs.is_valid == 'true'
+        uses: wislertt/zerv/.github/workflows/shared-create-tags.yml@v0.8.19
+        with:
+            tags: '["${{ fromJson(needs.zerv-versioning.outputs.versions).v_semver }}"]'
+
+    deploy-all-env:
+        needs: zerv-versioning
+        uses: ./.github/workflows/deploy-all-env.yml
+        with:
+            semver: ${{ fromJson(needs.zerv-versioning.outputs.versions).semver }}
+            pep440: ${{ fromJson(needs.zerv-versioning.outputs.versions).pep440 }}
+            docker_tag: ${{ fromJson(needs.zerv-versioning.outputs.versions).docker_tag }}
+```
+
+## Choosing where each applies
+
+- **Release flow** (changelog, publish, tag): semantic-release. zerv has no opinion and no
+  tooling for it.
+- **Continuous artifact versioning** (docker tags on every push, deploy manifests on PR
+  previews): zerv. semantic-release only versions release commits.
+- **Non-conventional commit histories**: zerv works from tags and distance alone, so it
+  drops in without retraining your team on commit message format.
+
+## Where to go next
+
+- [Why zerv](/getting-started/why-zerv) - the complementary positioning story
+- [GitHub Actions](/cicd/github-actions) - the reusable versioning workflow
+- [zerv-flow](https://github.com/wislertt/zerv-flow) - working demo repo for both halves of this split

@@ -447,6 +447,9 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# mintlify dev server
+docs/.last-update
+
 # mypy
 .mypy_cache/
 .dmypy.json
@@ -602,3 +605,4 @@ python/*.data/
 *.dSYM/
 
 .playwright-mcp
+.superpowers/

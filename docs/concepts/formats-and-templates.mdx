@@ -1,0 +1,187 @@
+---
+title: Formats and templates
+description: Output formats (SemVer, PEP440, ZERV RON), the ZERV_RON piping pattern, and the Tera template system with all variables and functions.
+---
+
+Once a [schema](/concepts/schema-system) has assembled the version, zerv renders it into an
+output format, or through a Tera template for anything else.
+
+## Output formats
+
+- **`semver`** - `1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a`
+- **`pep440`** - `1.0.1a17015.post1.dev1764382150+feature.dirty.work.1.g54c499a` (Python)
+- **`zerv`** - the internal RON representation, used for piping between commands
+
+```bash
+zerv flow --output-format pep440
+# 1.0.1a10192.post1.dev1764382150+branch.name.1.g4e9af24
+
+zerv flow --output-format semver
+# 1.0.1-alpha.10192.post.1.dev.1764902466+branch.name.1.g4e9af24
+
+zerv flow --output-prefix v --output-format semver
+# v1.0.1-alpha.10192.post.1.dev.1764902466+branch.name.1.g4e9af24
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples */}
+
+## Piping with ZERV RON
+
+The `zerv` format is both an output and an input: emit it once, then re-render it any number
+of times. Upstream must output `--output-format zerv` for stdin piping to work.
+
+```bash
+zerv flow --source git --output-format zerv | zerv version --source stdin --major 4 --output-format semver
+# → 4.0.1-alpha.10192.post.1.dev.1764382150+branch.name.1.g4e9af24
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples */}
+
+The RON payload is the fully-resolved version: schema and variables together.
+
+```bash
+zerv flow --output-format zerv
+# → (
+#     schema: (
+#         core: [var(Major), var(Minor), var(Patch)],
+#         extra_core: [var(Epoch), var(PreRelease), ...],
+#         build: [var(BumpedBranch), var(Distance), ...]
+#     ),
+#     vars: (
+#         major: Some(1), minor: Some(0), patch: Some(1),
+#         pre_release: Some((label: Alpha, number: Some(123))),
+#         bumped_branch: Some("feature-branch"),
+#         bumped_commit_hash: Some("gabc123def"),
+#         ...
+#     )
+#   )
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples */}
+
+### Fan out to every format
+
+Docker wants `+`-free tags, PyPI wants PEP440, releases want `v`-prefixed SemVer. Generate
+ZERV RON once and re-render the same payload for each consumer: VCS detection runs once,
+every conversion is a pure re-render, and every artifact carries a version derived from one
+resolved state.
+
+```bash
+ZERV_RON=$(zerv flow --output-format zerv)
+
+echo $ZERV_RON | zerv version --source stdin --output-format pep440
+# → 1.0.1a17015.post1.dev1764382150+feature.dirty.work.1.g54c499a
+
+echo $ZERV_RON | zerv version --source stdin --output-template "{{ semver_obj.docker }}"
+# → 1.0.1-alpha.17015.post.1.dev.1764382150-feature.dirty.work.1.g54c499a
+
+echo $ZERV_RON | zerv version --source stdin --output-prefix v --output-format semver
+# → v1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_shared_zerv_versioning_github_actions_documentation_examples */}
+
+The [Quickstart](/getting-started/quickstart) shows the full set, including schema-based
+`v_major` and `v_major_minor` tags.
+
+## Templates
+
+`--output-template` renders through the [Tera](https://keats.github.io/tera/docs/)
+templating engine, with conditionals, filters, and zerv-provided functions.
+
+```bash
+zerv flow --output-template "app:{{ major }}.{{ minor }}.{{ patch }}"
+# app:1.0.1
+
+zerv flow --output-template "{{ semver_obj.docker }}"
+# 1.0.1-alpha.10192.post.1.dev.1764902466-branch.name.1.g4e9af24
+
+zerv flow --output-template "Version: {{ semver_obj.docker }}, Branch: {{ bumped_branch | upper }}, Clean: {% if dirty %}No{% else %}Yes{% endif %}"
+# → Version: 1.0.1-alpha.59394.post.1.dev.1764382150-branch.name.1.g54c499a, Branch: DIRTY.FEATURE.WORK, Clean: No
+
+zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre: {{ pre_release.label_code | default(value='release') }}, Hash: {{ bumped_commit_hash_short }}"
+# → Release: v1.0.1, Pre: a, Hash: g4e9af24
+
+zerv flow --output-template "{{ semver_obj.base_part }}++{{ semver_obj.pre_release_part }}++{{ semver_obj.build_part }}"
+# → 1.0.1++alpha.10192.post.1.dev.1764902466++branch.name.1.g4e9af24
+
+zerv flow --output-template "Build: {{ major }}.{{ minor }}.{{ patch }}-{{ pre_release.label | default(value='release') }}{% if pre_release.number %}{{ pre_release.number }}{% endif %} ({{ bumped_branch }}@{{ bumped_commit_hash_short }})"
+# → Build: 1.0.1-alpha59394 (feature.new.auth@g4e9af24)
+
+zerv flow --output-template "{% if distance %}{{ distance }} commits since {% if last_timestamp %}{{ format_timestamp(value=last_timestamp, format='%Y-%m-%d') }}{% else %}beginning{% endif %}{% else %}Exact tag{% endif %}"
+# → 1 commits since 2025-12-05
+
+zerv flow --output-template "App-{{ major }}{{ minor }}{{ patch }}{% if pre_release %}-{{ pre_release.label }}{% endif %}{% if dirty %}-SNAPSHOT{% endif %}-{{ hash(value=bumped_branch, length=4) }}"
+# → App-101-alpha-SNAPSHOT-a1b2
+
+zerv flow --output-template "PEP440: {{ pep440 }}"
+# → PEP440: 1.0.1a10192.post1.dev1764909598+branch.name.1.g4e9af24
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples */}
+
+### Template variables
+
+**Core version fields**:
+
+- `major`, `minor`, `patch` - version numbers
+- `epoch` - epoch version (optional)
+- `post`, `dev` - post-release and dev identifiers
+
+**Pre-release context**:
+
+- `pre_release.label` - pre-release type ("alpha", "beta", "rc")
+- `pre_release.number` - pre-release number
+- `pre_release.label_code` - short code ("a", "b", "rc")
+- `pre_release.label_pep440` - PEP440 format ("a", "b", "rc")
+
+**VCS/metadata fields**:
+
+- `distance` - commits from reference point
+- `dirty` - working directory dirty state
+- `bumped_branch` - branch name
+- `bumped_commit_hash` - full commit hash
+- `bumped_commit_hash_short` - short commit hash
+- `bumped_timestamp` - commit timestamp
+- `last_commit_hash` - last tag commit hash
+- `last_commit_hash_short` - short last tag commit hash
+- `last_timestamp` - last tag timestamp
+
+**Parsed version objects**:
+
+- `semver_obj.base_part` - "1.2.3"
+- `semver_obj.pre_release_part` - "alpha.1.post.3.dev.5"
+- `semver_obj.build_part` - "build.456"
+- `semver_obj.docker` - "1.2.3-alpha.1-build.456" (`+` → `-`, safe as a docker tag)
+- `pep440_obj.base_part` - "1.2.3"
+- `pep440_obj.pre_release_part` - "a1.post3.dev5"
+- `pep440_obj.build_part` - "build.456"
+
+**Formatted versions**:
+
+- `semver` - full SemVer string
+- `pep440` - full PEP440 string
+- `current_timestamp` - current Unix timestamp
+
+### Custom template functions
+
+**String manipulation**:
+
+- `sanitize(value=variable, preset='dotted')` - sanitize with presets: "semver", "pep440", "uint"
+- `sanitize(value=variable, separator='-', lowercase=true, max_length=10)` - custom sanitization
+- `prefix(value=variable, length=10)` - extract first N characters
+- `prefix_if(value=variable, prefix="+")` - add prefix only if value not empty
+
+**Hashing and formatting**:
+
+- `hash(value=variable, length=7)` - generate hex hash
+- `hash_int(value=variable, length=7, allow_leading_zero=false)` - numeric hash
+- `format_timestamp(value=timestamp, format="%Y-%m-%d")` - format timestamp "2023-12-30"
+- `format_timestamp(value=timestamp, format="compact_date")` - "20231230"
+
+{/* Corresponding test: tests/integration_tests/flow/docs/io.rs:test_template_documentation_examples */}
+
+## Where to go next
+
+- [GitHub Actions](/cicd/github-actions) - the reusable workflow that automates this fan-out
+- [Render CLI](/cli/render) - format conversion for existing version strings

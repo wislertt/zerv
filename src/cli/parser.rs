@@ -17,10 +17,10 @@ use crate::cli::version::VersionArgs;
 system (VCS) data using configurable schemas. It supports multiple input sources, output formats, \
 and advanced override capabilities for CI/CD workflows.
 
-Use --llm-help to display the comprehensive CLI manual with detailed examples and guidance.
+AI-friendly docs: https://zerv.wisl.dev/llms.txt
 
 EXAMPLES:
-  # Flow - intelligent versioning based on git state
+  # Flow - branch-based versioning from git state
   zerv flow
 
   # Flow - use specific schema preset
@@ -33,7 +33,7 @@ EXAMPLES:
   zerv version --output-format pep440 --schema calver
 
   # Override VCS values for testing
-  zerv version --tag-version v2.0.0 --distance 5 --dirty true
+  zerv version --tag-version v2.0.0 --distance 5 --dirty
 
   # Force clean release state
   zerv version --clean
@@ -48,7 +48,7 @@ EXAMPLES:
   zerv render 1.2.3-alpha.1 --output-format pep440
 
   # Render - use template for custom output
-  zerv render 1.2.3 --template 'v{{major}}.{{minor}}'
+  zerv render 1.2.3 --output-template 'v{{major}}.{{minor}}'
 
   # Render - add prefix
   zerv render 1.2.3 --output-prefix release-
@@ -59,10 +59,6 @@ pub struct Cli {
     /// Use RUST_LOG for fine-grained control (e.g., RUST_LOG=zerv::vcs=debug)
     #[arg(short, long, global = true)]
     pub verbose: bool,
-
-    /// Display comprehensive CLI manual for humans and AI assistants
-    #[arg(long = "llm-help", help = "Display comprehensive CLI manual")]
-    pub llm_help: bool,
 
     /// Path to a zerv config file, overriding `zerv.toml` discovery
     ///
@@ -87,10 +83,10 @@ Supports multiple input sources (git, stdin), output formats (semver, pep440, ze
 for testing and CI/CD workflows."
     )]
     Version(Box<VersionArgs>),
-    /// Generate version with intelligent pre-release management based on Git branch patterns
+    /// Generate versions with automated pre-release management based on Git branch patterns
     #[command(
         long_about = "Generate version strings with automatic pre-release detection based on Git branch patterns.
-This command acts as an intelligent wrapper around 'zerv version' that automatically determines
+This command wraps 'zerv version' and determines
 pre-release information from the current Git branch using configurable pattern matching."
     )]
     Flow(Box<FlowArgs>),

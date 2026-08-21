@@ -1,0 +1,140 @@
+---
+title: zerv version
+description: Generate versions with full manual control. 22 schema presets, custom RON schemas, VCS and component overrides, and field-based and schema-based bumps.
+---
+
+```bash
+zerv version [OPTIONS]
+```
+
+Complete manual control over version generation. Unlike [`zerv flow`](/cli/flow), `version`
+generates versions as-is, without opinionated auto-bumping logic; see the
+[version concepts](/concepts/version) page.
+
+## Schema variants
+
+22 presets (standard and calver families) and custom RON schemas. See the
+[schema system](/concepts/schema-system) for how schemas work.
+
+```bash
+zerv version --schema standard-base
+# → 1.0.0 (test case 1)
+
+zerv version --schema standard-base-context
+# → 1.0.0+branch.name.1.g4e9af24 (test case 2)
+
+zerv version --schema standard-base-prerelease
+# → 1.0.0-alpha.1 (test case 3)
+
+zerv version --schema standard-base-prerelease-post-dev-context
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 4)
+
+zerv version --schema calver-base-prerelease-post-dev-context
+# → 2025.12.4-0.alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 5)
+
+# Custom RON schemas
+zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[])'
+# → 1.0.0 (test case 6)
+
+zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[str("build.id")])'
+# → 1.0.0+build.id (test case 7)
+
+zerv version --schema-ron '(
+    core: [var(Major), var(Minor), var(Patch)],
+    extra_core: [var(PreRelease), var(Post), var(Dev)],
+    build: [var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)]
+)'
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 8, equivalent to standard-base-prerelease-post-dev-context)
+
+zerv version --schema-ron '(
+    core: [var(ts("YYYY")), var(ts("MM")), var(ts("DD"))],
+    extra_core: [var(PreRelease), var(Post), var(Dev)],
+    build: [var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)]
+)'
+# → 2025.12.4-0.alpha.1.post.5.dev.123+branch.name.1.g{hex:7} (test case 9, equivalent to calver-base-prerelease-post-dev-context)
+```
+
+{/* Corresponding test: tests/integration_tests/version/docs/schema_variants.rs:test_zerv_version_schema_variants_documentation_examples */}
+
+## VCS overrides
+
+Override any VCS-detected value:
+
+```bash
+zerv version --tag-version "v2.1.0-beta.1"
+# → 2.1.0-beta.1+branch.name.1.g4e9af24 (test case 1)
+
+zerv version --distance 42
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.42.g8f4e3a2 (test case 2)
+
+zerv version --dirty
+# → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 3)
+
+zerv version --bumped-branch "release/42"
+# → 1.0.0-alpha.1.post.5.dev.123+release.42.1.g4e9af24 (test case 4)
+```
+
+{/* Corresponding test: tests/integration_tests/version/docs/vcs_overrides.rs:test_zerv_version_vcs_overrides_documentation_examples */}
+
+## Version bumping
+
+Field-based bumps (major/minor/patch, stackable) and schema-based bumps:
+
+```bash
+zerv version --bump-major
+# → 2.0.0 (test case 1)
+
+zerv version --bump-minor
+# → 1.1.0 (test case 2)
+
+zerv version --bump-patch
+# → 1.0.1 (test case 3)
+
+zerv version --bump-major --bump-minor
+# → 2.1.0 (test case 4)
+
+zerv version --bump-core 0
+# → 2.0.0 (test case 5, schema-based bump targeting core component index 0/major)
+
+zerv version --bump-major --bump-minor --bump-patch
+# → 2.1.1 (test case 6)
+
+zerv version --bump-major 2
+# → 3.0.0 (test case 7)
+```
+
+{/* Corresponding test: tests/integration_tests/version/docs/version_bumping.rs:test_zerv_version_version_bumping_documentation_examples */}
+
+## Component overrides
+
+Fine-grained control over individual version components while preserving everything else:
+
+```bash
+# Version component overrides (major, minor, patch)
+zerv version --major 2 --minor 5
+# → 2.5.0+branch.name.1.g{hex:7} (test case 1)
+
+# Pre-release component overrides (label and number)
+zerv version --schema standard-base-prerelease-post-context --pre-release-label rc --pre-release-num 3
+# → 1.0.0-rc.3+branch.name.1.g{hex:7} (test case 2)
+
+# Additional component overrides (epoch, post, dev)
+zerv version --schema standard-base-prerelease-post-dev-context --epoch 1 --post 7 --dev 456
+# → 1.0.0-epoch.1.post.7.dev.456+branch.name.1.g{hex:7} (test case 3)
+
+# Custom variables in schema-ron (requires schema-ron)
+zerv version --schema-ron '(
+    core: [var(Major), var(Minor), var(Patch)],
+    extra_core: [],
+    build: [var(custom("build_id")), var(custom("environment"))]
+)' --custom '{"build_id": "prod-123", "environment": "staging"}'
+# → 1.0.0+prod.123.staging (test case 4)
+```
+
+{/* Corresponding test: tests/integration_tests/version/docs/component_overrides.rs:test_zerv_version_component_overrides_documentation_examples */}
+
+## Input and output
+
+Sources (`git`, `stdin`, `none`), output formats (`semver`, `pep440`, `zerv`), prefixes,
+and Tera templates work the same as `zerv flow`; see
+[formats and templates](/concepts/formats-and-templates).
