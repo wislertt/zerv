@@ -1,0 +1,79 @@
+---
+title: zerv
+description: The zerv root command. Global flags, subcommands, and where AI agents find the docs.
+---
+
+```bash
+zerv [OPTIONS] <COMMAND>
+```
+
+zerv has four subcommands:
+
+| Subcommand              | Purpose                                                             |
+| ----------------------- | ------------------------------------------------------------------- |
+| [`zerv version`](/cli/version) | Flexible, configurable version generation with full control  |
+| [`zerv flow`](/cli/flow)       | Opinionated, automated pre-release management from branches   |
+| [`zerv check`](/cli/check)     | Validate version strings against a format                     |
+| [`zerv render`](/cli/render)   | Convert and re-render existing version strings                |
+
+## Global options
+
+| Option                     | Description                                                        |
+| -------------------------- | ------------------------------------------------------------------ |
+| `-v, --verbose`            | Debug-level logs to stderr; `RUST_LOG` for fine-grained control   |
+| `--config-file <PATH>`     | Read this config file instead of discovering `zerv.toml`           |
+| `-V, --version`            | Print version                                                      |
+| `-h, --help`               | Print help (long help includes examples)                           |
+
+See the [config file](/concepts/config-file) page for `--config-file` semantics, including
+the null-device escape hatch.
+
+`-C, --directory <DIR>` (run against a different repository) is not a root flag. It is
+available on the `version` and `flow` subcommands.
+
+## Examples
+
+```bash
+# Flow - branch-based versioning from git state
+zerv flow
+
+# Flow - use specific schema preset
+zerv flow --schema standard
+
+# Basic version generation from git
+zerv version
+
+# Generate PEP440 format with custom schema
+zerv version --output-format pep440 --schema calver
+
+# Override VCS values for testing
+zerv version --tag-version v2.0.0 --distance 5 --dirty
+
+# Force clean release state
+zerv version --clean
+
+# Pipe Zerv RON between commands
+zerv version --output-format zerv | zerv version --source stdin --schema calver
+
+# Use in different directory
+zerv version -C /path/to/repo
+
+# Render - convert SemVer to PEP440
+zerv render 1.2.3-alpha.1 --output-format pep440
+
+# Render - use template for custom output
+zerv render 1.2.3 --output-template 'v{{major}}.{{minor}}'
+
+# Render - add prefix
+zerv render 1.2.3 --output-prefix release-
+```
+
+These examples ship in `zerv --help` output.
+
+{/* Corresponding test: tests/integration_tests/help_flags.rs:test_main_help_contains_examples */}
+
+## AI-friendly docs
+
+The complete documentation is served in plain text for AI agents at
+[https://zerv.wisl.dev/llms.txt](https://zerv.wisl.dev/llms.txt) (full version: `/llms-full.txt`),
+and `zerv --help` points there too.

@@ -1,7 +1,7 @@
 [project]
 name = "zerv-version"
 version = "0.0.0" # Use git tag
-description = "Dynamic versioning CLI tool"
+description = "Dynamic versioning from git. Every commit gets its version."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -20,10 +20,18 @@ classifiers = [
   "Topic :: Software Development :: Version Control"
 ]
 
+[project.urls]
+Changelog = "https://github.com/wislertt/zerv/releases"
+Documentation = "https://zerv.wisl.dev"
+Homepage = "https://zerv.wisl.dev"
+Issues = "https://github.com/wislertt/zerv/issues"
+Repository = "https://github.com/wislertt/zerv"
+
 [dependency-groups]
 dev = [
   "bakefile>=0.0.42a0", # Skip lib extras to avoid circular dependency (lib includes zerv-version)
   "deptry>=0.24.0",
+  "fonttools>=4.5.0",
   "keyring>=25.7.0", # bakefile[lib]
   "maturin>=1.11.5",
   "pathspec>=1.0.3", # bakefile[lib]
@@ -44,11 +52,14 @@ omit = [
 ]
 
 [tool.deptry]
-known_first_party = ["zerv"]
+known_first_party = ["gen_wordmark", "zerv"]
 extend_exclude = ["bakefile.py"]
 
 [tool.deptry.package_module_name_map]
 bakefile = ["bake", "bakelib"]
+
+[tool.deptry.per_rule_ignores]
+DEP004 = ["fontTools"]
 
 [tool.maturin]
 bindings = "bin"

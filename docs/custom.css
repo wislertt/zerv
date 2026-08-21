@@ -1,0 +1,60 @@
+/* docs.json sets primary to amber-500 for light-mode text readability;
+   dark mode keeps the brand gold. Mintlify paints accents via --primary
+   (light mode) and --primary-light (dark-mode `dark:text-primary-light`
+   utilities), so restore gold for both vars under .dark. */
+html.dark {
+    --primary: 251 191 36 !important;
+    --primary-light: 251 191 36 !important;
+}
+
+html.dark .sd-hero-light {
+    display: none;
+}
+
+html:not(.dark) .sd-hero-dark {
+    display: none;
+}
+
+/* badge row (index page). `not-prose` on the container opts the whole
+   subtree out of Mintlify prose styles (prose gives imgs 2em margins = the
+   84px-tall anchors, plus link underline). remaining rules are belt-and-suspenders. */
+.sd-badges {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0 0 16px;
+    padding: 0;
+}
+
+.sd-badges a,
+.sd-badges a:hover,
+.sd-badges a:visited {
+    display: inline-flex;
+    flex: 0 0 auto;
+    line-height: 0;
+    /* prose styles inflate anchors to 84px; badges are 20px imgs */
+    height: auto !important;
+    max-height: 24px;
+    padding: 0 !important;
+    margin: 0 !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
+    background: none !important;
+    background-image: none !important;
+}
+
+.sd-badges img {
+    height: 20px;
+    width: auto;
+    max-width: none;
+    display: block;
+    margin: 0 !important; /* prose: 2em top/bottom */
+}
+
+@media (max-width: 768px) {
+    .sd-badges {
+        flex-wrap: wrap;
+    }
+}

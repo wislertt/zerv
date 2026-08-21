@@ -11,7 +11,6 @@ use clap::{
 
 use crate::cli::check::run_check_command;
 use crate::cli::flow::run_flow_pipeline;
-use crate::cli::llm_help::display_llm_help;
 use crate::cli::parser::{
     Cli,
     Commands,
@@ -32,11 +31,6 @@ pub fn run_with_args<W: Write>(
     crate::logging::init_logging(cli.verbose);
 
     tracing::debug!("Zerv started with args: {:?}", cli);
-
-    if cli.llm_help {
-        display_llm_help(&mut writer)?;
-        return Ok(());
-    }
 
     let stdin_content = extract_stdin_once()?;
 
@@ -164,13 +158,6 @@ mod tests {
     }
 
     #[test]
-    fn llm_help_returns_ok() {
-        let buf = run(vec!["zerv", "--llm-help"]).unwrap();
-        let output = String::from_utf8(buf).unwrap();
-        assert!(!output.is_empty());
-    }
-
-    #[test]
     fn no_subcommand_display_message() {
         let err = NoSubcommand;
         assert_eq!(err.to_string(), "no subcommand provided");
@@ -256,7 +243,7 @@ mod tests {
 
         #[test]
         fn success_returns_zero() {
-            let args: Vec<String> = ["zerv", "--llm-help"]
+            let args: Vec<String> = ["zerv", "check", "1.2.3"]
                 .iter()
                 .map(|s| s.to_string())
                 .collect();

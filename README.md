@@ -13,9 +13,16 @@
 [![downloads](https://static.pepy.tech/personalized-badge/zerv-version?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pypi%20downloads)](https://pepy.tech/projects/zerv-version)
 [![python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?logo=python)](https://github.com/wislertt/zerv/)
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/gh/wislertt/zerv@main/docs/img/brand/zerv-lockup-dark.svg">
+    <img src="https://cdn.jsdelivr.net/gh/wislertt/zerv@main/docs/img/brand/zerv-lockup.svg" width="360" alt="zerv logo">
+  </picture>
+</p>
+
 # zerv
 
-**Automatic versioning for every commit** - Generate semantic versions from any commit across all branches, or dirty working directory, with seamless pre-release handling and flexible format support for any CI/CD workflow.
+**Automatic versioning for every commit** - Generate semantic versions from any commit across all branches, or dirty working directory, with pre-release handling and format support for any CI/CD workflow.
 
 ## Table of Contents
 
@@ -32,7 +39,7 @@
 
 ## Quick Start
 
-**Smart Version Detection**: `zerv flow` automatically generates meaningful SemVer versions from any Git state - no manual configuration required for common workflows.
+**Version any Git state**: `zerv flow` generates meaningful SemVer versions from any Git state, no manual configuration required.
 
 ```bash
 # Install (Python via uv)
@@ -61,7 +68,7 @@ echo $ZERV_RON | zerv version --source stdin --output-format semver
 
 # pep440
 echo $ZERV_RON | zerv version --source stdin --output-format pep440
-# → 1.0.0a17015.post1.dev1764382150+feature.dirty.work.1.g54c499a
+# → 1.0.1a17015.post1.dev1764382150+feature.dirty.work.1.g54c499a
 
 # docker_tag
 echo $ZERV_RON | zerv version --source stdin --output-template "{{ semver_obj.docker }}"
@@ -94,29 +101,28 @@ echo $ZERV_RON | zerv version --source stdin --output-template "v{{ major | defa
 # → v1.0
 ```
 
-<!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:fn test_quick_start_shared_zerv_versioning_github_actions_documentation_examples() {
- -->
+<!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_shared_zerv_versioning_github_actions_documentation_examples -->
 
 ## Key Features
 
 - **zerv version**: Flexible, configurable version generation with full control
 - **zerv flow**: Opinionated, automated pre-release management based on Git branches
-- **Smart Schema System**: Auto-detects clean releases, pre-releases, and build context
+- **Schema Presets**: Built-in shapes for clean releases, pre-releases, and build context
 - **Multiple Formats**: SemVer, PEP440 (Python), CalVer, custom schemas
-- **Config File**: Commit your repo's stable version policy to a `zerv.toml` once — shared by `version` and `flow`, with CLI flags still winning
+- **Config File**: Commit your repo's stable version policy to a `zerv.toml` once. Shared by `version` and `flow`, with CLI flags still winning
 - **CI/CD Integration**: Complements semantic release with branch-based pre-releases and full override control
 
 ## Usage Examples
 
 ### zerv flow: Automated branch-based versions
 
-**Purpose**: Intelligent pre-release management that automatically generates meaningful versions from any Git state without manual decisions.
+**Purpose**: Automated pre-release management that generates meaningful versions from any Git state without manual decisions.
 
 #### Core Principles
 
 1. **Semantic state capture** - Extract semantic meaning from ANY Git state (any branch, any commit, uncommitted changes)
 2. **Multi-format output** - Transform semantic meaning into various version formats with customizable format support
-3. **Seamless semantic release integration** - Work with semantic release tools while providing fully automated pre-release versioning
+3. **semantic-release integration** - Work with semantic release tools while providing fully automated pre-release versioning
 4. **Build traceability** - Include sufficient context to trace versions back to exact Git states
 
 #### Version Format Explained
@@ -279,7 +285,7 @@ gitGraph
 - **Nested branches**: `feature-3` branches from `feature-2` with independent versioning
 - **Clean releases**: Main branch maintains semantic versions on merges
 
-<!-- Corresponding test: tests/integration_tests/flow/scenarios/trunk_based.rs:test_trunk_based_development -->
+<!-- Corresponding test: tests/integration_tests/flow/scenarios/trunk_based.rs:test_trunk_based_development_flow -->
 
 ##### GitFlow Branching Strategy
 
@@ -424,9 +430,9 @@ gitGraph
 
 <!-- Corresponding test: tests/integration_tests/flow/scenarios/complex_release_branch.rs:test_complex_release_branch_abandonment -->
 
-#### Schema Variants: 10+ Standard Schema Presets
+#### Schema Variants: 22 Schema Presets (11 standard + 11 calver)
 
-**Purpose**: Complete control over version generation with 20+ schema presets and extensive customization options.
+**Purpose**: Complete control over version generation with 22 schema presets and extensive customization options.
 
 **Schema Selection Examples**:
 
@@ -485,7 +491,9 @@ zerv flow --schema standard-context
 ```ron
 [
     (pattern: "develop", pre_release_label: beta, pre_release_num: 1, post_mode: commit),
-    (pattern: "release/*", pre_release_label: rc, post_mode: tag)
+    (pattern: "beta/*", pre_release_label: beta, post_mode: commit),
+    (pattern: "release/*", pre_release_label: rc, post_mode: tag),
+    (pattern: "*", pre_release_label: alpha, post_mode: commit)
 ]
 ```
 
@@ -618,9 +626,9 @@ zerv flow --tag-version "v1.5.0-rc.1" --bumped-commit-hash "f4a8b9c" --major 1 -
 
 **Note**: Unlike `zerv flow`, `zerv version` generates versions as-is without opinionated auto-bumping logic. It does not automatically increment post-counts based on commits or tags, nor does it derive pre-release labels and numbers from branch patterns. This is general-purpose version generation without opinionated logic.
 
-#### Schema Variants: 20+ presets (standard, calver families) and custom RON schemas
+#### Schema Variants: 22 presets (11 standard + 11 calver) and custom RON schemas
 
-**Purpose**: Choose from 20+ predefined version schemas or create custom RON-based schemas for complete format control.
+**Purpose**: Choose from 22 predefined version schemas or create custom RON-based schemas for complete format control.
 
 **Schema Selection Examples**:
 
@@ -655,7 +663,7 @@ zerv version --schema-ron '(
 # → 1.0.0-alpha.1.post.5.dev.123+branch.name.1.g4e9af24 (test case 8, equivalent to standard-base-prerelease-post-dev-context)
 
 zerv version --schema-ron '(
-    core: [var(ts("YYYY")), var(ts("MM")), var(ts("DD"))],
+    core: [var(ts("YYYY")), var(ts("MM")), var(ts("DD")), var(Patch)],
     extra_core: [var(PreRelease), var(Post), var(Dev)],
     build: [var(BumpedBranch), var(Distance), var(BumpedCommitHashShort)]
 )'
@@ -846,7 +854,7 @@ zerv flow --output-template "{{ semver_obj.base_part }}++{{ semver_obj.pre_relea
 # 1.0.1++alpha.10192.post.1.dev.1764902466++branch.name.1.g4e9af24
 # (test case 9)
 
-# Comprehensive template examples
+# More template examples
 zerv flow --output-template "Build: {{ major }}.{{ minor }}.{{ patch }}-{{ pre_release.label | default(value='release') }}{% if pre_release.number %}{{ pre_release.number }}{% endif %} ({{ bumped_branch }}@{{ bumped_commit_hash_short }})"
 # → Build: 1.0.1-alpha59394 (feature.new.auth@g4e9af24)
 # (test case 10)
@@ -874,7 +882,7 @@ zerv flow --output-template "Release: v{{ major }}.{{ minor }}.{{ patch }}, Pre:
 
 <!-- Corresponding test: tests/integration_tests/flow/docs/io.rs:test_io_documentation_examples -->
 
-- **Smart Source Detection**: Auto-detects input source (stdin if piped, git otherwise)
+- **Source auto-detection**: Auto-detects input source (stdin if piped, git otherwise)
 
 ```bash
 # Implicit source detection (auto: git if no stdin, stdin if piped)
@@ -897,7 +905,7 @@ zerv version --source none --tag-version 1.2.3 --distance 5
 
 **Purpose**: Complete control over version output using Tera templating with extensive variables, functions, and logical operations.
 
-**Note**: Zerv uses the [Tera templating engine](https://keats.github.io/tera/docs/), which provides powerful template features including conditionals, loops, filters, and custom functions.
+**Note**: Zerv uses the [Tera templating engine](https://keats.github.io/tera/docs/), with conditionals, loops, filters, and custom functions.
 
 ###### Available Template Variables
 
@@ -964,7 +972,7 @@ zerv version --source none --tag-version 1.2.3 --distance 5
 
 **Purpose**: Commit your repo's stable version policy to a `zerv.toml` once instead of repeating the same flags on every `zerv` invocation.
 
-**Discovery**: `zerv` walks up from the current directory to the nearest VCS repository root (Git's `.git` today) and reads `zerv.toml` there — or the hidden `.zerv.toml` fallback. Config is **repo-scoped**: one policy per repo, no subdirectory shadowing, so a version never depends on which directory you run from.
+**Discovery**: `zerv` walks up from the current directory to the nearest VCS repository root (Git's `.git` today) and reads `zerv.toml` there, or the hidden `.zerv.toml` fallback. Config is **repo-scoped**: one policy per repo, no subdirectory shadowing, so a version never depends on which directory you run from.
 
 ```bash
 # Commit a zerv.toml at your repo root (stable fields only)
@@ -973,7 +981,7 @@ source          = "stdin"
 output_template = "v{{ major }}.{{ minor }}.{{ patch }}"
 EOF
 
-# zerv reads zerv.toml automatically — no flags repeated
+# zerv reads zerv.toml automatically; no flags repeated
 # (stdin carries the version payload; in a git repo use source = "git")
 zerv version
 # → v1.2.3
@@ -995,7 +1003,7 @@ zerv version --output-template "release-{{ major }}"
 CLI flag  >  --config-file <path>  >  discovered zerv.toml  >  builtin default
 ```
 
-`--config-file <path>` reads that file **instead of** discovering `zerv.toml` — the discovered file is never read. Pass the null device to disable config entirely: the empty file yields no overrides, restoring builtin behavior. There is no `--no-config` flag; the null device is the escape hatch (`/dev/null` on Unix and macOS, `NUL` on Windows).
+`--config-file <path>` reads that file **instead of** discovering `zerv.toml`; the discovered file is never read. Pass the null device to disable config entirely: the empty file yields no overrides, restoring builtin behavior. There is no `--no-config` flag; the null device is the escape hatch (`/dev/null` on Unix and macOS, `NUL` on Windows).
 
 ```bash
 # An explicit --config-file is read instead of discovering zerv.toml
@@ -1018,7 +1026,7 @@ zerv --config-file /dev/null version
 **File structure**: stable fields live at the shared top (apply to both subcommands); `[version]` and `[flow]` sections override per-subcommand:
 
 ```toml
-# shared top — applies to every subcommand
+# shared top: applies to every subcommand
 source          = "stdin"
 output_format   = "semver"
 output_template = "v{{ major }}.{{ minor }}.{{ patch }}"
@@ -1035,9 +1043,9 @@ hash_branch_len   = 7
 
 <!-- Corresponding test: src/config/merge.rs:version_section_schema_overrides_shared_top -->
 
-> **`output_prefix` and `output_template` conflict** — they cannot both be set. Put the prefix directly in the template (`"v{{ major }}..."`), or use `output_prefix` with `output_format` and no template.
+> **`output_prefix` and `output_template` conflict**: they cannot both be set. Put the prefix directly in the template (`"v{{ major }}..."`), or use `output_prefix` with `output_format` and no template.
 
-Ephemeral per-build fields (`--dirty`, `--bump-minor`, `--major`, …) are **not** allowed in the file — a typo'd or stale key fails loud at parse (`deny_unknown_fields`) rather than shipping silently on the next CI run.
+Ephemeral per-build fields (`--dirty`, `--bump-minor`, `--major`, …) are **not** allowed in the file: a typo'd or stale key fails loud at parse (`deny_unknown_fields`) rather than shipping silently on the next CI run.
 
 ### zerv check: Validate version formats
 
@@ -1072,11 +1080,11 @@ zerv render "1.2.3a1" --output-format semver
 
 ```bash
 # Custom format
-zerv render "1.2.3" --template "v{{major}}.{{minor}}"
+zerv render "1.2.3" --output-template "v{{major}}.{{minor}}"
 # v1.2
 
 # With pre-release
-zerv render "2.0.0-beta.2" --template "{{major}}.{{minor}}.{{patch}}-{{pre_release.label}}"
+zerv render "2.0.0-beta.2" --output-template "{{major}}.{{minor}}.{{patch}}-{{pre_release.label}}"
 # 2.0.0-beta
 ```
 
@@ -1141,5 +1149,5 @@ rm ~/.local/bin/zerv
 
 ## Links
 
-- **Comprehensive Documentation**: [docs/llms.md](docs/llms.md) - Complete reference for all Zerv capabilities
+- **Documentation**: [zerv.wisl.dev](https://zerv.wisl.dev) - reference for all Zerv capabilities
 - **CLI Help**: `zerv --help`, `zerv flow --help`, `zerv version --help` - Detailed command-line reference

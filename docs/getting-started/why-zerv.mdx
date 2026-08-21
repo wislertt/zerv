@@ -1,0 +1,78 @@
+---
+title: Why zerv
+description: zerv runs next to semantic-release. semantic-release versions releases on main; zerv versions every other branch, PR, and dirty working tree.
+---
+
+zerv is designed to run next to semantic-release, not instead of it. Split the work by
+branch:
+
+- **semantic-release owns main.** It reads conventional commits, decides the release
+  version, writes the changelog, tags, and publishes.
+- **zerv owns every other branch.** Pull requests, feature branches, develop, release
+  branches, dirty working trees: each Git state gets a SemVer on the spot, computed from
+  tags, distance, branch, and dirtiness alone.
+
+Release tools answer *what version is this release?* CI builds artifacts on every push, and
+those builds need versions long before a release exists. zerv answers *what version is this
+exact Git state?*
+
+- **Every commit versioned** - a version for any commit on any branch, including
+  uncommitted changes. No build is ever unversioned.
+- **Branch-based pre-releases** - `zerv flow` maps branch patterns to pre-release types
+  (`develop` and `beta/*` → beta, `release/*` → rc, everything else → alpha), so artifact
+  names carry where they came from.
+- **One payload, every format** - generate ZERV RON once, then convert to SemVer, PEP440,
+  CalVer, docker tags, `v`-prefixed major tags. Anything expressible as a schema or Tera
+  template.
+
+## Both tools in one repository
+
+zerv's own repository runs both in its CD pipeline
+([`cd.yml`](https://github.com/wislertt/zerv/blob/main/.github/workflows/cd.yml)):
+semantic-release publishes the release, then zerv versions the same commit for artifact
+naming.
+
+The [zerv-flow](https://github.com/wislertt/zerv-flow) demonstration repo shows the full
+split. On pull requests, zerv runs alone: it versions the PR head, tags a pre-release, and
+feeds semver, PEP440, and docker tags to the deploy jobs. On main, semantic-release
+publishes and zerv versions the release build.
+
+See [coexisting with semantic-release](/cicd/semantic-release) for the workflow wiring.
+
+## The core trade-off
+
+zerv deliberately does **not** read commit messages or automate releases. It computes
+versions from VCS state (tags, distance, branch, dirtiness) and gets out of the way. That
+makes it:
+
+- **Deterministic** - the same Git state always yields the same version, regardless of
+  commit message style.
+- **Complementary** - it runs alongside release automation instead of competing with it.
+  See [coexisting with semantic-release](/cicd/semantic-release).
+- **Language-agnostic** - one Rust binary versions your Docker images, Python packages,
+  Rust crates, and deployment manifests identically.
+
+## Same state, every format
+
+One ZERV RON payload converts to whatever each pipeline stage needs:
+
+```bash
+ZERV_RON=$(zerv flow --output-format zerv)
+
+echo $ZERV_RON | zerv version --source stdin --output-format semver
+# → 1.0.1-alpha.17015.post.1.dev.1764382150+feature.dirty.work.1.g54c499a
+
+echo $ZERV_RON | zerv version --source stdin --output-format pep440
+# → 1.0.1a17015.post1.dev1764382150+feature.dirty.work.1.g54c499a
+```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_shared_zerv_versioning_github_actions_documentation_examples */}
+
+## When to reach for something else
+
+- You want commit-message parsing, changelogs, and publishing in one tool: use
+  **semantic-release**, or run [both](/cicd/semantic-release).
+- You only need a version inside a Python package build: **setuptools-scm** already lives
+  in that ecosystem.
+- You need a zero-install answer on a bare machine: `git describe` is always there, as
+  long as its `v1.0.0-5-gabc1234` shape is acceptable.

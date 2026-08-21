@@ -1,0 +1,62 @@
+---
+title: zerv check
+description: Validate version strings against SemVer, PEP440, or auto-detected formats, with normalization feedback.
+---
+
+```bash
+zerv check [OPTIONS] <VERSION>
+```
+
+Validate that a version string conforms to a format. Without `--format`, zerv checks every
+supported format and reports each match.
+
+```bash
+# Check complex SemVer format validation
+zerv check --format semver 1.0.0-rc.1.something.complex+something.complex
+# → Version: 1.0.0-rc.1.something.complex+something.complex
+#   ✓ Valid SemVer format (test case 1)
+
+# Check PEP440 format validation with build metadata
+zerv check --format pep440 1.0.0a2.post5.dev3+something.complex
+# → Version: 1.0.0a2.post5.dev3+something.complex
+#   ✓ Valid PEP440 format (test case 2)
+
+# Check PEP440 format validation with normalization
+zerv check --format pep440 1.0.0-alpha.2.post.5.dev.3+something.complex
+# → Version: 1.0.0-alpha.2.post.5.dev.3+something.complex
+#   ✓ Valid PEP440 format (normalized: 1.0.0a2.post5.dev3+something.complex) (test case 3)
+
+# Invalid version handling (fails with exit code 1)
+zerv check --format semver invalid
+# → Error: Invalid version: invalid - Invalid SemVer format (test case 4)
+
+# Auto-detect and validate multiple formats
+zerv check 2.1.0-beta.1
+# → Version: 2.1.0-beta.1
+#   ✓ Valid PEP440 format (normalized: 2.1.0b1)
+#   ✓ Valid SemVer format (test case 5)
+```
+
+{/* Corresponding test: tests/integration_tests/version/docs/version_validation.rs:test_zerv_check_documentation_examples */}
+
+## Options
+
+| Option                 | Description                                                 |
+| ---------------------- | ----------------------------------------------------------- |
+| `-f, --format <FORMAT>` | Validate against one format (`semver`, `pep440`); omit for auto-detect |
+
+## Exit codes
+
+- `0` - the version is valid in at least the requested (or any detected) format
+- `1` - invalid: the string matches no requested/supported format
+
+Use it as a CI guard for version strings produced elsewhere:
+
+```bash
+zerv check "1.2.3-rc.2"
+# Version: 1.2.3-rc.2
+# ✓ Valid PEP440 format (normalized: 1.2.3rc2)
+# ✓ Valid SemVer format
+```
+
+{/* Corresponding test: tests/integration_tests/docs/check.rs:test_check_page_documentation_examples */}

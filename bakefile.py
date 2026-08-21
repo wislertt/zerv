@@ -32,6 +32,11 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
     zerv_force_rust_log_off: bool = False
     _target: str | None = None
 
+    def _get_mise_tools(self) -> set[str]:
+        mise_tools = super()._get_mise_tools()
+        mise_tools.add("npm:mintlify")
+        return mise_tools
+
     def get_publish_registries(self) -> set[str]:
         return set(PyPIPublisher.valid_registries) | set(CratesPublisher.valid_registries)
 
@@ -120,8 +125,12 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
         self.test_python(build=True)
 
     @command()
-    def gen_docs(self):
-        self.ctx.run("cargo xtask generate-docs")
+    def docs(self):
+        self.ctx.run("mintlify dev", cwd=Path("docs"))
+
+    @command()
+    def docs_check(self):
+        self.ctx.run("mintlify broken-links", cwd=Path("docs"))
 
     @command()
     def open_coverage(self):

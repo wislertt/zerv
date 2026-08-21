@@ -1,5 +1,6 @@
 pub mod check;
 pub mod config_file;
+pub mod docs;
 pub mod flow;
 pub mod help_flags;
 pub mod logging;
