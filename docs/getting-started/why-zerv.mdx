@@ -1,6 +1,6 @@
 ---
 title: Why zerv
-description: zerv vs semantic-release, setuptools-scm, dunamai, and git describe - which versioning tool fits, and how zerv versions every branch, PR, and dirty working tree.
+description: zerv runs next to semantic-release. semantic-release versions releases on main; zerv versions every other branch, PR, and dirty working tree.
 ---
 
 zerv is designed to run next to semantic-release, not instead of it. Split the work by
@@ -25,7 +25,7 @@ exact Git state?*
   CalVer, docker tags, `v`-prefixed major tags. Anything expressible as a schema or Tera
   template.
 
-## zerv vs semantic-release
+## Both tools in one repository
 
 zerv's own repository runs both in its CD pipeline
 ([`cd.yml`](https://github.com/wislertt/zerv/blob/main/.github/workflows/cd.yml)):
@@ -68,48 +68,11 @@ echo $ZERV_RON | zerv version --source stdin --output-format pep440
 
 {/* Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_shared_zerv_versioning_github_actions_documentation_examples */}
 
-## zerv vs setuptools-scm
-
-[setuptools-scm](https://github.com/pypa/setuptools-scm) versions Python packages at build
-time: the build backend reads Git state and writes the version into the package metadata.
-That is the right tool when the package itself is the only artifact.
-
-zerv versions every build in CI — Docker images, deployment manifests, Rust crates, npm
-packages — from the same Git state, with no Python build in the loop. If your pipeline
-only ever needs the version inside package metadata, stay with setuptools-scm.
-
-## zerv vs dunamai
-
-[dunamai](https://github.com/mtkennerly/dunamai) is the closest tool in spirit: a Python
-library and CLI that produces standards-compliant versions from VCS tags, with an
-opinionated PEP 440 default. It even supports more version control systems than zerv
-(Mercurial, Subversion, Fossil, among others).
-
-The differences show up in CI for mixed stacks:
-
-- **Runtime** - zerv is one static Rust binary; dunamai needs a Python environment.
-- **Branch semantics** - [`zerv flow`](/concepts/flow) derives the pre-release label and
-  number from branch patterns (`develop` → beta, `release/*` → rc); dunamai's pre-release
-  comes from the last tag, with the branch available only as a `{branch}` substitution in
-  custom formats.
-- **Output model** - zerv can emit a [ZERV RON payload](/concepts/version) once and
-  re-render it into every format downstream; each dunamai invocation produces one string.
-
-## zerv vs git describe
-
-`git describe` needs no install and prints `v1.0.0-5-gabc1234` — distance and commit from
-the nearest tag. If that raw string is all your pipeline needs, use it.
-
-zerv starts where that shape stops: it parses the tag into version fields, normalizes to
-SemVer or PEP 440, derives pre-release segments from branch patterns
-([flow](/concepts/flow)), and renders through [schemas and Tera
-templates](/concepts/formats-and-templates).
-
 ## When to reach for something else
 
-| Tool | Best at | Reach for it when |
-| --- | --- | --- |
-| [semantic-release](/cicd/semantic-release) | release automation on main | you want changelogs, tags, and publishing from commit messages |
-| [setuptools-scm](https://github.com/pypa/setuptools-scm) | Python package builds | the version only needs to exist inside the package metadata |
-| [dunamai](https://github.com/mtkennerly/dunamai) | Python version detection | a Python-first project where tag + distance + dirty is enough |
-| `git describe` | zero-install version string | its `v1.0.0-5-gabc1234` shape is acceptable |
+- You want commit-message parsing, changelogs, and publishing in one tool: use
+  **semantic-release**, or run [both](/cicd/semantic-release).
+- You only need a version inside a Python package build: **setuptools-scm** already lives
+  in that ecosystem.
+- You need a zero-install answer on a bare machine: `git describe` is always there, as
+  long as its `v1.0.0-5-gabc1234` shape is acceptable.

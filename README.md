@@ -32,7 +32,7 @@ Documentation: **[zerv.wisl.dev](https://zerv.wisl.dev)**
 - **Two modes** - [`zerv flow`](https://zerv.wisl.dev/concepts/flow) automates pre-release management from Git branch patterns; [`zerv version`](https://zerv.wisl.dev/concepts/version) gives full manual control with schemas, overrides, and templates.
 - **Any output format** - SemVer, PEP440, CalVer, or [Tera templates](https://zerv.wisl.dev/concepts/formats-and-templates). Generate every format your pipelines need from a single ZERV RON payload.
 
-See how zerv compares to semantic-release, setuptools-scm, dunamai, and `git describe` in [Why zerv](https://zerv.wisl.dev/getting-started/why-zerv).
+See how zerv compares to semantic-release, setuptools-scm, and `git describe` in [Why zerv](https://zerv.wisl.dev/getting-started/why-zerv).
 
 ## Installation
 
@@ -77,7 +77,7 @@ Fan one ZERV RON payload out to every format your pipelines need in the [quickst
 
 Full documentation lives at [zerv.wisl.dev](https://zerv.wisl.dev):
 
-- [Why zerv](https://zerv.wisl.dev/getting-started/why-zerv) - positioning vs semantic-release, setuptools-scm, dunamai, `git describe`
+- [Why zerv](https://zerv.wisl.dev/getting-started/why-zerv) - positioning vs semantic-release, setuptools-scm, `git describe`
 - [Quickstart](https://zerv.wisl.dev/getting-started/quickstart) - one ZERV RON payload to every format
 - [Concepts](https://zerv.wisl.dev/concepts/flow) - flow, version, schema system, formats and templates, config file
 - [CI/CD](https://zerv.wisl.dev/cicd/github-actions) - GitHub Actions usage, coexisting with semantic-release
