@@ -76,11 +76,11 @@ Checklist companion to `context.md`. Decisions locked 2026-08-24. All repo work 
 
 ## Phase D — verify + ship
 
-- [ ] D1. `bake docs-check`
-- [ ] D2. Docs test sweep for touched examples: `ZERV_TEST_NATIVE_GIT=false ZERV_TEST_DOCKER=true cargo +nightly test --test integration -- docs`
-- [ ] D3. Open single PR, review, merge
-- [ ] D4. Post-deploy curl checks: homepage title, `og:image` host is `zerv.wisl.dev`, `cli/zerv` title, sitemap page count 17 → 22
-- [ ] D5. GSC URL inspection on new error pages and `/skill.md` (`seo.indexing` defaults to `navigable` and `skill.md` is not in nav — if not indexed, decide between `seo.indexing: "all"` or accepting non-indexed)
+- [x] D1. `bake docs-check` — clean, no broken links
+- [x] D2. Docs test sweep for touched examples: `ZERV_TEST_NATIVE_GIT=false ZERV_TEST_DOCKER=true cargo +nightly test --test integration -- docs` — 62 passed, 0 failed
+- [x] D3. Open single PR, review, merge — PR [#282](https://github.com/wislertt/zerv/pull/282), all checks green, squash-merged as `7bba353` (includes `.dev/active/01-docs-seo/` plan docs per repo precedent). Pre-commit prettier reformatted tasks.md tables on commit.
+- [x] D4. Post-deploy curl checks (2026-08-24, after CD run 32703741852): homepage title `Dynamic versioning from git for every commit - zerv` ✓; `og:image` = `https://zerv.wisl.dev/img/brand/og-card-light.png` ✓; `cli/zerv` title `zerv CLI commands and global flags - zerv` ✓; sitemap 22 `<loc>` (was 17) ✓; spot-check `troubleshooting/no-version-tags-reachable` live with correct title ✓
+- [ ] D5. GSC URL inspection on new error pages and `/skill.md` (`seo.indexing` defaults to `navigable` and `skill.md` is not in nav — if not indexed, decide between `seo.indexing: "all"` or accepting non-indexed) — **user action**; do after GSC sitemap submit (off-repo item)
 
 ## Off-repo (user actions, no PR)
 
