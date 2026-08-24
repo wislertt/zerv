@@ -10,8 +10,8 @@ from pathlib import Path
 
 from gen_wordmark import FONT, INK, INK_DARK, load, wordmark_parts
 
-MARK = "seed/zerv-mark.svg"
-MARK_TEXT_RATIO = 1.65  # mark ink height vs text ink height (seed viewBox cropped to ink)
+MARK = ".cache/zerv-mark.svg"  # written by gen_mark.py; run it first
+MARK_TEXT_RATIO = 1.65  # mark ink height vs text ink height (viewBox cropped to ink)
 GAP_MARK_RATIO = 0.22  # gap vs mark height
 PAD = 2
 

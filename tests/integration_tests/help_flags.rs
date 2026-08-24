@@ -146,13 +146,34 @@ fn test_check_command_help() {
 }
 
 #[test]
-fn test_main_help_contains_llms_docs_pointer() {
+fn test_main_help_contains_agent_docs_pointers() {
     let test_output = TestCommand::new().arg("--help").assert_success();
     let stdout = test_output.stdout();
 
     assert!(
-        stdout.contains("AI-friendly docs: https://zerv.wisl.dev/llms.txt"),
-        "Help should point agents at the online llms.txt docs: {stdout}"
+        stdout.contains("Docs: https://zerv.wisl.dev"),
+        "Help should link the docs site: {stdout}"
+    );
+    assert!(
+        stdout
+            .contains("Full docs in one file (for AI agents): https://zerv.wisl.dev/llms-full.txt"),
+        "Help should point agents at the single-file docs dump: {stdout}"
+    );
+    assert!(
+        stdout.contains("Docs index: https://zerv.wisl.dev/llms.txt"),
+        "Help should point agents at the llms.txt index: {stdout}"
+    );
+    assert!(
+        stdout.contains("Agent skill: https://zerv.wisl.dev/skill.md"),
+        "Help should point agents at the skill file: {stdout}"
+    );
+    assert!(
+        stdout.contains("Install agent skill: `npx skills add https://zerv.wisl.dev`"),
+        "Help should show the skill install command: {stdout}"
+    );
+    assert!(
+        stdout.contains("Docs search via MCP: https://zerv.wisl.dev/mcp"),
+        "Help should advertise the docs MCP server: {stdout}"
     );
 }
 

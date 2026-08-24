@@ -22,10 +22,31 @@
             }
         }
     },
+    "markdown": {
+        "instructions": [
+            "zerv is a CLI tool that generates version strings from Git state. It is not a service or platform.",
+            "Examples on this site are backed by integration tests; copy them verbatim.",
+            "Flag names are exact: use --output-template, and --dirty takes no value."
+        ]
+    },
     "seo": {
         "metatags": {
-            "og:image": "/img/brand/og-card-light.png"
+            "canonical": "https://zerv.wisl.dev",
+            "og:image": "/img/brand/og-card-light.png",
+            "twitter:card": "summary_large_image"
+        },
+        "organization": {
+            "url": "https://zerv.wisl.dev",
+            "sameAs": [
+                "https://github.com/wislertt/zerv",
+                "https://pypi.org/project/zerv-version/",
+                "https://crates.io/crates/zerv",
+                "https://wisl.dev"
+            ]
         }
+    },
+    "metadata": {
+        "timestamp": true
     },
     "footer": {
         "socials": {

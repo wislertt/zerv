@@ -6,11 +6,12 @@ Locked 2026-08-20 through companion-screen review (screens v17–v29).
 
 ## Mark
 
-Lightning-Z — a `Z` drawn as a single fast stroke, leaning left. Source of truth is [`seed/zerv-mark.svg`](./seed/zerv-mark.svg) (hand-locked traced artwork, not procedural). Downstream assets derive from it; never edit generated files directly.
+Lightning-Z — a `Z` drawn as a single fast stroke, leaning left. Source of truth is [`gen_mark.py`](./gen_mark.py): a parametric edge model (12 vertex dots on a 100×100 grid, one fillet radius per dot). Output lands in `.cache/zerv-mark.svg` (committed copy: `docs/img/brand/zerv-mark.svg`); downstream assets derive from it. Never edit the SVG by hand — change a knob, regenerate.
 
-- Lean: −8° (rotate about mark center `285.5 268`)
-- Center stroke: uniform thickness end-to-end; top/bottom strokes swell toward the middle
-- Geometry: viewBox `56 69 414 414` — **cropped tight to ink** (was `0 0 571 536`; ~10–18% empty margin per side shrank the mark inside lockups, screens v27–v29). Ratios below are honest ink-height ratios
+- Procedural geometry: straight edges + tangent arcs only, one continuous outline (no Beziers, no width profile). Bottom half = top half rotated exactly 180° about the grid center, so central symmetry and end-to-end connectedness hold by construction; both bar edges stay one straight line each through the mirror seam
+- Sharp corners at the bolt and bar top; peaky compound ends (two internally tangent arcs, gentle blend into tight peak — curvature ramps to a point) at the flick tip and both bar ends; small tangent fillet-cap at the root
+- Lean: −8°, baked into the generated path coordinates (the grid frame maps over the leaned design space)
+- Geometry: viewBox `56 69 418 414` — **cropped tight to ink** (was `0 0 571 536` on the original trace; ~10–18% empty margin per side shrank the mark inside lockups, screens v27–v29). Ratios below are honest ink-height ratios
 
 ## Color system
 

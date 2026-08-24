@@ -20,7 +20,7 @@ html:not(.dark) .sd-hero-dark {
    84px-tall anchors, plus link underline). remaining rules are belt-and-suspenders. */
 .sd-badges {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 8px;
     align-items: center;
     justify-content: flex-start;
@@ -51,10 +51,4 @@ html:not(.dark) .sd-hero-dark {
     max-width: none;
     display: block;
     margin: 0 !important; /* prose: 2em top/bottom */
-}
-
-@media (max-width: 768px) {
-    .sd-badges {
-        flex-wrap: wrap;
-    }
 }

@@ -74,6 +74,14 @@ These examples ship in `zerv --help` output.
 
 ## AI-friendly docs
 
-The complete documentation is served in plain text for AI agents at
-[https://zerv.wisl.dev/llms.txt](https://zerv.wisl.dev/llms.txt) (full version: `/llms-full.txt`),
-and `zerv --help` points there too.
+The docs site serves machine-readable endpoints alongside the HTML pages:
+
+| Endpoint                                | Purpose                                              |
+| --------------------------------------- | ---------------------------------------------------- |
+| `https://zerv.wisl.dev/llms.txt`        | Docs index for AI agents                             |
+| `https://zerv.wisl.dev/llms-full.txt`   | All pages in one file                                |
+| `https://zerv.wisl.dev/skill.md`        | Agent skill file (`npx skills add https://zerv.wisl.dev`) |
+| `https://zerv.wisl.dev/mcp`             | Search MCP server for MCP clients                    |
+| Any page URL + `.md`                    | Markdown export, e.g. `/cli/flow.md`                 |
+
+`zerv --help` advertises these endpoints in its afterword.

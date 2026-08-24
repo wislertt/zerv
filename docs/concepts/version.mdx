@@ -46,6 +46,9 @@ zerv version --output-format zerv | zerv version --source stdin
 zerv version --source none --tag-version 1.2.3 --distance 5
 ```
 
+{/* Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_shared_zerv_versioning_github_actions_documentation_examples */}
+{/* Corresponding test: tests/integration_tests/version/main/sources/none.rs:test_none_source_with_distance */}
+
 Piping works on the `zerv` RON format: the internal representation of a fully-resolved
 version. Generate it once with `--output-format zerv`, then re-render it into any number of
 formats downstream. See [formats and templates](/concepts/formats-and-templates).
@@ -63,6 +66,8 @@ version pinned to event metadata:
 ```bash
 zerv flow --bumped-branch "$BRANCH_NAME" --bumped-commit-hash "g$COMMIT_HASH"
 ```
+
+{/* Corresponding test: tests/integration_tests/flow/docs/override_controls.rs:test_individual_override_options */}
 
 That is exactly how the [reusable GitHub Actions workflow](/cicd/github-actions) pins
 versions to the pull request head instead of whatever the runner happened to check out.

@@ -1,4 +1,5 @@
-"""Generate favicons + standalone mark PNGs from the seed mark.
+"""Generate favicons + standalone mark PNGs from the generated mark
+(.cache/zerv-mark.svg, written by gen_mark.py; run it first).
 
 favicon = dark rounded square + pale-gold mark (reads at 16px).
 Run: plain python3 + rsvg-convert + magick. No font dependency.
@@ -23,11 +24,11 @@ RX = 115
 APPLE_SCALE = 0.85  # rx 115 matches iOS corner mask, no extra headroom needed
 
 
-def seed_path():
-    src = Path("seed/zerv-mark.svg").read_text()
+def mark_path():
+    src = Path(CACHE / "zerv-mark.svg").read_text()
     m = re.search(r'viewBox="([-\d. ]+)"', src)
     if m is None:
-        raise ValueError("viewBox not found in seed/zerv-mark.svg")
+        raise ValueError("viewBox not found in .cache/zerv-mark.svg")
     vb = m.group(1)
     vw, vh = float(vb.split()[2]), float(vb.split()[3])
     inner = src[src.index("<g") : src.rindex("</svg>")].rstrip()
@@ -35,7 +36,7 @@ def seed_path():
 
 
 def square_svg(mark_scale):
-    vb, vw, vh, inner = seed_path()
+    vb, vw, vh, inner = mark_path()
     w = vw * mark_scale
     h = vh * mark_scale
     x = (CANVAS - w) / 2
@@ -51,7 +52,7 @@ def square_svg(mark_scale):
 
 
 def mark_only_svg(size):
-    vb, vw, vh, inner = seed_path()
+    vb, vw, vh, inner = mark_path()
     side = max(vw, vh)
     x = (side - vw) / 2
     y = (side - vh) / 2
@@ -76,8 +77,6 @@ def rsvg(svg, out, width):
 
 def main():
     CACHE.mkdir(exist_ok=True)
-    (CACHE / "zerv-mark.svg").write_text(Path("seed/zerv-mark.svg").read_text())
-    print("wrote .cache/zerv-mark.svg (seed copy)")
     sq = square_svg(MARK_SCALE)
     for s in SIZES:
         rsvg(sq, CACHE / f"favicon-{s}.png", s)

@@ -78,6 +78,8 @@ generation.
 ]
 ```
 
+{/* Corresponding test: tests/integration_tests/flow/docs/branch_rules.rs:test_beta_wildcard_default_branch_rules */}
+
 **Pattern matching**:
 
 - **Exact**: `"develop"` matches only `"develop"`
@@ -106,14 +108,15 @@ zerv flow --branch-rules '[
 # → 1.0.1-alpha.20460.post.1+feature.new.feature.1.g1d2e3f4 (feature branch - test case 7)
 ```
 
+{/* Corresponding test: tests/integration_tests/flow/docs/branch_rules.rs:test_branch_rules_documentation_examples */}
+{/* Corresponding test: tests/integration_tests/flow/docs/branch_rules.rs:test_branch_rules_custom_rules */}
+
 **Configuration**:
 
 - **`pattern`** - branch name (exact) or wildcard (`/*`)
 - **`pre_release_label`** - `alpha`, `beta`, or `rc`
 - **`pre_release_num`** - explicit number (exact) or extracted (wildcard)
 - **`post_mode`** - `commit` (count commits) or `tag` (count tags)
-
-{/* Corresponding test: tests/integration_tests/flow/docs/branch_rules.rs:test_branch_rules_documentation_examples */}
 
 ## Override controls
 
