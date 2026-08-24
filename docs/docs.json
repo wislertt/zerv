@@ -32,7 +32,7 @@
     "seo": {
         "metatags": {
             "canonical": "https://zerv.wisl.dev",
-            "og:image": "/img/brand/og-card-light.png",
+            "og:image": "https://zerv.wisl.dev/img/brand/og-card-light.png",
             "twitter:card": "summary_large_image"
         },
         "organization": {
@@ -123,7 +123,14 @@
             },
             {
                 "group": "Troubleshooting",
-                "pages": ["troubleshooting/index"]
+                "pages": [
+                    "troubleshooting/index",
+                    "troubleshooting/no-version-tags-reachable",
+                    "troubleshooting/vcs-not-found",
+                    "troubleshooting/unknown-schema",
+                    "troubleshooting/conflicting-options",
+                    "troubleshooting/config-parse-error"
+                ]
             }
         ]
     }
