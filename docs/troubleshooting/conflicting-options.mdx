@@ -1,0 +1,31 @@
+---
+title: Conflicting options
+sidebarTitle: Conflicting options
+description: "zerv error: Conflicting options — two flags that cannot combine, such as --output-template with --output-prefix. Pick one or fold the prefix into the template."
+---
+
+```
+Error: Conflicting options: Cannot use --output-template with --output-prefix. ...
+```
+
+Two flags that say incompatible things about the same output. zerv refuses the combination
+rather than guessing which one wins.
+
+## Reproduce
+
+```bash
+zerv render "1.2.3" --output-template "v{{major}}" --output-prefix "v"
+# Error: Conflicting options: Cannot use --output-template with --output-prefix. ...
+```
+
+{/* Corresponding test: tests/integration_tests/docs/troubleshooting.rs:test_troubleshooting_conflicting_options_message */}
+
+## The common pairs
+
+- `--output-prefix` with `--output-template`: put the prefix inside the template instead,
+  `--output-template "v{{ major }}.{{ minor }}"`
+- `--clean` with `--dirty`: pick one state
+
+See [formats and templates](/concepts/formats-and-templates) for how templates and prefixes
+actually compose. Not this error? Every fix lives on
+[zerv errors and troubleshooting](/troubleshooting).
