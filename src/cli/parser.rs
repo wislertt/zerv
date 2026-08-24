@@ -17,7 +17,12 @@ use crate::cli::version::VersionArgs;
 system (VCS) data using configurable schemas. It supports multiple input sources, output formats, \
 and advanced override capabilities for CI/CD workflows.
 
-AI-friendly docs: https://zerv.wisl.dev/llms.txt
+Docs: https://zerv.wisl.dev
+Full docs in one file (for AI agents): https://zerv.wisl.dev/llms-full.txt
+Docs index: https://zerv.wisl.dev/llms.txt
+Agent skill: https://zerv.wisl.dev/skill.md
+Install agent skill: `npx skills add https://zerv.wisl.dev`
+Docs search via MCP: https://zerv.wisl.dev/mcp
 
 EXAMPLES:
   # Flow - branch-based versioning from git state

@@ -28,3 +28,9 @@ broken links with `bake docs-check`.
   `tests/integration_tests/docs/`.
 - Adding a page: create the `.mdx` file and register its path under
   `navigation.groups` in `docs.json`.
+- `skill.md` is hand-written and served at `/skill.md`; it overrides the
+  low-quality file Mintlify auto-generates. Do not delete it. It is served raw,
+  so it cannot carry `{/* Corresponding test: ... */}` comments — every code
+  example in it must be a verbatim copy of a tested `.mdx` example.
+- `markdown.instructions` in `docs.json` is injected as an `Agent Instructions`
+  block into `llms.txt` and every Markdown page export.

@@ -1,7 +1,7 @@
 [project]
 name = "zerv-version"
 version = "0.0.0" # Use git tag
-description = "Dynamic versioning from git. Every commit gets its version."
+description = "Dynamic versioning from git. Every commit gets its version. Keep semantic-release on main. Let zerv prerelease every other branch."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
