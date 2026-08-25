@@ -1,34 +1,18 @@
 ---
-title: Troubleshooting
-description: Fixes for common zerv errors - no reachable tags, VCS not found, unknown schemas, conflicting options, config parse errors, and PEP440 normalization confusion.
+title: zerv errors and troubleshooting
+sidebarTitle: Troubleshooting
+description: zerv behavior that looks wrong but isn't - bare zerv exits 2, PEP440 differs from SemVer, docker rejects +, stdin piping rules. Plus an index of every error fix.
 ---
 
-## No version tags are reachable from HEAD
+## Errors
 
-```
-Error: No version tags are reachable from HEAD
-```
+Every error gets its own page with the exact message, the cause, and the fix:
 
-zerv versions builds relative to the latest reachable tag; a repo (or branch) without any
-tag has no base version. Fixes:
-
-- Create the first tag: `git tag v0.1.0 && git push origin v0.1.0`
-- Seed the base version explicitly: `zerv flow --tag-version "v0.1.0"`
-- In CI, check out with full history: a shallow clone (`fetch-depth: 1`) can cut the tags
-  off. zerv's [reusable workflow](/cicd/github-actions) uses `fetch-depth: 0` for exactly
-  this reason.
-
-## VCS not found: git
-
-```
-Error: VCS not found: git
-```
-
-zerv could not find a Git repository at the working directory. Fixes:
-
-- Run from inside the repository, or point at it: `zerv version -C /path/to/repo`
-- Versioning something that is not a repo (a plain artifact, a manual value)? Skip VCS
-  entirely: `zerv version --source none --tag-version 1.2.3 --distance 5`
+- [No version tags are reachable from HEAD](/troubleshooting/no-version-tags-reachable)
+- [VCS not found: Not in a git repository](/troubleshooting/vcs-not-found)
+- [Unknown schema](/troubleshooting/unknown-schema)
+- [Conflicting options](/troubleshooting/conflicting-options)
+- [Config parse error](/troubleshooting/config-parse-error)
 
 ## Running `zerv` shows help and exits
 
@@ -40,52 +24,6 @@ zerv version
 ```
 
 {/* Corresponding test: tests/integration_tests/help_flags.rs:test_no_subcommand_shows_help_and_exits_nonzero */}
-
-## Unknown schema
-
-```
-Error: Unknown schema: standard-bse
-```
-
-Typo'd or unsupported `--schema` name. Preset names come from the built-in list; see
-[schema system](/concepts/schema-system). For anything custom, write a RON schema instead:
-
-```bash
-zerv version --schema-ron '(core:[var(Major), var(Minor), var(Patch)], extra_core:[], build:[])'
-```
-
-{/* Corresponding test: tests/integration_tests/docs/troubleshooting.rs:test_troubleshooting_unknown_schema_message */}
-
-## Conflicting options
-
-```
-Error: Conflicting options: ...
-```
-
-Two flags that cannot combine. The common ones:
-
-- `--output-prefix` with `--output-template`: put the prefix inside the template instead,
-  `--output-template "v{{ major }}.{{ minor }}"`
-- `--clean` with `--dirty`: pick one state
-
-```bash
-zerv render "1.2.3" --output-template "v{{major}}" --output-prefix "v"
-# Error: Conflicting options: Cannot use --output-template with --output-prefix. ...
-```
-
-{/* Corresponding test: tests/integration_tests/docs/troubleshooting.rs:test_troubleshooting_conflicting_options_message */}
-
-## Config parse error
-
-```
-Error: Config parse error: ...
-```
-
-`zerv.toml` failed to parse. The file only accepts stable policy fields: an ephemeral
-per-build flag (`dirty = true`, `bump_minor = true`, `major = 2`) or a typo'd key is
-rejected loudly at parse time (`deny_unknown_fields`) rather than silently ignored. Remove
-the key or move it to the matching section (`[version]` / `[flow]`). See the
-[config file](/concepts/config-file) page for the allowed fields.
 
 ## PEP440 output looks different from SemVer output
 
