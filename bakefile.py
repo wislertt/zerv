@@ -1,4 +1,7 @@
+import os
+import re
 import shutil
+import zipfile
 from pathlib import Path
 from typing import Annotated
 
@@ -19,11 +22,73 @@ class PyPIPublisher(_PyPIPublisher):
 
     def _build_for_publish(self, ctx: Context) -> None:
         cmd = "maturin build --release --strip --out dist/"
+        env: dict[str, str] | None = None
 
         if self._target:
             cmd += f" --target {self._target}"
 
-        ctx.run(cmd)
+        if self._target and "-linux-" in self._target:
+            compatibility = "musllinux_1_2" if self._target.endswith("-musl") else "manylinux_2_17"
+            cmd += f" --zig --compatibility {compatibility}"
+            # zig comes from the venv's `python-zig` (maturin[zig]); a system maturin
+            # would not see it, so make sure the venv's bin dir wins
+            venv_bin = Path(".venv/bin").resolve()
+            env = {"PATH": f"{venv_bin}{os.pathsep}{os.environ['PATH']}"}
+
+        ctx.run(cmd, env=env)
+
+        if self._target and "-linux-" in self._target:
+            self._check_wheel_glibc()
+
+        # One designated leg also ships the sdist so non-matrix platforms have a fallback
+        if self._target == "x86_64-unknown-linux-gnu":
+            ctx.run("maturin sdist --out dist/")
+
+    def _check_wheel_glibc(self) -> None:
+        """Fail the publish if the built binary breaks the wheel's platform tag.
+
+        maturin tags the wheel from the --compatibility flag we pass, not from the
+        binary's actual symbol references; this is the enforcement of that claim.
+        """
+        wheels = list(Path("dist").glob("*.whl"))
+        if len(wheels) != 1:
+            console.error(f"Expected exactly one wheel in dist/, found: {[w.name for w in wheels]}")
+            raise typer.Exit(1)
+
+        with zipfile.ZipFile(wheels[0]) as zf:
+            # bindings = "bin" places the binary in <pkg>.data/scripts/ (find_bin)
+            bins = [name for name in zf.namelist() if name.endswith(".data/scripts/zerv")]
+            if len(bins) != 1:
+                console.error(f"Expected one bundled binary in {wheels[0].name}, found: {bins}")
+                raise typer.Exit(1)
+            binary = zf.read(bins[0])
+
+        text = binary.decode("ascii", errors="ignore")
+        versions = {
+            tuple(int(part) for part in match.split("."))
+            for match in re.findall(r"GLIBC_(\d+(?:\.\d+)*)", text)
+        }
+
+        if self._target and self._target.endswith("-musl"):
+            if versions:
+                console.error(
+                    f"musl wheel {wheels[0].name} must be static but references glibc: "
+                    f"{sorted(versions)}"
+                )
+                raise typer.Exit(1)
+            console.success(f"{wheels[0].name}: static, no glibc references")
+        else:
+            highest = max(versions, default=(0,))
+            if highest > (2, 17):
+                console.error(
+                    f"{wheels[0].name} claims manylinux_2_17 but binary requires "
+                    f"glibc {'.'.join(map(str, highest))}"
+                )
+                raise typer.Exit(1)
+            console.success(
+                f"{wheels[0].name}: max glibc reference "
+                f"{'.'.join(map(str, highest)) if versions else 'none'}"
+            )
 
 
 class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
