@@ -89,9 +89,8 @@ jobs:
               run: rustup target add ${{ matrix.target }}
 
             - name: setup-venv
-              # --no-install-project: skips a redundant crate compile via build isolation
               shell: bash
-              run: uv sync --frozen --no-install-project
+              run: uv sync --frozen
 
             - name: update-cargo-toml-version
               if: inputs.version != ''
