@@ -18,6 +18,10 @@ categories = [
 rust-version = "1.92"
 exclude = ["/.amazonq/", "/.cursor/", "/.dev/", "/.github/", "/scripts/"]
 
+# assets are bare binaries at the versionless name the default pkg-url already probes
+[package.metadata.binstall]
+pkg-fmt = "bin"
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
