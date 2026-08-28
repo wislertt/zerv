@@ -26,15 +26,25 @@ jobs:
             matrix:
                 include:
                     - name: linux-x64
-                      os: ubuntu-latest
+                      os: ubuntu-24.04
                       target: x86_64-unknown-linux-gnu
                       artifact_name: zerv
                       asset_name: zerv-x86_64-unknown-linux-gnu
                     - name: linux-arm64
-                      os: ubuntu-latest
+                      os: ubuntu-24.04
                       target: aarch64-unknown-linux-gnu
                       artifact_name: zerv
                       asset_name: zerv-aarch64-unknown-linux-gnu
+                    - name: linux-x64-musl
+                      os: ubuntu-24.04
+                      target: x86_64-unknown-linux-musl
+                      artifact_name: zerv
+                      asset_name: zerv-x86_64-unknown-linux-musl
+                    - name: linux-arm64-musl
+                      os: ubuntu-24.04
+                      target: aarch64-unknown-linux-musl
+                      artifact_name: zerv
+                      asset_name: zerv-aarch64-unknown-linux-musl
                     - name: macos-x64
                       os: macos-latest
                       target: x86_64-apple-darwin
@@ -78,13 +88,10 @@ jobs:
               shell: bash
               run: rustup target add ${{ matrix.target }}
 
-            - name: install-cross-compilation-dependencies
-              if: matrix.target == 'aarch64-unknown-linux-gnu'
+            - name: setup-venv
+              # --no-install-project: skips a redundant crate compile via build isolation
               shell: bash
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y gcc-aarch64-linux-gnu
-                  echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+              run: uv sync --frozen --no-install-project
 
             - name: update-cargo-toml-version
               if: inputs.version != ''
@@ -92,15 +99,26 @@ jobs:
               run: |
                   bake version "${{ inputs.version }}"
 
+            - name: setup-path
+              shell: bash
+              run: |
+                  if [ "$RUNNER_OS" == "Windows" ]; then
+                    echo "${{ github.workspace }}/.venv/Scripts" >> "$GITHUB_PATH"
+                  else
+                    echo "${{ github.workspace }}/.venv/bin" >> "$GITHUB_PATH"
+                  fi
+
             - name: build-binary
-              run: cargo build --release --target ${{ matrix.target }}
+              # wheel-extract build: GH assets share provenance with the PyPI wheels
+              shell: bash
+              run: bake build --target ${{ matrix.target }}
 
             - name: upload-binary-to-release
               if: inputs.upload_to_release == true && inputs.tag != ''
               uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # 2.11.5
               with:
                   repo_token: ${{ secrets.GITHUB_TOKEN }}
-                  file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+                  file: dist/${{ matrix.artifact_name }}
                   asset_name: ${{ matrix.asset_name }}
                   tag: ${{ inputs.tag }}
                   overwrite: true

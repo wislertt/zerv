@@ -15,80 +15,112 @@ from bakelib.space.lib import BaseLibSpace
 from tests.python.utils import symlink_zerv_to_venv_bin
 
 
+def _wheel_build_command(target: str | None) -> tuple[str, dict[str, str] | None]:
+    cmd = "maturin build --release --strip --out dist/"
+    env: dict[str, str] | None = None
+
+    if target:
+        cmd += f" --target {target}"
+
+    if target and "-linux-" in target:
+        compatibility = "musllinux_1_2" if target.endswith("-musl") else "manylinux_2_17"
+        cmd += f" --zig --compatibility {compatibility}"
+        # zig comes from the venv's python-zig (maturin[zig]); a system maturin would not see it
+        venv_bin = Path(".venv/bin").resolve()
+        env = {"PATH": f"{venv_bin}{os.pathsep}{os.environ['PATH']}"}
+
+    return cmd, env
+
+
+def _build_wheel(ctx: Context, target: str | None) -> None:
+    cmd, env = _wheel_build_command(target)
+    ctx.run(cmd, env=env)
+
+    if target and "-linux-" in target:
+        _check_wheel_glibc(target)
+
+
+def _extract_wheel_binary() -> Path:
+    wheels = list(Path("dist").glob("*.whl"))
+    if len(wheels) != 1:
+        console.error(f"Expected exactly one wheel in dist/, found: {[w.name for w in wheels]}")
+        raise typer.Exit(1)
+
+    with zipfile.ZipFile(wheels[0]) as zf:
+        bins = [
+            name
+            for name in zf.namelist()
+            if name.endswith((".data/scripts/zerv", ".data/scripts/zerv.exe"))
+        ]
+        if len(bins) != 1:
+            console.error(f"Expected one bundled binary in {wheels[0].name}, found: {bins}")
+            raise typer.Exit(1)
+        binary_path = Path("dist") / Path(bins[0]).name
+        binary_path.write_bytes(zf.read(bins[0]))
+
+    binary_path.chmod(0o755)
+    console.success(f"Extracted {binary_path} from {wheels[0].name}")
+    return binary_path
+
+
+def _check_wheel_glibc(target: str | None) -> None:
+    """maturin tags the wheel from --compatibility, not the binary's symbols; enforce the claim."""
+    wheels = list(Path("dist").glob("*.whl"))
+    if len(wheels) != 1:
+        console.error(f"Expected exactly one wheel in dist/, found: {[w.name for w in wheels]}")
+        raise typer.Exit(1)
+
+    with zipfile.ZipFile(wheels[0]) as zf:
+        # bindings = "bin" places the binary in <pkg>.data/scripts/ (find_bin)
+        bins = [
+            name
+            for name in zf.namelist()
+            if name.endswith((".data/scripts/zerv", ".data/scripts/zerv.exe"))
+        ]
+        if len(bins) != 1:
+            console.error(f"Expected one bundled binary in {wheels[0].name}, found: {bins}")
+            raise typer.Exit(1)
+        binary = zf.read(bins[0])
+
+    text = binary.decode("ascii", errors="ignore")
+    versions = {
+        tuple(int(part) for part in match.split("."))
+        for match in re.findall(r"GLIBC_(\d+(?:\.\d+)*)", text)
+    }
+
+    if target and target.endswith("-musl"):
+        if versions:
+            console.error(
+                f"musl wheel {wheels[0].name} must be static but references glibc: "
+                f"{sorted(versions)}"
+            )
+            raise typer.Exit(1)
+        console.success(f"{wheels[0].name}: static, no glibc references")
+    else:
+        highest = max(versions, default=(0,))
+        if highest > (2, 17):
+            console.error(
+                f"{wheels[0].name} claims manylinux_2_17 but binary requires "
+                f"glibc {'.'.join(map(str, highest))}"
+            )
+            raise typer.Exit(1)
+        console.success(
+            f"{wheels[0].name}: max glibc reference "
+            f"{'.'.join(map(str, highest)) if versions else 'none'}"
+        )
+
+
 class PyPIPublisher(_PyPIPublisher):
     """Custom PyPI publisher for zerv that uses maturin instead of uv build."""
 
     _target: str | None = None
 
     def _build_for_publish(self, ctx: Context) -> None:
-        cmd = "maturin build --release --strip --out dist/"
-        env: dict[str, str] | None = None
-
-        if self._target:
-            cmd += f" --target {self._target}"
-
-        if self._target and "-linux-" in self._target:
-            compatibility = "musllinux_1_2" if self._target.endswith("-musl") else "manylinux_2_17"
-            cmd += f" --zig --compatibility {compatibility}"
-            # zig comes from the venv's `python-zig` (maturin[zig]); a system maturin
-            # would not see it, so make sure the venv's bin dir wins
-            venv_bin = Path(".venv/bin").resolve()
-            env = {"PATH": f"{venv_bin}{os.pathsep}{os.environ['PATH']}"}
-
-        ctx.run(cmd, env=env)
-
-        if self._target and "-linux-" in self._target:
-            self._check_wheel_glibc()
+        _build_wheel(ctx, self._target)
 
         # One designated leg also ships the sdist so non-matrix platforms have a fallback
         if self._target == "x86_64-unknown-linux-gnu":
             ctx.run("maturin sdist --out dist/")
-
-    def _check_wheel_glibc(self) -> None:
-        """Fail the publish if the built binary breaks the wheel's platform tag.
-
-        maturin tags the wheel from the --compatibility flag we pass, not from the
-        binary's actual symbol references; this is the enforcement of that claim.
-        """
-        wheels = list(Path("dist").glob("*.whl"))
-        if len(wheels) != 1:
-            console.error(f"Expected exactly one wheel in dist/, found: {[w.name for w in wheels]}")
-            raise typer.Exit(1)
-
-        with zipfile.ZipFile(wheels[0]) as zf:
-            # bindings = "bin" places the binary in <pkg>.data/scripts/ (find_bin)
-            bins = [name for name in zf.namelist() if name.endswith(".data/scripts/zerv")]
-            if len(bins) != 1:
-                console.error(f"Expected one bundled binary in {wheels[0].name}, found: {bins}")
-                raise typer.Exit(1)
-            binary = zf.read(bins[0])
-
-        text = binary.decode("ascii", errors="ignore")
-        versions = {
-            tuple(int(part) for part in match.split("."))
-            for match in re.findall(r"GLIBC_(\d+(?:\.\d+)*)", text)
-        }
-
-        if self._target and self._target.endswith("-musl"):
-            if versions:
-                console.error(
-                    f"musl wheel {wheels[0].name} must be static but references glibc: "
-                    f"{sorted(versions)}"
-                )
-                raise typer.Exit(1)
-            console.success(f"{wheels[0].name}: static, no glibc references")
-        else:
-            highest = max(versions, default=(0,))
-            if highest > (2, 17):
-                console.error(
-                    f"{wheels[0].name} claims manylinux_2_17 but binary requires "
-                    f"glibc {'.'.join(map(str, highest))}"
-                )
-                raise typer.Exit(1)
-            console.success(
-                f"{wheels[0].name}: max glibc reference "
-                f"{'.'.join(map(str, highest)) if versions else 'none'}"
-            )
 
 
 class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
@@ -224,6 +256,21 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
     ):
         self._target = target
         return super().publish(registry=registry, token=token, version=version)
+
+    @command(help="Build a release binary for a target triple, extracted from the maturin wheel")
+    def build(
+        self,
+        *,
+        target: Annotated[
+            str | None,
+            typer.Option(
+                help="Rust target triple (e.g., aarch64-apple-darwin, x86_64-pc-windows-msvc)"
+            ),
+        ] = None,
+    ):
+        shutil.rmtree("dist", ignore_errors=True)
+        _build_wheel(self.ctx, target)
+        return _extract_wheel_binary()
 
     def _get_version(self) -> str:
         return self._get_consistent_version((RustSpace, PythonSpace))
