@@ -52,7 +52,7 @@ tracing-subscriber = { version = "^0.3", features = ["env-filter"] }
 [dev-dependencies]
 ctor = "^1.0"
 dotenvy = "^0.15"
-rstest = "^0.26.0"
+rstest = "^0.27.0"
 serial_test = "^4.0"
 shlex = "^2.0"
 tempfile = "^3.0"
