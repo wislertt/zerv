@@ -23,6 +23,11 @@ on:
                 required: false
                 default: false
                 type: boolean
+            event_name_override:
+                description: "Override GITHUB_EVENT_NAME seen by semantic-release (empty = real event; lets tests simulate a push so release detection runs)"
+                required: false
+                default: ""
+                type: string
             checkout_repository:
                 description: "Repository to check out (empty = caller repository)"
                 required: false
@@ -158,6 +163,7 @@ jobs:
                   dry_run: ${{ inputs.dry_run }}
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GITHUB_EVENT_NAME: ${{ inputs.event_name_override != '' && inputs.event_name_override || github.event_name }}
 
             - name: determine-version-from-release-or-tag
               id: determine-version

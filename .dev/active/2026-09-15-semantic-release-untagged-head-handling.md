@@ -87,7 +87,16 @@ Key design decisions (do not regress these):
 - Test wired into `ci.yml` only. Removed from `cd.yml` (release path should
   stay lean; ci covers it).
 - All scenario runs use `dry_run: true` → semantic-release publishes nothing.
-- Cleanup `if: always()` + `|| echo "already absent"` guards.
+- f5 passes `event_name_override: push` (new shared-workflow input): CI runs in
+  a pull_request context where semantic-release skips release detection entirely
+  (run log: "This run was triggered by a pull request..."), so the would-be
+  release 1.1.0 was never computed. The override makes semantic-release treat
+  the run as push; fixture .releaserc already pins its own branch name.
+- Cleanup `if: always()`; deletes EVERY branch/tag in the sandbox (it is
+  dedicated to CI) via ls-remote → push --delete loop, then re-lists and fails
+  if anything remains. Earlier version ran `git push` with no git repo present
+  (no checkout step) — every delete failed "not a git repository" and the
+  `|| echo` guard masked it as "already absent", so refs piled up silently.
 
 ### 3. `.github/workflows/ci.yml`
 
@@ -132,11 +141,10 @@ actionlint + prettier + check-yaml.
 
 ## User's remaining setup (one-time, blocks CI verification)
 
-1. Create **public** repo `wislertt/zerv-sandbox` (empty, no README).
-   Public is required (see design decisions above).
-2. Create fine-grained PAT: repository access = only `zerv-sandbox`,
-   permission = Contents: Read/Write.
-3. Add PAT as secret `ZERV_SANDBOX_REPO_TOKEN` on wislertt/zerv.
+1. Create repo `wislertt/zerv-sandbox` (empty, no README). May be private
+   (see design decisions: checkout_token threading). DONE 2026-09-15.
+2. Fine-grained PAT: only `zerv-sandbox`, Contents: Read/Write. DONE.
+3. Secret `ZERV_SANDBOX_REPO_TOKEN` on wislertt/zerv. DONE.
 
 ## Open follow-ups
 
@@ -168,3 +176,15 @@ Downstream note for gcp-landing-zone: `zerv-versioning` is gated on
 `is_valid == 'true'`, so it now RUNS on non-release pushes and advances the
 moveable tags v1/v1.64 to HEAD (self-healing: future non-release pushes find a
 tag on HEAD and use the fallback path).
+
+## CI debugging log (2026-09-15, branch fix-shared-semantic-release)
+
+1. Run 1: setup failed — secret empty. Reusable-workflow calls don't inherit
+   secrets; fixed with explicit `secrets:` passthrough in ci.yml + secret
+   declaration in the test workflow's `workflow_call` block (actionlint).
+2. Run 2: scenario checkouts failed "Repository not found" — sandbox private +
+   default GITHUB_TOKEN can't read it. Fixed with `checkout_token` secret input
+   on shared workflow; scenarios pass `ZERV_SANDBOX_REPO_TOKEN` down.
+3. Run 3: verify failed only on f5 — semantic-release skips release detection
+   under pull_request events. Fixed with `event_name_override: push` on f5.
+   Also discovered cleanup never actually deleted refs (see design decisions).

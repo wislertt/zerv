@@ -159,6 +159,10 @@ jobs:
         uses: ./.github/workflows/shared-semantic-release.yml
         with:
             dry_run: true
+            # CI runs in a pull_request context, where semantic-release skips
+            # release detection entirely; simulate a push so the would-be
+            # release (1.1.0) is actually computed.
+            event_name_override: push
             checkout_repository: wislertt/zerv-sandbox
             checkout_ref: refs/heads/zerv-ci/semantic-release-f5-new-release
         secrets:
@@ -232,8 +236,11 @@ jobs:
     # ====================================================
     # Cleanup
     # ====================================================
-    # Fixture refs are force-overwritten on each run, but stale names could
-    # collide with future fixture scenarios, so remove them after every run.
+    # The sandbox is dedicated to CI fixtures, so delete EVERY branch and tag
+    # in it (not just this run's refs) and verify nothing remains. Fail loudly
+    # on real push errors instead of masking them as "already absent" — an
+    # earlier version ran `git push` outside any repository, every delete
+    # failed with "not a git repository", and leftover refs piled up silently.
     # `always()` guarantees removal even when scenarios fail (debugging relies
     # on the run logs, not the refs).
     cleanup-fixtures:
@@ -244,7 +251,7 @@ jobs:
         env:
             FIXTURES_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
         steps:
-            - name: delete-fixture-branches-and-tags
+            - name: delete-all-sandbox-refs
               run: |
                   set -euo pipefail
                   if [ -z "${FIXTURES_TOKEN}" ]; then
@@ -253,24 +260,33 @@ jobs:
                   fi
                   ORIGIN_URL="https://x-access-token:${FIXTURES_TOKEN}@github.com/${FIXTURES_REPO}.git"
 
-                  BRANCHES=(
-                      zerv-ci/semantic-release-f1-no-tags
-                      zerv-ci/semantic-release-f2-semver-tag
-                      zerv-ci/semantic-release-f3-moveable-tags
-                      zerv-ci/semantic-release-f4-tag-behind
-                      zerv-ci/semantic-release-f5-new-release
-                  )
-                  TAGS=(v1.0.0 v1.2.3 v2 v2.3 v2.3.4 v3 v3.1)
+                  # git push needs a repository to run from; make a throwaway one
+                  WORK="$(mktemp -d)"
+                  git init -q "$WORK"
 
-                  for branch in "${BRANCHES[@]}"; do
-                      git push -q --delete "$ORIGIN_URL" "refs/heads/${branch}" || {
-                          echo "branch ${branch} already absent"
-                      }
-                  done
-                  for tag in "${TAGS[@]}"; do
-                      git push -q --delete "$ORIGIN_URL" "refs/tags/${tag}" || {
-                          echo "tag ${tag} already absent"
-                      }
-                  done
+                  list_refs() {
+                      git ls-remote "$ORIGIN_URL" 'refs/heads/*' 'refs/tags/*'
+                  }
 
-                  echo "✓ fixture refs cleaned up"
+                  LIST="$(list_refs || true)"
+                  if [ -z "$LIST" ]; then
+                      echo "✓ sandbox has no refs; nothing to clean"
+                      exit 0
+                  fi
+
+                  while read -r _sha ref; do
+                      case "$ref" in
+                          refs/heads/*) git push -q --delete "$ORIGIN_URL" "${ref#refs/heads/}" ;;
+                          refs/tags/*) git push -q --delete "$ORIGIN_URL" "${ref#refs/tags/}" ;;
+                          *) echo "skip unexpected ref: $ref" ;;
+                      esac
+                  done <<< "$LIST"
+
+                  REMAINING="$(list_refs || true)"
+                  if [ -n "$REMAINING" ]; then
+                      echo "::error::sandbox refs still present after cleanup:"
+                      echo "$REMAINING"
+                      exit 1
+                  fi
+
+                  echo "✓ sandbox cleaned up (all branches and tags deleted)"
