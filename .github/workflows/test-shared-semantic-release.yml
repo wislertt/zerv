@@ -1,0 +1,332 @@
+name: test-shared-semantic-release
+
+on:
+    workflow_dispatch:
+    workflow_call:
+        secrets:
+            ZERV_SANDBOX_REPO_TOKEN:
+                required: false
+                description: Fine-grained PAT with Contents:RW on the fixtures repo (only needed for workflow_call; workflow_dispatch reads repo secrets directly)
+
+permissions:
+    contents: write
+    issues: write
+    pull-requests: write
+
+env:
+    FIXTURES_REPO: wislertt/zerv-sandbox
+
+jobs:
+    # ====================================================
+    # Fixture setup
+    # ====================================================
+    # Craft deterministic git histories in temp repos and force-push them as
+    # fixture branches of a dedicated fixtures repository, so the real
+    # repository's branch/tag namespace is never touched. Each fixture tree
+    # carries its own minimal .releaserc (angular defaults: only feat/fix/perf
+    # release), so `revert:` commits are guaranteed non-releasing. Re-runs
+    # force-overwrite the same refs. Requires the ZERV_SANDBOX_REPO_TOKEN secret
+    # (fine-grained PAT with Contents:RW on the fixtures repo only).
+    setup-fixtures:
+        name: setup-fixtures
+        runs-on: ubuntu-latest
+        outputs:
+            fixtures_repo: ${{ steps.publish-repo.outputs.fixtures_repo }}
+        env:
+            FIXTURES_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+        steps:
+            - name: check-secret
+              run: |
+                  if [ -z "${FIXTURES_TOKEN}" ]; then
+                      echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create repo ${FIXTURES_REPO} and a fine-grained PAT with Contents:RW on it, then add the secret to this repository."
+                      exit 1
+                  fi
+
+            - name: publish-repo
+              id: publish-repo
+              run: echo "fixtures_repo=${FIXTURES_REPO}" >> "$GITHUB_OUTPUT"
+
+            - name: create-and-push-fixture-histories
+              run: |
+                  set -euo pipefail
+                  ORIGIN_URL="https://x-access-token:${FIXTURES_TOKEN}@github.com/${FIXTURES_REPO}.git"
+
+                  # Push a permanent "main" FIRST: on an empty repo GitHub makes
+                  # the first pushed ref the default branch, and the default can
+                  # never be deleted by push (would need Administration:Write to
+                  # change via API). This keeps the default branch out of the
+                  # fixture refs cleanup has to remove. No-op on existing sandbox.
+                  WORK="$(mktemp -d)"
+                  git init -q -b main "$WORK"
+                  cd "$WORK"
+                  git config user.email "zerv-ci@users.noreply.github.com"
+                  git config user.name "zerv-ci"
+                  git commit -q --allow-empty -m "sandbox default branch"
+                  git push -q --force "$ORIGIN_URL" main
+
+                  # Usage: fixture <branch>  -> creates a repo with the fixture
+                  # .releaserc and a non-releasing base commit, echoes its path.
+                  fixture() {
+                      local branch="$1" branches="${2:-$1}"
+                      local dir
+                      dir="$(mktemp -d)"
+                      git init -q -b main "$dir"
+                      git -C "$dir" config user.email "zerv-ci@users.noreply.github.com"
+                      git -C "$dir" config user.name "zerv-ci"
+                      printf '{\n  "branches": ["%s"],\n  "plugins": ["@semantic-release/commit-analyzer", "@semantic-release/release-notes-generator"]\n}\n' "$branches" > "$dir/.releaserc.json"
+                      git -C "$dir" add .
+                      git -C "$dir" commit -q -m "chore: fixture base"
+                      echo "$dir"
+                  }
+
+                  push() {
+                      local dir="$1" branch="$2"
+                      git -C "$dir" push -q --force "$ORIGIN_URL" "refs/heads/main:refs/heads/${branch}"
+                      git -C "$dir" push -q --force "$ORIGIN_URL" --tags
+                  }
+
+                  # f1: no tags at all -> published=false, version=""
+                  F1=$(fixture "zerv-ci/semantic-release-f1-no-tags")
+                  git -C "$F1" commit -q --allow-empty -m "revert: remove feature"
+                  push "$F1" "zerv-ci/semantic-release-f1-no-tags"
+
+                  # f2: HEAD tagged with exact semver + moveable tags
+                  # -> published=false, version=2.3.4 (semver preferred)
+                  F2=$(fixture "zerv-ci/semantic-release-f2-semver-tag")
+                  git -C "$F2" commit -q --allow-empty -m "feat: api"
+                  git -C "$F2" tag v2.3.4
+                  git -C "$F2" tag v2
+                  git -C "$F2" tag v2.3
+                  push "$F2" "zerv-ci/semantic-release-f2-semver-tag"
+
+                  # f3: HEAD tagged with moveable tags only
+                  # -> published=false, version=3 (moveable fallback, lexical order)
+                  F3=$(fixture "zerv-ci/semantic-release-f3-moveable-tags")
+                  git -C "$F3" commit -q --allow-empty -m "revert: drop thing"
+                  git -C "$F3" tag v3
+                  git -C "$F3" tag v3.1
+                  push "$F3" "zerv-ci/semantic-release-f3-moveable-tags"
+
+                  # f4: release tag behind HEAD, `revert:` commit on HEAD
+                  # -> published=false, version="" (the production bug scenario)
+                  F4=$(fixture "zerv-ci/semantic-release-f4-tag-behind")
+                  git -C "$F4" commit -q --allow-empty -m "feat: add thing"
+                  git -C "$F4" tag v1.2.3
+                  git -C "$F4" commit -q --allow-empty -m "revert: remove thing"
+                  push "$F4" "zerv-ci/semantic-release-f4-tag-behind"
+
+                  # f5: release tag then a feat commit
+                  # -> dry-run reports published=true, version=1.1.0 (exact).
+                  # branches must name the branch semantic-release sees via the
+                  # caller's GITHUB_REF ("main" when dispatched/pushed on main),
+                  # NOT the fixture branch name.
+                  F5=$(fixture "zerv-ci/semantic-release-f5-new-release" "main")
+                  git -C "$F5" commit -q --allow-empty -m "feat: initial"
+                  git -C "$F5" tag v1.0.0
+                  git -C "$F5" commit -q --allow-empty -m "feat: add api"
+                  push "$F5" "zerv-ci/semantic-release-f5-new-release"
+
+                  echo "✓ all fixture branches pushed"
+
+    # ====================================================
+    # Scenario runs (real shared workflow, dry-run)
+    # ====================================================
+    f1-no-tags:
+        name: f1-no-tags
+        needs: setup-fixtures
+        uses: ./.github/workflows/shared-semantic-release.yml
+        with:
+            dry_run: true
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
+            checkout_ref: refs/heads/zerv-ci/semantic-release-f1-no-tags
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+
+    f2-semver-tag:
+        name: f2-semver-tag
+        needs: setup-fixtures
+        uses: ./.github/workflows/shared-semantic-release.yml
+        with:
+            dry_run: true
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
+            checkout_ref: refs/heads/zerv-ci/semantic-release-f2-semver-tag
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+
+    f3-moveable-tags:
+        name: f3-moveable-tags
+        needs: setup-fixtures
+        uses: ./.github/workflows/shared-semantic-release.yml
+        with:
+            dry_run: true
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
+            checkout_ref: refs/heads/zerv-ci/semantic-release-f3-moveable-tags
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+
+    f4-tag-behind:
+        name: f4-tag-behind
+        needs: setup-fixtures
+        uses: ./.github/workflows/shared-semantic-release.yml
+        with:
+            dry_run: true
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
+            checkout_ref: refs/heads/zerv-ci/semantic-release-f4-tag-behind
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+
+    f5-new-release:
+        name: f5-new-release
+        needs: setup-fixtures
+        uses: ./.github/workflows/shared-semantic-release.yml
+        with:
+            dry_run: true
+            # semantic-release skips release detection entirely under a
+            # pull_request event (GITHUB_* env vars are reserved and cannot be
+            # overridden), so this scenario only strictly asserts on non-PR
+            # runs: dispatch/push with the workflow on main (see verify).
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
+            checkout_ref: refs/heads/zerv-ci/semantic-release-f5-new-release
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+
+    # ====================================================
+    # Assertions
+    # ====================================================
+    verify:
+        name: verify
+        needs: [f1-no-tags, f2-semver-tag, f3-moveable-tags, f4-tag-behind, f5-new-release]
+        runs-on: ubuntu-latest
+        env:
+            F1_PUBLISHED: ${{ needs.f1-no-tags.outputs.new_release_published }}
+            F1_VERSION: ${{ needs.f1-no-tags.outputs.new_release_version }}
+            F2_PUBLISHED: ${{ needs.f2-semver-tag.outputs.new_release_published }}
+            F2_VERSION: ${{ needs.f2-semver-tag.outputs.new_release_version }}
+            F3_PUBLISHED: ${{ needs.f3-moveable-tags.outputs.new_release_published }}
+            F3_VERSION: ${{ needs.f3-moveable-tags.outputs.new_release_version }}
+            F4_PUBLISHED: ${{ needs.f4-tag-behind.outputs.new_release_published }}
+            F4_VERSION: ${{ needs.f4-tag-behind.outputs.new_release_version }}
+            F5_PUBLISHED: ${{ needs.f5-new-release.outputs.new_release_published }}
+            F5_VERSION: ${{ needs.f5-new-release.outputs.new_release_version }}
+            EVENT_NAME: ${{ github.event_name }}
+            F1_VALID: ${{ needs.f1-no-tags.outputs.is_valid_semantic_release }}
+            F2_VALID: ${{ needs.f2-semver-tag.outputs.is_valid_semantic_release }}
+            F3_VALID: ${{ needs.f3-moveable-tags.outputs.is_valid_semantic_release }}
+            F4_VALID: ${{ needs.f4-tag-behind.outputs.is_valid_semantic_release }}
+            F5_VALID: ${{ needs.f5-new-release.outputs.is_valid_semantic_release }}
+        steps:
+            - name: assert-expected-outputs-per-scenario
+              run: |
+                  set -euo pipefail
+
+                  assert_eq() {
+                      local label="$1" actual="$2" expected="$3"
+                      [ "$actual" == "$expected" ] || {
+                          echo "✗ $label: got '$actual', expected '$expected'"
+                          exit 1
+                      }
+                  }
+
+                  # Every scenario must report a successfully executed job.
+                  assert_eq "F1 valid" "$F1_VALID" "true"
+                  assert_eq "F2 valid" "$F2_VALID" "true"
+                  assert_eq "F3 valid" "$F3_VALID" "true"
+                  assert_eq "F4 valid" "$F4_VALID" "true"
+                  assert_eq "F5 valid" "$F5_VALID" "true"
+
+                  # f1: no tags at all
+                  assert_eq "F1 published" "$F1_PUBLISHED" "false"
+                  assert_eq "F1 version" "$F1_VERSION" ""
+
+                  # f2: exact semver tag preferred over moveable tags
+                  assert_eq "F2 published" "$F2_PUBLISHED" "false"
+                  assert_eq "F2 version" "$F2_VERSION" "2.3.4"
+
+                  # f3: moveable tags only, lexical order picks v3
+                  assert_eq "F3 published" "$F3_PUBLISHED" "false"
+                  assert_eq "F3 version" "$F3_VERSION" "3"
+
+                  # f4: regression - release tag behind, revert on untagged HEAD
+                  assert_eq "F4 published" "$F4_PUBLISHED" "false"
+                  assert_eq "F4 version" "$F4_VERSION" ""
+
+                  # f5: dry-run would-be release, exact version. semantic-release
+                  # refuses to detect releases under a pull_request event (GITHUB_*
+                  # env vars are reserved), so strict assertions only run on
+                  # non-PR events (push on main, or workflow_dispatch on main).
+                  if [ "$EVENT_NAME" != "pull_request" ]; then
+                      assert_eq "F5 published" "$F5_PUBLISHED" "true"
+                      assert_eq "F5 version" "$F5_VERSION" "1.1.0"
+                  else
+                      echo "::notice::f5 release-detection assertions skipped under pull_request event"
+                  fi
+
+                  echo "✓ all scenario assertions passed"
+
+    # ====================================================
+    # Cleanup
+    # ====================================================
+    # The sandbox is dedicated to CI fixtures, so delete EVERY branch and tag
+    # in it (not just this run's refs) and verify nothing remains. Fail loudly
+    # on real push errors instead of masking them as "already absent" — an
+    # earlier version ran `git push` outside any repository, every delete
+    # failed with "not a git repository", and leftover refs piled up silently.
+    # `always()` guarantees removal even when scenarios fail (debugging relies
+    # on the run logs, not the refs).
+    cleanup-fixtures:
+        name: cleanup-fixtures
+        needs: verify
+        if: always()
+        runs-on: ubuntu-latest
+        env:
+            FIXTURES_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+        steps:
+            - name: delete-all-sandbox-refs
+              run: |
+                  set -euo pipefail
+                  if [ -z "${FIXTURES_TOKEN}" ]; then
+                      echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set; cannot clean up fixture refs"
+                      exit 1
+                  fi
+                  ORIGIN_URL="https://x-access-token:${FIXTURES_TOKEN}@github.com/${FIXTURES_REPO}.git"
+
+                  # git push needs a repository to run from; make a throwaway one
+                  WORK="$(mktemp -d)"
+                  git init -q -b main "$WORK"
+                  cd "$WORK"
+                  git config user.email "zerv-ci@users.noreply.github.com"
+                  git config user.name "zerv-ci"
+
+                  list_refs() {
+                      git ls-remote "$ORIGIN_URL" 'refs/heads/*' 'refs/tags/*'
+                  }
+
+                  # GitHub refuses to delete the repo's CURRENT branch. The
+                  # default is a permanent "main" that setup-fixtures pushes
+                  # first (before any fixture refs), so everything else is
+                  # deletable. Requires the sandbox default branch to actually
+                  # be "main"; if it drifted (e.g. created by an older run),
+                  # switching it once in the repo settings fixes cleanup.
+                  git commit -q --allow-empty -m "sandbox default branch"
+                  git push -q --force "$ORIGIN_URL" main
+
+                  LIST="$(list_refs || true)"
+                  [ -z "$LIST" ] && { echo "✓ sandbox has no refs to clean"; exit 0; }
+
+                  while read -r _sha ref; do
+                      case "$ref" in
+                          refs/heads/main) echo "keep permanent main" ;;
+                          refs/heads/*) git push -q --delete "$ORIGIN_URL" "${ref#refs/heads/}" ;;
+                          refs/tags/*) git push -q --delete "$ORIGIN_URL" "${ref#refs/tags/}" ;;
+                          *) echo "skip unexpected ref: $ref" ;;
+                      esac
+                  done <<< "$LIST"
+
+                  REMAINING="$(list_refs || true)"
+                  if [ -n "$REMAINING" ] && [ "$REMAINING" != "$(git ls-remote "$ORIGIN_URL" refs/heads/main)" ]; then
+                      echo "::error::sandbox refs still present after cleanup:"
+                      echo "$REMAINING"
+                      exit 1
+                  fi
+
+                  echo "✓ sandbox cleaned up (only permanent main remains)"

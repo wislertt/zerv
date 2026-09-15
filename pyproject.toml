@@ -66,8 +66,8 @@ bindings = "bin"
 module-name = "zerv"
 python-source = "python"
 include = [
-  {path = "python/zerv/**/*.py", format = ["wheel"]},
-  {path = "python/zerv/py.typed", format = ["wheel"]}
+  { path = "python/zerv/**/*.py", format = ["wheel"] },
+  { path = "python/zerv/py.typed", format = ["wheel"] }
 ]
 
 [tool.ruff]

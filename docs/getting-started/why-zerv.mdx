@@ -12,9 +12,9 @@ branch:
   branches, dirty working trees: each Git state gets a SemVer on the spot, computed from
   tags, distance, branch, and dirtiness alone.
 
-Release tools answer *what version is this release?* CI builds artifacts on every push, and
-those builds need versions long before a release exists. zerv answers *what version is this
-exact Git state?*
+Release tools answer _what version is this release?_ CI builds artifacts on every push, and
+those builds need versions long before a release exists. zerv answers _what version is this
+exact Git state?_
 
 - **Every commit versioned** - a version for any commit on any branch, including
   uncommitted changes. No build is ever unversioned.
@@ -32,7 +32,7 @@ zerv's own repository runs both in its CD pipeline
 semantic-release publishes the release, then zerv versions the same commit for artifact
 naming.
 
-The [zerv-flow](https://github.com/wislertt/zerv-flow) demonstration repo shows the full
+The [zerv-flow](https://github.com/wislertt/example-zerv-flow) demonstration repo shows the full
 split. On pull requests, zerv runs alone: it versions the PR head, tags a pre-release, and
 feeds semver, PEP440, and docker tags to the deploy jobs. On main, semantic-release
 publishes and zerv versions the release build.
@@ -107,9 +107,9 @@ templates](/concepts/formats-and-templates).
 
 ## When to reach for something else
 
-| Tool | Best at | Reach for it when |
-| --- | --- | --- |
-| [semantic-release](/cicd/semantic-release) | release automation on main | you want changelogs, tags, and publishing from commit messages |
-| [setuptools-scm](https://github.com/pypa/setuptools-scm) | Python package builds | the version only needs to exist inside the package metadata |
-| [dunamai](https://github.com/mtkennerly/dunamai) | Python version detection | a Python-first project where tag + distance + dirty is enough |
-| `git describe` | zero-install version string | its `v1.0.0-5-gabc1234` shape is acceptable |
+| Tool                                                     | Best at                     | Reach for it when                                              |
+| -------------------------------------------------------- | --------------------------- | -------------------------------------------------------------- |
+| [semantic-release](/cicd/semantic-release)               | release automation on main  | you want changelogs, tags, and publishing from commit messages |
+| [setuptools-scm](https://github.com/pypa/setuptools-scm) | Python package builds       | the version only needs to exist inside the package metadata    |
+| [dunamai](https://github.com/mtkennerly/dunamai)         | Python version detection    | a Python-first project where tag + distance + dirty is enough  |
+| `git describe`                                           | zero-install version string | its `v1.0.0-5-gabc1234` shape is acceptable                    |

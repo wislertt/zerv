@@ -42,14 +42,14 @@ jobs:
 
 ## Inputs
 
-| Input                   | Type   | Default            | Description                                          |
-| ----------------------- | ------ | ------------------ | ---------------------------------------------------- |
-| `schema`                | string | none               | Zerv flow schema preset                              |
-| `overridden_tag_version`| string | none               | Override the detected tag version                    |
-| `branch_rules`          | string | `""`               | RON branch rules for `zerv flow --branch-rules`      |
-| `output_formats`        | string | semver + pep440    | JSON object mapping output names to output formats   |
-| `output_templates`      | string | docker_tag, v_major_custom, v_major_minor_custom templates | JSON object mapping output names to output templates |
-| `custom_outputs`        | string | v_semver, v_major, v_major_minor | JSON object mapping output names to full zerv command arguments |
+| Input                    | Type   | Default                                                    | Description                                                     |
+| ------------------------ | ------ | ---------------------------------------------------------- | --------------------------------------------------------------- |
+| `schema`                 | string | none                                                       | Zerv flow schema preset                                         |
+| `overridden_tag_version` | string | none                                                       | Override the detected tag version                               |
+| `branch_rules`           | string | `""`                                                       | RON branch rules for `zerv flow --branch-rules`                 |
+| `output_formats`         | string | semver + pep440                                            | JSON object mapping output names to output formats              |
+| `output_templates`       | string | docker_tag, v_major_custom, v_major_minor_custom templates | JSON object mapping output names to output templates            |
+| `custom_outputs`         | string | v_semver, v_major, v_major_minor                           | JSON object mapping output names to full zerv command arguments |
 
 Keys must be unique across the three output inputs: the workflow fails on duplicates.
 
@@ -130,4 +130,4 @@ example.
 ## Where to go next
 
 - [Coexisting with semantic-release](/cicd/semantic-release) - zerv for CI builds, semantic-release for releases
-- [zerv-flow](https://github.com/wislertt/zerv-flow) - working demo repo: PR pre-release tags and multi-environment deploys
+- [zerv-flow](https://github.com/wislertt/example-zerv-flow) - working demo repo: PR pre-release tags and multi-environment deploys
