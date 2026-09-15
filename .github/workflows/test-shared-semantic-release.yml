@@ -48,13 +48,13 @@ jobs:
                   # Usage: fixture <branch>  -> creates a repo with the fixture
                   # .releaserc and a non-releasing base commit, echoes its path.
                   fixture() {
-                      local branch="$1"
+                      local branch="$1" branches="${2:-$1}"
                       local dir
                       dir="$(mktemp -d)"
                       git init -q -b main "$dir"
                       git -C "$dir" config user.email "zerv-ci@users.noreply.github.com"
                       git -C "$dir" config user.name "zerv-ci"
-                      printf '{\n  "branches": ["%s"],\n  "plugins": ["@semantic-release/commit-analyzer", "@semantic-release/release-notes-generator"]\n}\n' "$branch" > "$dir/.releaserc.json"
+                      printf '{\n  "branches": ["%s"],\n  "plugins": ["@semantic-release/commit-analyzer", "@semantic-release/release-notes-generator"]\n}\n' "$branches" > "$dir/.releaserc.json"
                       git -C "$dir" add .
                       git -C "$dir" commit -q -m "chore: fixture base"
                       echo "$dir"
@@ -97,8 +97,11 @@ jobs:
                   push "$F4" "zerv-ci/semantic-release-f4-tag-behind"
 
                   # f5: release tag then a feat commit
-                  # -> dry-run reports published=true, version=1.1.0 (exact)
-                  F5=$(fixture "zerv-ci/semantic-release-f5-new-release")
+                  # -> dry-run reports published=true, version=1.1.0 (exact).
+                  # branches must name the branch semantic-release sees via the
+                  # caller's GITHUB_REF ("main" when dispatched/pushed on main),
+                  # NOT the fixture branch name.
+                  F5=$(fixture "zerv-ci/semantic-release-f5-new-release" "main")
                   git -C "$F5" commit -q --allow-empty -m "feat: initial"
                   git -C "$F5" tag v1.0.0
                   git -C "$F5" commit -q --allow-empty -m "feat: add api"
@@ -159,10 +162,10 @@ jobs:
         uses: ./.github/workflows/shared-semantic-release.yml
         with:
             dry_run: true
-            # CI runs in a pull_request context, where semantic-release skips
-            # release detection entirely; simulate a push so the would-be
-            # release (1.1.0) is actually computed.
-            event_name_override: push
+            # semantic-release skips release detection entirely under a
+            # pull_request event (GITHUB_* env vars are reserved and cannot be
+            # overridden), so this scenario only strictly asserts on non-PR
+            # runs: dispatch/push with the workflow on main (see verify).
             checkout_repository: wislertt/zerv-sandbox
             checkout_ref: refs/heads/zerv-ci/semantic-release-f5-new-release
         secrets:
@@ -186,6 +189,7 @@ jobs:
             F4_VERSION: ${{ needs.f4-tag-behind.outputs.new_release_version }}
             F5_PUBLISHED: ${{ needs.f5-new-release.outputs.new_release_published }}
             F5_VERSION: ${{ needs.f5-new-release.outputs.new_release_version }}
+            EVENT_NAME: ${{ github.event_name }}
             F1_VALID: ${{ needs.f1-no-tags.outputs.is_valid_semantic_release }}
             F2_VALID: ${{ needs.f2-semver-tag.outputs.is_valid_semantic_release }}
             F3_VALID: ${{ needs.f3-moveable-tags.outputs.is_valid_semantic_release }}
@@ -227,9 +231,16 @@ jobs:
                   assert_eq "F4 published" "$F4_PUBLISHED" "false"
                   assert_eq "F4 version" "$F4_VERSION" ""
 
-                  # f5: dry-run would-be release, exact version
-                  assert_eq "F5 published" "$F5_PUBLISHED" "true"
-                  assert_eq "F5 version" "$F5_VERSION" "1.1.0"
+                  # f5: dry-run would-be release, exact version. semantic-release
+                  # refuses to detect releases under a pull_request event (GITHUB_*
+                  # env vars are reserved), so strict assertions only run on
+                  # non-PR events (push on main, or workflow_dispatch on main).
+                  if [ "$EVENT_NAME" != "pull_request" ]; then
+                      assert_eq "F5 published" "$F5_PUBLISHED" "true"
+                      assert_eq "F5 version" "$F5_VERSION" "1.1.0"
+                  else
+                      echo "::notice::f5 release-detection assertions skipped under pull_request event"
+                  fi
 
                   echo "✓ all scenario assertions passed"
 
@@ -263,6 +274,7 @@ jobs:
                   # git push needs a repository to run from; make a throwaway one
                   WORK="$(mktemp -d)"
                   git init -q "$WORK"
+                  cd "$WORK"
 
                   list_refs() {
                       git ls-remote "$ORIGIN_URL" 'refs/heads/*' 'refs/tags/*'

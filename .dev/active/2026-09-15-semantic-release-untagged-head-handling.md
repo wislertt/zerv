@@ -87,11 +87,16 @@ Key design decisions (do not regress these):
 - Test wired into `ci.yml` only. Removed from `cd.yml` (release path should
   stay lean; ci covers it).
 - All scenario runs use `dry_run: true` → semantic-release publishes nothing.
-- f5 passes `event_name_override: push` (new shared-workflow input): CI runs in
-  a pull_request context where semantic-release skips release detection entirely
-  (run log: "This run was triggered by a pull request..."), so the would-be
-  release 1.1.0 was never computed. The override makes semantic-release treat
-  the run as push; fixture .releaserc already pins its own branch name.
+- f5 strict assertions are event-gated: under a pull_request event
+  semantic-release skips release detection entirely ("This run was triggered by
+  a pull request...") and `GITHUB_*` env vars are reserved — they CANNOT be
+  overridden at step level (attempted `GITHUB_EVENT_NAME: push` override was
+  silently ignored by the runner). So verify asserts f5 strictly only on
+  non-PR events (workflow_dispatch / push with the workflow on main); PR runs
+  emit a notice and skip the two f5 assertions.
+- f5 fixture .releaserc `branches` must name the branch semantic-release
+  resolves from the CALLER's GITHUB_REF (`"main"` for dispatch/push on main),
+  not the fixture branch name; fixture() takes an optional 2nd arg for it.
 - Cleanup `if: always()`; deletes EVERY branch/tag in the sandbox (it is
   dedicated to CI) via ls-remote → push --delete loop, then re-lists and fails
   if anything remains. Earlier version ran `git push` with no git repo present
@@ -186,5 +191,10 @@ tag on HEAD and use the fallback path).
    default GITHUB_TOKEN can't read it. Fixed with `checkout_token` secret input
    on shared workflow; scenarios pass `ZERV_SANDBOX_REPO_TOKEN` down.
 3. Run 3: verify failed only on f5 — semantic-release skips release detection
-   under pull_request events. Fixed with `event_name_override: push` on f5.
-   Also discovered cleanup never actually deleted refs (see design decisions).
+   under pull_request events. First fix attempt (`event_name_override: push`
+   shared-workflow input setting the GITHUB_EVENT_NAME env) did nothing:
+   GITHUB_* variables are reserved and the runner ignores overrides. Final
+   fix: event-gated assertions + fixture .releaserc branches=["main"].
+   Also discovered cleanup never actually deleted refs ("not a git repository":
+   the job never checked out, and `git init` without `cd` didn't help — fixed
+   with an explicit cd into the throwaway repo + ls-remote re-check).
