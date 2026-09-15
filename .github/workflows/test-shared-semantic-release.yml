@@ -45,6 +45,19 @@ jobs:
                   set -euo pipefail
                   ORIGIN_URL="https://x-access-token:${FIXTURES_TOKEN}@github.com/${FIXTURES_REPO}.git"
 
+                  # Push a permanent "main" FIRST: on an empty repo GitHub makes
+                  # the first pushed ref the default branch, and the default can
+                  # never be deleted by push (would need Administration:Write to
+                  # change via API). This keeps the default branch out of the
+                  # fixture refs cleanup has to remove. No-op on existing sandbox.
+                  WORK="$(mktemp -d)"
+                  git init -q -b main "$WORK"
+                  cd "$WORK"
+                  git config user.email "zerv-ci@users.noreply.github.com"
+                  git config user.name "zerv-ci"
+                  git commit -q --allow-empty -m "sandbox default branch"
+                  git push -q --force "$ORIGIN_URL" main
+
                   # Usage: fixture <branch>  -> creates a repo with the fixture
                   # .releaserc and a non-releasing base commit, echoes its path.
                   fixture() {
@@ -282,17 +295,14 @@ jobs:
                       git ls-remote "$ORIGIN_URL" 'refs/heads/*' 'refs/tags/*'
                   }
 
-                  # GitHub refuses to delete the repo's CURRENT branch, and
-                  # whichever ref was pushed first to the empty sandbox became
-                  # the default. Ensure a permanent "main" exists and is the
-                  # default, then everything else is deletable.
+                  # GitHub refuses to delete the repo's CURRENT branch. The
+                  # default is a permanent "main" that setup-fixtures pushes
+                  # first (before any fixture refs), so everything else is
+                  # deletable. Requires the sandbox default branch to actually
+                  # be "main"; if it drifted (e.g. created by an older run),
+                  # switching it once in the repo settings fixes cleanup.
                   git commit -q --allow-empty -m "sandbox default branch"
                   git push -q --force "$ORIGIN_URL" main
-                  curl -sf -X PATCH \
-                      -H "Authorization: Bearer ${FIXTURES_TOKEN}" \
-                      -H "Accept: application/vnd.github+json" \
-                      "https://api.github.com/repos/${FIXTURES_REPO}" \
-                      -d '{"default_branch":"main"}' > /dev/null
 
                   LIST="$(list_refs || true)"
                   [ -z "$LIST" ] && { echo "✓ sandbox has no refs to clean"; exit 0; }

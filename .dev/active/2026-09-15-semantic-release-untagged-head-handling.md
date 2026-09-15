@@ -200,6 +200,12 @@ tag on HEAD and use the fallback path).
    with an explicit cd into the throwaway repo + ls-remote re-check).
 4. Run 4: verify PASSED (f1-f4 + gates). Cleanup failed: GitHub refuses to
    delete the sandbox's CURRENT branch — the first ref pushed to the empty
-   repo became its default branch. Fixed: cleanup force-pushes a permanent
-   "main" (single empty commit), PATCHes default_branch=main via the REST API,
-   then deletes every other ref and re-checks that only main remains.
+   repo became its default branch.
+5. Run 5: cleanup still failed — fix attempt PATCHed default_branch via REST
+   API, but changing the default branch requires Administration:Write on the
+   PAT (curl exit 22 = HTTP error; PAT has only Contents:RW). Final design:
+   setup-fixtures pushes a permanent "main" FIRST (on an empty repo the first
+   pushed ref becomes the default, so no API call needed); cleanup keeps
+   "main" and deletes everything else. One-time manual step: switch the
+   sandbox's default branch to "main" in repo settings (drifted from an
+   older run).
