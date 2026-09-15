@@ -23,10 +23,20 @@ on:
                 required: false
                 default: false
                 type: boolean
+            checkout_repository:
+                description: "Repository to check out (empty = caller repository)"
+                required: false
+                default: ""
+                type: string
+            checkout_ref:
+                description: "Ref to check out (empty = triggering ref)"
+                required: false
+                default: ""
+                type: string
 
         outputs:
             new_release_version:
-                description: "The determined version"
+                description: "The determined version. Empty when no release was published and the current commit has no v* tag"
                 value: ${{ jobs.semantic-release.outputs.new_release_version }}
             new_release_published:
                 description: "Whether a new release was published"
@@ -131,6 +141,8 @@ jobs:
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   fetch-depth: 0
+                  repository: ${{ inputs.checkout_repository }}
+                  ref: ${{ inputs.checkout_ref }}
 
             - id: release
               name: release
@@ -143,32 +155,37 @@ jobs:
 
             - name: determine-version-from-release-or-tag
               id: determine-version
+              env:
+                  RELEASE_PUBLISHED: ${{ steps.release.outputs.new_release_published }}
+                  RELEASE_VERSION: ${{ steps.release.outputs.new_release_version }}
               run: |
                   # Set the published status
-                  NEW_RELEASE_PUBLISHED="${{ steps.release.outputs.new_release_published }}"
-                  echo "new_release_published=$NEW_RELEASE_PUBLISHED" >> "$GITHUB_OUTPUT"
+                  echo "new_release_published=$RELEASE_PUBLISHED" >> "$GITHUB_OUTPUT"
 
-                  # Check if new release was published
-                  if [ "$NEW_RELEASE_PUBLISHED" == "false" ]; then
-                      # Get the current commit SHA
-                      CURRENT_SHA=$(git rev-parse HEAD)
-                      # Find the tag that points to this commit and starts with 'v'
-                      EXISTING_TAG=$(git tag --points-at "$CURRENT_SHA" | grep '^v' | head -1)
-                      if [ -n "$EXISTING_TAG" ]; then
-                          # Use the existing tag version (remove 'v' prefix)
-                          NEW_RELEASE_VERSION=${EXISTING_TAG#v}
-                          echo "new_release_version=$NEW_RELEASE_VERSION" >> "$GITHUB_OUTPUT"
-                          echo "Using existing tag: $EXISTING_TAG"
-                      else
-                          # No tag found, this is an error case
-                          echo "::error::No existing tag found on commit and no new release published"
-                          echo "::error::This commit must have a tag starting with 'v'"
-                          exit 1
-                      fi
-                  else
+                  if [ "$RELEASE_PUBLISHED" == "true" ]; then
                       # Use the new release version
-                      echo "new_release_version=${{ steps.release.outputs.new_release_version }}" >> "$GITHUB_OUTPUT"
-                      echo "New release: ${{ steps.release.outputs.new_release_version }}"
+                      echo "new_release_version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+                      echo "New release: $RELEASE_VERSION"
+                      exit 0
+                  fi
+
+                  # No release published: fall back to a tag on the current commit
+                  CURRENT_SHA=$(git rev-parse HEAD)
+                  # Prefer an exact semver tag (e.g. v1.64.11)
+                  EXISTING_TAG=$(git tag --points-at "$CURRENT_SHA" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)
+                  # Fall back to a moveable prefix tag (e.g. v1, v1.64)
+                  if [ -z "$EXISTING_TAG" ]; then
+                      EXISTING_TAG=$(git tag --points-at "$CURRENT_SHA" | grep -E '^v[0-9]+(\.[0-9]+)?$' | head -1 || true)
+                  fi
+                  if [ -n "$EXISTING_TAG" ]; then
+                      echo "new_release_version=${EXISTING_TAG#v}" >> "$GITHUB_OUTPUT"
+                      echo "Using existing tag: $EXISTING_TAG"
+                  else
+                      # No release and no tag on HEAD: not an error. Emit an
+                      # empty version so consumers can decide what to do
+                      # (e.g. skip versioning/tagging steps for this push).
+                      echo "new_release_version=" >> "$GITHUB_OUTPUT"
+                      echo "::notice::No release published and no tag on the current commit; new_release_version is empty"
                   fi
 
             - name: mark-as-valid-semantic-release
