@@ -117,6 +117,8 @@ jobs:
             dry_run: true
             checkout_repository: wislertt/zerv-sandbox
             checkout_ref: refs/heads/zerv-ci/semantic-release-f1-no-tags
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     f2-semver-tag:
         name: f2-semver-tag
@@ -126,6 +128,8 @@ jobs:
             dry_run: true
             checkout_repository: wislertt/zerv-sandbox
             checkout_ref: refs/heads/zerv-ci/semantic-release-f2-semver-tag
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     f3-moveable-tags:
         name: f3-moveable-tags
@@ -135,6 +139,8 @@ jobs:
             dry_run: true
             checkout_repository: wislertt/zerv-sandbox
             checkout_ref: refs/heads/zerv-ci/semantic-release-f3-moveable-tags
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     f4-tag-behind:
         name: f4-tag-behind
@@ -144,6 +150,8 @@ jobs:
             dry_run: true
             checkout_repository: wislertt/zerv-sandbox
             checkout_ref: refs/heads/zerv-ci/semantic-release-f4-tag-behind
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     f5-new-release:
         name: f5-new-release
@@ -153,6 +161,8 @@ jobs:
             dry_run: true
             checkout_repository: wislertt/zerv-sandbox
             checkout_ref: refs/heads/zerv-ci/semantic-release-f5-new-release
+        secrets:
+            checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     # ====================================================
     # Assertions

@@ -75,10 +75,12 @@ Key design decisions (do not regress these):
   User explicitly rejected touching real tags. Do not move fixtures back.
 - Scenario jobs pass `checkout_repository: wislertt/zerv-sandbox` +
   `checkout_ref: refs/heads/zerv-ci/...` to the shared workflow.
-- The fixture repo must be **public**: scenario checkout runs with this repo's
-  default GITHUB_TOKEN (github.token cannot read other private repos, and
-  `secrets` context is not available in job-level `with:`, so we can't pass
-  the PAT to actions/checkout without more plumbing).
+- The fixture repo may stay **private**: the shared workflow accepts an
+  optional `checkout_token` secret (`${{ secrets.checkout_token || github.token }}`
+  on its checkout step), and each scenario call passes
+  `secrets: checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}` down to it.
+  Originally the repo had to be public because the PAT could not reach
+  actions/checkout; user chose the token-threading option instead.
 - Fixture push/cleanup auth uses secret `ZERV_SANDBOX_REPO_TOKEN` (fine-grained
   PAT, Contents:RW on the fixture repo only). Setup fails with a clear error
   message if the secret is missing.

@@ -34,6 +34,11 @@ on:
                 default: ""
                 type: string
 
+        secrets:
+            checkout_token:
+                description: "Token for actions/checkout when checkout_repository points at another repo (empty = default GITHUB_TOKEN)"
+                required: false
+
         outputs:
             new_release_version:
                 description: "The determined version. Empty when no release was published and the current commit has no v* tag"
@@ -143,6 +148,7 @@ jobs:
                   fetch-depth: 0
                   repository: ${{ inputs.checkout_repository }}
                   ref: ${{ inputs.checkout_ref }}
+                  token: ${{ secrets.checkout_token || github.token }}
 
             - id: release
               name: release
