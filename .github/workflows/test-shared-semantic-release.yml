@@ -273,21 +273,33 @@ jobs:
 
                   # git push needs a repository to run from; make a throwaway one
                   WORK="$(mktemp -d)"
-                  git init -q "$WORK"
+                  git init -q -b main "$WORK"
                   cd "$WORK"
+                  git config user.email "zerv-ci@users.noreply.github.com"
+                  git config user.name "zerv-ci"
 
                   list_refs() {
                       git ls-remote "$ORIGIN_URL" 'refs/heads/*' 'refs/tags/*'
                   }
 
+                  # GitHub refuses to delete the repo's CURRENT branch, and
+                  # whichever ref was pushed first to the empty sandbox became
+                  # the default. Ensure a permanent "main" exists and is the
+                  # default, then everything else is deletable.
+                  git commit -q --allow-empty -m "sandbox default branch"
+                  git push -q --force "$ORIGIN_URL" main
+                  curl -sf -X PATCH \
+                      -H "Authorization: Bearer ${FIXTURES_TOKEN}" \
+                      -H "Accept: application/vnd.github+json" \
+                      "https://api.github.com/repos/${FIXTURES_REPO}" \
+                      -d '{"default_branch":"main"}' > /dev/null
+
                   LIST="$(list_refs || true)"
-                  if [ -z "$LIST" ]; then
-                      echo "✓ sandbox has no refs; nothing to clean"
-                      exit 0
-                  fi
+                  [ -z "$LIST" ] && { echo "✓ sandbox has no refs to clean"; exit 0; }
 
                   while read -r _sha ref; do
                       case "$ref" in
+                          refs/heads/main) echo "keep permanent main" ;;
                           refs/heads/*) git push -q --delete "$ORIGIN_URL" "${ref#refs/heads/}" ;;
                           refs/tags/*) git push -q --delete "$ORIGIN_URL" "${ref#refs/tags/}" ;;
                           *) echo "skip unexpected ref: $ref" ;;
@@ -295,10 +307,10 @@ jobs:
                   done <<< "$LIST"
 
                   REMAINING="$(list_refs || true)"
-                  if [ -n "$REMAINING" ]; then
+                  if [ -n "$REMAINING" ] && [ "$REMAINING" != "$(git ls-remote "$ORIGIN_URL" refs/heads/main)" ]; then
                       echo "::error::sandbox refs still present after cleanup:"
                       echo "$REMAINING"
                       exit 1
                   fi
 
-                  echo "✓ sandbox cleaned up (all branches and tags deleted)"
+                  echo "✓ sandbox cleaned up (only permanent main remains)"

@@ -198,3 +198,8 @@ tag on HEAD and use the fallback path).
    Also discovered cleanup never actually deleted refs ("not a git repository":
    the job never checked out, and `git init` without `cd` didn't help — fixed
    with an explicit cd into the throwaway repo + ls-remote re-check).
+4. Run 4: verify PASSED (f1-f4 + gates). Cleanup failed: GitHub refuses to
+   delete the sandbox's CURRENT branch — the first ref pushed to the empty
+   repo became its default branch. Fixed: cleanup force-pushes a permanent
+   "main" (single empty commit), PATCHes default_branch=main via the REST API,
+   then deletes every other ref and re-checks that only main remains.
