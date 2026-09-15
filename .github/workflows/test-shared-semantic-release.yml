@@ -30,6 +30,8 @@ jobs:
     setup-fixtures:
         name: setup-fixtures
         runs-on: ubuntu-latest
+        outputs:
+            fixtures_repo: ${{ steps.publish-repo.outputs.fixtures_repo }}
         env:
             FIXTURES_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
         steps:
@@ -39,6 +41,10 @@ jobs:
                       echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create repo ${FIXTURES_REPO} and a fine-grained PAT with Contents:RW on it, then add the secret to this repository."
                       exit 1
                   fi
+
+            - name: publish-repo
+              id: publish-repo
+              run: echo "fixtures_repo=${FIXTURES_REPO}" >> "$GITHUB_OUTPUT"
 
             - name: create-and-push-fixture-histories
               run: |
@@ -131,7 +137,7 @@ jobs:
         uses: ./.github/workflows/shared-semantic-release.yml
         with:
             dry_run: true
-            checkout_repository: wislertt/zerv-sandbox
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
             checkout_ref: refs/heads/zerv-ci/semantic-release-f1-no-tags
         secrets:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
@@ -142,7 +148,7 @@ jobs:
         uses: ./.github/workflows/shared-semantic-release.yml
         with:
             dry_run: true
-            checkout_repository: wislertt/zerv-sandbox
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
             checkout_ref: refs/heads/zerv-ci/semantic-release-f2-semver-tag
         secrets:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
@@ -153,7 +159,7 @@ jobs:
         uses: ./.github/workflows/shared-semantic-release.yml
         with:
             dry_run: true
-            checkout_repository: wislertt/zerv-sandbox
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
             checkout_ref: refs/heads/zerv-ci/semantic-release-f3-moveable-tags
         secrets:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
@@ -164,7 +170,7 @@ jobs:
         uses: ./.github/workflows/shared-semantic-release.yml
         with:
             dry_run: true
-            checkout_repository: wislertt/zerv-sandbox
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
             checkout_ref: refs/heads/zerv-ci/semantic-release-f4-tag-behind
         secrets:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
@@ -179,7 +185,7 @@ jobs:
             # pull_request event (GITHUB_* env vars are reserved and cannot be
             # overridden), so this scenario only strictly asserts on non-PR
             # runs: dispatch/push with the workflow on main (see verify).
-            checkout_repository: wislertt/zerv-sandbox
+            checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
             checkout_ref: refs/heads/zerv-ci/semantic-release-f5-new-release
         secrets:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}

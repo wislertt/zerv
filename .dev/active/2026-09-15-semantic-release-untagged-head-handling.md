@@ -84,8 +84,10 @@ Key design decisions (do not regress these):
 - Fixture push/cleanup auth uses secret `ZERV_SANDBOX_REPO_TOKEN` (fine-grained
   PAT, Contents:RW on the fixture repo only). Setup fails with a clear error
   message if the secret is missing.
-- Test wired into `ci.yml` only. Removed from `cd.yml` (release path should
-  stay lean; ci covers it).
+- Test wired into `ci.yml` AND `cd.yml`. Originally ci-only (lean release
+  path), but cd runs on a push event, so f5's strict release-detection
+  assertions (skipped under pull_request) execute automatically on every
+  release — no manual dispatch needed.
 - All scenario runs use `dry_run: true` → semantic-release publishes nothing.
 - f5 strict assertions are event-gated: under a pull_request event
   semantic-release skips release detection entirely ("This run was triggered by
