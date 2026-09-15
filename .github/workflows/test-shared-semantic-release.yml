@@ -3,6 +3,10 @@ name: test-shared-semantic-release
 on:
     workflow_dispatch:
     workflow_call:
+        secrets:
+            ZERV_SANDBOX_REPO_TOKEN:
+                required: false
+                description: Fine-grained PAT with Contents:RW on the fixtures repo (only needed for workflow_call; workflow_dispatch reads repo secrets directly)
 
 permissions:
     contents: write

@@ -56,6 +56,8 @@ jobs:
     test-shared-semantic-release:
         name: test-shared-semantic-release
         uses: ./.github/workflows/test-shared-semantic-release.yml
+        secrets:
+            ZERV_SANDBOX_REPO_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     # ====================================================
     # Deployment with environment
