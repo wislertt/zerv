@@ -23,6 +23,9 @@ The split in practice:
 zerv never writes tags or parses commit messages, so it cannot interfere with
 semantic-release's decisions. It only reads the tag semantic-release left behind.
 
+The reasoning behind this split: [semantic-release stays on main; zerv prereleases every
+other branch](https://wisl.dev/blog/semantic-release-zerv/).
+
 ## On main: semantic-release, then zerv
 
 zerv's own CD pipeline does exactly this.

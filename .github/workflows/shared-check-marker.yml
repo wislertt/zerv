@@ -90,4 +90,18 @@ jobs:
                   OVERRIDE: ${{ inputs.override }}
                   MATCHED: ${{ steps.check.outputs.matched }}
               run: |
-                  echo "marker='$MARKER' override='$OVERRIDE' -> matched=$MATCHED"
+                  echo "=========================================="
+                  echo "          MARKER CHECK SUMMARY"
+                  echo "=========================================="
+                  echo ""
+                  echo "Marker Check:"
+                  echo "  - Marker: $MARKER"
+                  echo "  - Override: $OVERRIDE"
+                  echo ""
+                  if [ "$MATCHED" = "true" ]; then
+                    echo "✅ Marker '$MARKER' found"
+                  else
+                    echo "❌ Marker '$MARKER' not found"
+                  fi
+                  echo ""
+                  echo "=========================================="

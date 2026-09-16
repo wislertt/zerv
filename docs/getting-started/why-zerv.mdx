@@ -16,6 +16,8 @@ Release tools answer _what version is this release?_ CI builds artifacts on ever
 those builds need versions long before a release exists. zerv answers _what version is this
 exact Git state?_
 
+The payoff: [trunk-based development where every branch is still e2e-testable](https://wisl.dev/blog/stupidly-simple-branching/).
+
 - **Every commit versioned** - a version for any commit on any branch, including
   uncommitted changes. No build is ever unversioned.
 - **Branch-based pre-releases** - `zerv flow` maps branch patterns to pre-release types
