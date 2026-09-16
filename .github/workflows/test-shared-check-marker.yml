@@ -1,0 +1,114 @@
+# Exercises shared-check-marker in the real caller-event shapes GitHub can
+# produce (pull_request / push / workflow_dispatch). The shared workflow's
+# result depends on the caller's event, so the verify job computes the
+# expected result independently (live PR title, pushed commit range, or head
+# commit) and compares it against the shared workflow's output. This keeps
+# the test self-consistent no matter what zerv's own PR titles / commit
+# messages contain.
+name: test-shared-check-marker
+
+on:
+    workflow_dispatch:
+    workflow_call:
+
+permissions:
+    contents: read
+    pull-requests: read
+
+jobs:
+    # No override: result must follow the marker in the caller event's text
+    call-sourced:
+        name: call-sourced
+        uses: ./.github/workflows/shared-check-marker.yml
+        with:
+            marker: "[e2e]"
+
+    # Override forces the result regardless of the marker. ${{ 'true' }}
+    # forces a string literal — GitHub would otherwise coerce a bare
+    # true/false into a bool, which the string-typed input rejects.
+    call-override-true:
+        name: call-override-true
+        uses: ./.github/workflows/shared-check-marker.yml
+        with:
+            marker: "no-such-marker-xyz"
+            override: ${{ 'true' }}
+
+    call-override-false:
+        name: call-override-false
+        uses: ./.github/workflows/shared-check-marker.yml
+        with:
+            marker: "[e2e]"
+            override: ${{ 'false' }}
+
+    # Not covered: invalid override (e.g. "bogus") must fail the shared
+    # workflow's check step, but a reusable-workflow call does not allow
+    # continue-on-error, so a failing call would fail this whole harness.
+    # That path stays verified by inspection only.
+
+    verify:
+        name: verify
+        needs: [call-sourced, call-override-true, call-override-false]
+        runs-on: ubuntu-latest
+        env:
+            MARKER: "[e2e]"
+            EVENT_NAME: ${{ github.event_name }}
+            PR_NUMBER: ${{ github.event.pull_request.number }}
+            BEFORE: ${{ github.event.before }}
+            SHA: ${{ github.sha }}
+            GH_TOKEN: ${{ github.token }}
+            GH_REPO: ${{ github.repository }}
+            SOURCED: ${{ needs.call-sourced.outputs.matched }}
+            OVERRIDDEN_TRUE: ${{ needs.call-override-true.outputs.matched }}
+            OVERRIDDEN_FALSE: ${{ needs.call-override-false.outputs.matched }}
+        steps:
+            # Expected-result computation for push/dispatch needs the history
+            - name: checkout
+              if: github.event_name != 'pull_request'
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  fetch-depth: 0
+
+            - name: assert
+              run: |
+                  set -euo pipefail
+
+                  assert_eq() {
+                      local label="$1" actual="$2" expected="$3"
+                      [ "$actual" == "$expected" ] || {
+                          echo "✗ $label: got '$actual', expected '$expected'"
+                          exit 1
+                      }
+                  }
+
+                  # Overrides are unconditional in any event shape
+                  assert_eq "override-true matched" "$OVERRIDDEN_TRUE" "true"
+                  assert_eq "override-false matched" "$OVERRIDDEN_FALSE" "false"
+
+                  # Independently compute what the sourced call should report
+                  case "$EVENT_NAME" in
+                    pull_request)
+                      TEXT="$(gh pr view "$PR_NUMBER" --json title -q .title)"
+                      ;;
+                    push)
+                      if [ -z "$BEFORE" ] || [[ "$BEFORE" =~ ^0+$ ]]; then
+                          TEXT="$(git log -1 --format=%B "$SHA")"
+                      else
+                          TEXT="$(git log --format=%B "$BEFORE..$SHA")"
+                      fi
+                      ;;
+                    workflow_dispatch)
+                      TEXT="$(git log -1 --format=%B "$SHA")"
+                      ;;
+                    *)
+                      echo "✗ unexpected event: $EVENT_NAME"
+                      exit 1
+                      ;;
+                  esac
+
+                  EXPECTED=false
+                  if printf '%s' "$TEXT" | grep -qF -- "$MARKER"; then
+                      EXPECTED=true
+                  fi
+                  assert_eq "sourced matched" "$SOURCED" "$EXPECTED"
+
+                  echo "✓ all shared-check-marker assertions passed (event=$EVENT_NAME, sourced=$SOURCED)"
