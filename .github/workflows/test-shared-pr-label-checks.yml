@@ -142,12 +142,16 @@ jobs:
                       fi
                   }
 
-                  # Mirror of shared-check-pr-labels-with-prefix's filter logic
+                  # Mirror of shared-check-pr-labels-with-prefix's filter
+                  # logic. -cS on purpose: the comparison sorts the actual
+                  # side too, so label-set equality never depends on jq key
+                  # order (insertion order differs between the workflow's
+                  # output and this reduce).
                   filter_labels() {
                       echo "$1" | jq --arg p "$2" \
                           'map(select(.name | startswith($p))) |
                            map({(.name): .}) |
-                           reduce .[] as $item ({}; . + $item)' | jq -c .
+                           reduce .[] as $item ({}; . + $item)' | jq -cS .
                   }
 
                   # lb-branch-restrictions: results follow the caller branch
