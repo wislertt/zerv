@@ -16,6 +16,17 @@ permissions:
 env:
     FIXTURES_REPO: wislertt/zerv-sandbox
 
+# The fixture sandbox is a single shared namespace: setup force-pushes the
+# same branches/tags (and f5 owns the sandbox "main"), and cleanup deletes
+# every ref. Two concurrent runs (e.g. several renovate PRs opening at once)
+# trash each other's fixtures mid-flight — checkout 404s, missing tags in
+# dry-run assertions, spurious cleanup leftovers. Serialize ALL invocations
+# repo-wide; queued, never cancelled (a cancelled pending run would leave the
+# next-in-queue racing the same refs anyway).
+concurrency:
+    group: ${{ github.repository }}-test-shared-semantic-release-sandbox
+    cancel-in-progress: false
+
 jobs:
     # ====================================================
     # Fixture setup
@@ -117,14 +128,20 @@ jobs:
 
                   # f5: release tag then a feat commit
                   # -> dry-run reports published=true, version=1.1.0 (exact).
-                  # branches must name the branch semantic-release sees via the
-                  # caller's GITHUB_REF ("main" when dispatched/pushed on main),
-                  # NOT the fixture branch name.
+                  # This is the only scenario that reaches semantic-release's
+                  # real release evaluation on push: the caller's GITHUB_REF
+                  # ("main") must match the configured branch AND that branch
+                  # must resolve as a local ref in the checked-out repo
+                  # (`git tag --merged main`). So the fixture history is
+                  # force-pushed onto the sandbox "main" itself and the f5 job
+                  # checks out main directly — a fixture-branch checkout never
+                  # materializes a local "main" ref.
                   F5=$(fixture "zerv-ci/semantic-release-f5-new-release" "main")
                   git -C "$F5" commit -q --allow-empty -m "feat: initial"
                   git -C "$F5" tag v1.0.0
                   git -C "$F5" commit -q --allow-empty -m "feat: add api"
                   push "$F5" "zerv-ci/semantic-release-f5-new-release"
+                  git -C "$F5" push -q --force "$ORIGIN_URL" refs/heads/main:refs/heads/main
 
                   echo "✓ all fixture branches pushed"
 
@@ -181,12 +198,15 @@ jobs:
         uses: ./.github/workflows/shared-semantic-release.yml
         with:
             dry_run: true
-            # semantic-release skips release detection entirely under a
-            # pull_request event (GITHUB_* env vars are reserved and cannot be
-            # overridden), so this scenario only strictly asserts on non-PR
-            # runs: dispatch/push with the workflow on main (see verify).
+            # semantic-release skips release detection under a pull_request
+            # event (and on any caller ref other than main), so this scenario
+            # only strictly asserts on push/workflow_dispatch on main
+            # (see verify).
+            # checkout main itself: the fixture history is pushed onto the
+            # sandbox main (see setup-fixtures) so the caller's detected
+            # branch "main" matches the fixture .releaserc and resolves locally
             checkout_repository: ${{ needs.setup-fixtures.outputs.fixtures_repo }}
-            checkout_ref: refs/heads/zerv-ci/semantic-release-f5-new-release
+            checkout_ref: refs/heads/main
         secrets:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
@@ -209,6 +229,7 @@ jobs:
             F5_PUBLISHED: ${{ needs.f5-new-release.outputs.new_release_published }}
             F5_VERSION: ${{ needs.f5-new-release.outputs.new_release_version }}
             EVENT_NAME: ${{ github.event_name }}
+            REF_NAME: ${{ github.ref_name }}
             F1_VALID: ${{ needs.f1-no-tags.outputs.is_valid_semantic_release }}
             F2_VALID: ${{ needs.f2-semver-tag.outputs.is_valid_semantic_release }}
             F3_VALID: ${{ needs.f3-moveable-tags.outputs.is_valid_semantic_release }}
@@ -251,14 +272,16 @@ jobs:
                   assert_eq "F4 version" "$F4_VERSION" ""
 
                   # f5: dry-run would-be release, exact version. semantic-release
-                  # refuses to detect releases under a pull_request event (GITHUB_*
-                  # env vars are reserved), so strict assertions only run on
-                  # non-PR events (push on main, or workflow_dispatch on main).
-                  if [ "$EVENT_NAME" != "pull_request" ]; then
+                  # detects the branch from the caller's GITHUB_REF and skips
+                  # release detection unless it resolves to the configured
+                  # branch "main" (PR events short-circuit outright), so strict
+                  # assertions only run when the caller ref is main (push or
+                  # workflow_dispatch on main).
+                  if [ "$EVENT_NAME" != "pull_request" ] && [ "$REF_NAME" = "main" ]; then
                       assert_eq "F5 published" "$F5_PUBLISHED" "true"
                       assert_eq "F5 version" "$F5_VERSION" "1.1.0"
                   else
-                      echo "::notice::f5 release-detection assertions skipped under pull_request event"
+                      echo "::notice::f5 release-detection assertions skipped (caller ref '$REF_NAME' on $EVENT_NAME)"
                   fi
 
                   echo "✓ all scenario assertions passed"

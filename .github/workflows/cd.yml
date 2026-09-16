@@ -50,13 +50,9 @@ jobs:
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
 
-    test-shared-affected-projects:
-        name: test-shared-affected-projects
-        uses: ./.github/workflows/test-shared-affected-projects.yml
-
-    test-shared-semantic-release:
-        name: test-shared-semantic-release
-        uses: ./.github/workflows/test-shared-semantic-release.yml
+    test-shared:
+        name: test-shared
+        uses: ./.github/workflows/test-shared.yml
         secrets:
             ZERV_SANDBOX_REPO_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 

@@ -1,0 +1,36 @@
+# Aggregator: calls the shared-workflow test harnesses that fit GitHub's
+# 4-level workflow_call nesting cap when wrapped here
+# (ci/cd -> this -> harness -> shared). The lock harnesses
+# (test-shared-global-lock / test-shared-service-lock) are NOT called here:
+# their chains already reach 4 levels
+# (ci/cd -> test-shared-service-lock -> ... -> shared-lock), so wrapping them
+# would exceed the cap at runtime ("Workflow execution nesting limit
+# exceeded"). ci.yml and cd.yml call those two directly.
+name: test-shared
+
+on:
+    workflow_dispatch:
+    workflow_call:
+        secrets:
+            ZERV_SANDBOX_REPO_TOKEN:
+                required: false
+                description: Fine-grained PAT with Contents:RW on wislertt/zerv-sandbox (fixture repo)
+
+jobs:
+    affected-projects:
+        name: affected-projects
+        uses: ./.github/workflows/test-shared-affected-projects.yml
+
+    semantic-release:
+        name: semantic-release
+        uses: ./.github/workflows/test-shared-semantic-release.yml
+        secrets:
+            ZERV_SANDBOX_REPO_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+
+    check-marker:
+        name: check-marker
+        uses: ./.github/workflows/test-shared-check-marker.yml
+
+    pr-label-checks:
+        name: pr-label-checks
+        uses: ./.github/workflows/test-shared-pr-label-checks.yml

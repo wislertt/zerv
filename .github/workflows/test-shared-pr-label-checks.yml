@@ -1,0 +1,189 @@
+# Exercises shared-check-pr-label-and-branch and shared-check-pr-labels-with-
+# prefix with explicit `labels` inputs, so no live PR label fetch is involved
+# and the calls behave identically in every event shape (pull_request / push /
+# workflow_dispatch). The verify job recomputes the expected results from the
+# same inputs plus github.head_ref and compares them against the shared
+# workflows' outputs, keeping the test self-consistent regardless of which
+# branch or labels the harness run itself has.
+name: test-shared-pr-label-checks
+
+on:
+    workflow_dispatch:
+    workflow_call:
+
+permissions:
+    contents: read
+
+env:
+    TARGET_LABEL: pre-release
+
+jobs:
+    # ====================================================
+    # shared-check-pr-label-and-branch
+    # ====================================================
+    # Real branch restrictions: expected results depend on the caller branch,
+    # so verify recomputes them from github.head_ref.
+    lb-branch-restrictions:
+        name: lb-branch-restrictions
+        uses: ./.github/workflows/shared-check-pr-label-and-branch.yml
+        with:
+            target_label: pre-release
+            labels: '[{"name": "pre-release"}, {"name": "wip"}]'
+            branch_names: '["develop"]'
+            branch_prefixes: '["release/"]'
+
+    # No branch restrictions: branch is always valid, so is_valid == has_label
+    lb-no-restrictions:
+        name: lb-no-restrictions
+        uses: ./.github/workflows/shared-check-pr-label-and-branch.yml
+        with:
+            target_label: pre-release
+            labels: '[{"name": "pre-release"}]'
+
+    # Label missing: is_valid must be false even with no branch restrictions
+    lb-no-label:
+        name: lb-no-label
+        uses: ./.github/workflows/shared-check-pr-label-and-branch.yml
+        with:
+            target_label: pre-release
+            labels: '[{"name": "bug"}, {"name": "wip"}]'
+
+    # ====================================================
+    # shared-check-pr-labels-with-prefix
+    # ====================================================
+    pf-deploy-prefix:
+        name: pf-deploy-prefix
+        uses: ./.github/workflows/shared-check-pr-labels-with-prefix.yml
+        with:
+            prefix: deploy-
+            labels: '[{"name": "deploy-d"}, {"name": "test-x"}, {"name": "deploy-n"}, {"name": "deploy-"}]'
+
+    # Empty prefix: filter must return every label
+    pf-empty-prefix:
+        name: pf-empty-prefix
+        uses: ./.github/workflows/shared-check-pr-labels-with-prefix.yml
+        with:
+            prefix: ""
+            labels: '[{"name": "deploy-d"}, {"name": "test-x"}]'
+
+    # No label matches the prefix: output must be an empty object
+    pf-no-match:
+        name: pf-no-match
+        uses: ./.github/workflows/shared-check-pr-labels-with-prefix.yml
+        with:
+            prefix: deploy-
+            labels: '[{"name": "bug"}, {"name": "test-x"}]'
+
+    # ====================================================
+    # Assertions
+    # ====================================================
+    verify:
+        name: verify
+        needs:
+            [
+                lb-branch-restrictions,
+                lb-no-restrictions,
+                lb-no-label,
+                pf-deploy-prefix,
+                pf-empty-prefix,
+                pf-no-match,
+            ]
+        runs-on: ubuntu-latest
+        env:
+            HEAD_REF: ${{ github.head_ref }}
+            LB1_HAS_LABEL: ${{ needs.lb-branch-restrictions.outputs.has_label }}
+            LB1_IS_VALID_BRANCH: ${{ needs.lb-branch-restrictions.outputs.is_valid_branch }}
+            LB1_IS_VALID: ${{ needs.lb-branch-restrictions.outputs.is_valid }}
+            LB2_HAS_LABEL: ${{ needs.lb-no-restrictions.outputs.has_label }}
+            LB2_IS_VALID_BRANCH: ${{ needs.lb-no-restrictions.outputs.is_valid_branch }}
+            LB2_IS_VALID: ${{ needs.lb-no-restrictions.outputs.is_valid }}
+            LB3_HAS_LABEL: ${{ needs.lb-no-label.outputs.has_label }}
+            LB3_IS_VALID_BRANCH: ${{ needs.lb-no-label.outputs.is_valid_branch }}
+            LB3_IS_VALID: ${{ needs.lb-no-label.outputs.is_valid }}
+            PF1_LABELS: ${{ needs.pf-deploy-prefix.outputs.labels }}
+            PF2_LABELS: ${{ needs.pf-empty-prefix.outputs.labels }}
+            PF3_LABELS: ${{ needs.pf-no-match.outputs.labels }}
+        steps:
+            - name: assert
+              run: |
+                  set -euo pipefail
+
+                  assert_eq() {
+                      local label="$1" actual="$2" expected="$3"
+                      [ "$actual" == "$expected" ] || {
+                          echo "✗ $label: got '$actual', expected '$expected'"
+                          exit 1
+                      }
+                  }
+
+                  # Mirror of shared-check-pr-label-and-branch's branch logic.
+                  # Prefix matching uses a bash loop on purpose: the jq
+                  # equivalent `[.[] | select($b | startswith(.))]` binds `.`
+                  # to $b inside the pipe (always true), which broke lb1.
+                  branch_valid() {
+                      local names="$1" prefixes="$2" branch="$3"
+                      local exact=false prefix=false prefix
+                      if [ "$names" != "[]" ]; then
+                          exact=$(echo "$names" | jq --arg b "$branch" '[.[] | select(. == $b)] | length > 0')
+                      fi
+                      if [ "$prefixes" != "[]" ]; then
+                          while IFS= read -r prefix; do
+                              if [[ "$branch" == "$prefix"* ]]; then
+                                  prefix=true
+                                  break
+                              fi
+                          done < <(echo "$prefixes" | jq -r '.[]')
+                      fi
+                      if [ "$exact" = "true" ] || [ "$prefix" = "true" ] \
+                          || { [ "$names" = "[]" ] && [ "$prefixes" = "[]" ]; }; then
+                          echo true
+                      else
+                          echo false
+                      fi
+                  }
+
+                  # Mirror of shared-check-pr-labels-with-prefix's filter
+                  # logic. -cS on purpose: the comparison sorts the actual
+                  # side too, so label-set equality never depends on jq key
+                  # order (insertion order differs between the workflow's
+                  # output and this reduce).
+                  filter_labels() {
+                      echo "$1" | jq --arg p "$2" \
+                          'map(select(.name | startswith($p))) |
+                           map({(.name): .}) |
+                           reduce .[] as $item ({}; . + $item)' | jq -cS .
+                  }
+
+                  # lb-branch-restrictions: results follow the caller branch
+                  EXPECTED_BRANCH=$(branch_valid '["develop"]' '["release/"]' "$HEAD_REF")
+                  if [ "$EXPECTED_BRANCH" = "true" ]; then
+                      EXPECTED_VALID=true
+                  else
+                      EXPECTED_VALID=false
+                  fi
+                  assert_eq "lb1 has_label" "$LB1_HAS_LABEL" "true"
+                  assert_eq "lb1 is_valid_branch" "$LB1_IS_VALID_BRANCH" "$EXPECTED_BRANCH"
+                  assert_eq "lb1 is_valid" "$LB1_IS_VALID" "$EXPECTED_VALID"
+
+                  # lb-no-restrictions: branch always valid, label present
+                  assert_eq "lb2 has_label" "$LB2_HAS_LABEL" "true"
+                  assert_eq "lb2 is_valid_branch" "$LB2_IS_VALID_BRANCH" "true"
+                  assert_eq "lb2 is_valid" "$LB2_IS_VALID" "true"
+
+                  # lb-no-label: label absent even though branch is unrestricted
+                  assert_eq "lb3 has_label" "$LB3_HAS_LABEL" "false"
+                  assert_eq "lb3 is_valid_branch" "$LB3_IS_VALID_BRANCH" "true"
+                  assert_eq "lb3 is_valid" "$LB3_IS_VALID" "false"
+
+                  # pf-deploy-prefix: only deploy-* labels, keys as object map
+                  assert_eq "pf1 labels" "$(echo "$PF1_LABELS" | jq -cS .)" \
+                      "$(filter_labels '[{"name": "deploy-d"}, {"name": "deploy-n"}, {"name": "deploy-"}]' 'deploy-')"
+
+                  # pf-empty-prefix: everything passes the filter
+                  assert_eq "pf2 labels" "$(echo "$PF2_LABELS" | jq -cS .)" \
+                      "$(filter_labels '[{"name": "deploy-d"}, {"name": "test-x"}]' '')"
+
+                  # pf-no-match: empty object, never null
+                  assert_eq "pf3 labels" "$(echo "$PF3_LABELS" | jq -cS .)" "{}"
+
+                  echo "✓ all shared-pr-label-checks assertions passed"
