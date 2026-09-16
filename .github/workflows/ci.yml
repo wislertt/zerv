@@ -2,7 +2,7 @@ name: ci
 
 on:
     pull_request:
-        types: [labeled, unlabeled, opened, synchronize, reopened]
+        types: [opened, synchronize, reopened]
 
 jobs:
     # ====================================================
@@ -52,6 +52,12 @@ jobs:
     test-shared-affected-projects:
         name: test-shared-affected-projects
         uses: ./.github/workflows/test-shared-affected-projects.yml
+
+    test-shared-semantic-release:
+        name: test-shared-semantic-release
+        uses: ./.github/workflows/test-shared-semantic-release.yml
+        secrets:
+            ZERV_SANDBOX_REPO_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     # ====================================================
     # Deployment with environment
