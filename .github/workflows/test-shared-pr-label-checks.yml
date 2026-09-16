@@ -116,15 +116,23 @@ jobs:
                       }
                   }
 
-                  # Mirror of shared-check-pr-label-and-branch's branch logic
+                  # Mirror of shared-check-pr-label-and-branch's branch logic.
+                  # Prefix matching uses a bash loop on purpose: the jq
+                  # equivalent `[.[] | select($b | startswith(.))]` binds `.`
+                  # to $b inside the pipe (always true), which broke lb1.
                   branch_valid() {
                       local names="$1" prefixes="$2" branch="$3"
-                      local exact=false prefix=false
+                      local exact=false prefix=false prefix
                       if [ "$names" != "[]" ]; then
                           exact=$(echo "$names" | jq --arg b "$branch" '[.[] | select(. == $b)] | length > 0')
                       fi
                       if [ "$prefixes" != "[]" ]; then
-                          prefix=$(echo "$prefixes" | jq --arg b "$branch" '[.[] | select($b | startswith(.))] | length > 0')
+                          while IFS= read -r prefix; do
+                              if [[ "$branch" == "$prefix"* ]]; then
+                                  prefix=true
+                                  break
+                              fi
+                          done < <(echo "$prefixes" | jq -r '.[]')
                       fi
                       if [ "$exact" = "true" ] || [ "$prefix" = "true" ] \
                           || { [ "$names" = "[]" ] && [ "$prefixes" = "[]" ]; }; then
