@@ -4,10 +4,14 @@ on:
     workflow_call:
         inputs:
             labels:
-                description: "JSON string of labels from the pull request"
+                description: >-
+                    JSON array of labels. Empty = auto: live-fetch from the PR
+                    (re-runs see label edits; the event payload is a frozen
+                    snapshot), falling back to the snapshot if the token
+                    cannot read pull requests.
                 required: false
                 type: string
-                default: ${{ toJSON(github.event.pull_request.labels) }}
+                default: ""
             prefix:
                 description: 'Label prefix to filter (e.g., "deploy-", "test-", "run-")'
                 required: false
@@ -30,8 +34,21 @@ jobs:
               id: filter
               env:
                   LABELS_JSON: ${{ inputs.labels }}
+                  SNAPSHOT: ${{ toJSON(github.event.pull_request.labels) }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
               run: |
                   PREFIX="${{ inputs.prefix }}"
+
+                  if [ -z "$LABELS_JSON" ] || [ "$LABELS_JSON" = "null" ]; then
+                    if LIVE="$(gh pr view "$PR_NUMBER" --json labels -q .labels 2>/dev/null)"; then
+                      LABELS_JSON="$LIVE"
+                    else
+                      LABELS_JSON="$SNAPSHOT"
+                      echo "::warning::live label fetch failed; using event snapshot (caller needs pull-requests: read)"
+                    fi
+                  fi
 
                   echo "Prefix: $PREFIX"
                   echo "Input labels: $LABELS_JSON"

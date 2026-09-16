@@ -6,8 +6,12 @@ on:
             labels:
                 required: false
                 type: string
-                description: "JSON string of labels from the pull request"
-                default: ${{ toJSON(github.event.pull_request.labels) }}
+                description: >-
+                    JSON array of labels. Empty = auto: live-fetch from the PR
+                    (re-runs see label edits; the event payload is a frozen
+                    snapshot), falling back to the snapshot if the token
+                    cannot read pull requests.
+                default: ""
             target_label:
                 required: true
                 type: string
@@ -42,8 +46,21 @@ jobs:
             - name: check-label
               env:
                   LABELS_JSON: ${{ inputs.labels }}
+                  SNAPSHOT: ${{ toJSON(github.event.pull_request.labels) }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
               id: check-label
               run: |
+                  if [ -z "$LABELS_JSON" ] || [ "$LABELS_JSON" = "null" ]; then
+                    if LIVE="$(gh pr view "$PR_NUMBER" --json labels -q .labels 2>/dev/null)"; then
+                      LABELS_JSON="$LIVE"
+                    else
+                      LABELS_JSON="$SNAPSHOT"
+                      echo "::warning::live label fetch failed; using event snapshot (caller needs pull-requests: read)"
+                    fi
+                  fi
+
                   TARGET_LABEL="${{ inputs.target_label }}"
                   echo "Checking for label: $TARGET_LABEL"
                   echo "Input labels: $LABELS_JSON"

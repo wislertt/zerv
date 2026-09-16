@@ -1,0 +1,93 @@
+# Output: matched=true/false for the marker, sourced from the caller's event.
+# Text source:
+#   pull_request       -> PR title, live-fetched (re-run sees title edits)
+#   push               -> all commit msgs in before..sha ([skip ci] semantics;
+#                         all-zero before = new branch -> head commit only)
+#   workflow_dispatch  -> head commit of the dispatched ref
+# Override:
+#   notset (default) -> follow the marker
+#   true / false     -> force result, skip sourcing
+name: shared-check-marker
+
+on:
+    workflow_call:
+        inputs:
+            marker:
+                description: "Marker substring to detect (e.g., '[e2e]')"
+                required: true
+                type: string
+            override:
+                description: "notset = follow marker; true/false = force result"
+                required: false
+                default: notset
+                type: string
+        outputs:
+            matched:
+                description: "'true' if the marker was found or overridden on"
+                value: ${{ jobs.check-marker.outputs.matched }}
+
+permissions:
+    contents: read
+    pull-requests: read
+
+jobs:
+    check-marker:
+        runs-on: ubuntu-latest
+        outputs:
+            matched: ${{ steps.check.outputs.matched }}
+        steps:
+            - name: checkout
+              if: github.event_name != 'pull_request'
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  fetch-depth: 0
+
+            - name: check-marker
+              id: check
+              env:
+                  MARKER: ${{ inputs.marker }}
+                  OVERRIDE: ${{ inputs.override }}
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  EVENT_NAME: ${{ github.event_name }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  BEFORE: ${{ github.event.before }}
+                  SHA: ${{ github.sha }}
+              run: |
+                  case "$OVERRIDE" in
+                    notset|"") ;;
+                    true|false)
+                      echo "matched=$OVERRIDE" >> "$GITHUB_OUTPUT"
+                      exit 0
+                      ;;
+                    *)
+                      echo "invalid override='$OVERRIDE' (notset|true|false)" >&2
+                      exit 1
+                      ;;
+                  esac
+
+                  if [ "$EVENT_NAME" = "pull_request" ]; then
+                    # live-fetch: event payload title is a frozen snapshot, so
+                    # a re-run after a title edit would see the old title
+                    TEXT="$(gh pr view "$PR_NUMBER" --json title -q .title)"
+                  else
+                    if [ -z "$BEFORE" ] || [[ "$BEFORE" =~ ^0+$ ]]; then
+                      TEXT="$(git log -1 --format=%B "$SHA")"
+                    else
+                      TEXT="$(git log --format=%B "$BEFORE..$SHA")"
+                    fi
+                  fi
+
+                  MATCHED=false
+                  if printf '%s' "$TEXT" | grep -qF -- "$MARKER"; then
+                    MATCHED=true
+                  fi
+                  echo "matched=$MATCHED" >> "$GITHUB_OUTPUT"
+
+            - name: report-matched
+              env:
+                  MARKER: ${{ inputs.marker }}
+                  OVERRIDE: ${{ inputs.override }}
+                  MATCHED: ${{ steps.check.outputs.matched }}
+              run: |
+                  echo "marker='$MARKER' override='$OVERRIDE' -> matched=$MATCHED"
