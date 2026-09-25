@@ -26,6 +26,10 @@ Dynamic versioning from git. Every commit gets its version. Keep semantic-releas
 
 Documentation: **[zerv.wisl.dev](https://zerv.wisl.dev)**
 
+<p align="center">
+  <img src="https://cdn.jsdelivr.net/gh/wislertt/zerv@main/docs/img/preview/zerv-preview.gif" width="720" alt="zerv flow on tagged main, develop, a feature branch, and a dirty working directory">
+</p>
+
 ## Why zerv?
 
 - **Runs next to [semantic-release](https://zerv.wisl.dev/cicd/semantic-release)** - semantic-release decides releases on main; zerv versions every other build: any commit on any branch, even with uncommitted changes. No build is ever unversioned.
