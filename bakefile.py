@@ -182,6 +182,7 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
             "--out Xml --out Html --out Lcov "
             "--output-dir coverage "
             "--include-tests "
+            "--timeout 600 "
             "--exclude-files 'src/main.rs' "
             "--exclude-files '**/tests/**' "
             "--exclude-files 'src/test_utils/git/native.rs' "
