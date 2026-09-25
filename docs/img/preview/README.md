@@ -11,6 +11,14 @@ writes no output).
 3. feature branch off `develop` -> `1.2.4-alpha.<id>.post.2`
 4. uncommitted changes -> same plus `.dev.<timestamp>`
 
+## Still PNG
+
+`zerv-preview.png` is a two-column summary of all four beats (beats 1-2
+left, 3-4 right). It is composited from GIF frames, so re-derive it after
+a re-render rather than regenerating it with the tape: pull the end-of-beat
+frames (~7s, ~14s, ~33s in the current GIF) and stack beats 1+2 left of
+beats 3+4 with a 3px `#3E525F` divider.
+
 ## Demo repo setup
 
 The tape expects a demo repo with one worktree per git state, so the tape
