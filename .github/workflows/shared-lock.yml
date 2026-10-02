@@ -35,8 +35,20 @@ on:
                 required: false
                 type: number
                 default: 5
+            wait_for_lock_timeout_in_sec:
+                description: "Max seconds to wait for the lock (polling every lock_poll_interval_in_sec). 0 = fail fast if locked"
+                required: false
+                type: number
+                default: 0
+            lock_poll_interval_in_sec:
+                description: "Seconds between lock acquisition attempts while waiting"
+                required: false
+                type: number
+                default: 10
+            # TODO: remove delay_before_start_in_sec once all callers migrate to wait_for_lock_timeout_in_sec.
+            # Back-compat only: when wait_for_lock_timeout_in_sec is 0, this value is used as the lock timeout.
             delay_before_start_in_sec:
-                description: "Delay in seconds before starting lock operations (allows previous lock/unlock to propagate)"
+                description: "DEPRECATED - treated as wait_for_lock_timeout_in_sec when wait_for_lock_timeout_in_sec is 0"
                 required: false
                 type: number
                 default: 0
@@ -59,9 +71,65 @@ jobs:
         if: inputs.enabled == true
         runs-on: ubuntu-latest
         steps:
-            - name: delay-before-start
-              if: inputs.delay_before_start_in_sec > 0
-              run: sleep ${{ inputs.delay_before_start_in_sec }}
+            # Poll the lock branch until it is free/owned-by-us or the timeout expires.
+            # Mirrors github/lock check mode: lock = branch "<env>-branch-deploy-lock" holding
+            # lock.json with reason "owner:<id>" (global lock = "global-branch-deploy-lock").
+            - name: wait-for-lock
+              id: wait-for-lock
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  KEY="${{ inputs.key_prefix }}${{ inputs.key }}"
+                  LOCK_BRANCH="${KEY// /-}-branch-deploy-lock"
+                  GLOBAL_LOCK_BRANCH="global-branch-deploy-lock"
+                  OWNER="${{ inputs.key_owner }}"
+
+                  # TODO: drop delay_before_start_in_sec fallback once callers migrate to wait_for_lock_timeout_in_sec
+                  TIMEOUT="${{ inputs.wait_for_lock_timeout_in_sec }}"
+                  if [ -z "$TIMEOUT" ] || [ "$TIMEOUT" -eq 0 ]; then
+                      TIMEOUT="${{ inputs.delay_before_start_in_sec }}"
+                  fi
+                  INTERVAL="${{ inputs.lock_poll_interval_in_sec }}"
+                  if [ -z "$INTERVAL" ] || [ "$INTERVAL" -lt 1 ]; then
+                      INTERVAL=10
+                  fi
+
+                  read_lock_reason() {
+                      local branch="$1"
+                      local content
+                      content=$(gh api "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=${branch}" --jq '.content' 2>/dev/null || true)
+                      [ -z "$content" ] && return 1
+                      echo "$content" | base64 -d | jq -r '.reason // empty'
+                  }
+
+                  is_free_or_owned() {
+                      local branch="$1"
+                      local lock_reason lock_owner
+                      if ! lock_reason=$(read_lock_reason "$branch"); then
+                          return 0
+                      fi
+                      lock_owner=$(echo "$lock_reason" | grep -o 'owner:[^,]*' | cut -d: -f2 || true)
+                      if [ "$lock_owner" = "$OWNER" ]; then
+                          return 0
+                      fi
+                      WAIT_OWNER="${lock_owner:-unknown}"
+                      return 1
+                  }
+
+                  DEADLINE=$((SECONDS + TIMEOUT))
+                  while true; do
+                      if is_free_or_owned "$LOCK_BRANCH" && is_free_or_owned "$GLOBAL_LOCK_BRANCH"; then
+                          echo "✓ Lock available - proceeding"
+                          break
+                      fi
+                      if [ "$SECONDS" -ge "$DEADLINE" ]; then
+                          echo "::error::Key '$KEY' is still locked by ${WAIT_OWNER:-unknown} after ${TIMEOUT}s"
+                          exit 1
+                      fi
+                      echo "Lock held by ${WAIT_OWNER:-unknown} - retrying in ${INTERVAL}s ($((DEADLINE - SECONDS))s left)"
+                      sleep "$INTERVAL"
+                  done
 
             - name: define-lock-check-function
               shell: bash

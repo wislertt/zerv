@@ -1,0 +1,61 @@
+name: test-shared-lock-push
+
+# Dummy push workflow to exercise shared-lock.yml wait/retry behavior.
+# Push to the trigger branch twice in quick succession: the second run should
+# log "Lock held by <run_id> - retrying in 10s" until the first run unlocks.
+# Each run uses its own run_id as lock owner, so runs never self-share locks.
+
+on:
+    push:
+        branches:
+            - ci/test-shared-lock
+    workflow_dispatch:
+        inputs:
+            wait_for_lock_timeout_in_sec:
+                description: "Max seconds to wait for the lock (0 = fail fast if locked)"
+                required: false
+                type: number
+                default: 60
+            lock_poll_interval_in_sec:
+                description: "Seconds between lock attempts"
+                required: false
+                type: number
+                default: 10
+
+permissions:
+    contents: write
+
+# NOTE: intentionally no concurrency group - concurrent runs must overlap to
+# produce lock contention.
+
+jobs:
+    lock:
+        name: lock-push-test
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            key: push-test
+            key_prefix: test/
+            key_owner: ${{ github.run_id }}
+            job_name: lock-push-test-${{ github.run_id }}
+            wait_for_lock_timeout_in_sec: ${{ inputs.wait_for_lock_timeout_in_sec || 60 }}
+            lock_poll_interval_in_sec: ${{ inputs.lock_poll_interval_in_sec || 10 }}
+
+    deploy:
+        name: dummy-deploy
+        needs: lock
+        runs-on: ubuntu-latest
+        steps:
+            - name: run
+              run: |
+                  echo "✓ Dummy deploy complete (run ${{ github.run_id }})"
+
+    unlock:
+        name: unlock-push-test
+        needs: [lock, deploy]
+        if: always() && needs.lock.result != 'skipped'
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: push-test
+            key_prefix: test/
+            key_owner: ${{ github.run_id }}
+            job_name: unlock-push-test-${{ github.run_id }}
