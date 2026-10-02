@@ -8,7 +8,7 @@ name: test-shared-lock-push
 on:
     push:
         branches:
-            - ci/test-shared-lock
+            - test-lock
     workflow_dispatch:
         inputs:
             wait_for_lock_timeout_in_sec:
