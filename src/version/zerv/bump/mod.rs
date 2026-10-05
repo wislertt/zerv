@@ -225,7 +225,7 @@ mod tests {
         #[case] expected_version: &str,
     ) {
         let mut zerv = ZervFixture::from_semver_str(starting_version)
-            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext)  // Schema: [major, minor, patch]
+            .with_schema_preset(ZervSchemaPreset::StandardBasePrereleasePostDevContext) // Schema: [major, minor, patch]
             .build();
 
         let args = VersionArgsFixture::new().with_bump_specs(bumps).build();

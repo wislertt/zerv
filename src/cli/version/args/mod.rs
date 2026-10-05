@@ -12,15 +12,6 @@ pub mod overrides;
 pub mod resolved;
 pub mod validation;
 
-#[cfg(test)]
-mod tests {
-    pub mod bumps_tests;
-    pub mod combination_tests;
-    pub mod overrides_tests;
-    pub mod resolved_tests;
-    pub mod validation_tests;
-}
-
 pub use bumps::BumpsConfig;
 pub use main::MainConfig;
 pub use overrides::OverridesConfig;
@@ -86,4 +77,13 @@ impl VersionArgs {
     pub fn dirty_override(&self) -> Option<bool> {
         self.overrides.dirty_override()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    pub mod bumps_tests;
+    pub mod combination_tests;
+    pub mod overrides_tests;
+    pub mod resolved_tests;
+    pub mod validation_tests;
 }

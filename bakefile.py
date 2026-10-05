@@ -197,6 +197,7 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
         build: Annotated[
             bool, typer.Option("--build", "-b", help="Build before running tests")
         ] = False,
+        durations: params.DurationsOption = None,
     ):
         if build:
             self.ctx.run("maturin develop")
@@ -204,11 +205,15 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
                 symlink_zerv_to_venv_bin()
         tests_path = "tests/python"
         coverage_path = "python/zerv"
-        self._test(tests_paths=tests_path, coverage_path=coverage_path)
+        self._test(
+            tests_paths=tests_path,
+            coverage_path=coverage_path,
+            durations=durations,
+        )
 
     def test(
         self,
-        *,
+        durations: params.DurationsOption = None,
         zerv_test_native_git: bool | None = None,
         zerv_test_docker: bool | None = None,
         zerv_force_rust_log_off: bool | None = None,
@@ -220,7 +225,7 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
         )
 
         self.test_rust()
-        self.test_python(build=True)
+        self.test_python(build=True, durations=durations)
 
     @command()
     def docs(self):
