@@ -45,7 +45,7 @@ jobs:
             key_prefix: test/
             key_owner: ${{ inputs.lock_key_owner }}
             job_name: lock-${{ inputs.lock_key }}
-            delay_before_start_in_sec: ${{ inputs.delay_before_lock_in_sec }}
+            wait_for_lock_timeout_in_sec: ${{ inputs.delay_before_lock_in_sec }}
 
     deploy:
         name: ${{ inputs.name }}
