@@ -552,22 +552,22 @@ pub mod to {
 
     pub fn v1_0_0_duplicate_vars() -> ZervFixture {
         v1_0_0()
-            .with_epoch(1)  // First epoch wins
-            .with_post(3)   // First post wins
-            .with_dev(5)    // First dev wins
-            .with_pre_release(PreReleaseLabel::Alpha, Some(7))  // First alpha wins
+            .with_epoch(1) // First epoch wins
+            .with_post(3) // First post wins
+            .with_dev(5) // First dev wins
+            .with_pre_release(PreReleaseLabel::Alpha, Some(7)) // First alpha wins
             .with_extra_core_components(vec![
-                Component::Var(Var::Epoch),     // epoch.1 -> Var(Epoch)
-                Component::Str("epoch".to_string()),  // epoch.2 -> Str("epoch"), Int(2)
+                Component::Var(Var::Epoch),          // epoch.1 -> Var(Epoch)
+                Component::Str("epoch".to_string()), // epoch.2 -> Str("epoch"), Int(2)
                 Component::UInt(2),
-                Component::Var(Var::Post),      // post.3 -> Var(Post)
-                Component::Str("post".to_string()),   // post.4 -> Str("post"), Int(4)
+                Component::Var(Var::Post),          // post.3 -> Var(Post)
+                Component::Str("post".to_string()), // post.4 -> Str("post"), Int(4)
                 Component::UInt(4),
-                Component::Var(Var::Dev),       // dev.5 -> Var(Dev)
-                Component::Str("dev".to_string()),    // dev.6 -> Str("dev"), Int(6)
+                Component::Var(Var::Dev),          // dev.5 -> Var(Dev)
+                Component::Str("dev".to_string()), // dev.6 -> Str("dev"), Int(6)
                 Component::UInt(6),
                 Component::Var(Var::PreRelease), // alpha.7 -> Var(PreRelease)
-                Component::Str("alpha".to_string()),  // alpha.8 -> Str("alpha"), Int(8)
+                Component::Str("alpha".to_string()), // alpha.8 -> Str("alpha"), Int(8)
                 Component::UInt(8),
             ])
     }

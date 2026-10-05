@@ -828,10 +828,11 @@ mod tests {
         );
 
         // Test 2: Multiple tags on same commit (main bug scenario)
-        fixture = fixture.create_tag("v1.0.1-beta.1")   // pre-release
-            .create_tag("build-123")                   // non-version tag
-            .create_tag("v1.0.2-rc.1.post.3")          // problematic pre-release from bug
-            .create_tag("v1.1.0")                      // clean release (should be chosen)
+        fixture = fixture
+            .create_tag("v1.0.1-beta.1") // pre-release
+            .create_tag("build-123") // non-version tag
+            .create_tag("v1.0.2-rc.1.post.3") // problematic pre-release from bug
+            .create_tag("v1.1.0") // clean release (should be chosen)
             .create_tag("release-candidate"); // another non-version tag
 
         let result = git_vcs.get_latest_tag("auto")?;
@@ -921,10 +922,11 @@ mod tests {
         );
 
         // Test 2: Multiple annotated tags on same commit (main bug scenario)
-        fixture = fixture.create_annotated_tag("v1.0.1-beta.1", "Beta release 1.0.1")   // pre-release
-            .create_annotated_tag("build-123", "Build 123")                            // non-version tag
-            .create_annotated_tag("v1.0.2-rc.1.post.3", "Release candidate with post")  // problematic pre-release from bug
-            .create_annotated_tag("v1.1.0", "Release version 1.1.0")                    // clean release (should be chosen)
+        fixture = fixture
+            .create_annotated_tag("v1.0.1-beta.1", "Beta release 1.0.1") // pre-release
+            .create_annotated_tag("build-123", "Build 123") // non-version tag
+            .create_annotated_tag("v1.0.2-rc.1.post.3", "Release candidate with post") // problematic pre-release from bug
+            .create_annotated_tag("v1.1.0", "Release version 1.1.0") // clean release (should be chosen)
             .create_annotated_tag("release-candidate", "Release candidate tag"); // another non-version tag
 
         let result = git_vcs.get_latest_tag("auto")?;

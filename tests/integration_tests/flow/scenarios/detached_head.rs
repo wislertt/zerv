@@ -16,7 +16,7 @@ fn test_detached_head_flow() {
     let scenario = FlowIntegrationTestScenario::new()
         .expect("Failed to create test scenario")
         .create_tag("v1.0.0")
-        .commit()  // Commit after v1.0.0
+        .commit() // Commit after v1.0.0
         .commit(); // Another commit
 
     // Get the commit hash for v1.0.0
