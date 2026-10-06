@@ -103,7 +103,7 @@ jobs:
                   key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}
 
             - name: upload-coverage-reports-to-codecov
-              if: matrix.os == 'ubuntu-latest'
+              if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
               uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
               with:
                   fail_ci_if_error: true
@@ -194,3 +194,11 @@ jobs:
               with:
                   path: ${{ env.CARGO_CACHE_PATHS }}
                   key: ${{ steps.restore-cache-cargo.outputs.cache-primary-key }}
+
+            - name: upload-coverage-reports-to-codecov
+              if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+              uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+              with:
+                  fail_ci_if_error: true
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  verbose: true

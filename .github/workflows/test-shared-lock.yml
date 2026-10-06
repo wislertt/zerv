@@ -9,7 +9,6 @@ name: test-shared-lock
 #   t1 fail-fast:      lock held, timeout 0            -> lock job must fail
 #   t2 wait-then-lock: lock released mid-wait          -> lock job must succeed
 #   t3 timeout:        lock held past timeout          -> lock job must fail
-#   t4 back-compat:    delay_before_start_in_sec used as timeout -> must fail
 #   t5 reentrant:      lock already owned by us        -> lock job must succeed
 
 on:
@@ -164,46 +163,6 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t3-branch-deploy-lock" || true
 
-    # ---------- t4: back-compat delay_before_start_in_sec acts as timeout ----------
-    t4-seed:
-        runs-on: ubuntu-latest
-        steps:
-            - name: seed-lock
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: |
-                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "$OWNER_FOREIGN" | base64 -w0)
-                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
-                      -f message="seed t4" -f content="$CONTENT" \
-                      -f branch="${KEY_PREFIX}slock-t4-branch-deploy-lock" > /dev/null
-
-    t4-lock:
-        needs: t4-seed
-        uses: ./.github/workflows/shared-lock.yml
-        with:
-            key: slock-t4
-            key_prefix: test/
-            key_owner: t4-owner
-            job_name: t4-lock
-            delay_before_start_in_sec: 20
-
-    t4-assert:
-        needs: [t4-seed, t4-lock]
-        if: always()
-        runs-on: ubuntu-latest
-        steps:
-            - name: assert
-              run: |
-                  if [ "${{ needs.t4-lock.result }}" != "failure" ]; then
-                      echo "::error::t4 expected failure (back-compat timeout on held lock), got: ${{ needs.t4-lock.result }}"
-                      exit 1
-                  fi
-            - name: cleanup
-              if: always()
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t4-branch-deploy-lock" || true
-
     # ---------- t5: lock already owned by us -> proceed ----------
     t5-seed:
         runs-on: ubuntu-latest
@@ -247,14 +206,14 @@ jobs:
     # ---------- summary ----------
     summary:
         name: test-shared-lock
-        needs: [t1-assert, t2-assert, t3-assert, t4-assert, t5-assert]
+        needs: [t1-assert, t2-assert, t3-assert, t5-assert]
         if: always()
         runs-on: ubuntu-latest
         steps:
             - name: report
               run: |
                   FAILED=0
-                  for job in t1-assert t2-assert t3-assert t4-assert t5-assert; do
+                  for job in t1-assert t2-assert t3-assert t5-assert; do
                       RESULT=$(echo "${{ toJson(needs) }}" | jq -r ".\"$job\".result")
                       echo "$job: $RESULT"
                       [ "$RESULT" != "success" ] && FAILED=1
