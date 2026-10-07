@@ -1,58 +1,6 @@
 name: lock
 
 on:
-    # workflow_dispatch exists for the test harness: expected-failure cases are
-    # dispatched as throwaway runs whose conclusion is asserted (and the runs
-    # deleted) by .github/workflows/test-shared-lock.yml.
-    workflow_dispatch:
-        inputs:
-            enabled:
-                description: "Whether to run the lock job (useful for matrix filtering, default: true)"
-                required: false
-                type: boolean
-                default: true
-            key:
-                description: "Key to lock (e.g., dev, staging, prod)"
-                required: true
-                type: string
-            key_prefix:
-                description: "Prefix for the lock key (e.g., 'hotfix/', 'feature/'). Leave empty for no prefix"
-                required: false
-                type: string
-                default: ""
-            key_owner:
-                description: "Key owner identifier (e.g., PR number, SHA, run ID)"
-                required: true
-                type: string
-            job_name:
-                description: "Custom name for the lock job"
-                required: false
-                type: string
-            check_owner_after_lock:
-                description: "Whether to check lock ownership after acquiring lock (check-lock-check pattern)"
-                required: false
-                type: boolean
-                default: true
-            delay_check_owner_after_lock_in_sec:
-                description: "Delay in seconds before checking lock ownership after acquiring lock"
-                required: false
-                type: number
-                default: 5
-            wait_for_lock_timeout_in_sec:
-                description: "Max seconds to wait for the lock (polling every wait_for_lock_poll_interval_in_sec). 0 = fail fast if locked"
-                required: false
-                type: number
-                default: 0
-            wait_for_lock_poll_interval_in_sec:
-                description: "Seconds between lock acquisition attempts while waiting"
-                required: false
-                type: number
-                default: 10
-            upload_result_artifact:
-                description: "Whether to upload lock result as an artifact (useful for matrix aggregation)"
-                required: false
-                type: boolean
-                default: false
     workflow_call:
         inputs:
             enabled:
@@ -97,6 +45,17 @@ on:
                 required: false
                 type: number
                 default: 10
+            # TODO: remove delay_before_start_in_sec once all callers migrate to wait_for_lock_timeout_in_sec.
+            # Back-compat only: when wait_for_lock_timeout_in_sec is 0, this value is used as the lock timeout.
+            # After all callers migrated (zerv callers done; remaining: abcs-repo gcp-landing-zone, glz-projects, run-abc):
+            #   1. Delete this input and the fallback in wait-for-lock step (TIMEOUT assignment).
+            #   2. test-shared-lock.yml t4: re-point to wait_for_lock_timeout_in_sec (keep as timeout test) and
+            #      drop its "back-compat" naming/comments.
+            delay_before_start_in_sec:
+                description: "DEPRECATED - treated as wait_for_lock_timeout_in_sec when wait_for_lock_timeout_in_sec is 0"
+                required: false
+                type: number
+                default: 0
             upload_result_artifact:
                 description: "Whether to upload lock result as an artifact (useful for matrix aggregation)"
                 required: false
@@ -106,9 +65,6 @@ on:
             lock_status:
                 description: "Lock status for this key (NOTE: with matrix, only last instance's output is returned)"
                 value: ${{ jobs.lock.outputs.lock_status }}
-            superseded:
-                description: "True when this run was no longer the head of its ref, so lock+deploy were skipped"
-                value: ${{ jobs.lock.outputs.superseded }}
 
 permissions:
     contents: write
@@ -118,40 +74,12 @@ jobs:
         name: ${{ inputs.job_name || 'lock' }}
         if: inputs.enabled == true
         runs-on: ubuntu-latest
-        # Queue same-lineage deploys (same key + same ref) instead of racing them.
-        # The git-branch lock below handles cross-lineage (different ref) contention.
-        # github.ref resolves in the caller's context, so queued runs wait per caller ref.
-        concurrency:
-            group: lock-${{ inputs.key_prefix }}${{ inputs.key }}-${{ github.ref }}
-            cancel-in-progress: false
         steps:
-            # If this run is no longer the head of its ref, a newer run was pushed while
-            # this one queued. Deploying an obsolete commit is a no-op: exit green and
-            # let the newer run take over (never cancel an in-flight apply).
-            - name: supersede-check
-              id: supersede-check
-              shell: bash
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: |
-                  EXPECTED="${{ github.sha }}"
-                  ACTUAL=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${{ github.ref }}" --jq .sha 2>/dev/null || true)
-                  if [ -n "$ACTUAL" ] && [ "$ACTUAL" != "$EXPECTED" ]; then
-                      echo "Run is not the head of ${{ github.ref }} (expected ${EXPECTED:0:7}, found ${ACTUAL:0:7}) - superseded, skipping lock+deploy"
-                      echo "superseded=true" >> "$GITHUB_OUTPUT"
-                  else
-                      echo "Run is the head of ${{ github.ref }} - proceeding"
-                      echo "superseded=false" >> "$GITHUB_OUTPUT"
-                  fi
-            # Poll the lock branch until it is released or the timeout expires.
+            # Poll the lock branch until it is free/owned-by-us or the timeout expires.
             # Mirrors github/lock check mode: lock = branch "<env>-branch-deploy-lock" holding
             # lock.json with reason "owner:<id>" (global lock = "global-branch-deploy-lock").
-            # Only a released lock is free - a lock owned by us is NOT free, so same-lineage
-            # deploys serialize here instead of relying on github/lock reentrancy (which keys
-            # off the triggering actor, not the reason owner).
             - name: wait-for-lock
               id: wait-for-lock
-              if: steps.supersede-check.outputs.superseded != 'true'
               shell: bash
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -159,36 +87,43 @@ jobs:
                   KEY="${{ inputs.key_prefix }}${{ inputs.key }}"
                   LOCK_BRANCH="${KEY// /-}-branch-deploy-lock"
                   GLOBAL_LOCK_BRANCH="global-branch-deploy-lock"
+                  OWNER="${{ inputs.key_owner }}"
 
+                  # TODO: drop delay_before_start_in_sec fallback once callers migrate to wait_for_lock_timeout_in_sec
                   TIMEOUT="${{ inputs.wait_for_lock_timeout_in_sec }}"
+                  if [ -z "$TIMEOUT" ] || [ "$TIMEOUT" -eq 0 ]; then
+                      TIMEOUT="${{ inputs.delay_before_start_in_sec }}"
+                  fi
                   INTERVAL="${{ inputs.wait_for_lock_poll_interval_in_sec }}"
                   if [ -z "$INTERVAL" ] || [ "$INTERVAL" -lt 1 ]; then
                       INTERVAL=10
                   fi
 
-                  # No branch / no lock.json (the normal "no lock" state) reads as empty,
-                  # which is free. A present lock must carry a reason to count as held.
                   read_lock_reason() {
                       local branch="$1"
-                      gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=${branch}" 2>/dev/null \
-                          | jq -r '.reason // empty' || true
+                      local content
+                      content=$(gh api "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=${branch}" --jq '.content' 2>/dev/null || true)
+                      [ -z "$content" ] && return 1
+                      echo "$content" | base64 -d | jq -r '.reason // empty'
                   }
 
-                  is_free() {
+                  is_free_or_owned() {
                       local branch="$1"
                       local lock_reason lock_owner
-                      lock_reason=$(read_lock_reason "$branch")
-                      if [ -z "$lock_reason" ]; then
+                      if ! lock_reason=$(read_lock_reason "$branch"); then
                           return 0
                       fi
                       lock_owner=$(echo "$lock_reason" | grep -o 'owner:[^,]*' | cut -d: -f2 || true)
+                      if [ "$lock_owner" = "$OWNER" ]; then
+                          return 0
+                      fi
                       WAIT_OWNER="${lock_owner:-unknown}"
                       return 1
                   }
 
                   DEADLINE=$((SECONDS + TIMEOUT))
                   while true; do
-                      if is_free "$LOCK_BRANCH" && is_free "$GLOBAL_LOCK_BRANCH"; then
+                      if is_free_or_owned "$LOCK_BRANCH" && is_free_or_owned "$GLOBAL_LOCK_BRANCH"; then
                           echo "✓ Lock available - proceeding"
                           break
                       fi
@@ -201,7 +136,6 @@ jobs:
                   done
 
             - name: define-lock-check-function
-              if: steps.supersede-check.outputs.superseded != 'true'
               shell: bash
               run: |
                   # Define reusable function for lock ownership checking
@@ -269,14 +203,12 @@ jobs:
             - name: get-lock-state
               uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: get-lock-state
-              if: steps.supersede-check.outputs.superseded != 'true'
               with:
                   mode: "check"
                   environment: ${{ inputs.key_prefix }}${{ inputs.key }}
 
             - name: check-lock-state
               id: check-lock
-              if: steps.supersede-check.outputs.superseded != 'true'
               shell: bash
               run: |
                   source ./lock_check_function.sh
@@ -308,7 +240,7 @@ jobs:
 
             - name: wait-for-lock-to-propagate
               shell: bash
-              if: inputs.check_owner_after_lock && steps.supersede-check.outputs.superseded != 'true'
+              if: inputs.check_owner_after_lock
               run: |
                   echo "Waiting for lock to propagate..."
                   sleep ${{ inputs.delay_check_owner_after_lock_in_sec }}
@@ -317,7 +249,7 @@ jobs:
             - name: get-lock-state-for-recheck
               uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
               id: get-lock-state-for-recheck
-              if: inputs.check_owner_after_lock && steps.supersede-check.outputs.superseded != 'true'
+              if: inputs.check_owner_after_lock
               with:
                   mode: "check"
                   environment: ${{ inputs.key_prefix }}${{ inputs.key }}
@@ -341,12 +273,11 @@ jobs:
                   echo "=== Lock Result ==="
                   echo "Key: ${{ inputs.key_prefix }}${{ inputs.key }}"
                   echo "Owner: ${{ inputs.key_owner }}"
-                  echo "Superseded: ${{ steps.supersede-check.outputs.superseded || 'false' }}"
                   echo "Status: ${{ steps.lock.outcome }}"
                   echo "Verified ownership: ${{ steps.recheck-lock.outputs.is_owned_by_us || 'N/A' }}"
 
             - name: create-lock-result
-              if: always() && inputs.upload_result_artifact == true && steps.supersede-check.outputs.superseded != 'true'
+              if: always() && inputs.upload_result_artifact == true
               id: output
               shell: bash
               run: |
@@ -380,7 +311,7 @@ jobs:
 
             - name: upload-lock-result-artifact
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              if: always() && inputs.upload_result_artifact == true && steps.supersede-check.outputs.superseded != 'true'
+              if: always() && inputs.upload_result_artifact == true
               with:
                   name: lock-result-${{ inputs.key }}
                   path: lock-result.json
@@ -388,4 +319,3 @@ jobs:
 
         outputs:
             lock_status: ${{ steps.output.outputs.lock_status }}
-            superseded: ${{ steps.supersede-check.outputs.superseded }}
