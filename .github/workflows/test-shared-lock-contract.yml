@@ -36,6 +36,7 @@ permissions:
 env:
     FIXTURES_REPO: wislertt/zerv-sandbox
     WORKFLOW: zerv-lock-contract.yml
+    HARNESS_SRC: .github/fixtures/zerv-sandbox/zerv-lock-contract.yml
     HARNESS_PATH: .github/workflows/zerv-lock-contract.yml
     HARNESS_REF: zerv-ci/lock-contract
     CONTRACT_REF: contract-under-test
@@ -64,7 +65,7 @@ jobs:
                       echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create a fine-grained PAT with Contents:RW + Actions:RW on ${FIXTURES_REPO}, then add it as a repository secret."
                       exit 1
                   fi
-                  CONTENT=$(base64 -w0 "${GITHUB_WORKSPACE}/${HARNESS_PATH}")
+                  CONTENT=$(base64 -w0 "${GITHUB_WORKSPACE}/${HARNESS_SRC}")
                   FILE_SHA=$(gh api "repos/${FIXTURES_REPO}/contents/${HARNESS_PATH}?ref=${HARNESS_REF}" --jq .sha 2>/dev/null || true)
                   ARGS=(-f message="ci: contract harness update" -f content="$CONTENT" -f branch="${HARNESS_REF}")
                   if [ -n "$FILE_SHA" ]; then
