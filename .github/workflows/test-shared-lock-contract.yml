@@ -1,0 +1,97 @@
+name: test-shared-lock-contract
+
+# Cross-repo contract test for shared-lock.yml. Runs a lock round-trip inside
+# wislertt/zerv-sandbox against THIS ref, so a caller-visible regression (input
+# semantics, reentrancy, output shape) fails CI here before callers find it in
+# production (as happened with the #297 poll rewrite).
+#
+# Mechanics: reusable-workflow `uses` does not accept expressions, so the
+# sandbox workflow pins `wislertt/zerv/.github/workflows/shared-lock.yml@contract-under-test`
+# statically and this workflow moves that branch to the commit under test
+# before dispatching. jobs.<job_id>.concurrency serializes runs so two CI runs
+# cannot race the branch move.
+#
+# Requires the ZERV_SANDBOX_REPO_TOKEN secret: fine-grained PAT on
+# wislertt/zerv-sandbox with Contents:RW + Actions:RW (Actions needed to
+# dispatch and read the sandbox workflow run).
+
+on:
+    workflow_call:
+        secrets:
+            ZERV_SANDBOX_REPO_TOKEN:
+                required: false
+                description: Fine-grained PAT with Contents:RW + Actions:RW on wislertt/zerv-sandbox
+
+permissions:
+    contents: write
+
+env:
+    FIXTURES_REPO: wislertt/zerv-sandbox
+    WORKFLOW: zerv-lock-contract.yml
+    CONTRACT_REF: contract-under-test
+
+concurrency:
+    group: test-shared-lock-contract
+    cancel-in-progress: false
+
+jobs:
+    contract:
+        runs-on: ubuntu-latest
+        steps:
+            - name: move-contract-ref
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  CONTRACT_REF: ${{ env.CONTRACT_REF }}
+              run: |
+                  # Point the sandbox's static pin at this exact commit.
+                  if gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${CONTRACT_REF}" > /dev/null 2>&1; then
+                      gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/heads/${CONTRACT_REF}" \
+                          -f sha="${{ github.sha }}" -F force=true > /dev/null
+                  else
+                      gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                          -f ref="refs/heads/${CONTRACT_REF}" -f sha="${{ github.sha }}" > /dev/null
+                  fi
+                  echo "contract-under-test -> ${{ github.sha }}"
+
+            - name: dispatch-sandbox-contract-run
+              env:
+                  GH_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+              run: |
+                  if [ -z "$GH_TOKEN" ]; then
+                      echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create a fine-grained PAT with Contents:RW + Actions:RW on ${FIXTURES_REPO}, then add it as a repository secret."
+                      exit 1
+                  fi
+                  gh workflow run --repo "$FIXTURES_REPO" "$WORKFLOW" --ref main
+
+            - name: wait-for-contract-run
+              env:
+                  GH_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+              run: |
+                  # The contract job above serializes contract runs, so the newest
+                  # run of this workflow is ours.
+                  rid=""
+                  for _ in $(seq 1 12); do
+                      sleep 10
+                      rid=$(gh run list --repo "$FIXTURES_REPO" --workflow "$WORKFLOW" \
+                          --json databaseId -q '.[0].databaseId' 2>/dev/null | head -1)
+                      [ -n "$rid" ] && break
+                  done
+                  if [ -z "$rid" ]; then
+                      echo "::error::sandbox contract run not found after dispatch"
+                      exit 1
+                  fi
+                  echo "Sandbox contract run: https://github.com/${FIXTURES_REPO}/actions/runs/${rid}"
+                  conc=""
+                  for _ in $(seq 1 90); do
+                      st=$(gh run view "$rid" --repo "$FIXTURES_REPO" --json status -q .status)
+                      if [ "$st" = "completed" ]; then
+                          conc=$(gh run view "$rid" --repo "$FIXTURES_REPO" --json conclusion -q .conclusion)
+                          break
+                      fi
+                      sleep 10
+                  done
+                  if [ "$conc" != "success" ]; then
+                      echo "::error::sandbox lock contract failed (conclusion: ${conc:-timeout}). Run: https://github.com/${FIXTURES_REPO}/actions/runs/${rid}"
+                      exit 1
+                  fi
+                  echo "Sandbox lock contract passed for zerv@${{ github.sha }}"
