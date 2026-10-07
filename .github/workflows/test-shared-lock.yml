@@ -460,8 +460,13 @@ jobs:
                       local line="$1"
                       local raw sha newb64
                       for _ in 1 2 3 4 5; do
-                          raw=$(gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
-                          sha=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" --jq .sha 2>/dev/null || echo "")
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
                           newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
                           if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
                               -f message="queue-log $line" -f content="$newb64" \
@@ -511,8 +516,13 @@ jobs:
                       local line="$1"
                       local raw sha newb64
                       for _ in 1 2 3 4 5; do
-                          raw=$(gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
-                          sha=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" --jq .sha 2>/dev/null || echo "")
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
                           newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
                           if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
                               -f message="queue-log $line" -f content="$newb64" \
@@ -816,8 +826,13 @@ jobs:
                       local line="$1"
                       local raw sha newb64
                       for _ in 1 2 3 4 5; do
-                          raw=$(gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
-                          sha=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" --jq .sha 2>/dev/null || echo "")
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
                           newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
                           if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
                               -f message="queue-log $line" -f content="$newb64" \
@@ -866,8 +881,13 @@ jobs:
                       local line="$1"
                       local raw sha newb64
                       for _ in 1 2 3 4 5; do
-                          raw=$(gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
-                          sha=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" --jq .sha 2>/dev/null || echo "")
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
                           newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
                           if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
                               -f message="queue-log $line" -f content="$newb64" \
@@ -916,8 +936,13 @@ jobs:
                       local line="$1"
                       local raw sha newb64
                       for _ in 1 2 3 4 5; do
-                          raw=$(gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
-                          sha=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" --jq .sha 2>/dev/null || echo "")
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
                           newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
                           if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
                               -f message="queue-log $line" -f content="$newb64" \
@@ -986,8 +1011,13 @@ jobs:
                       local line="$1"
                       local raw sha newb64
                       for _ in 1 2 3 4 5; do
-                          raw=$(gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
-                          sha=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" --jq .sha 2>/dev/null || echo "")
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
                           newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
                           if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
                               -f message="queue-log $line" -f content="$newb64" \
