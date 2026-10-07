@@ -59,20 +59,23 @@ jobs:
                   # Re-push the harness onto its dedicated branch on every run:
                   # single source of truth is .github/fixtures/zerv-sandbox/, and
                   # a wiped sandbox heals itself here instead of failing with a
-                  # 422. Specifying branch=<HARNESS_REF> on the contents API
-                  # creates the branch from the default branch when missing.
+                  # 422. git push (not the contents API): the PAT may refuse
+                  # branch auto-creation via contents PUT with a 403, while
+                  # plain pushes are exactly what the other harnesses do.
                   if [ -z "$GH_TOKEN" ]; then
                       echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create a fine-grained PAT with Contents:RW + Actions:RW on ${FIXTURES_REPO}, then add it as a repository secret."
                       exit 1
                   fi
-                  CONTENT=$(base64 -w0 "${GITHUB_WORKSPACE}/${HARNESS_SRC}")
-                  FILE_SHA=$(gh api "repos/${FIXTURES_REPO}/contents/${HARNESS_PATH}?ref=${HARNESS_REF}" --jq .sha 2>/dev/null || true)
-                  ARGS=(-f message="ci: contract harness update" -f content="$CONTENT" -f branch="${HARNESS_REF}")
-                  if [ -n "$FILE_SHA" ]; then
-                      ARGS+=(-f sha="$FILE_SHA")
-                  fi
-                  gh api -X PUT "repos/${FIXTURES_REPO}/contents/${HARNESS_PATH}" "${ARGS[@]}" --jq .commit.sha
-                  echo "harness on ${HARNESS_REF} at zerv@${{ github.sha }}"
+                  ORIGIN_URL="https://x-access-token:${GH_TOKEN}@github.com/${FIXTURES_REPO}.git"
+                  WORK="$(mktemp -d)"
+                  git init -q -b main "$WORK"
+                  mkdir -p "$WORK/$(dirname "$HARNESS_PATH")"
+                  cp "${GITHUB_WORKSPACE}/${HARNESS_SRC}" "$WORK/${HARNESS_PATH}"
+                  git -C "$WORK" add -A
+                  git -C "$WORK" -c user.email="zerv-ci@users.noreply.github.com" -c user.name="zerv-ci" \
+                      commit -q -m "ci: contract harness update"
+                  git -C "$WORK" push -q --force "$ORIGIN_URL" "refs/heads/main:${HARNESS_REF}"
+                  echo "harness pushed to ${HARNESS_REF} at zerv@${{ github.sha }}"
 
             - name: move-contract-ref
               env:
