@@ -11,6 +11,14 @@ name: test-shared-lock-contract
 # before dispatching. jobs.<job_id>.concurrency serializes runs so two CI runs
 # cannot race the branch move.
 #
+# Sandbox ref namespace: the harness lives on the dedicated branch
+# `zerv-ci/lock-contract` (workflow_dispatch works on any ref the workflow
+# file exists on), never on main — the semantic-release harness owns main and
+# force-pushes fixture history onto it on every run. Each contract run re-pushes
+# the harness from .github/fixtures/zerv-sandbox/ before dispatching, so the
+# sandbox self-heals after any wipe (the semantic-release harness resets main
+# to an empty tree; that used to break this job with a 422).
+#
 # Requires the ZERV_SANDBOX_REPO_TOKEN secret: fine-grained PAT on
 # wislertt/zerv-sandbox with Contents:RW + Actions:RW (Actions needed to
 # dispatch and read the sandbox workflow run).
@@ -28,6 +36,8 @@ permissions:
 env:
     FIXTURES_REPO: wislertt/zerv-sandbox
     WORKFLOW: zerv-lock-contract.yml
+    HARNESS_PATH: .github/workflows/zerv-lock-contract.yml
+    HARNESS_REF: zerv-ci/lock-contract
     CONTRACT_REF: contract-under-test
 
 concurrency:
@@ -38,6 +48,31 @@ jobs:
     contract:
         runs-on: ubuntu-latest
         steps:
+            - name: checkout
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - name: ensure-harness-branch
+              env:
+                  GH_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+              run: |
+                  # Re-push the harness onto its dedicated branch on every run:
+                  # single source of truth is .github/fixtures/zerv-sandbox/, and
+                  # a wiped sandbox heals itself here instead of failing with a
+                  # 422. Specifying branch=<HARNESS_REF> on the contents API
+                  # creates the branch from the default branch when missing.
+                  if [ -z "$GH_TOKEN" ]; then
+                      echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create a fine-grained PAT with Contents:RW + Actions:RW on ${FIXTURES_REPO}, then add it as a repository secret."
+                      exit 1
+                  fi
+                  CONTENT=$(base64 -w0 "${GITHUB_WORKSPACE}/${HARNESS_PATH}")
+                  FILE_SHA=$(gh api "repos/${FIXTURES_REPO}/contents/${HARNESS_PATH}?ref=${HARNESS_REF}" --jq .sha 2>/dev/null || true)
+                  ARGS=(-f message="ci: contract harness update" -f content="$CONTENT" -f branch="${HARNESS_REF}")
+                  if [ -n "$FILE_SHA" ]; then
+                      ARGS+=(-f sha="$FILE_SHA")
+                  fi
+                  gh api -X PUT "repos/${FIXTURES_REPO}/contents/${HARNESS_PATH}" "${ARGS[@]}" --jq .commit.sha
+                  echo "harness on ${HARNESS_REF} at zerv@${{ github.sha }}"
+
             - name: move-contract-ref
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -61,7 +96,16 @@ jobs:
                       echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create a fine-grained PAT with Contents:RW + Actions:RW on ${FIXTURES_REPO}, then add it as a repository secret."
                       exit 1
                   fi
-                  gh workflow run --repo "$FIXTURES_REPO" "$WORKFLOW" --ref main
+                  # Retry: right after the harness commit lands, GitHub can lag
+                  # registering the workflow on the new ref (422).
+                  for _ in $(seq 1 6); do
+                      if gh workflow run --repo "$FIXTURES_REPO" "$WORKFLOW" --ref "$HARNESS_REF" 2>/tmp/dispatch.err; then
+                          exit 0
+                      fi
+                      sleep 5
+                  done
+                  cat /tmp/dispatch.err >&2
+                  exit 1
 
             - name: wait-for-contract-run
               env:
