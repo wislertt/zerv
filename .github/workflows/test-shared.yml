@@ -17,6 +17,16 @@ on:
                 required: false
                 description: Fine-grained PAT with Contents:RW on wislertt/zerv-sandbox (fixture repo)
 
+# The poll harness owns fixed sandbox keys (test/slock-t1..t8, qa*, qC*), so
+# two simultaneous runs (a second push before the first CI finished, or two
+# lock-touching PRs) would contend for the same keys and fail each other.
+# Serialize repo-wide. Queued, never cancelled: cancelling mid-run strands
+# seeded locks in the sandbox, and the default pending-supersede already
+# means only the newest run of a rapid-push series waits in the queue.
+concurrency:
+    group: test-shared-lock-poll
+    cancel-in-progress: false
+
 jobs:
     # The lock harnesses below run real dispatched workflows and cost ~20-40
     # minutes, so they only run when the lock-related workflows changed. PRs

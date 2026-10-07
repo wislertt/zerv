@@ -126,7 +126,11 @@ jobs:
             key_prefix: test/
             key_owner: t2-owner
             job_name: t2-lock
-            wait_for_lock_timeout_in_sec: 120
+            # t2 waits for t2-release, a separate runner job; hosted-runner
+            # queue delays of 10+ min were observed (2026-10-07), so the wait
+            # must cover queue time, not just the 20s sleep. Costs nothing on
+            # the happy path (lock is acquired the moment release lands).
+            wait_for_lock_timeout_in_sec: 900
             wait_for_lock_poll_interval_in_sec: 5
 
     t2-assert:
@@ -908,7 +912,8 @@ jobs:
             key_prefix: test/
             key_owner: t7-owner
             job_name: t7-lock
-            wait_for_lock_timeout_in_sec: 120
+            # Same queue-delay reasoning as t2-lock above.
+            wait_for_lock_timeout_in_sec: 900
             wait_for_lock_poll_interval_in_sec: 5
 
     t7-assert:
