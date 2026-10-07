@@ -1,4 +1,4 @@
-const types = ["feat", "fix", "chore", "docs", "style", "refactor", "perf", "test", "build", "ci"]
+const types = ["feat", "fix", "chore", "docs", "style", "refactor", "perf", "test", "build", "ci", "revert"]
 
 const types_glob = `{${types.join(",")}}`
 
