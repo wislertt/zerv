@@ -26,8 +26,8 @@ on:
                 required: false
                 type: boolean
                 default: true
-            delay_before_lock_in_sec:
-                description: "Delay in seconds before lock operations (allows previous lock/unlock to propagate)"
+            wait_for_lock_timeout_in_sec:
+                description: "Max seconds to wait for the lock (polling every wait_for_lock_poll_interval_in_sec). 0 = fail fast if locked"
                 required: false
                 default: 0
                 type: number
@@ -45,7 +45,7 @@ jobs:
             key_prefix: test/
             key_owner: ${{ inputs.lock_key_owner }}
             job_name: lock-${{ inputs.lock_key }}
-            wait_for_lock_timeout_in_sec: ${{ inputs.delay_before_lock_in_sec }}
+            wait_for_lock_timeout_in_sec: ${{ inputs.wait_for_lock_timeout_in_sec }}
 
     deploy:
         name: ${{ inputs.name }}
