@@ -46,6 +46,16 @@ on:
                 default: ""
     workflow_call:
 
+# Lock branch names, the bed and the state branches are shared per scenario
+# (case A inner runs must even share the queue-a key across runs), so two
+# overlapping outer runs would race the same refs (observed 2026-10-07,
+# run 37569484048: a CI run's t3-seed lost a POST race against a concurrently
+# dispatched manual run). Serialize outer runs; inner subjects get their own
+# group so they never queue behind the outer run that is waiting on them.
+concurrency:
+    group: test-shared-lock-${{ inputs.subject == '' && 'outer' || inputs.subject }}
+    cancel-in-progress: false
+
 permissions:
     contents: write
     actions: write
@@ -72,6 +82,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   LOCK_BRANCH="${KEY_PREFIX}slock-t1-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
                   gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
                       -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "$OWNER_FOREIGN" | base64 -w0)
@@ -88,6 +99,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   LOCK_BRANCH="${KEY_PREFIX}slock-t2-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
                   gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
                       -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "$OWNER_FOREIGN" | base64 -w0)
@@ -153,6 +165,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   LOCK_BRANCH="${KEY_PREFIX}slock-t3-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
                   gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
                       -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "$OWNER_FOREIGN" | base64 -w0)
@@ -170,6 +183,7 @@ jobs:
               run: |
                   # Caller-exact prefix: production callers lock under hotfix/
                   LOCK_BRANCH="hotfix/slock-t5-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
                   gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
                       -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:%s","created_by":"%s"}' "t5-owner" "${{ github.actor }}" | base64 -w0)
@@ -312,6 +326,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   LOCK_BRANCH="${KEY_PREFIX}slock-t6-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
                   gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
                       -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:%s","created_by":"some-other-user"}' "t6-owner" | base64 -w0)
@@ -512,6 +527,7 @@ jobs:
             - name: seed-lock
               run: |
                   LOCK_BRANCH="${KEY_PREFIX}queue-d-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
                   gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
                       -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:qd-holder","created_by":"some-other-user"}' | base64 -w0)
@@ -976,6 +992,7 @@ jobs:
             - name: seed-global-lock
               run: |
                   LOCK_BRANCH="global-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
                   gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
                       -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "global-foreign" | base64 -w0)
