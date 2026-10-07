@@ -45,17 +45,6 @@ on:
                 required: false
                 type: number
                 default: 10
-            # TODO: remove delay_before_start_in_sec once all callers migrate to wait_for_lock_timeout_in_sec.
-            # Back-compat only: when wait_for_lock_timeout_in_sec is 0, this value is used as the lock timeout.
-            # After all callers migrated (zerv callers done; remaining: abcs-repo gcp-landing-zone, glz-projects, run-abc):
-            #   1. Delete this input and the fallback in wait-for-lock step (TIMEOUT assignment).
-            #   2. test-shared-lock.yml t4: re-point to wait_for_lock_timeout_in_sec (keep as timeout test) and
-            #      drop its "back-compat" naming/comments.
-            delay_before_start_in_sec:
-                description: "DEPRECATED - treated as wait_for_lock_timeout_in_sec when wait_for_lock_timeout_in_sec is 0"
-                required: false
-                type: number
-                default: 0
             upload_result_artifact:
                 description: "Whether to upload lock result as an artifact (useful for matrix aggregation)"
                 required: false
@@ -89,11 +78,7 @@ jobs:
                   GLOBAL_LOCK_BRANCH="global-branch-deploy-lock"
                   OWNER="${{ inputs.key_owner }}"
 
-                  # TODO: drop delay_before_start_in_sec fallback once callers migrate to wait_for_lock_timeout_in_sec
                   TIMEOUT="${{ inputs.wait_for_lock_timeout_in_sec }}"
-                  if [ -z "$TIMEOUT" ] || [ "$TIMEOUT" -eq 0 ]; then
-                      TIMEOUT="${{ inputs.delay_before_start_in_sec }}"
-                  fi
                   INTERVAL="${{ inputs.wait_for_lock_poll_interval_in_sec }}"
                   if [ -z "$INTERVAL" ] || [ "$INTERVAL" -lt 1 ]; then
                       INTERVAL=10
