@@ -14,9 +14,9 @@ name: test-shared-lock
 #                      the seeded lock is still held. Regression for a production
 #                      caller: #297 made own locks dead-wait/fail. Cross-actor
 #                      own locks still wait (github/lock refuses cross-actor re-lock).
-#   t6 other-actor:    created_by != triggering actor, same reason owner, released mid-wait
-#                      -> must wait and succeed (regression: glz incident where github/lock
-#                         rejected re-lock because created_by differed from actor)
+#   t6 other-actor:    created_by != triggering actor, same reason owner -> fails fast
+#                      (github/lock enforces created_by on the lock step even when the
+#                      reason owner matches; callers must not rely on reason alone)
 #
 # Queue scenarios (against shared-lock's job-level concurrency group):
 #   A serialize+FIFO:  3 jobs, same key+ref -> queued by concurrency, strict
@@ -188,7 +188,7 @@ jobs:
                       -f message="seed t5" -f content="$CONTENT" \
                       -f branch="$LOCK_BRANCH" > /dev/null
 
-    # ---------- expected-failure cases (t1, t3, qD) ----------
+    # ---------- expected-failure cases (t1, t3, t6, qD) ----------
     # These lock calls MUST fail, but a failing job reddens the run conclusion -
     # including nested reusable-workflow failures, and continue-on-error is not
     # allowed on call jobs. So each item is dispatched as its own throwaway
@@ -198,7 +198,7 @@ jobs:
     # refs), so the job costs max(item) instead of sum(cases).
     expected-fails:
         if: inputs.subject == ''
-        needs: [t1-seed, t3-seed, seed-qd]
+        needs: [t1-seed, t3-seed, t6-seed, seed-qd]
         runs-on: ubuntu-latest
         env:
             GH_TOKEN: ${{ github.token }}
@@ -210,6 +210,7 @@ jobs:
                   CASES=(
                       "t1|expected-fail-ref-t1|0|10|slock-t1|t1-owner"
                       "t3|expected-fail-ref-t3|20|5|slock-t3|t3-owner"
+                      "t6|expected-fail-ref-t6|0|10|slock-t6|t6-owner"
                       "qd|expected-fail-ref-qd|5|2|queue-d|qd"
                   )
 
@@ -334,7 +335,11 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/hotfix/slock-t5-branch-deploy-lock" || true
 
-    # ---------- t6: created_by != actor, same reason owner -> wait and succeed ----------
+    # ---------- t6: created_by != actor, same reason owner -> fail fast ----------
+    # The wait-for-lock poll is reason-based, so it passes immediately - but the
+    # github/lock lock step refuses to take a lock whose created_by differs from
+    # the triggering actor. Asserted via the expected-fails dispatcher below,
+    # because a failing reusable-call job reddens the run (no continue-on-error).
     t6-seed:
         if: inputs.subject == ''
         runs-on: ubuntu-latest
@@ -351,54 +356,6 @@ jobs:
                   gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
                       -f message="seed t6" -f content="$CONTENT" \
                       -f branch="$LOCK_BRANCH" > /dev/null
-
-    t6-release:
-        needs: t6-seed
-        if: inputs.subject == ''
-        runs-on: ubuntu-latest
-        steps:
-            - name: release-after-delay
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: |
-                  echo "Releasing seeded lock in 20s..."
-                  sleep 20
-                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t6-branch-deploy-lock"
-
-    t6-lock:
-        needs: t6-seed
-        if: inputs.subject == ''
-        uses: ./.github/workflows/shared-lock.yml
-        with:
-            key: slock-t6
-            key_prefix: test/
-            key_owner: t6-owner
-            job_name: t6-lock
-            wait_for_lock_timeout_in_sec: 120
-            wait_for_lock_poll_interval_in_sec: 5
-
-    t6-assert:
-        needs: [t6-seed, t6-release, t6-lock]
-        if: always() && inputs.subject == ''
-        runs-on: ubuntu-latest
-        steps:
-            - name: assert
-              run: |
-                  FAILED=0
-                  if [ "${{ needs.t6-release.result }}" != "success" ]; then
-                      echo "::error::t6 release job failed: ${{ needs.t6-release.result }}"
-                      FAILED=1
-                  fi
-                  if [ "${{ needs.t6-lock.result }}" != "success" ]; then
-                      echo "::error::t6 expected success (waited out lock created by a different actor), got: ${{ needs.t6-lock.result }}"
-                      FAILED=1
-                  fi
-                  exit $FAILED
-            - name: cleanup
-              if: always()
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t6-branch-deploy-lock" || true
 
     # ================= queue scenarios (concurrency group) =================
     # The outer run (inputs.subject == "") drives the scenarios. Case A
@@ -913,7 +870,7 @@ jobs:
     # seeding it must wait until no other lock job is polling.
     t7-seed:
         if: inputs.subject == ''
-        needs: [expected-fails, t2-assert, t5-assert, t6-assert, assert-a, assert-c, assert-d]
+        needs: [expected-fails, t2-assert, t5-assert, assert-a, assert-c, assert-d]
         runs-on: ubuntu-latest
         env:
             GH_TOKEN: ${{ github.token }}
@@ -1003,18 +960,7 @@ jobs:
     # ---------- summary ----------
     summary:
         name: test-shared-lock
-        needs:
-            [
-                expected-fails,
-                t2-assert,
-                t5-assert,
-                t6-assert,
-                t7-assert,
-                t8-assert,
-                assert-a,
-                assert-c,
-                assert-d,
-            ]
+        needs: [expected-fails, t2-assert, t5-assert, t7-assert, t8-assert, assert-a, assert-c, assert-d]
         if: always()
         runs-on: ubuntu-latest
         env:
@@ -1034,7 +980,7 @@ jobs:
                   NEEDS: ${{ toJson(needs) }}
               run: |
                   FAILED=0
-                  for job in expected-fails t2-assert t5-assert t6-assert t7-assert t8-assert assert-a assert-c assert-d; do
+                  for job in expected-fails t2-assert t5-assert t7-assert t8-assert assert-a assert-c assert-d; do
                       RESULT=$(echo "$NEEDS" | jq -r ".\"$job\".result")
                       echo "$job: $RESULT"
                       if [ "$RESULT" = "skipped" ]; then
