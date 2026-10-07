@@ -479,7 +479,17 @@ jobs:
                       return 1
                   }
                   append_log "start:c1"
-                  sleep 10
+                  # Rendezvous: wait for c2's start marker so the two windows
+                  # genuinely overlap no matter how far apart the scheduler
+                  # starts the two job chains (observed skew: 16s).
+                  for _ in $(seq 1 60); do
+                      OTHER=$(gh api -H "Accept: application/vnd.github.raw" \
+                          "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null \
+                          | grep -c "^start:c2\$" || true)
+                      [ "${OTHER:-0}" -ge 1 ] && break
+                      sleep 2
+                  done
+                  sleep 5
                   append_log "end:c1"
 
     qC1-unlock:
@@ -535,7 +545,15 @@ jobs:
                       return 1
                   }
                   append_log "start:c2"
-                  sleep 10
+                  # Rendezvous with c1 (see qC1-critical).
+                  for _ in $(seq 1 60); do
+                      OTHER=$(gh api -H "Accept: application/vnd.github.raw" \
+                          "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null \
+                          | grep -c "^start:c1\$" || true)
+                      [ "${OTHER:-0}" -ge 1 ] && break
+                      sleep 2
+                  done
+                  sleep 5
                   append_log "end:c2"
 
     qC2-unlock:
