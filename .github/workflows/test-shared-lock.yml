@@ -194,72 +194,91 @@ jobs:
     # ---------- expected-failure cases (t1, t3, qD) ----------
     # These lock calls MUST fail, but a failing job reddens the run conclusion -
     # including nested reusable-workflow failures, and continue-on-error is not
-    # allowed on call jobs. So each case is dispatched as its own throwaway
+    # allowed on call jobs. So each item is dispatched as its own throwaway
     # shared-lock run on a pinned scratch branch, its conclusion is asserted via
-    # the API, and the run is deleted to keep the Actions list clean.
+    # the API, and the run is deleted to keep the Actions list clean. The three
+    # cases run in parallel (distinct scratch branches = distinct lock-workflow
+    # refs), so the job costs max(item) instead of sum(cases).
     expected-fails:
         if: inputs.subject == ''
         needs: [t1-seed, t3-seed, seed-qd]
         runs-on: ubuntu-latest
         env:
             GH_TOKEN: ${{ github.token }}
-            SCRATCH: expected-fail-ref
         steps:
             - name: dispatch-expect-fail-and-assert
               run: |
                   FAILED=0
-                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${SCRATCH}" > /dev/null 2>&1 || true
-                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-                      -f ref="refs/heads/${SCRATCH}" -f sha="${{ github.sha }}" > /dev/null
+                  # CASES: name|scratch|timeout|poll|key|owner
+                  CASES=(
+                      "t1|expected-fail-ref-t1|0|10|slock-t1|t1-owner"
+                      "t3|expected-fail-ref-t3|20|5|slock-t3|t3-owner"
+                      "qd|expected-fail-ref-qd|5|2|queue-d|qd"
+                  )
 
-                  run_case() {
-                      local jobname="$1" timeout="$2" poll="$3" key="$4" owner="$5"
-                      local start rid conc st
-                      start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-                      gh workflow run --repo "$GITHUB_REPOSITORY" shared-lock.yml --ref "$SCRATCH" \
+                  declare -A RID
+                  START=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch timeout poll key owner <<< "$item"
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${scratch}" > /dev/null 2>&1 || true
+                      gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                          -f ref="refs/heads/${scratch}" -f sha="${{ github.sha }}" > /dev/null
+                      gh workflow run --repo "$GITHUB_REPOSITORY" shared-lock.yml --ref "$scratch" \
                           -f key="$key" -f key_prefix=test/ -f key_owner="$owner" \
                           -f wait_for_lock_timeout_in_sec="$timeout" \
                           -f wait_for_lock_poll_interval_in_sec="$poll" \
-                          -f job_name="$jobname"
+                          -f job_name="${name}-lock"
+                  done
+
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch timeout poll key owner <<< "$item"
                       rid=""
                       for _ in $(seq 1 12); do
                           sleep 10
                           rid=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=shared-lock.yml \
-                              --branch "$SCRATCH" --json databaseId,createdAt \
-                              --jq ".[] | select(.createdAt > \"$start\") | .databaseId" | head -1)
+                              --branch "$scratch" --json databaseId,createdAt \
+                              --jq ".[] | select(.createdAt > \"$START\") | .databaseId" | head -1)
                           [ -n "$rid" ] && break
                       done
                       if [ -z "$rid" ]; then
-                          echo "::error::$jobname dispatched run not found"
-                          return 1
+                          echo "::error::$name dispatched run not found"
+                          FAILED=1
+                      else
+                          RID[$name]=$rid
                       fi
-                      conc=""
-                      for _ in $(seq 1 60); do
-                          st=$(gh run view "$rid" --repo "$GITHUB_REPOSITORY" --json status -q .status)
-                          if [ "$st" = "completed" ]; then
-                              conc=$(gh run view "$rid" --repo "$GITHUB_REPOSITORY" --json conclusion -q .conclusion)
-                              break
-                          fi
-                          sleep 10
-                      done
-                      if [ "$conc" != "failure" ]; then
-                          echo "::error::$jobname expected failure, got: ${conc:-timeout}"
-                          return 1
-                      fi
-                      echo "$jobname: failed as expected"
-                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/$rid" > /dev/null || true
-                  }
+                  done
 
-                  # t1: fail fast (timeout 0) on a foreign-held lock
-                  run_case t1-lock 0 10 slock-t1 t1-owner || FAILED=1
-                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t1-branch-deploy-lock" > /dev/null 2>&1 || true
-                  # t3: fail after timeout on a foreign-held lock
-                  run_case t3-lock 20 5 slock-t3 t3-owner || FAILED=1
-                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t3-branch-deploy-lock" > /dev/null 2>&1 || true
-                  # qD: lock still enforced while a foreign lock is held
-                  run_case qD-lock 5 2 queue-d qd || FAILED=1
-                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}queue-d-branch-deploy-lock" > /dev/null 2>&1 || true
-                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${SCRATCH}" > /dev/null 2>&1 || true
+                  declare -A CONC
+                  for _ in $(seq 1 60); do
+                      PENDING=0
+                      for item in "${CASES[@]}"; do
+                          IFS='|' read -r name scratch timeout poll key owner <<< "$item"
+                          [ -n "${CONC[$name]:-}" ] && continue
+                          [ -z "${RID[$name]:-}" ] && continue
+                          st=$(gh run view "${RID[$name]}" --repo "$GITHUB_REPOSITORY" --json status -q .status)
+                          if [ "$st" = "completed" ]; then
+                              CONC[$name]=$(gh run view "${RID[$name]}" --repo "$GITHUB_REPOSITORY" --json conclusion -q .conclusion)
+                          else
+                              PENDING=1
+                          fi
+                      done
+                      [ "$PENDING" -eq 0 ] && break
+                      sleep 10
+                  done
+
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch timeout poll key owner <<< "$item"
+                      [ -n "${RID[$name]:-}" ] && gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${RID[$name]}" > /dev/null || true
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${scratch}" > /dev/null 2>&1 || true
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}${key}-branch-deploy-lock" > /dev/null 2>&1 || true
+                      conc="${CONC[$name]:-}"
+                      if [ "$conc" != "failure" ]; then
+                          echo "::error::$name expected failure, got: ${conc:-timeout}"
+                          FAILED=1
+                      else
+                          echo "$name: failed as expected"
+                      fi
+                  done
                   exit $FAILED
 
     t5-lock:
@@ -575,7 +594,7 @@ jobs:
                               continue
                           fi
                           ALLDONE=0
-                          if [ "$STARTS" -eq 0 ] && [ $((SECONDS - ${LASTTRY[$N]:--9999})) -ge 300 ]; then
+                          if [ "$STARTS" -eq 0 ] && [ $((SECONDS - ${LASTTRY[$N]:--9999})) -ge 120 ]; then
                               MISSING="$MISSING $N"
                               LASTTRY[$N]=$SECONDS
                           fi

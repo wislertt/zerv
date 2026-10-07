@@ -18,6 +18,44 @@ on:
                 description: Fine-grained PAT with Contents:RW on wislertt/zerv-sandbox (fixture repo)
 
 jobs:
+    # The lock harnesses below run real dispatched workflows and cost ~20-40
+    # minutes, so they only run when the lock-related workflows changed. PRs
+    # diff against the base sha, pushes against event.before; anything else
+    # (workflow_dispatch, unknown events) always runs them - fail-open, since
+    # a silently skipped harness is what let the #297 regression ship.
+    changes:
+        runs-on: ubuntu-latest
+        outputs:
+            lock: ${{ steps.diff.outputs.lock }}
+        env:
+            GH_TOKEN: ${{ github.token }}
+            BASE_SHA: ${{ github.event.pull_request.base.sha }}
+            BEFORE_SHA: ${{ github.event.before }}
+        steps:
+            - name: detect-lock-workflow-changes
+              id: diff
+              run: |
+                  RANGE=""
+                  if [ -n "$BASE_SHA" ]; then
+                      RANGE="$BASE_SHA...$GITHUB_SHA"
+                  elif [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+                      RANGE="$BEFORE_SHA...$GITHUB_SHA"
+                  fi
+                  LOCK=true
+                  if [ -n "$RANGE" ]; then
+                      LOCK=false
+                      FILES=$(gh api "repos/${GITHUB_REPOSITORY}/compare/${RANGE}" --jq '.files[].filename' 2>/dev/null)
+                      if [ -z "$FILES" ]; then
+                          # Compare failed (unknown range, force-push, ...) - run rather than skip.
+                          echo "compare failed for $RANGE - running harnesses"
+                          LOCK=true
+                      elif echo "$FILES" | grep -qE '^\.github/workflows/(shared-lock|shared-unlock|test-shared-lock|test-shared-lock-contract|test-shared)\.yml$'; then
+                          LOCK=true
+                      fi
+                      echo "changed files matching gate: $(echo "$FILES" | grep -E '^\.github/workflows/' || echo none)"
+                  fi
+                  echo "lock=$LOCK" >> "$GITHUB_OUTPUT"
+
     affected-projects:
         name: affected-projects
         uses: ./.github/workflows/test-shared-affected-projects.yml
@@ -43,12 +81,16 @@ jobs:
     # shipped, and nothing in CI objected to a caller-breaking change.
     lock-poll:
         name: lock-poll
+        needs: changes
+        if: needs.changes.outputs.lock == 'true'
         uses: ./.github/workflows/test-shared-lock.yml
 
     # Cross-repo contract test: runs shared-lock round-trip in zerv-sandbox
     # against this ref. Catches caller-visible regressions before callers do.
     lock-contract:
         name: lock-contract
+        needs: changes
+        if: needs.changes.outputs.lock == 'true'
         uses: ./.github/workflows/test-shared-lock-contract.yml
         secrets:
             ZERV_SANDBOX_REPO_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
