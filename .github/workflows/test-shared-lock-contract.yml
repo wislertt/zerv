@@ -6,10 +6,9 @@ name: test-shared-lock-contract
 # production (as happened with the #297 poll rewrite).
 #
 # Mechanics: reusable-workflow `uses` does not accept expressions, so the
-# sandbox workflow pins `wislertt/zerv/.github/workflows/shared-lock.yml@contract-under-test`
-# statically and this workflow moves that branch to the commit under test
-# before dispatching. jobs.<job_id>.concurrency serializes runs so two CI runs
-# cannot race the branch move.
+# sandbox harness (pushed here on every run) is a template whose
+# CONTRACT_UNDER_TEST_SHA tokens are substituted with the commit under test
+# before the push. No permanent marker branch is created in this repo.
 #
 # Sandbox ref namespace: the harness lives on the dedicated branch
 # `zerv-ci/lock-contract` (workflow_dispatch works on any ref the workflow
@@ -39,7 +38,6 @@ env:
     HARNESS_SRC: .github/fixtures/zerv-sandbox/zerv-lock-contract.yml
     HARNESS_PATH: .github/workflows/zerv-lock-contract.yml
     HARNESS_REF: zerv-ci/lock-contract
-    CONTRACT_REF: contract-under-test
 
 concurrency:
     group: test-shared-lock-contract
@@ -70,27 +68,15 @@ jobs:
                   WORK="$(mktemp -d)"
                   git init -q -b main "$WORK"
                   mkdir -p "$WORK/$(dirname "$HARNESS_PATH")"
-                  cp "${GITHUB_WORKSPACE}/${HARNESS_SRC}" "$WORK/${HARNESS_PATH}"
+                  # Bake the exact commit under test into the harness template;
+                  # reusable-workflow `uses` cannot take expressions.
+                  sed "s/CONTRACT_UNDER_TEST_SHA/${GITHUB_SHA}/g" \
+                      "${GITHUB_WORKSPACE}/${HARNESS_SRC}" > "$WORK/${HARNESS_PATH}"
                   git -C "$WORK" add -A
                   git -C "$WORK" -c user.email="zerv-ci@users.noreply.github.com" -c user.name="zerv-ci" \
                       commit -q -m "ci: contract harness update"
                   git -C "$WORK" push -q --force "$ORIGIN_URL" "refs/heads/main:${HARNESS_REF}"
                   echo "harness pushed to ${HARNESS_REF} at zerv@${{ github.sha }}"
-
-            - name: move-contract-ref
-              env:
-                  GH_TOKEN: ${{ github.token }}
-                  CONTRACT_REF: ${{ env.CONTRACT_REF }}
-              run: |
-                  # Point the sandbox's static pin at this exact commit.
-                  if gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${CONTRACT_REF}" > /dev/null 2>&1; then
-                      gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/heads/${CONTRACT_REF}" \
-                          -f sha="${{ github.sha }}" -F force=true > /dev/null
-                  else
-                      gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-                          -f ref="refs/heads/${CONTRACT_REF}" -f sha="${{ github.sha }}" > /dev/null
-                  fi
-                  echo "contract-under-test -> ${{ github.sha }}"
 
             - name: dispatch-sandbox-contract-run
               env:

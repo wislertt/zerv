@@ -2,11 +2,12 @@ name: zerv-lock-contract
 
 # Cross-repo contract harness for wislertt/zerv shared-lock.yml.
 #
-# The zerv repo's test-shared-lock-contract workflow pins this workflow
-# statically to `wislertt/zerv/.github/workflows/shared-lock.yml@contract-under-test`
-# (reusable-workflow `uses` accepts no expressions) and moves that branch to the
-# commit under test before dispatching this run. So the ref below must never
-# become an expression.
+# This file is a TEMPLATE: the zerv repo's test-shared-lock-contract workflow
+# substitutes the real commit under test for every CONTRACT_UNDER_TEST_SHA
+# token before pushing it to the sandbox (reusable-workflow `uses` accepts no
+# expressions, so the token below must never become an expression). This keeps
+# the sandbox pinned to the exact commit being tested without any permanent
+# marker branch in the zerv repo.
 #
 # Exercises the caller-visible contract:
 #   c1 acquire:            lock succeeds, lock.json reason owner matches
@@ -31,7 +32,7 @@ env:
 
 jobs:
     c1-lock:
-        uses: wislertt/zerv/.github/workflows/shared-lock.yml@contract-under-test
+        uses: wislertt/zerv/.github/workflows/shared-lock.yml@CONTRACT_UNDER_TEST_SHA
         with:
             key: contract-probe
             key_owner: contract-run-${{ github.run_id }}
@@ -40,7 +41,7 @@ jobs:
 
     c2-relock:
         needs: c1-lock
-        uses: wislertt/zerv/.github/workflows/shared-lock.yml@contract-under-test
+        uses: wislertt/zerv/.github/workflows/shared-lock.yml@CONTRACT_UNDER_TEST_SHA
         with:
             key: contract-probe
             key_owner: contract-run-${{ github.run_id }}
@@ -49,7 +50,7 @@ jobs:
 
     c3-unlock:
         needs: c2-relock
-        uses: wislertt/zerv/.github/workflows/shared-unlock.yml@contract-under-test
+        uses: wislertt/zerv/.github/workflows/shared-unlock.yml@CONTRACT_UNDER_TEST_SHA
         with:
             key: contract-probe
             key_owner: contract-run-${{ github.run_id }}
@@ -82,7 +83,7 @@ jobs:
                   else
                       echo "✓ lock branch removed by unlock"
                   fi
-                  echo "--- contract: wislertt/zerv@$(gh api repos/wislertt/zerv/git/ref/heads/contract-under-test --jq '.object.sha[0:7]' 2>/dev/null || echo '?') ---"
+                  echo "--- contract: wislertt/zerv@CONTRACT_UNDER_TEST_SHA ---"
                   exit $FAILED
               env:
                   NEEDS: ${{ toJson(needs) }}
