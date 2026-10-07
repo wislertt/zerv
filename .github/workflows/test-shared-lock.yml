@@ -9,8 +9,11 @@ name: test-shared-lock
 #   t1 fail-fast:      lock held, timeout 0            -> lock job must fail
 #   t2 wait-then-lock: lock released mid-wait          -> lock job must succeed
 #   t3 timeout:        lock held past timeout          -> lock job must fail
-#   t5 own-lock-held:  reason owner = key_owner, held  -> fail while held, succeed after release
-#                      (same-owner is NOT free; serialize instead of reentrancy)
+#   t5 stale-own-lock: reason owner = key_owner, created_by = triggering actor
+#                      -> same-actor own lock is FREE (self-heal): job succeeds while
+#                      the seeded lock is still held. Regression for a production
+#                      caller: #297 made own locks dead-wait/fail. Cross-actor
+#                      own locks still wait (github/lock refuses cross-actor re-lock).
 #   t6 other-actor:    created_by != triggering actor, same reason owner, released mid-wait
 #                      -> must wait and succeed (regression: glz incident where github/lock
 #                         rejected re-lock because created_by differed from actor)
@@ -22,6 +25,14 @@ name: test-shared-lock
 #   D lock-enforced:   seeded lock, short timeout -> shared-lock still rejects
 #   E supersede:       dispatches this harness on a throwaway bed branch, moves the
 #                      head there, asserts the queued run exits green with superseded=true
+#
+#   t7 global-held:  global lock held -> key lock waits, succeeds after release
+#                      (runs last: the global branch is shared by every scenario)
+#   t8 enabled-off:  enabled=false -> lock job skipped
+#
+# Runs in CI via test-shared.yml (aggregator). Keep it that way: this harness
+# was dispatch-only when the #297 poll rewrite shipped, and no test objected
+# to a change that broke a production caller within hours.
 #
 # The queue state log lives on a throwaway bed branch, deleted per run.
 
@@ -157,15 +168,16 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  LOCK_BRANCH="${KEY_PREFIX}slock-t5-branch-deploy-lock"
+                  # Caller-exact prefix: production callers lock under hotfix/
+                  LOCK_BRANCH="hotfix/slock-t5-branch-deploy-lock"
                   gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
                       -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
-                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "t5-owner" | base64 -w0)
+                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"%s"}' "t5-owner" "${{ github.actor }}" | base64 -w0)
                   gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
                       -f message="seed t5" -f content="$CONTENT" \
                       -f branch="$LOCK_BRANCH" > /dev/null
 
-    # ---------- expected-failure cases (t1, t3, t5-held, qD) ----------
+    # ---------- expected-failure cases (t1, t3, qD) ----------
     # These lock calls MUST fail, but a failing job reddens the run conclusion -
     # including nested reusable-workflow failures, and continue-on-error is not
     # allowed on call jobs. So each case is dispatched as its own throwaway
@@ -173,7 +185,7 @@ jobs:
     # the API, and the run is deleted to keep the Actions list clean.
     expected-fails:
         if: inputs.subject == ''
-        needs: [t1-seed, t3-seed, t5-seed, seed-qd]
+        needs: [t1-seed, t3-seed, seed-qd]
         runs-on: ubuntu-latest
         env:
             GH_TOKEN: ${{ github.token }}
@@ -230,63 +242,65 @@ jobs:
                   # t3: fail after timeout on a foreign-held lock
                   run_case t3-lock 20 5 slock-t3 t3-owner || FAILED=1
                   gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t3-branch-deploy-lock" > /dev/null 2>&1 || true
-                  # t5 held phase: same reason-owner is NOT free
-                  run_case t5-lock-held 0 10 slock-t5 t5-owner || FAILED=1
                   # qD: lock still enforced while a foreign lock is held
                   run_case qD-lock 5 2 queue-d qd || FAILED=1
                   gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}queue-d-branch-deploy-lock" > /dev/null 2>&1 || true
                   gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${SCRATCH}" > /dev/null 2>&1 || true
                   exit $FAILED
 
-    t5-release:
-        needs: expected-fails
+    t5-lock:
+        needs: t5-seed
+        if: inputs.subject == ''
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            key: slock-t5
+            key_prefix: hotfix/
+            key_owner: t5-owner
+            job_name: t5-lock
+            wait_for_lock_timeout_in_sec: 0
+            upload_result_artifact: true
+
+    t5-unlock:
+        needs: t5-lock
+        if: inputs.subject == ''
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: slock-t5
+            key_prefix: hotfix/
+            key_owner: t5-owner
+            job_name: t5-unlock
+
+    t5-assert:
+        needs: [t5-seed, t5-lock, t5-unlock]
         if: always() && inputs.subject == ''
         runs-on: ubuntu-latest
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
-            - name: release-t5-lock
-              run: |
-                  # held-phase failure already asserted by expected-fails
-                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t5-branch-deploy-lock"
-
-    t5-lock-free:
-        needs: t5-release
-        if: ${{ !cancelled() && needs.t5-release.result == 'success' && inputs.subject == '' }}
-        uses: ./.github/workflows/shared-lock.yml
-        with:
-            key: slock-t5
-            key_prefix: test/
-            key_owner: t5-owner
-            job_name: t5-lock-free
-            wait_for_lock_timeout_in_sec: 120
-            wait_for_lock_poll_interval_in_sec: 5
-
-    t5-assert:
-        needs: [expected-fails, t5-release, t5-lock-free]
-        if: always() && inputs.subject == ''
-        runs-on: ubuntu-latest
-        steps:
             - name: assert
-              env:
-                  GH_TOKEN: ${{ github.token }}
-                  NEEDS: ${{ toJson(needs) }}
               run: |
                   FAILED=0
-                  if [ "$(echo "$NEEDS" | jq -r '.["expected-fails"].result')" != "success" ]; then
-                      echo "::error::t5 held phase expected failure (same-owner lock is not free) - expected-fails job: $(echo "$NEEDS" | jq -r '.["expected-fails"].result')"
+                  if [ "${{ needs.t5-lock.result }}" != "success" ]; then
+                      echo "::error::t5 expected success on stale same-actor own lock (self-heal), got: ${{ needs.t5-lock.result }}"
                       FAILED=1
                   fi
-                  if [ "${{ needs.t5-lock-free.result }}" != "success" ]; then
-                      echo "::error::t5 free phase expected success (acquired after release), got: ${{ needs.t5-lock-free.result }}"
+                  if [ "${{ needs.t5-unlock.result }}" != "success" ]; then
+                      echo "::error::t5 unlock after self-heal expected success, got: ${{ needs.t5-unlock.result }}"
                       FAILED=1
                   fi
                   exit $FAILED
+            - name: assert-lock-branch-gone
+              run: |
+                  if gh api "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=hotfix/slock-t5-branch-deploy-lock" > /dev/null 2>&1; then
+                      echo "::error::t5 lock branch still exists after unlock"
+                      exit 1
+                  fi
+                  echo "t5 lock branch released"
             - name: cleanup
               if: always()
               env:
                   GH_TOKEN: ${{ github.token }}
-              run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t5-branch-deploy-lock" || true
+              run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/hotfix/slock-t5-branch-deploy-lock" || true
 
     # ---------- t6: created_by != actor, same reason owner -> wait and succeed ----------
     t6-seed:
@@ -949,10 +963,113 @@ jobs:
                       return 1
                   }
                   append_log "supersede:ok"
+    # ---------- t7: held GLOBAL lock blocks key lock -> wait then succeed ----------
+    # Runs last: the global lock branch is shared by every scenario above, so
+    # seeding it must wait until no other lock job is polling.
+    t7-seed:
+        if: inputs.subject == ''
+        needs: [expected-fails, t2-assert, t5-assert, t6-assert, assert-a, assert-c, assert-d, assert-e]
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: seed-global-lock
+              run: |
+                  LOCK_BRANCH="global-branch-deploy-lock"
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
+                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "global-foreign" | base64 -w0)
+                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
+                      -f message="seed t7 global" -f content="$CONTENT" \
+                      -f branch="$LOCK_BRANCH" > /dev/null
+
+    t7-release:
+        needs: t7-seed
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: release-after-delay
+              run: |
+                  echo "Releasing seeded global lock in 20s..."
+                  sleep 20
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/global-branch-deploy-lock"
+
+    t7-lock:
+        needs: t7-seed
+        if: inputs.subject == ''
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            key: glock-t7
+            key_prefix: test/
+            key_owner: t7-owner
+            job_name: t7-lock
+            wait_for_lock_timeout_in_sec: 120
+            wait_for_lock_poll_interval_in_sec: 5
+
+    t7-assert:
+        needs: [t7-seed, t7-release, t7-lock]
+        if: always() && inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: assert
+              run: |
+                  FAILED=0
+                  if [ "${{ needs.t7-lock.result }}" != "success" ]; then
+                      echo "::error::t7 expected success after global lock release, got: ${{ needs.t7-lock.result }}"
+                      FAILED=1
+                  fi
+                  exit $FAILED
+            - name: cleanup
+              if: always()
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/global-branch-deploy-lock" 2>/dev/null || true
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}glock-t7-branch-deploy-lock" 2>/dev/null || true
+
+    # ---------- t8: enabled=false -> lock job skipped ----------
+    t8-lock:
+        if: inputs.subject == ''
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            enabled: false
+            key: slock-t8
+            key_prefix: test/
+            key_owner: t8-owner
+            job_name: t8-lock
+
+    t8-assert:
+        needs: t8-lock
+        if: always() && inputs.subject == ''
+        runs-on: ubuntu-latest
+        steps:
+            - name: assert
+              run: |
+                  if [ "${{ needs.t8-lock.result }}" != "skipped" ]; then
+                      echo "::error::t8 expected skipped lock job (enabled=false), got: ${{ needs.t8-lock.result }}"
+                      exit 1
+                  fi
+
     # ---------- summary ----------
     summary:
         name: test-shared-lock
-        needs: [expected-fails, t2-assert, t5-assert, t6-assert, assert-a, assert-c, assert-d, assert-e]
+        needs:
+            [
+                expected-fails,
+                t2-assert,
+                t5-assert,
+                t6-assert,
+                t7-assert,
+                t8-assert,
+                assert-a,
+                assert-c,
+                assert-d,
+                assert-e,
+            ]
         if: always()
         runs-on: ubuntu-latest
         env:
@@ -972,7 +1089,7 @@ jobs:
                   NEEDS: ${{ toJson(needs) }}
               run: |
                   FAILED=0
-                  for job in expected-fails t2-assert t5-assert t6-assert assert-a assert-c assert-d assert-e; do
+                  for job in expected-fails t2-assert t5-assert t6-assert t7-assert t8-assert assert-a assert-c assert-d assert-e; do
                       RESULT=$(echo "$NEEDS" | jq -r ".\"$job\".result")
                       echo "$job: $RESULT"
                       if [ "$RESULT" = "skipped" ]; then

@@ -143,12 +143,13 @@ jobs:
                       echo "Run is the head of ${{ github.ref }} - proceeding"
                       echo "superseded=false" >> "$GITHUB_OUTPUT"
                   fi
-            # Poll the lock branch until it is released or the timeout expires.
+            # Poll the lock branch until it is free/ours or the timeout expires.
             # Mirrors github/lock check mode: lock = branch "<env>-branch-deploy-lock" holding
             # lock.json with reason "owner:<id>" (global lock = "global-branch-deploy-lock").
-            # Only a released lock is free - a lock owned by us is NOT free, so same-lineage
-            # deploys serialize here instead of relying on github/lock reentrancy (which keys
-            # off the triggering actor, not the reason owner).
+            # A lock we could re-acquire ourselves counts as free: owned by us AND created by
+            # the same actor (github/lock refuses cross-actor re-lock). Stale locks from an
+            # earlier run of the same ref self-heal instead of dead-waiting. Same-lineage
+            # deploys are serialized by the job-level concurrency group above, not here.
             - name: wait-for-lock
               id: wait-for-lock
               if: steps.supersede-check.outputs.superseded != 'true'
@@ -156,6 +157,8 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
+                  OWNER="${{ inputs.key_owner }}"
+                  ACTOR="${{ github.actor }}"
                   KEY="${{ inputs.key_prefix }}${{ inputs.key }}"
                   LOCK_BRANCH="${KEY// /-}-branch-deploy-lock"
                   GLOBAL_LOCK_BRANCH="global-branch-deploy-lock"
@@ -168,27 +171,30 @@ jobs:
 
                   # No branch / no lock.json (the normal "no lock" state) reads as empty,
                   # which is free. A present lock must carry a reason to count as held.
-                  read_lock_reason() {
-                      local branch="$1"
-                      gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=${branch}" 2>/dev/null \
-                          | jq -r '.reason // empty' || true
+                  read_lock() {
+                      gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=$1" 2>/dev/null \
+                          | jq -r '(.reason // ""), (.created_by // "")' || true
                   }
 
-                  is_free() {
-                      local branch="$1"
-                      local lock_reason lock_owner
-                      lock_reason=$(read_lock_reason "$branch")
+                  is_free_or_owned() {
+                      local branch="$1" out lock_reason lock_owner created_by
+                      out=$(read_lock "$branch")
+                      lock_reason=$(echo "$out" | sed -n 1p)
+                      created_by=$(echo "$out" | sed -n 2p)
                       if [ -z "$lock_reason" ]; then
                           return 0
                       fi
                       lock_owner=$(echo "$lock_reason" | grep -o 'owner:[^,]*' | cut -d: -f2 || true)
+                      if [ "$lock_owner" = "$OWNER" ] && { [ -z "$created_by" ] || [ "$created_by" = "$ACTOR" ]; }; then
+                          return 0
+                      fi
                       WAIT_OWNER="${lock_owner:-unknown}"
                       return 1
                   }
 
                   DEADLINE=$((SECONDS + TIMEOUT))
                   while true; do
-                      if is_free "$LOCK_BRANCH" && is_free "$GLOBAL_LOCK_BRANCH"; then
+                      if is_free_or_owned "$LOCK_BRANCH" && is_free_or_owned "$GLOBAL_LOCK_BRANCH"; then
                           echo "✓ Lock available - proceeding"
                           break
                       fi
