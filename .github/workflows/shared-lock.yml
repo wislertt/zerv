@@ -128,12 +128,22 @@ jobs:
             # If this run is no longer the head of its ref, a newer run was pushed while
             # this one queued. Deploying an obsolete commit is a no-op: exit green and
             # let the newer run take over (never cancel an in-flight apply).
+            # Skipped on PR merge refs: GitHub regenerates refs/pull/<n>/merge lazily,
+            # so its head can change to a new merge commit of the SAME heads mid-run
+            # and any head comparison there is noise, not supersession.
             - name: supersede-check
               id: supersede-check
               shell: bash
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
+                  case "${{ github.ref }}" in
+                      refs/pull/*)
+                          echo "PR merge ref is regenerated per event - skipping supersede-check"
+                          echo "superseded=false" >> "$GITHUB_OUTPUT"
+                          exit 0
+                          ;;
+                  esac
                   EXPECTED="${{ github.sha }}"
                   ACTUAL=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${{ github.ref }}" --jq .sha 2>/dev/null || true)
                   if [ -n "$ACTUAL" ] && [ "$ACTUAL" != "$EXPECTED" ]; then
