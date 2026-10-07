@@ -16,7 +16,6 @@ name: test-shared-lock-contract
 # dispatch and read the sandbox workflow run).
 
 on:
-    workflow_dispatch:
     workflow_call:
         secrets:
             ZERV_SANDBOX_REPO_TOKEN:
