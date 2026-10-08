@@ -92,7 +92,13 @@ jobs:
                       echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create a fine-grained PAT with Contents:RW + Actions:RW on ${FIXTURES_REPO}, then add it as a repository secret."
                       exit 1
                   fi
-                  for attempt in 1 2 3; do
+                  # Backoff between startup_failure re-dispatches: 15/30/60/90s.
+                  # GitHub's workflow indexing on a just-force-pushed branch can
+                  # lag for minutes during Actions incidents (2026-10-08: 3×5s
+                  # retries all hit startup_failure while the same harness had
+                  # passed 17 min earlier); ~3 min of budget makes the race
+                  # effectively deterministic to absorb.
+                  for attempt in 1 2 3 4 5; do
                       for _ in $(seq 1 6); do
                           if gh workflow run --repo "$FIXTURES_REPO" "$WORKFLOW" --ref "$HARNESS_REF" 2>/tmp/dispatch.err; then
                               break
@@ -124,9 +130,15 @@ jobs:
                           echo "Sandbox lock contract passed for zerv@${{ github.sha }}"
                           exit 0
                       fi
-                      if [ "$conc" = "startup_failure" ] && [ "$attempt" -lt 3 ]; then
-                          echo "::notice::sandbox harness startup_failure (indexing race), re-dispatching (attempt $((attempt + 1))/3)"
-                          sleep 10
+                      if [ "$conc" = "startup_failure" ] && [ "$attempt" -lt 5 ]; then
+                          case "$attempt" in
+                              1) BACKOFF=15 ;;
+                              2) BACKOFF=30 ;;
+                              3) BACKOFF=60 ;;
+                              *) BACKOFF=90 ;;
+                          esac
+                          echo "::notice::sandbox harness startup_failure (indexing race), re-dispatching in ${BACKOFF}s (attempt $((attempt + 1))/5)"
+                          sleep "$BACKOFF"
                           continue
                       fi
                       echo "::error::sandbox lock contract failed (conclusion: ${conc:-timeout}). Run: https://github.com/${FIXTURES_REPO}/actions/runs/${rid}"
