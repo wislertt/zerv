@@ -9,76 +9,104 @@ name: test-shared-lock
 #   t1 fail-fast:      lock held, timeout 0            -> lock job must fail
 #   t2 wait-then-lock: lock released mid-wait          -> lock job must succeed
 #   t3 timeout:        lock held past timeout          -> lock job must fail
-#   t4 timeout:        held lock + wait_for_lock_timeout_in_sec 20 -> must fail
-#   t5 reentrant:      lock already owned by us        -> lock job must succeed
+#   t5 stale-own-lock: reason owner = key_owner, created_by = triggering actor
+#                      -> same-actor own lock is FREE (self-heal): job succeeds while
+#                      the seeded lock is still held. Regression for a production
+#                      caller: #297 made own locks dead-wait/fail. Cross-actor
+#                      own locks still wait (github/lock refuses cross-actor re-lock).
+#   t6 other-actor:    created_by != triggering actor, same reason owner -> fails fast
+#                      (github/lock enforces created_by on the lock step even when the
+#                      reason owner matches; callers must not rely on reason alone)
+#
+# Queue scenarios (against shared-lock's job-level concurrency group):
+#   A serialize+FIFO:  3 jobs, same key+ref -> queued by concurrency, strict
+#                      start/end alternation in dispatch order
+#   C cross-key:       2 jobs, different keys, same ref -> different groups, must overlap
+#   D lock-enforced:   seeded lock, short timeout -> shared-lock still rejects
+#
+#   t7 global-held:  global lock held -> key lock waits, succeeds after release
+#                      (runs last: the global branch is shared by every scenario)
+#   t8 enabled-off:  enabled=false -> lock job skipped
+#
+# Runs in CI via test-shared.yml (aggregator). Keep it that way: this harness
+# was dispatch-only when the #297 poll rewrite shipped, and no test objected
+# to a change that broke a production caller within hours.
+#
+# The queue state log lives on a throwaway bed branch, deleted per run.
 
 on:
     workflow_dispatch:
+        inputs:
+            subject:
+                description: "Internal: inner-run subject (a1/a2/a3) set by the dispatch jobs"
+                required: false
+                type: string
+                default: ""
     workflow_call:
+
+# Lock branch names, the bed and the state branches are shared per scenario
+# (case A inner runs must even share the queue-a key across runs), so two
+# overlapping outer runs would race the same refs (observed 2026-10-07,
+# run 37569484048: a CI run's t3-seed lost a POST race against a concurrently
+# dispatched manual run). Serialize outer runs; inner subjects get their own
+# group so they never queue behind the outer run that is waiting on them.
+concurrency:
+    group: test-shared-lock-${{ inputs.subject == '' && 'outer' || inputs.subject }}
+    cancel-in-progress: false
 
 permissions:
     contents: write
+    actions: write
 
 env:
     KEY_PREFIX: test/
     OWNER_FOREIGN: foreign-owner
+    BED: queue-test-bed
+    STATE: queue-state.log
+    # State file lives on its own branch: commits that append test markers must
+    # never move the bed ref HEAD, or the dispatched inner runs would execute
+    # a different commit than the one the outer run pinned.
+    STATE_BRANCH: queue-state-log
 
 jobs:
     # ---------- t1: held lock + timeout 0 -> fail fast ----------
     t1-seed:
+        if: inputs.subject == ''
         runs-on: ubuntu-latest
         steps:
             - name: seed-lock
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
+                  LOCK_BRANCH="${KEY_PREFIX}slock-t1-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "$OWNER_FOREIGN" | base64 -w0)
                   gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
                       -f message="seed t1" -f content="$CONTENT" \
-                      -f branch="${KEY_PREFIX}slock-t1-branch-deploy-lock" > /dev/null
+                      -f branch="$LOCK_BRANCH" > /dev/null
 
-    t1-lock:
-        needs: t1-seed
-        uses: ./.github/workflows/shared-lock.yml
-        with:
-            key: slock-t1
-            key_prefix: test/
-            key_owner: t1-owner
-            job_name: t1-lock
-            wait_for_lock_timeout_in_sec: 0
-
-    t1-assert:
-        needs: [t1-seed, t1-lock]
-        if: always()
-        runs-on: ubuntu-latest
-        steps:
-            - name: assert
-              run: |
-                  if [ "${{ needs.t1-lock.result }}" != "failure" ]; then
-                      echo "::error::t1 expected failure (fail-fast on held lock), got: ${{ needs.t1-lock.result }}"
-                      exit 1
-                  fi
-            - name: cleanup
-              if: always()
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t1-branch-deploy-lock" || true
-
-    # ---------- t2: lock released while waiting -> acquire ----------
     t2-seed:
+        if: inputs.subject == ''
         runs-on: ubuntu-latest
         steps:
             - name: seed-lock
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
+                  LOCK_BRANCH="${KEY_PREFIX}slock-t2-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "$OWNER_FOREIGN" | base64 -w0)
                   gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
                       -f message="seed t2" -f content="$CONTENT" \
-                      -f branch="${KEY_PREFIX}slock-t2-branch-deploy-lock" > /dev/null
+                      -f branch="$LOCK_BRANCH" > /dev/null
 
     t2-release:
         needs: t2-seed
+        if: inputs.subject == ''
         runs-on: ubuntu-latest
         steps:
             - name: release-after-delay
@@ -91,18 +119,23 @@ jobs:
 
     t2-lock:
         needs: t2-seed
+        if: inputs.subject == ''
         uses: ./.github/workflows/shared-lock.yml
         with:
             key: slock-t2
             key_prefix: test/
             key_owner: t2-owner
             job_name: t2-lock
-            wait_for_lock_timeout_in_sec: 120
+            # t2 waits for t2-release, a separate runner job; hosted-runner
+            # queue delays of 10+ min were observed (2026-10-07), so the wait
+            # must cover queue time, not just the 20s sleep. Costs nothing on
+            # the happy path (lock is acquired the moment release lands).
+            wait_for_lock_timeout_in_sec: 900
             wait_for_lock_poll_interval_in_sec: 5
 
     t2-assert:
         needs: [t2-seed, t2-release, t2-lock]
-        if: always()
+        if: always() && inputs.subject == ''
         runs-on: ubuntu-latest
         steps:
             - name: assert
@@ -125,138 +158,843 @@ jobs:
 
     # ---------- t3: held lock past timeout -> fail ----------
     t3-seed:
+        if: inputs.subject == ''
         runs-on: ubuntu-latest
         steps:
             - name: seed-lock
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
+                  LOCK_BRANCH="${KEY_PREFIX}slock-t3-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
                   CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "$OWNER_FOREIGN" | base64 -w0)
                   gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
                       -f message="seed t3" -f content="$CONTENT" \
-                      -f branch="${KEY_PREFIX}slock-t3-branch-deploy-lock" > /dev/null
+                      -f branch="$LOCK_BRANCH" > /dev/null
 
-    t3-lock:
-        needs: t3-seed
-        uses: ./.github/workflows/shared-lock.yml
-        with:
-            key: slock-t3
-            key_prefix: test/
-            key_owner: t3-owner
-            job_name: t3-lock
-            wait_for_lock_timeout_in_sec: 20
-            wait_for_lock_poll_interval_in_sec: 5
-
-    t3-assert:
-        needs: [t3-seed, t3-lock]
-        if: always()
-        runs-on: ubuntu-latest
-        steps:
-            - name: assert
-              run: |
-                  if [ "${{ needs.t3-lock.result }}" != "failure" ]; then
-                      echo "::error::t3 expected failure (timeout on held lock), got: ${{ needs.t3-lock.result }}"
-                      exit 1
-                  fi
-            - name: cleanup
-              if: always()
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t3-branch-deploy-lock" || true
-
-    # ---------- t4: timeout on held lock ----------
-    t4-seed:
-        runs-on: ubuntu-latest
-        steps:
-            - name: seed-lock
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: |
-                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "$OWNER_FOREIGN" | base64 -w0)
-                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
-                      -f message="seed t4" -f content="$CONTENT" \
-                      -f branch="${KEY_PREFIX}slock-t4-branch-deploy-lock" > /dev/null
-
-    t4-lock:
-        needs: t4-seed
-        uses: ./.github/workflows/shared-lock.yml
-        with:
-            key: slock-t4
-            key_prefix: test/
-            key_owner: t4-owner
-            job_name: t4-lock
-            wait_for_lock_timeout_in_sec: 20
-
-    t4-assert:
-        needs: [t4-seed, t4-lock]
-        if: always()
-        runs-on: ubuntu-latest
-        steps:
-            - name: assert
-              run: |
-                  if [ "${{ needs.t4-lock.result }}" != "failure" ]; then
-                      echo "::error::t4 expected failure (timeout on held lock), got: ${{ needs.t4-lock.result }}"
-                      exit 1
-                  fi
-            - name: cleanup
-              if: always()
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t4-branch-deploy-lock" || true
-
-    # ---------- t5: lock already owned by us -> proceed ----------
     t5-seed:
+        if: inputs.subject == ''
         runs-on: ubuntu-latest
         steps:
             - name: seed-lock
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "t5-owner" | base64 -w0)
+                  # Caller-exact prefix: production callers lock under hotfix/
+                  LOCK_BRANCH="hotfix/slock-t5-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
+                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"%s"}' "t5-owner" "${{ github.actor }}" | base64 -w0)
                   gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
                       -f message="seed t5" -f content="$CONTENT" \
-                      -f branch="${KEY_PREFIX}slock-t5-branch-deploy-lock" > /dev/null
+                      -f branch="$LOCK_BRANCH" > /dev/null
+
+    # ---------- expected-failure cases (t1, t3, t6, qD) ----------
+    # These lock calls MUST fail, but a failing job reddens the run conclusion -
+    # including nested reusable-workflow failures, and continue-on-error is not
+    # allowed on call jobs. So each item is dispatched as its own throwaway
+    # shared-lock run on a pinned scratch branch, its conclusion is asserted via
+    # the API, and the run is deleted to keep the Actions list clean. The three
+    # cases run in parallel (distinct scratch branches = distinct lock-workflow
+    # refs), so the job costs max(item) instead of sum(cases).
+    expected-fails:
+        if: inputs.subject == ''
+        needs: [t1-seed, t3-seed, t6-seed, seed-qd]
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: dispatch-expect-fail-and-assert
+              run: |
+                  FAILED=0
+                  # CASES: name|scratch|timeout|poll|key|owner
+                  CASES=(
+                      "t1|expected-fail-ref-t1|0|10|slock-t1|t1-owner"
+                      "t3|expected-fail-ref-t3|20|5|slock-t3|t3-owner"
+                      "t6|expected-fail-ref-t6|0|10|slock-t6|t6-owner"
+                      "qd|expected-fail-ref-qd|5|2|queue-d|qd"
+                  )
+
+                  declare -A RID
+                  START=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch timeout poll key owner <<< "$item"
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${scratch}" > /dev/null 2>&1 || true
+                      gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                          -f ref="refs/heads/${scratch}" -f sha="${{ github.sha }}" > /dev/null
+                      gh workflow run --repo "$GITHUB_REPOSITORY" shared-lock.yml --ref "$scratch" \
+                          -f key="$key" -f key_prefix=test/ -f key_owner="$owner" \
+                          -f wait_for_lock_timeout_in_sec="$timeout" \
+                          -f wait_for_lock_poll_interval_in_sec="$poll" \
+                          -f job_name="${name}-lock"
+                  done
+
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch timeout poll key owner <<< "$item"
+                      rid=""
+                      for _ in $(seq 1 12); do
+                          sleep 10
+                          rid=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=shared-lock.yml \
+                              --branch "$scratch" --json databaseId,createdAt \
+                              --jq ".[] | select(.createdAt > \"$START\") | .databaseId" | head -1)
+                          [ -n "$rid" ] && break
+                      done
+                      if [ -z "$rid" ]; then
+                          echo "::error::$name dispatched run not found"
+                          FAILED=1
+                      else
+                          RID[$name]=$rid
+                      fi
+                  done
+
+                  declare -A CONC
+                  for _ in $(seq 1 60); do
+                      PENDING=0
+                      for item in "${CASES[@]}"; do
+                          IFS='|' read -r name scratch timeout poll key owner <<< "$item"
+                          [ -n "${CONC[$name]:-}" ] && continue
+                          [ -z "${RID[$name]:-}" ] && continue
+                          st=$(gh run view "${RID[$name]}" --repo "$GITHUB_REPOSITORY" --json status -q .status)
+                          if [ "$st" = "completed" ]; then
+                              CONC[$name]=$(gh run view "${RID[$name]}" --repo "$GITHUB_REPOSITORY" --json conclusion -q .conclusion)
+                          else
+                              PENDING=1
+                          fi
+                      done
+                      [ "$PENDING" -eq 0 ] && break
+                      sleep 10
+                  done
+
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch timeout poll key owner <<< "$item"
+                      if [ -n "${RID[$name]:-}" ]; then
+                          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${RID[$name]}" > /dev/null || true
+                      fi
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${scratch}" > /dev/null 2>&1 || true
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}${key}-branch-deploy-lock" > /dev/null 2>&1 || true
+                      conc="${CONC[$name]:-}"
+                      if [ "$conc" != "failure" ]; then
+                          echo "::error::$name expected failure, got: ${conc:-timeout}"
+                          FAILED=1
+                      else
+                          echo "$name: failed as expected"
+                      fi
+                  done
+                  exit $FAILED
 
     t5-lock:
         needs: t5-seed
+        if: inputs.subject == ''
         uses: ./.github/workflows/shared-lock.yml
         with:
             key: slock-t5
-            key_prefix: test/
+            key_prefix: hotfix/
             key_owner: t5-owner
             job_name: t5-lock
             wait_for_lock_timeout_in_sec: 0
+            upload_result_artifact: true
+
+    t5-unlock:
+        needs: t5-lock
+        if: inputs.subject == ''
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: slock-t5
+            key_prefix: hotfix/
+            key_owner: t5-owner
+            job_name: t5-unlock
 
     t5-assert:
-        needs: [t5-seed, t5-lock]
-        if: always()
+        needs: [t5-seed, t5-lock, t5-unlock]
+        if: always() && inputs.subject == ''
         runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
         steps:
             - name: assert
               run: |
+                  FAILED=0
                   if [ "${{ needs.t5-lock.result }}" != "success" ]; then
-                      echo "::error::t5 expected success (reentrant lock owned by us), got: ${{ needs.t5-lock.result }}"
+                      echo "::error::t5 expected success on stale same-actor own lock (self-heal), got: ${{ needs.t5-lock.result }}"
+                      FAILED=1
+                  fi
+                  if [ "${{ needs.t5-unlock.result }}" != "success" ]; then
+                      echo "::error::t5 unlock after self-heal expected success, got: ${{ needs.t5-unlock.result }}"
+                      FAILED=1
+                  fi
+                  exit $FAILED
+            - name: assert-lock-branch-gone
+              run: |
+                  if gh api "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=hotfix/slock-t5-branch-deploy-lock" > /dev/null 2>&1; then
+                      echo "::error::t5 lock branch still exists after unlock"
                       exit 1
                   fi
+                  echo "t5 lock branch released"
             - name: cleanup
               if: always()
               env:
                   GH_TOKEN: ${{ github.token }}
-              run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t5-branch-deploy-lock" || true
+              run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/hotfix/slock-t5-branch-deploy-lock" || true
+
+    # ---------- t6: created_by != actor, same reason owner -> fail fast ----------
+    # The wait-for-lock poll is reason-based, so it passes immediately - but the
+    # github/lock lock step refuses to take a lock whose created_by differs from
+    # the triggering actor. Asserted via the expected-fails dispatcher below,
+    # because a failing reusable-call job reddens the run (no continue-on-error).
+    t6-seed:
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        steps:
+            - name: seed-lock
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  LOCK_BRANCH="${KEY_PREFIX}slock-t6-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
+                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"some-other-user"}' "t6-owner" | base64 -w0)
+                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
+                      -f message="seed t6" -f content="$CONTENT" \
+                      -f branch="$LOCK_BRANCH" > /dev/null
+
+    # ================= queue scenarios (concurrency group) =================
+    # The outer run (inputs.subject == "") drives the scenarios. Case A
+    # subjects run as inner runs dispatched on the bed branch, because multiple
+    # jobs sharing one concurrency group inside a single run cancel each other -
+    # one inner run per subject keeps exactly one group member per run.
+    #
+    # append_log writes markers to the state log on the bed branch
+    # (read-modify-write with retries; concurrent appenders race and retry).
+    bed-setup:
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        steps:
+            - name: create-bed-and-init-state
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  # Start from fresh branches every run: stale leftovers from a
+                  # previously failed run would leak old markers into the asserts.
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BED}" > /dev/null 2>&1 || true
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${STATE_BRANCH}" > /dev/null 2>&1 || true
+                  # Bed ref stays pinned at this run's sha - inner runs dispatch
+                  # against it and must never see it move mid-run.
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${BED}" -f sha="${{ github.sha }}" > /dev/null
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${STATE_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
+                  CONTENT=$(printf 'init run=%s\n' "${{ github.run_id }}" | base64 -w0)
+                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
+                      -f message="init state" -f content="$CONTENT" \
+                      -f branch="${STATE_BRANCH}" > /dev/null
+
+    # ---------- case C: different keys, same ref -> overlap (outer jobs) ----------
+    qC1:
+        if: inputs.subject == ''
+        needs: bed-setup
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            key: queue-c-1
+            key_prefix: test/
+            key_owner: qc1
+            job_name: qC1-lock
+            wait_for_lock_timeout_in_sec: 300
+            wait_for_lock_poll_interval_in_sec: 5
+
+    qC1-critical:
+        needs: [bed-setup, qC1]
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: hold-lock-window
+              run: |
+                  append_log() {
+                      local line="$1"
+                      local raw sha newb64
+                      for _ in 1 2 3 4 5; do
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
+                          newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
+                          if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
+                              -f message="queue-log $line" -f content="$newb64" \
+                              -f branch="${STATE_BRANCH}" ${sha:+-f sha="$sha"} > /dev/null 2>&1; then
+                              return 0
+                          fi
+                          sleep 2
+                      done
+                      echo "::error::append_log failed for: $line"
+                      return 1
+                  }
+                  append_log "start:c1"
+                  # Rendezvous: wait for c2's start marker so the two windows
+                  # genuinely overlap no matter how far apart the scheduler
+                  # starts the two job chains (observed skew: 16s).
+                  for _ in $(seq 1 60); do
+                      OTHER=$(gh api -H "Accept: application/vnd.github.raw" \
+                          "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null \
+                          | grep -c "^start:c2\$" || true)
+                      [ "${OTHER:-0}" -ge 1 ] && break
+                      sleep 2
+                  done
+                  sleep 5
+                  append_log "end:c1"
+
+    qC1-unlock:
+        needs: qC1-critical
+        if: inputs.subject == ''
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: queue-c-1
+            key_prefix: test/
+            job_name: qC1-unlock
+
+    qC2:
+        if: inputs.subject == ''
+        needs: bed-setup
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            key: queue-c-2
+            key_prefix: test/
+            key_owner: qc2
+            job_name: qC2-lock
+            wait_for_lock_timeout_in_sec: 300
+            wait_for_lock_poll_interval_in_sec: 5
+
+    qC2-critical:
+        needs: [bed-setup, qC2]
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: hold-lock-window
+              run: |
+                  append_log() {
+                      local line="$1"
+                      local raw sha newb64
+                      for _ in 1 2 3 4 5; do
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
+                          newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
+                          if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
+                              -f message="queue-log $line" -f content="$newb64" \
+                              -f branch="${STATE_BRANCH}" ${sha:+-f sha="$sha"} > /dev/null 2>&1; then
+                              return 0
+                          fi
+                          sleep 2
+                      done
+                      echo "::error::append_log failed for: $line"
+                      return 1
+                  }
+                  append_log "start:c2"
+                  # Rendezvous with c1 (see qC1-critical).
+                  for _ in $(seq 1 60); do
+                      OTHER=$(gh api -H "Accept: application/vnd.github.raw" \
+                          "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null \
+                          | grep -c "^start:c1\$" || true)
+                      [ "${OTHER:-0}" -ge 1 ] && break
+                      sleep 2
+                  done
+                  sleep 5
+                  append_log "end:c2"
+
+    qC2-unlock:
+        needs: qC2-critical
+        if: inputs.subject == ''
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: queue-c-2
+            key_prefix: test/
+            job_name: qC2-unlock
+
+    # ---------- case D: lock still enforced while queueing exists ----------
+    seed-qd:
+        if: inputs.subject == ''
+        needs: bed-setup
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: seed-lock
+              run: |
+                  LOCK_BRANCH="${KEY_PREFIX}queue-d-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
+                  CONTENT=$(printf '{"reason":"owner:qd-holder","created_by":"some-other-user"}' | base64 -w0)
+                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
+                      -f message="seed queue-d" -f content="$CONTENT" \
+                      -f branch="$LOCK_BRANCH" > /dev/null
+
+    dispatch-a:
+        if: inputs.subject == ''
+        needs: bed-setup
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - name: dispatch-staggered-and-wait
+              run: |
+                  # Goal: every subject's start/end pair present exactly once in
+                  # the state file. GitHub may cancel a still-queued run when a
+                  # newer run joins the same concurrency group (pending collapse,
+                  # observed run 37437710971: qa2-lock cancelled), so subjects
+                  # are re-dispatched - but only when they show no progress:
+                  # a start marker means the run is in flight or done, and
+                  # re-dispatching then would duplicate the markers. The
+                  # cooldown also covers runs that are legitimately queued
+                  # behind the serialization wave (pending, not collapsed).
+                  state() {
+                      gh api -H "Accept: application/vnd.github.raw" \
+                          "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true
+                  }
+                  count_marker() {
+                      printf '%s\n' "$2" | grep -c "^$1:sA$3\$" || true
+                  }
+                  declare -A LASTTRY
+                  DEADLINE=$((SECONDS + 900))
+                  while [ "$SECONDS" -lt "$DEADLINE" ]; do
+                      CONTENT=$(state)
+                      ALLDONE=1
+                      MISSING=""
+                      for N in 1 2 3; do
+                          STARTS=$(count_marker start "$CONTENT" "$N")
+                          ENDS=$(count_marker end "$CONTENT" "$N")
+                          if [ "$STARTS" -eq 1 ] && [ "$ENDS" -eq 1 ]; then
+                              continue
+                          fi
+                          ALLDONE=0
+                          if [ "$STARTS" -eq 0 ] && [ $((SECONDS - ${LASTTRY[$N]:--9999})) -ge 120 ]; then
+                              MISSING="$MISSING $N"
+                              LASTTRY[$N]=$SECONDS
+                          fi
+                      done
+                      if [ "$ALLDONE" -eq 1 ]; then
+                          break
+                      fi
+                      if [ -n "$MISSING" ]; then
+                          echo "dispatching subjects without start marker:$MISSING"
+                          for N in $MISSING; do
+                              gh workflow run --repo "$GITHUB_REPOSITORY" test-shared-lock.yml --ref "$BED" -f subject="a$N"
+                              sleep 5
+                          done
+                      fi
+                      sleep 30
+                  done
+                  CONTENT=$(state)
+                  FAILED=0
+                  for N in 1 2 3; do
+                      if [ "$(count_marker start "$CONTENT" "$N")" -ne 1 ] || [ "$(count_marker end "$CONTENT" "$N")" -ne 1 ]; then
+                          echo "::error::case A subject a$N never completed (missing or duplicated markers)"
+                          FAILED=1
+                      fi
+                  done
+                  exit $FAILED
+
+    # ---------- asserts (outer) ----------
+    assert-a:
+        if: always() && inputs.subject == ''
+        needs: dispatch-a
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: assert-serialize-and-fifo
+              run: |
+                  # Cross-subject FIFO order is a tendency only: re-dispatching a
+                  # pending-collapsed subject can reorder legitimate completions.
+                  # What MUST hold: each pair exactly once and start immediately
+                  # followed by its end (no interleave = never overlapping).
+                  FAILED=0
+                  if [ "$(echo "$NEEDS" | jq -r '.["dispatch-a"].result')" != "success" ]; then
+                      echo "::error::case A dispatch job failed"
+                      FAILED=1
+                  fi
+                  STATE_CONTENT=$(gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                  ACTUAL=$(printf '%s\n' "$STATE_CONTENT" | grep -E '^start:sA[0-9]$|^end:sA[0-9]$' || true)
+                  echo "--- case A log ---"
+                  echo "$ACTUAL"
+                  SEQUENCE_OK=$(printf '%s\n' "$ACTUAL" | awk '
+                      /^start:sA[0-9]$/ { if (open != "") bad = 1; open = $0; sub("start", "end", open) ; next }
+                      /^end:sA[0-9]$/   { if ($0 != open) bad = 1; open = ""; next }
+                      END { if (open != "") bad = 1; print (bad ? "bad" : "ok") }')
+                  if [ "$SEQUENCE_OK" != "ok" ]; then
+                      echo "::error::case A critical sections interleaved (start/end mismatch above)"
+                      FAILED=1
+                  fi
+                  for N in 1 2 3; do
+                      if [ "$(printf '%s\n' "$ACTUAL" | grep -c "^start:sA$N\$")" -ne 1 ]; then
+                          echo "::error::case A subject a$N start marker not exactly once"
+                          FAILED=1
+                      fi
+                  done
+                  exit $FAILED
+              env:
+                  NEEDS: ${{ toJson(needs) }}
+
+    assert-c:
+        if: always() && inputs.subject == ''
+        needs: [qC1, qC1-critical, qC1-unlock, qC2, qC2-critical, qC2-unlock]
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: assert-overlap
+              run: |
+                  FAILED=0
+                  for job in qC1 qC1-critical qC1-unlock qC2 qC2-critical qC2-unlock; do
+                      RESULT=$(echo "$NEEDS" | jq -r ".\"$job\".result")
+                      if [ "$RESULT" != "success" ]; then
+                          echo "::error::case C job $job: $RESULT"
+                          FAILED=1
+                      fi
+                  done
+                  STATE_CONTENT=$(gh api -H "Accept: application/vnd.github.raw" "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                  echo "--- case C log ---"
+                  printf '%s\n' "$STATE_CONTENT" | grep -E '^[a-z]+:c[12]$' || true
+                  OVERLAP=$(printf '%s\n' "$STATE_CONTENT" | awk '
+                      /^start:c1/ { s1 = NR }
+                      /^end:c1/   { e1 = NR }
+                      /^start:c2/ { s2 = NR }
+                      /^end:c2/   { e2 = NR }
+                      END {
+                          if (s1 && e1 && s2 && e2 && s1 < e2 && s2 < e1) print "yes"; else print "no"
+                      }')
+                  if [ "$OVERLAP" != "yes" ]; then
+                      echo "::error::case C expected the two different-key runs to overlap (queue must be per-key+ref, not global)"
+                      FAILED=1
+                  fi
+                  exit $FAILED
+              env:
+                  NEEDS: ${{ toJson(needs) }}
+
+    assert-d:
+        if: always() && inputs.subject == ''
+        needs: [seed-qd, expected-fails]
+        runs-on: ubuntu-latest
+        steps:
+            - name: assert-lock-enforced
+              run: |
+                  FAILED=0
+                  if [ "$(echo "$NEEDS" | jq -r '.["seed-qd"].result')" != "success" ]; then
+                      echo "::error::case D seed job failed"
+                      FAILED=1
+                  fi
+                  if [ "$(echo "$NEEDS" | jq -r '.["expected-fails"].result')" != "success" ]; then
+                      echo "::error::case D expected qD failure (lock must still reject while a foreign lock is held) - expected-fails job: $(echo "$NEEDS" | jq -r '.["expected-fails"].result')"
+                      FAILED=1
+                  fi
+                  exit $FAILED
+              env:
+                  NEEDS: ${{ toJson(needs) }}
+
+    # ---------- inner run subjects ----------
+    qa1-lock:
+        if: inputs.subject == 'a1'
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            key: queue-a
+            key_prefix: test/
+            key_owner: qa1
+            job_name: qa1-lock
+            wait_for_lock_timeout_in_sec: 300
+            wait_for_lock_poll_interval_in_sec: 5
+
+    qa1-critical:
+        if: inputs.subject == 'a1'
+        needs: qa1-lock
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: hold-lock-window
+              run: |
+                  append_log() {
+                      local line="$1"
+                      local raw sha newb64
+                      for _ in 1 2 3 4 5; do
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
+                          newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
+                          if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
+                              -f message="queue-log $line" -f content="$newb64" \
+                              -f branch="${STATE_BRANCH}" ${sha:+-f sha="$sha"} > /dev/null 2>&1; then
+                              return 0
+                          fi
+                          sleep 2
+                      done
+                      echo "::error::append_log failed for: $line"
+                      return 1
+                  }
+                  append_log "start:sA1"
+                  sleep 8
+                  append_log "end:sA1"
+
+    qa1-unlock:
+        if: inputs.subject == 'a1'
+        needs: qa1-critical
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: queue-a
+            key_prefix: test/
+            job_name: qa1-unlock
+
+    qa2-lock:
+        if: inputs.subject == 'a2'
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            key: queue-a
+            key_prefix: test/
+            key_owner: qa2
+            job_name: qa2-lock
+            wait_for_lock_timeout_in_sec: 300
+            wait_for_lock_poll_interval_in_sec: 5
+
+    qa2-critical:
+        if: inputs.subject == 'a2'
+        needs: qa2-lock
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: hold-lock-window
+              run: |
+                  append_log() {
+                      local line="$1"
+                      local raw sha newb64
+                      for _ in 1 2 3 4 5; do
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
+                          newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
+                          if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
+                              -f message="queue-log $line" -f content="$newb64" \
+                              -f branch="${STATE_BRANCH}" ${sha:+-f sha="$sha"} > /dev/null 2>&1; then
+                              return 0
+                          fi
+                          sleep 2
+                      done
+                      echo "::error::append_log failed for: $line"
+                      return 1
+                  }
+                  append_log "start:sA2"
+                  sleep 8
+                  append_log "end:sA2"
+
+    qa2-unlock:
+        if: inputs.subject == 'a2'
+        needs: qa2-critical
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: queue-a
+            key_prefix: test/
+            job_name: qa2-unlock
+
+    qa3-lock:
+        if: inputs.subject == 'a3'
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            key: queue-a
+            key_prefix: test/
+            key_owner: qa3
+            job_name: qa3-lock
+            wait_for_lock_timeout_in_sec: 300
+            wait_for_lock_poll_interval_in_sec: 5
+
+    qa3-critical:
+        if: inputs.subject == 'a3'
+        needs: qa3-lock
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: hold-lock-window
+              run: |
+                  append_log() {
+                      local line="$1"
+                      local raw sha newb64
+                      for _ in 1 2 3 4 5; do
+                          # Single fetch for content+sha: two fetches leave a skew
+                          # window where the sha is newer than the content, and a
+                          # PUT with fresh-sha/stale-content silently clobbers a
+                          # concurrent writer's line.
+                          META=$(gh api "repos/${GITHUB_REPOSITORY}/contents/${STATE}?ref=${STATE_BRANCH}" 2>/dev/null || true)
+                          sha=$(printf '%s' "$META" | jq -r '.sha // empty')
+                          raw=$(printf '%s' "$META" | jq -r '.content // empty' | base64 -d 2>/dev/null || true)
+                          newb64=$(printf '%s\n%s\n' "$raw" "$line" | base64 -w0)
+                          if gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${STATE}" \
+                              -f message="queue-log $line" -f content="$newb64" \
+                              -f branch="${STATE_BRANCH}" ${sha:+-f sha="$sha"} > /dev/null 2>&1; then
+                              return 0
+                          fi
+                          sleep 2
+                      done
+                      echo "::error::append_log failed for: $line"
+                      return 1
+                  }
+                  append_log "start:sA3"
+                  sleep 8
+                  append_log "end:sA3"
+
+    qa3-unlock:
+        if: inputs.subject == 'a3'
+        needs: qa3-critical
+        uses: ./.github/workflows/shared-unlock.yml
+        with:
+            key: queue-a
+            key_prefix: test/
+            job_name: qa3-unlock
+    # seeding it must wait until no other lock job is polling.
+    t7-seed:
+        if: inputs.subject == ''
+        needs: [expected-fails, t2-assert, t5-assert, assert-a, assert-c, assert-d]
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: seed-global-lock
+              run: |
+                  LOCK_BRANCH="global-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
+                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"shared-lock-test"}' "global-foreign" | base64 -w0)
+                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
+                      -f message="seed t7 global" -f content="$CONTENT" \
+                      -f branch="$LOCK_BRANCH" > /dev/null
+
+    t7-release:
+        needs: t7-seed
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: release-after-delay
+              run: |
+                  echo "Releasing seeded global lock in 20s..."
+                  sleep 20
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/global-branch-deploy-lock"
+
+    t7-lock:
+        needs: t7-seed
+        if: inputs.subject == ''
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            key: glock-t7
+            key_prefix: test/
+            key_owner: t7-owner
+            job_name: t7-lock
+            # Same queue-delay reasoning as t2-lock above.
+            wait_for_lock_timeout_in_sec: 900
+            wait_for_lock_poll_interval_in_sec: 5
+
+    t7-assert:
+        needs: [t7-seed, t7-release, t7-lock]
+        if: always() && inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: assert
+              run: |
+                  FAILED=0
+                  if [ "${{ needs.t7-lock.result }}" != "success" ]; then
+                      echo "::error::t7 expected success after global lock release, got: ${{ needs.t7-lock.result }}"
+                      FAILED=1
+                  fi
+                  exit $FAILED
+            - name: cleanup
+              if: always()
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/global-branch-deploy-lock" 2>/dev/null || true
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}glock-t7-branch-deploy-lock" 2>/dev/null || true
+
+    # ---------- t8: enabled=false -> lock job skipped ----------
+    t8-lock:
+        if: inputs.subject == ''
+        uses: ./.github/workflows/shared-lock.yml
+        with:
+            enabled: false
+            key: slock-t8
+            key_prefix: test/
+            key_owner: t8-owner
+            job_name: t8-lock
+
+    t8-assert:
+        needs: t8-lock
+        if: always() && inputs.subject == ''
+        runs-on: ubuntu-latest
+        steps:
+            - name: assert
+              run: |
+                  if [ "${{ needs.t8-lock.result }}" != "skipped" ]; then
+                      echo "::error::t8 expected skipped lock job (enabled=false), got: ${{ needs.t8-lock.result }}"
+                      exit 1
+                  fi
 
     # ---------- summary ----------
     summary:
         name: test-shared-lock
-        needs: [t1-assert, t2-assert, t3-assert, t4-assert, t5-assert]
+        needs: [expected-fails, t2-assert, t5-assert, t7-assert, t8-assert, assert-a, assert-c, assert-d]
         if: always()
         runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+            SUBJECT: ${{ inputs.subject }}
         steps:
+            - name: cleanup
+              if: inputs.subject == ''
+              run: |
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BED}" 2>/dev/null || true
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${STATE_BRANCH}" 2>/dev/null || true
+                  for k in queue-a queue-c-1 queue-c-2 queue-d; do
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}${k}-branch-deploy-lock" 2>/dev/null || true
+                  done
             - name: report
+              env:
+                  NEEDS: ${{ toJson(needs) }}
               run: |
                   FAILED=0
-                  for job in t1-assert t2-assert t3-assert t4-assert t5-assert; do
-                      RESULT=$(echo "${{ toJson(needs) }}" | jq -r ".\"$job\".result")
+                  for job in expected-fails t2-assert t5-assert t7-assert t8-assert assert-a assert-c assert-d; do
+                      RESULT=$(echo "$NEEDS" | jq -r ".\"$job\".result")
                       echo "$job: $RESULT"
-                      [ "$RESULT" != "success" ] && FAILED=1
+                      if [ "$RESULT" = "skipped" ]; then
+                          # inner runs skip every outer/other-subject job by design
+                          if [ -z "$SUBJECT" ]; then
+                              FAILED=1
+                          fi
+                          continue
+                      fi
+                      [ "$RESULT" = "success" ] || FAILED=1
                   done
                   exit $FAILED

@@ -1,0 +1,90 @@
+name: zerv-lock-contract
+
+# Cross-repo contract harness for wislertt/zerv shared-lock.yml.
+#
+# This file is a TEMPLATE: the zerv repo's test-shared-lock-contract workflow
+# substitutes the real commit under test for every CONTRACT_UNDER_TEST_SHA
+# token before pushing it to the sandbox (reusable-workflow `uses` accepts no
+# expressions, so the token below must never become an expression). This keeps
+# the sandbox pinned to the exact commit being tested without any permanent
+# marker branch in the zerv repo.
+#
+# Exercises the caller-visible contract:
+#   c1 acquire:            lock succeeds, lock.json reason owner matches
+#   c2 own-lock reentrancy: second acquire, same key_owner + actor, while held
+#                          -> must succeed (regression for #297, which made
+#                          own locks dead-wait/fail in production callers)
+#   c3 release + verify:   unlock removes the lock branch
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+concurrency:
+    group: zerv-lock-contract
+    cancel-in-progress: false
+
+env:
+    KEY: contract-probe
+    OWNER: contract-run-${{ github.run_id }}
+
+jobs:
+    c1-lock:
+        uses: wislertt/zerv/.github/workflows/shared-lock.yml@CONTRACT_UNDER_TEST_SHA
+        with:
+            key: contract-probe
+            key_owner: contract-run-${{ github.run_id }}
+            job_name: c1-lock
+            wait_for_lock_timeout_in_sec: 0
+
+    c2-relock:
+        needs: c1-lock
+        uses: wislertt/zerv/.github/workflows/shared-lock.yml@CONTRACT_UNDER_TEST_SHA
+        with:
+            key: contract-probe
+            key_owner: contract-run-${{ github.run_id }}
+            job_name: c2-relock
+            wait_for_lock_timeout_in_sec: 0
+
+    c3-unlock:
+        needs: c2-relock
+        uses: wislertt/zerv/.github/workflows/shared-unlock.yml@CONTRACT_UNDER_TEST_SHA
+        with:
+            key: contract-probe
+            key_owner: contract-run-${{ github.run_id }}
+            job_name: c3-unlock
+
+    assert:
+        needs: [c1-lock, c2-relock, c3-unlock]
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: assert-contract
+              run: |
+                  FAILED=0
+                  for job in c1-lock c2-relock c3-unlock; do
+                      RESULT=$(echo "$NEEDS" | jq -r ".\"$job\".result")
+                      if [ "$RESULT" != "success" ]; then
+                          echo "::error::$job: $RESULT"
+                          FAILED=1
+                      fi
+                  done
+                  RELOCK_SUPERSEDED="$(echo "$NEEDS" | jq -r '.["c2-relock"].outputs.superseded // "false"')"
+                  if [ "$RELOCK_SUPERSEDED" = "true" ]; then
+                      echo "::error::c2-relock unexpectedly superseded"
+                      FAILED=1
+                  fi
+                  if gh api "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=${KEY}-branch-deploy-lock" > /dev/null 2>&1; then
+                      echo "::error::lock branch still exists after c3-unlock"
+                      FAILED=1
+                  else
+                      echo "✓ lock branch removed by unlock"
+                  fi
+                  echo "--- contract: wislertt/zerv@CONTRACT_UNDER_TEST_SHA ---"
+                  exit $FAILED
+              env:
+                  NEEDS: ${{ toJson(needs) }}
+                  KEY: contract-probe
