@@ -55,6 +55,21 @@ on:
                 description: "Lock status for this key (NOTE: with matrix, only last instance's output is returned)"
                 value: ${{ jobs.lock.outputs.lock_status }}
 
+    # Needed by the expected-fails harness in test-shared-lock.yml, which
+    # dispatches throwaway must-fail lock runs on scratch refs.
+    workflow_dispatch:
+        inputs:
+            enabled: { required: false, type: boolean, default: true }
+            key: { required: true, type: string }
+            key_prefix: { required: false, type: string, default: "" }
+            key_owner: { required: true, type: string }
+            job_name: { required: false, type: string }
+            check_owner_after_lock: { required: false, type: boolean, default: true }
+            delay_check_owner_after_lock_in_sec: { required: false, type: number, default: 5 }
+            wait_for_lock_timeout_in_sec: { required: false, type: number, default: 0 }
+            wait_for_lock_poll_interval_in_sec: { required: false, type: number, default: 10 }
+            upload_result_artifact: { required: false, type: boolean, default: false }
+
 permissions:
     contents: write
 
@@ -63,6 +78,12 @@ jobs:
         name: ${{ inputs.job_name || 'lock' }}
         if: inputs.enabled == true
         runs-on: ubuntu-latest
+        # Serialize same-key runs of the same ref at the job level: two deploys
+        # of one branch must queue, never race. Different keys and different
+        # refs get different groups and stay parallel.
+        concurrency:
+            group: lock-${{ inputs.key_prefix }}${{ inputs.key }}-${{ github.ref }}
+            cancel-in-progress: false
         steps:
             # Poll the lock branch until it is free/owned-by-us or the timeout expires.
             # Mirrors github/lock check mode: lock = branch "<env>-branch-deploy-lock" holding

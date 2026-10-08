@@ -1,0 +1,146 @@
+name: test-shared-lock-contract
+
+# Cross-repo contract test for shared-lock.yml. Runs a lock round-trip inside
+# wislertt/zerv-sandbox against THIS ref, so a caller-visible regression (input
+# semantics, reentrancy, output shape) fails CI here before callers find it in
+# production (as happened with the #297 poll rewrite).
+#
+# Mechanics: reusable-workflow `uses` does not accept expressions, so the
+# sandbox harness (pushed here on every run) is a template whose
+# CONTRACT_UNDER_TEST_SHA tokens are substituted with the commit under test
+# before the push. No permanent marker branch is created in this repo.
+#
+# Sandbox ref namespace: the harness lives on the dedicated branch
+# `zerv-ci/lock-contract` (workflow_dispatch works on any ref the workflow
+# file exists on), never on main — the semantic-release harness owns main and
+# force-pushes fixture history onto it on every run. Each contract run re-pushes
+# the harness from .github/fixtures/zerv-sandbox/ before dispatching, so the
+# sandbox self-heals after any wipe (the semantic-release harness resets main
+# to an empty tree; that used to break this job with a 422).
+#
+# Requires the ZERV_SANDBOX_REPO_TOKEN secret: fine-grained PAT on
+# wislertt/zerv-sandbox with Contents:RW + Actions:RW (Actions needed to
+# dispatch and read the sandbox workflow run).
+
+on:
+    workflow_call:
+        secrets:
+            ZERV_SANDBOX_REPO_TOKEN:
+                required: false
+                description: Fine-grained PAT with Contents:RW + Actions:RW on wislertt/zerv-sandbox
+
+permissions:
+    contents: write
+
+env:
+    FIXTURES_REPO: wislertt/zerv-sandbox
+    WORKFLOW: zerv-lock-contract.yml
+    HARNESS_SRC: .github/fixtures/zerv-sandbox/zerv-lock-contract.yml
+    HARNESS_PATH: .github/workflows/zerv-lock-contract.yml
+    HARNESS_REF: zerv-ci/lock-contract
+
+concurrency:
+    group: test-shared-lock-contract
+    cancel-in-progress: false
+
+jobs:
+    contract:
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+            - name: ensure-harness-branch
+              env:
+                  GH_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+              run: |
+                  # Re-push the harness onto its dedicated branch on every run:
+                  # single source of truth is .github/fixtures/zerv-sandbox/, and
+                  # a wiped sandbox heals itself here instead of failing with a
+                  # 422. git push (not the contents API): the PAT may refuse
+                  # branch auto-creation via contents PUT with a 403, while
+                  # plain pushes are exactly what the other harnesses do.
+                  if [ -z "$GH_TOKEN" ]; then
+                      echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create a fine-grained PAT with Contents:RW + Actions:RW on ${FIXTURES_REPO}, then add it as a repository secret."
+                      exit 1
+                  fi
+                  ORIGIN_URL="https://x-access-token:${GH_TOKEN}@github.com/${FIXTURES_REPO}.git"
+                  WORK="$(mktemp -d)"
+                  git init -q -b main "$WORK"
+                  mkdir -p "$WORK/$(dirname "$HARNESS_PATH")"
+                  # Bake the exact commit under test into the harness template;
+                  # reusable-workflow `uses` cannot take expressions.
+                  sed "s/CONTRACT_UNDER_TEST_SHA/${GITHUB_SHA}/g" \
+                      "${GITHUB_WORKSPACE}/${HARNESS_SRC}" > "$WORK/${HARNESS_PATH}"
+                  git -C "$WORK" add -A
+                  git -C "$WORK" -c user.email="zerv-ci@users.noreply.github.com" -c user.name="zerv-ci" \
+                      commit -q -m "ci: contract harness update"
+                  git -C "$WORK" push -q --force "$ORIGIN_URL" "refs/heads/main:${HARNESS_REF}"
+                  echo "harness pushed to ${HARNESS_REF} at zerv@${{ github.sha }}"
+
+            - name: wait-for-contract-run
+              env:
+                  GH_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
+              run: |
+                  # Dispatch and watch. A startup_failure means GitHub evaluated
+                  # the harness before the just-force-pushed commit finished
+                  # indexing (seen live: dispatch succeeds, run dies with "a
+                  # workflow file issue", identical re-dispatch minutes later
+                  # passes) — that one is retryable; anything else is a real
+                  # contract failure.
+                  if [ -z "$GH_TOKEN" ]; then
+                      echo "::error::ZERV_SANDBOX_REPO_TOKEN secret is not set. Create a fine-grained PAT with Contents:RW + Actions:RW on ${FIXTURES_REPO}, then add it as a repository secret."
+                      exit 1
+                  fi
+                  # Backoff between startup_failure re-dispatches: 15/30/60/90s.
+                  # GitHub's workflow indexing on a just-force-pushed branch can
+                  # lag for minutes during Actions incidents (2026-10-08: 3×5s
+                  # retries all hit startup_failure while the same harness had
+                  # passed 17 min earlier); ~3 min of budget makes the race
+                  # effectively deterministic to absorb.
+                  for attempt in 1 2 3 4 5; do
+                      for _ in $(seq 1 6); do
+                          if gh workflow run --repo "$FIXTURES_REPO" "$WORKFLOW" --ref "$HARNESS_REF" 2>/tmp/dispatch.err; then
+                              break
+                          fi
+                          sleep 5
+                      done
+                      rid=""
+                      for _ in $(seq 1 12); do
+                          sleep 10
+                          rid=$(gh run list --repo "$FIXTURES_REPO" --workflow "$WORKFLOW" \
+                              --json databaseId -q '.[0].databaseId' 2>/dev/null | head -1)
+                          [ -n "$rid" ] && break
+                      done
+                      if [ -z "$rid" ]; then
+                          echo "::error::sandbox contract run not found after dispatch"
+                          exit 1
+                      fi
+                      echo "Sandbox contract run: https://github.com/${FIXTURES_REPO}/actions/runs/${rid}"
+                      conc=""
+                      for _ in $(seq 1 90); do
+                          st=$(gh run view "$rid" --repo "$FIXTURES_REPO" --json status -q .status)
+                          if [ "$st" = "completed" ]; then
+                              conc=$(gh run view "$rid" --repo "$FIXTURES_REPO" --json conclusion -q .conclusion)
+                              break
+                          fi
+                          sleep 10
+                      done
+                      if [ "$conc" = "success" ]; then
+                          echo "Sandbox lock contract passed for zerv@${{ github.sha }}"
+                          exit 0
+                      fi
+                      if [ "$conc" = "startup_failure" ] && [ "$attempt" -lt 5 ]; then
+                          case "$attempt" in
+                              1) BACKOFF=15 ;;
+                              2) BACKOFF=30 ;;
+                              3) BACKOFF=60 ;;
+                              *) BACKOFF=90 ;;
+                          esac
+                          echo "::notice::sandbox harness startup_failure (indexing race), re-dispatching in ${BACKOFF}s (attempt $((attempt + 1))/5)"
+                          sleep "$BACKOFF"
+                          continue
+                      fi
+                      echo "::error::sandbox lock contract failed (conclusion: ${conc:-timeout}). Run: https://github.com/${FIXTURES_REPO}/actions/runs/${rid}"
+                      exit 1
+                  done
