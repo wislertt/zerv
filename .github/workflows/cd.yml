@@ -10,6 +10,9 @@ permissions:
     contents: write
     issues: write
     pull-requests: write
+    # test-shared.yml -> test-shared-lock.yml dispatches throwaway expected-fail
+    # runs; reusable workflows cannot exceed the caller's permissions
+    actions: write
 
 jobs:
     # ====================================================
