@@ -31,6 +31,18 @@ on:
                 required: false
                 type: string
 
+    # Needed by the unlock-negatives harness in test-shared-lock.yml, which
+    # dispatches throwaway unlock runs on scratch refs (same pattern as the
+    # shared-lock workflow_dispatch).
+    workflow_dispatch:
+        inputs:
+            enabled: { required: false, type: boolean, default: true }
+            key: { required: true, type: string }
+            key_prefix: { required: false, type: string, default: "" }
+            key_owner: { required: false, type: string }
+            fail_if_owner_mismatch: { required: false, type: boolean, default: true }
+            job_name: { required: false, type: string }
+
 permissions:
     contents: write
 

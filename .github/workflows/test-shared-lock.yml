@@ -285,6 +285,211 @@ jobs:
                   done
                   exit $FAILED
 
+    # ---------- unlock negatives dispatcher (u1/u2/u3) ----------
+    # Same dispatch-assert-delete shape as expected-fails, but against
+    # shared-unlock.yml. Lock-state assertions are per case (u1/u2: lock
+    # survives; u3: lock branch gone), checked AFTER the dispatched run
+    # completed, so no cross-job timing window exists.
+    unlock-negatives:
+        if: inputs.subject == ''
+        needs: [u1-seed, u2-seed, u3-seed]
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: dispatch-unlock-and-assert
+              run: |
+                  FAILED=0
+                  # CASES: name|scratch|key|unlock_owner|fail_mismatch|expected
+                  CASES=(
+                      "u1|expected-fail-ref-u1|slock-u1|someone-else|true|failure"
+                      "u2|expected-fail-ref-u2|slock-u2|someone-else|false|success"
+                      "u3|expected-fail-ref-u3|slock-u3|u3-owner|true|success"
+                  )
+
+                  declare -A RID
+                  START=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch key owner mismatch expected <<< "$item"
+                      gh workflow run --repo "$GITHUB_REPOSITORY" shared-unlock.yml --ref "$scratch" \
+                          -f key="$key" -f key_prefix=test/ -f key_owner="$owner" \
+                          -f fail_if_owner_mismatch="$mismatch" \
+                          -f job_name="${name}-unlock"
+                  done
+
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch key owner mismatch expected <<< "$item"
+                      rid=""
+                      for _ in $(seq 1 12); do
+                          sleep 10
+                          rid=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=shared-unlock.yml \
+                              --branch "$scratch" --json databaseId,createdAt \
+                              --jq ".[] | select(.createdAt > \"$START\") | .databaseId" | head -1)
+                          [ -n "$rid" ] && break
+                      done
+                      if [ -z "$rid" ]; then
+                          echo "::error::$name dispatched unlock run not found"
+                          FAILED=1
+                      else
+                          RID[$name]=$rid
+                      fi
+                  done
+
+                  declare -A CONC
+                  for _ in $(seq 1 60); do
+                      PENDING=0
+                      for item in "${CASES[@]}"; do
+                          IFS='|' read -r name scratch key owner mismatch expected <<< "$item"
+                          [ -n "${CONC[$name]:-}" ] && continue
+                          [ -z "${RID[$name]:-}" ] && continue
+                          st=$(gh run view "${RID[$name]}" --repo "$GITHUB_REPOSITORY" --json status -q .status)
+                          if [ "$st" = "completed" ]; then
+                              CONC[$name]=$(gh run view "${RID[$name]}" --repo "$GITHUB_REPOSITORY" --json conclusion -q .conclusion)
+                          else
+                              PENDING=1
+                          fi
+                      done
+                      [ "$PENDING" -eq 0 ] && break
+                      sleep 10
+                  done
+
+                  LOCK_PRESENT() {
+                      gh api "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=${KEY_PREFIX}$1-branch-deploy-lock" > /dev/null 2>&1
+                  }
+
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch key owner mismatch expected <<< "$item"
+                      if [ -n "${RID[$name]:-}" ]; then
+                          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${RID[$name]}" > /dev/null || true
+                      fi
+                      conc="${CONC[$name]:-}"
+                      if [ "$conc" != "$expected" ]; then
+                          echo "::error::$name expected $expected, got: ${conc:-timeout}"
+                          FAILED=1
+                      fi
+                      case "$name" in
+                          u1 | u2)
+                              # Refusal/warn-only unlock must leave the lock untouched
+                              if ! LOCK_PRESENT "$key"; then
+                                  echo "::error::$name lock must survive the refused/warn-only unlock"
+                                  FAILED=1
+                              else
+                                  echo "$name: lock survived as expected"
+                              fi
+                              ;;
+                          u3)
+                              if LOCK_PRESENT "$key"; then
+                                  echo "::error::$name lock branch still present after owner unlock"
+                                  FAILED=1
+                              else
+                                  echo "$name: lock released as expected"
+                              fi
+                              ;;
+                      esac
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${scratch}" > /dev/null 2>&1 || true
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}${key}-branch-deploy-lock" > /dev/null 2>&1 || true
+                  done
+                  exit $FAILED
+
+    # ---------- cross-ref contention dispatcher (xa/xb) ----------
+    xref-contention:
+        if: inputs.subject == ''
+        needs: [xref-seed]
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: race-two-refs-and-assert
+              run: |
+                  FAILED=0
+                  # CASES: name|scratch|owner  (same key slock-xref, different refs)
+                  CASES=(
+                      "xa|expected-fail-ref-xa|xref-a"
+                      "xb|expected-fail-ref-xb|xref-b"
+                  )
+
+                  declare -A RID
+                  START=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch owner <<< "$item"
+                      gh workflow run --repo "$GITHUB_REPOSITORY" shared-lock.yml --ref "$scratch" \
+                          -f key=slock-xref -f key_prefix=test/ -f key_owner="$owner" \
+                          -f wait_for_lock_timeout_in_sec=0 \
+                          -f wait_for_lock_poll_interval_in_sec=2 \
+                          -f job_name="${name}-lock"
+                  done
+
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch owner <<< "$item"
+                      rid=""
+                      for _ in $(seq 1 12); do
+                          sleep 10
+                          rid=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=shared-lock.yml \
+                              --branch "$scratch" --json databaseId,createdAt \
+                              --jq ".[] | select(.createdAt > \"$START\") | .databaseId" | head -1)
+                          [ -n "$rid" ] && break
+                      done
+                      if [ -z "$rid" ]; then
+                          echo "::error::$name dispatched lock run not found"
+                          FAILED=1
+                      else
+                          RID[$name]=$rid
+                      fi
+                  done
+
+                  declare -A CONC
+                  for _ in $(seq 1 60); do
+                      PENDING=0
+                      for item in "${CASES[@]}"; do
+                          IFS='|' read -r name scratch owner <<< "$item"
+                          [ -n "${CONC[$name]:-}" ] && continue
+                          [ -z "${RID[$name]:-}" ] && continue
+                          st=$(gh run view "${RID[$name]}" --repo "$GITHUB_REPOSITORY" --json status -q .status)
+                          if [ "$st" = "completed" ]; then
+                              CONC[$name]=$(gh run view "${RID[$name]}" --repo "$GITHUB_REPOSITORY" --json conclusion -q .conclusion)
+                          else
+                              PENDING=1
+                          fi
+                      done
+                      [ "$PENDING" -eq 0 ] && break
+                      sleep 10
+                  done
+
+                  CONC_A="${CONC[xa]:-missing}"
+                  CONC_B="${CONC[xb]:-missing}"
+                  SUCC=$(printf '%s\n%s\n' "$CONC_A" "$CONC_B" | grep -c '^success$')
+                  FAIL=$(printf '%s\n%s\n' "$CONC_A" "$CONC_B" | grep -c '^failure$')
+                  echo "xa: $CONC_A / xb: $CONC_B"
+                  if [ "$SUCC" -ne 1 ] || [ "$FAIL" -ne 1 ]; then
+                      echo "::error::cross-ref race must yield exactly one success and one failure (got success=$SUCC failure=$FAIL; startup_failure/timeout means infra, both-success means lost atomicity, both-fail means lock never acquires)"
+                      FAILED=1
+                  fi
+                  # The loser must lose on lock semantics, not on infra
+                  for c in "$CONC_A" "$CONC_B"; do
+                      if [ "$c" != "success" ] && [ "$c" != "failure" ]; then
+                          echo "::error::unexpected conclusion '$c' (infra problem, not lock semantics)"
+                          FAILED=1
+                      fi
+                  done
+                  # Exactly one lock.json must remain, held by the winner
+                  REASON=$(gh api -H "Accept: application/vnd.github.raw" \
+                      "repos/${GITHUB_REPOSITORY}/contents/lock.json?ref=${KEY_PREFIX}slock-xref-branch-deploy-lock" 2>/dev/null | jq -r '.reason // empty' || true)
+                  case "$REASON" in
+                      "owner:xref-a" | "owner:xref-b") echo "winner lock reason: $REASON" ;;
+                      *) echo "::error::winner lock.json missing or wrong reason: '${REASON}'"
+                         FAILED=1 ;;
+                  esac
+
+                  for item in "${CASES[@]}"; do
+                      IFS='|' read -r name scratch owner <<< "$item"
+                      if [ -n "${RID[$name]:-}" ]; then
+                          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${RID[$name]}" > /dev/null || true
+                      fi
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${scratch}" > /dev/null 2>&1 || true
+                  done
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-xref-branch-deploy-lock" > /dev/null 2>&1 || true
+                  exit $FAILED
+
     t5-lock:
         needs: t5-seed
         if: inputs.subject == ''
@@ -319,6 +524,10 @@ jobs:
                   FAILED=0
                   if [ "${{ needs.t5-lock.result }}" != "success" ]; then
                       echo "::error::t5 expected success on stale same-actor own lock (self-heal), got: ${{ needs.t5-lock.result }}"
+                      FAILED=1
+                  fi
+                  if [ "${{ needs.t5-lock.outputs.lock_status }}" != "success" ]; then
+                      echo "::error::t5 expected lock_status output 'success' (callers' deploy matrices consume it), got: '${{ needs.t5-lock.outputs.lock_status }}'"
                       FAILED=1
                   fi
                   if [ "${{ needs.t5-unlock.result }}" != "success" ]; then
@@ -360,6 +569,105 @@ jobs:
                   gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
                       -f message="seed t6" -f content="$CONTENT" \
                       -f branch="$LOCK_BRANCH" > /dev/null
+
+    # ---------- unlock negatives: u1/u2/u3 ----------
+    # shared-unlock refusal semantics, exercised via dispatched throwaway runs
+    # on scratch refs (a failing reusable-call job would redden the run, and
+    # continue-on-error is not allowed on call jobs):
+    #   u1: unlock requested by a non-owner, fail_if_owner_mismatch=true
+    #       -> must FAIL and the lock must survive untouched
+    #   u2: same, fail_if_owner_mismatch=false -> must SUCCEED (warn-only) and
+    #       the lock must survive untouched
+    #   u3: unlock by the matching owner -> must SUCCEED and the lock branch
+    #       must be gone
+    # Each seed also pre-creates its scratch ref minutes before dispatch, so
+    # the workflow indexing race (see expected-fails) has time to clear.
+    # Deliberately NOT tested: unlocking an already-missing lock (double
+    # unlock) - github/lock's behavior on a missing lock branch is not
+    # contractual, and asserting it would encode an accident.
+    u1-seed:
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: seed-lock-and-scratch-ref
+              run: |
+                  LOCK_BRANCH="${KEY_PREFIX}slock-u1-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
+                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"some-other-user"}' "u1-owner" | base64 -w0)
+                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
+                      -f message="seed u1" -f content="$CONTENT" \
+                      -f branch="$LOCK_BRANCH" > /dev/null
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/expected-fail-ref-u1" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/expected-fail-ref-u1" -f sha="${{ github.sha }}" > /dev/null
+
+    u2-seed:
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: seed-lock-and-scratch-ref
+              run: |
+                  LOCK_BRANCH="${KEY_PREFIX}slock-u2-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
+                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"some-other-user"}' "u2-owner" | base64 -w0)
+                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
+                      -f message="seed u2" -f content="$CONTENT" \
+                      -f branch="$LOCK_BRANCH" > /dev/null
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/expected-fail-ref-u2" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/expected-fail-ref-u2" -f sha="${{ github.sha }}" > /dev/null
+
+    u3-seed:
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: seed-lock-and-scratch-ref
+              run: |
+                  LOCK_BRANCH="${KEY_PREFIX}slock-u3-branch-deploy-lock"
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${LOCK_BRANCH}" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/${LOCK_BRANCH}" -f sha="${{ github.sha }}" > /dev/null
+                  CONTENT=$(printf '{"reason":"owner:%s","created_by":"some-other-user"}' "u3-owner" | base64 -w0)
+                  gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/lock.json" \
+                      -f message="seed u3" -f content="$CONTENT" \
+                      -f branch="$LOCK_BRANCH" > /dev/null
+                  gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/expected-fail-ref-u3" > /dev/null 2>&1 || true
+                  gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/heads/expected-fail-ref-u3" -f sha="${{ github.sha }}" > /dev/null
+
+    # ---------- cross-ref contention: xa/xb ----------
+    # The core production contention (two different refs, same lock key)
+    # without needing a second PR: two shared-lock runs on distinct scratch
+    # refs race for the same key with DIFFERENT owners. Exactly one must
+    # succeed and the other must fail with conclusion "failure" - regardless
+    # of who wins the race. Both outcomes are asserted outcome-agnostically,
+    # so scheduler ordering cannot flake the test; a both-succeed result would
+    # mean the lock lost atomicity, a both-fail result would mean the lock
+    # never acquires. Scratch refs are created here (early, alongside the
+    # seeds) so workflow indexing has time to settle before dispatch.
+    xref-seed:
+        if: inputs.subject == ''
+        runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: create-scratch-refs
+              run: |
+                  for ref in expected-fail-ref-xa expected-fail-ref-xb; do
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${ref}" > /dev/null 2>&1 || true
+                      gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                          -f ref="refs/heads/${ref}" -f sha="${{ github.sha }}" > /dev/null
+                  done
 
     # ================= queue scenarios (concurrency group) =================
     # The outer run (inputs.subject == "") drives the scenarios. Case A
@@ -965,7 +1273,19 @@ jobs:
     # ---------- summary ----------
     summary:
         name: test-shared-lock
-        needs: [expected-fails, t2-assert, t5-assert, t7-assert, t8-assert, assert-a, assert-c, assert-d]
+        needs:
+            [
+                expected-fails,
+                unlock-negatives,
+                xref-contention,
+                t2-assert,
+                t5-assert,
+                t7-assert,
+                t8-assert,
+                assert-a,
+                assert-c,
+                assert-d,
+            ]
         if: always()
         runs-on: ubuntu-latest
         env:
@@ -977,15 +1297,18 @@ jobs:
               run: |
                   gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BED}" 2>/dev/null || true
                   gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${STATE_BRANCH}" 2>/dev/null || true
-                  for k in queue-a queue-c-1 queue-c-2 queue-d; do
+                  for k in queue-a queue-c-1 queue-c-2 queue-d slock-u1 slock-u2 slock-u3 slock-xref; do
                       gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}${k}-branch-deploy-lock" 2>/dev/null || true
+                  done
+                  for r in expected-fail-ref-u1 expected-fail-ref-u2 expected-fail-ref-u3 expected-fail-ref-xa expected-fail-ref-xb; do
+                      gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${r}" 2>/dev/null || true
                   done
             - name: report
               env:
                   NEEDS: ${{ toJson(needs) }}
               run: |
                   FAILED=0
-                  for job in expected-fails t2-assert t5-assert t7-assert t8-assert assert-a assert-c assert-d; do
+                  for job in expected-fails unlock-negatives xref-contention t2-assert t5-assert t7-assert t8-assert assert-a assert-c assert-d; do
                       RESULT=$(echo "$NEEDS" | jq -r ".\"$job\".result")
                       echo "$job: $RESULT"
                       if [ "$RESULT" = "skipped" ]; then
