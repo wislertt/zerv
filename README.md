@@ -11,7 +11,7 @@
 [![status](https://img.shields.io/pypi/status/zerv-version)](https://pypi.python.org/pypi/zerv-version)
 [![license](https://img.shields.io/pypi/l/zerv-version)](https://pypi.python.org/pypi/zerv-version)
 [![downloads](https://static.pepy.tech/personalized-badge/zerv-version?period=total&units=international_system&left_color=grey&right_color=blue&left_text=pypi%20downloads)](https://pepy.tech/projects/zerv-version)
-[![python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?logo=python)](https://github.com/wislertt/zerv/)
+[![python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14%20%7C%203.15-blue?logo=python)](https://github.com/wislertt/zerv/)
 
 <p align="center">
   <picture>

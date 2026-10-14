@@ -16,6 +16,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Programming Language :: Rust",
   "Topic :: Software Development :: Version Control"
 ]
@@ -91,6 +92,10 @@ select = [
 ]
 
 [tool.uv]
+# ziglang 0.17.0 dropped Windows wheels (packaging gap, not an upstream target drop);
+# maturin[zig] only needs it for optional cross builds.
+# TODO(2027-01): recheck ziglang PyPI for restored Windows wheels and remove this constraint.
+constraint-dependencies = ["ziglang<0.17"]
 
 [[tool.uv.index]]
 name = "test-pypi"
