@@ -98,6 +98,9 @@ jobs:
                   # retries all hit startup_failure while the same harness had
                   # passed 17 min earlier); ~3 min of budget makes the race
                   # effectively deterministic to absorb.
+                  # The completion poll allows 30 min (180×10s): a passed-but-slow
+                  # harness run (2026-11-04: 15-min Actions scheduling gap between
+                  # c3-unlock and assert) must not time out the watcher.
                   for attempt in 1 2 3 4 5; do
                       for _ in $(seq 1 6); do
                           if gh workflow run --repo "$FIXTURES_REPO" "$WORKFLOW" --ref "$HARNESS_REF" 2>/tmp/dispatch.err; then
@@ -118,7 +121,7 @@ jobs:
                       fi
                       echo "Sandbox contract run: https://github.com/${FIXTURES_REPO}/actions/runs/${rid}"
                       conc=""
-                      for _ in $(seq 1 90); do
+                      for _ in $(seq 1 180); do
                           st=$(gh run view "$rid" --repo "$FIXTURES_REPO" --json status -q .status)
                           if [ "$st" = "completed" ]; then
                               conc=$(gh run view "$rid" --repo "$FIXTURES_REPO" --json conclusion -q .conclusion)

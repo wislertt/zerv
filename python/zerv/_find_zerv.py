@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import sys
 import sysconfig
 
 
@@ -13,14 +12,7 @@ def find_bin(name: str) -> str:
     if os.path.isfile(scripts_path):
         return scripts_path
 
-    if sys.version_info >= (3, 10):  # noqa: UP036
-        user_scheme = sysconfig.get_preferred_scheme("user")
-    elif os.name == "nt":
-        user_scheme = "nt_user"
-    elif sys.platform == "darwin" and hasattr(sys, "_framework"):
-        user_scheme = "osx_framework_user"
-    else:
-        user_scheme = "posix_user"
+    user_scheme = sysconfig.get_preferred_scheme("user")
 
     user_path = os.path.join(
         sysconfig.get_path("scripts", scheme=user_scheme),
