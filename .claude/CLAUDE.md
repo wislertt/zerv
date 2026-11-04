@@ -81,7 +81,8 @@ Plans in `.claude/plan/` are temporary working documents with short lifecycle:
 ## 📖 Essential Commands & Workflows
 
 @.claude/ref/workflows/commands.md
-@.claude/ref/workflows/coverage.md
+
+**Coverage**: `bake test` generates `coverage/` (lcov.info, HTML, cobertura). For programmatic analysis recipes (uncovered-line extraction, per-file %), read `.claude/ref/workflows/coverage.md`.
 
 ---
 
@@ -93,11 +94,7 @@ Plans in `.claude/plan/` are temporary working documents with short lifecycle:
 Input → VCS Detection → Version Parsing → Transformation → Format Output
 ```
 
-**For detailed architecture documentation:**
-
-@.claude/ref/architecture/pipeline.md
-@.claude/ref/architecture/modules.md
-@.claude/ref/architecture/cli.md
+**Detailed architecture docs** (read when working on pipeline internals, module layout, or CLI structure): `.claude/ref/architecture/{pipeline,modules,cli}.md`
 
 ---
 
@@ -110,12 +107,7 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 - **Test organization**: Use `mod` blocks, not comment dividers
 - **Line length**: Max 100 chars (rustfmt), use `format!()` for long strings
 
-**For detailed standards:**
-
-@.claude/ref/standards/code-style.md
-@.claude/ref/standards/error-handling.md
-@.claude/ref/standards/logging.md
-@.claude/ref/standards/constants.md
+**Detailed standards** (read when writing/reviewing code of that kind): `.claude/ref/standards/{code-style,error-handling,logging,constants}.md`. Logging key rules: `tracing` macros only (`error!/warn!/info!/debug!`), stderr only, no logs in hot loops, use `test_*!` macros in tests.
 
 ---
 
@@ -137,9 +129,7 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 <!-- Corresponding test: tests/integration_tests/flow/docs/quick_start.rs:test_quick_start_documentation_examples -->
 ```
 
-**For detailed documentation maintenance guidelines:**
-
-@.claude/ref/documentation-maintenance.md
+**Detailed docs-maintenance guidelines** (read before large docs edits or releases): `.claude/ref/documentation-maintenance.md`
 
 **📋 Run `/docs-sync` periodically** (after test renames/refactors, before releases, before large docs edits) to verify docs examples still match their backing tests.
 
@@ -166,17 +156,13 @@ Input → VCS Detection → Version Parsing → Transformation → Format Output
 - **Never re-run the full suite to recover truncated output.** Capture it once to a log + exit code in the same invocation: `bake -c lint test > /tmp/zerv_bake.log 2>&1; echo "EXIT=$?"`, then `grep` the **same** log or read `$?` for the result. Piping through `tail`/`head` drops the summary lines and tempts a wasteful second run — if output is truncated, grep the log you already have. Do NOT invoke `bake` a second time for the same check.
 - Lint steps (`cargo +nightly fmt --check`, `cargo +nightly clippy -- -D warnings`) only need re-checking when production code changes, not test-only edits.
 
-**For detailed testing patterns:**
-
-@.claude/ref/testing/overview.md
-@.claude/ref/testing/unit-tests.md
-@.claude/ref/testing/integration-tests.md
+**Detailed testing patterns** (read before writing new test suites): `.claude/ref/testing/{overview,unit-tests,integration-tests}.md` — rstest fixtures/`#[case]` parameterization, `TestCommand::run_with_stdin()` default pattern, builder only for failure/stderr/multi-assert tests.
 
 ---
 
 ## 🚀 CI/CD
 
-@.claude/ref/workflows/cicd.md
+Workflow details (release pipeline, semantic-release): `.claude/ref/workflows/cicd.md`
 
 ---
 
