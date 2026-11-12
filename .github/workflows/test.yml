@@ -39,7 +39,7 @@ jobs:
               run: echo "${{ env.PYTHON_VERSION }}" > .python-version
 
             - name: setup-mise
-              uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+              uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
 
             - name: verify-rust-toolchain
               # Workaround for Windows rustup bug: https://github.com/rust-lang/rustup/issues/3104
@@ -145,7 +145,7 @@ jobs:
               run: echo "${{ matrix.python_version }}" > .python-version
 
             - name: setup-mise
-              uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+              uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
 
             - name: verify-rust-toolchain
               # Workaround for Windows rustup bug: https://github.com/rust-lang/rustup/issues/3104
