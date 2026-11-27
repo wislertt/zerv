@@ -1,0 +1,21 @@
+version = 1
+revision = 1
+
+[managed-content.".github/renovate.json5"]
+template = "bakelib.space:renovate.json5"
+hash = "sha256:1cc1d771707519e5a866b9286b300a48d951c4dc3d589e0e1e29aa17bb2b97d7"
+
+[managed-content.".github/workflows/security.yml"]
+template = "bakelib.space:security.yml"
+hash = "sha256:53fad02473ebeebc551708d7f90d7e27c3ee921ab392d7b02b9295996dff5e8a"
+editable.events = "    push:\n    workflow_dispatch:\n    schedule:\n        - cron: \"0 4 * * *\" # run once a day at 4 AM\n"
+editable.jobs = "    cargo-audit:\n        name: cargo-audit\n        runs-on: ubuntu-latest\n        timeout-minutes: 10\n        steps:\n            - name: checkout-repository\n              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n\n            - name: setup-mise\n              uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0\n\n            - name: run-cargo-audit\n              run: |\n                  cargo audit\n"
+
+[managed-content.".gitignore"]
+template = "bakelib.space:gitignore"
+hash = "sha256:de816e3e6e69e868e1c0a4dc537ed24effec70d9dc6cab2b5fd741c49723c767"
+editable.repo = ".vscode/*\n*.profraw\npython/*.data/\n\n# macOS debug symbol directories\n*.dSYM/\n\n.playwright-mcp\n.superpowers/\n\n# tarpaulin coverage output\ncoverage/\n\n# mintlify dev server\ndocs/.last-update\n"
+
+[managed-content."oxfmt.config.ts"]
+template = "bakelib.space:oxfmt-config.ts"
+hash = "sha256:0d588fb50209dba05c805111bc1750eca893117307af7b7a87589d49252b35f6"
