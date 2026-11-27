@@ -124,6 +124,7 @@ class PyPIPublisher(_PyPIPublisher):
 
 
 class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
+    bake_manage_content: bool = True
     zerv_test_native_git: bool = False
     zerv_test_docker: bool = True
     zerv_force_rust_log_off: bool = False
