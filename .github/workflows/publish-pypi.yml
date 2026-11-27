@@ -24,6 +24,7 @@ on:
 jobs:
     publish-pypi:
         runs-on: ${{ matrix.os }}
+        timeout-minutes: 30
         strategy:
             fail-fast: false
             matrix:
@@ -50,7 +51,7 @@ jobs:
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
             - name: setup-mise
-              uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+              uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
 
             - name: verify-rust-toolchain
               # Workaround for Windows rustup bug: https://github.com/rust-lang/rustup/issues/3104
@@ -97,6 +98,9 @@ jobs:
               run: |
                   BAKE_PUBLISH_TOKEN=${{ secrets.PYPI_API_TOKEN }} \
                   bake publish \
-                      --registry "${{ inputs.registry }}" \
-                      --version "${{ inputs.version }}" \
+                      --registry "${INPUTS_REGISTRY}" \
+                      --version "${INPUTS_VERSION}" \
                       --target "${{ matrix.target }}"
+              env:
+                  INPUTS_REGISTRY: ${{ inputs.registry }}
+                  INPUTS_VERSION: ${{ inputs.version }}

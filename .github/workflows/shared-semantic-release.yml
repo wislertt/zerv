@@ -50,19 +50,18 @@ on:
                 description: "Whether semantic-release job was executed successfully (regardless of whether it published a release)"
                 value: ${{ jobs.semantic-release.outputs.is_valid_semantic_release }}
 
-permissions:
-    contents: write
-    issues: write
-    pull-requests: write
+permissions: {}
 
 jobs:
     validate-ref-for-workflow-dispatch:
+        permissions:
+            contents: read
         name: validate-ref-for-workflow-dispatch
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         if: github.event_name == 'workflow_dispatch'
         outputs:
             is_valid: ${{ steps.check-ref.outputs.is_valid }}
-            tag_version: ${{ steps.check-ref.outputs.tag_version }}
         steps:
             - name: checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,6 +70,8 @@ jobs:
 
             - name: validate-ref-tag-or-branch
               id: check-ref
+              env:
+                  ALLOWED_WORKFLOW_DISPATCH_BRANCHES: ${{ inputs.allowed_workflow_dispatch_branches }}
               run: |
                   set -euo pipefail
 
@@ -103,7 +104,7 @@ jobs:
                       echo "Checking branch: $REF_NAME"
 
                       # Parse allowed branches from JSON
-                      mapfile -t ALLOWED_BRANCHES < <(echo '${{ inputs.allowed_workflow_dispatch_branches }}' | jq -r '.[]')
+                      mapfile -t ALLOWED_BRANCHES < <(echo "$ALLOWED_WORKFLOW_DISPATCH_BRANCHES" | jq -r '.[]')
 
                       # Check if branch matches any allowed pattern
                       for pattern in "${ALLOWED_BRANCHES[@]}"; do
@@ -133,10 +134,15 @@ jobs:
                   fi
 
     semantic-release:
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
         name: semantic-release
         needs: validate-ref-for-workflow-dispatch
         if: always() && (github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && needs.validate-ref-for-workflow-dispatch.outputs.is_valid == 'true'))
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         outputs:
             new_release_version: ${{ steps.determine-version.outputs.new_release_version }}
             new_release_published: ${{ steps.determine-version.outputs.new_release_published }}

@@ -39,6 +39,7 @@ on:
 jobs:
     affected-projects:
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         outputs:
             projects: ${{ steps.affected-projects.outputs.projects }}
             project-envs: ${{ steps.affected-projects.outputs.project-envs }}
@@ -51,22 +52,24 @@ jobs:
             # Build filters dynamically from projects.yml using yq
             - name: generate-filters
               if: inputs.scope == 'affected-only'
+              env:
+                  PROJECTS_PATH: ${{ inputs.projects_path }}
               run: |
                   # Create cache directory
                   mkdir -p .cache
                   # Generate filters using lock_name (project_name with / replaced by --) as key
                   {
                       echo "# Auto-generated from projects.yml"
-                      yq eval -o=json '${{ inputs.projects_path }}' | jq -r '
+                      yq eval -o=json "$PROJECTS_PATH" | jq -r '
                         .projects[] |
                         (.project_name | gsub("/"; "--")) as $key |
                         "\($key):\n" + (.paths | map("  - \(.)") | join("\n"))
                       '
                       # Only add shared filter if shared_paths has items
-                      SHARED_COUNT=$(yq eval '.shared_paths | length' '${{ inputs.projects_path }}')
+                      SHARED_COUNT=$(yq eval '.shared_paths | length' "$PROJECTS_PATH")
                       if [ "$SHARED_COUNT" -gt 0 ]; then
                           echo "shared:"
-                          yq eval '.shared_paths' '${{ inputs.projects_path }}' | sed 's/^/  /'
+                          yq eval '.shared_paths' "$PROJECTS_PATH" | sed 's/^/  /'
                       fi
                   } > .cache/filters.yml
                   echo "Generated filters:"

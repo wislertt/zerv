@@ -11,6 +11,11 @@ on:
     workflow_dispatch:
     workflow_call:
 
+# queued, not cancelled: ci/cd serialize their runs instead of cancelling
+concurrency:
+    group: ${{ github.workflow }}-test-shared-check-marker-caller-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: false
+
 permissions:
     contents: read
     pull-requests: read
@@ -31,6 +36,7 @@ jobs:
         uses: ./.github/workflows/shared-check-marker.yml
         with:
             marker: "no-such-marker-xyz"
+            # jactionlint ignore=obfuscation
             override: ${{ 'true' }}
 
     call-override-false:
@@ -38,6 +44,7 @@ jobs:
         uses: ./.github/workflows/shared-check-marker.yml
         with:
             marker: "[e2e]"
+            # jactionlint ignore=obfuscation
             override: ${{ 'false' }}
 
     # Not covered: invalid override (e.g. "bogus") must fail the shared
@@ -49,6 +56,7 @@ jobs:
         name: verify
         needs: [call-sourced, call-override-true, call-override-false]
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             MARKER: "[e2e]"
             EVENT_NAME: ${{ github.event_name }}

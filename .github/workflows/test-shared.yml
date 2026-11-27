@@ -27,6 +27,8 @@ concurrency:
     group: test-shared-lock-poll
     cancel-in-progress: false
 
+permissions: {}
+
 jobs:
     # The lock harnesses below run real dispatched workflows and cost ~20-40
     # minutes, so they only run when the lock-related workflows changed. PRs
@@ -34,7 +36,10 @@ jobs:
     # (workflow_dispatch, unknown events) always runs them - fail-open, since
     # a silently skipped harness is what let the #297 regression ship.
     changes:
+        permissions:
+            contents: read
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         outputs:
             lock: ${{ steps.diff.outputs.lock }}
         env:
@@ -67,20 +72,32 @@ jobs:
                   echo "lock=$LOCK" >> "$GITHUB_OUTPUT"
 
     affected-projects:
+        permissions:
+            contents: read
+            pull-requests: read
         name: affected-projects
         uses: ./.github/workflows/test-shared-affected-projects.yml
 
     semantic-release:
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
         name: semantic-release
         uses: ./.github/workflows/test-shared-semantic-release.yml
         secrets:
             ZERV_SANDBOX_REPO_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     check-marker:
+        permissions:
+            contents: read
+            pull-requests: read
         name: check-marker
         uses: ./.github/workflows/test-shared-check-marker.yml
 
     pr-label-checks:
+        permissions:
+            contents: read
         name: pr-label-checks
         uses: ./.github/workflows/test-shared-pr-label-checks.yml
 
@@ -90,6 +107,9 @@ jobs:
     # Keep this wired: the harness was dispatch-only when the #297 poll rewrite
     # shipped, and nothing in CI objected to a caller-breaking change.
     lock-poll:
+        permissions:
+            contents: write
+            actions: write
         name: lock-poll
         needs: changes
         if: needs.changes.outputs.lock == 'true'
@@ -98,6 +118,8 @@ jobs:
     # Cross-repo contract test: runs shared-lock round-trip in zerv-sandbox
     # against this ref. Catches caller-visible regressions before callers do.
     lock-contract:
+        permissions:
+            contents: write
         name: lock-contract
         needs: changes
         if: needs.changes.outputs.lock == 'true'

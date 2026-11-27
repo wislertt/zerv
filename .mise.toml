@@ -3,17 +3,19 @@ cargo.binstall = true
 pipx.uvx = true
 
 [tools]
-actionlint = "latest"
 "aqua:cargo-bins/cargo-binstall" = "latest"
 "aqua:rust-lang/rustup" = "latest"
 bun = "latest"
 "cargo:cargo-audit" = "latest"
 "cargo:cargo-sort" = "latest"
 "cargo:cargo-tarpaulin" = "latest"
+jactionlint = "latest"
 "npm:actions-up" = "latest"
 "npm:mintlify" = "latest"
+"npm:oxfmt" = "latest"
 "pipx:bakefile" = "latest"
 "pipx:pre-commit" = "latest"
 "pipx:toml-sort" = "latest"
 "pipx:zerv-version" = "latest"
+shellcheck = "latest"
 uv = "latest"

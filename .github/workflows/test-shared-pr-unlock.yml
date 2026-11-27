@@ -4,11 +4,16 @@ on:
     pull_request:
         types: [closed, unlabeled]
 
-permissions:
-    contents: write
+concurrency:
+    group: ${{ github.workflow }}-caller-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
+permissions: {}
 
 jobs:
     unlock-environments:
+        permissions:
+            contents: write
         uses: ./.github/workflows/shared-pr-unlock.yml
         with:
             environments: '["d", "n", "p"]'
@@ -16,6 +21,8 @@ jobs:
             key_prefix: test/
 
     unlock-services:
+        permissions:
+            contents: write
         uses: ./.github/workflows/shared-pr-unlock.yml
         with:
             environments: '["d", "n", "p"]'

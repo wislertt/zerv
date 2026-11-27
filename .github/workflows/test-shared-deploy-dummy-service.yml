@@ -22,6 +22,7 @@ jobs:
         if: ${{ inputs.enabled == true }}
         name: ${{ inputs.name }}
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: run
               run: |

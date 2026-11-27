@@ -33,6 +33,7 @@ permissions:
 jobs:
     check-marker:
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         outputs:
             matched: ${{ steps.check.outputs.matched }}
         steps:

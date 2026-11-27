@@ -8,10 +8,7 @@ on:
                 required: false
                 description: Fine-grained PAT with Contents:RW on the fixtures repo (only needed for workflow_call; workflow_dispatch reads repo secrets directly)
 
-permissions:
-    contents: write
-    issues: write
-    pull-requests: write
+permissions: {}
 
 env:
     FIXTURES_REPO: wislertt/zerv-sandbox
@@ -39,8 +36,11 @@ jobs:
     # force-overwrite the same refs. Requires the ZERV_SANDBOX_REPO_TOKEN secret
     # (fine-grained PAT with Contents:RW on the fixtures repo only).
     setup-fixtures:
+        permissions:
+            contents: read
         name: setup-fixtures
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         outputs:
             fixtures_repo: ${{ steps.publish-repo.outputs.fixtures_repo }}
         env:
@@ -152,6 +152,10 @@ jobs:
     # Scenario runs (real shared workflow, dry-run)
     # ====================================================
     f1-no-tags:
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
         name: f1-no-tags
         needs: setup-fixtures
         uses: ./.github/workflows/shared-semantic-release.yml
@@ -163,6 +167,10 @@ jobs:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     f2-semver-tag:
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
         name: f2-semver-tag
         needs: setup-fixtures
         uses: ./.github/workflows/shared-semantic-release.yml
@@ -174,6 +182,10 @@ jobs:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     f3-moveable-tags:
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
         name: f3-moveable-tags
         needs: setup-fixtures
         uses: ./.github/workflows/shared-semantic-release.yml
@@ -185,6 +197,10 @@ jobs:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     f4-tag-behind:
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
         name: f4-tag-behind
         needs: setup-fixtures
         uses: ./.github/workflows/shared-semantic-release.yml
@@ -196,6 +212,10 @@ jobs:
             checkout_token: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
 
     f5-new-release:
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
         name: f5-new-release
         needs: setup-fixtures
         uses: ./.github/workflows/shared-semantic-release.yml
@@ -217,9 +237,12 @@ jobs:
     # Assertions
     # ====================================================
     verify:
+        permissions:
+            contents: read
         name: verify
         needs: [f1-no-tags, f2-semver-tag, f3-moveable-tags, f4-tag-behind, f5-new-release]
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             F1_PUBLISHED: ${{ needs.f1-no-tags.outputs.new_release_published }}
             F1_VERSION: ${{ needs.f1-no-tags.outputs.new_release_version }}
@@ -302,10 +325,13 @@ jobs:
     # "already absent". `always()` guarantees removal even when scenarios fail
     # (debugging relies on the run logs, not the refs).
     cleanup-fixtures:
+        permissions:
+            contents: read
         name: cleanup-fixtures
         needs: verify
         if: always()
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             FIXTURES_TOKEN: ${{ secrets.ZERV_SANDBOX_REPO_TOKEN }}
         steps:

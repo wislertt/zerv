@@ -54,9 +54,7 @@ concurrency:
     group: test-shared-lock-${{ inputs.subject == '' && 'outer' || inputs.subject }}
     cancel-in-progress: false
 
-permissions:
-    contents: write
-    actions: write
+permissions: {}
 
 env:
     KEY_PREFIX: test/
@@ -71,8 +69,11 @@ env:
 jobs:
     # ---------- t1: held lock + timeout 0 -> fail fast ----------
     t1-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: seed-lock
               env:
@@ -88,8 +89,11 @@ jobs:
                       -f branch="$LOCK_BRANCH" > /dev/null
 
     t2-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: seed-lock
               env:
@@ -105,9 +109,12 @@ jobs:
                       -f branch="$LOCK_BRANCH" > /dev/null
 
     t2-release:
+        permissions:
+            contents: write
         needs: t2-seed
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: release-after-delay
               env:
@@ -118,6 +125,8 @@ jobs:
                   gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${KEY_PREFIX}slock-t2-branch-deploy-lock"
 
     t2-lock:
+        permissions:
+            contents: write
         needs: t2-seed
         if: inputs.subject == ''
         uses: ./.github/workflows/shared-lock.yml
@@ -134,9 +143,12 @@ jobs:
             wait_for_lock_poll_interval_in_sec: 5
 
     t2-assert:
+        permissions:
+            contents: write
         needs: [t2-seed, t2-release, t2-lock]
         if: always() && inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: assert
               run: |
@@ -158,8 +170,11 @@ jobs:
 
     # ---------- t3: held lock past timeout -> fail ----------
     t3-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: seed-lock
               env:
@@ -175,8 +190,11 @@ jobs:
                       -f branch="$LOCK_BRANCH" > /dev/null
 
     t5-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: seed-lock
               env:
@@ -201,9 +219,13 @@ jobs:
     # cases run in parallel (distinct scratch branches = distinct lock-workflow
     # refs), so the job costs max(item) instead of sum(cases).
     expected-fails:
+        permissions:
+            contents: write
+            actions: write
         if: inputs.subject == ''
         needs: [t1-seed, t3-seed, t6-seed, seed-qd]
         runs-on: ubuntu-latest
+        timeout-minutes: 30
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -291,9 +313,13 @@ jobs:
     # survives; u3: lock branch gone), checked AFTER the dispatched run
     # completed, so no cross-job timing window exists.
     unlock-negatives:
+        permissions:
+            contents: write
+            actions: write
         if: inputs.subject == ''
         needs: [u1-seed, u2-seed, u3-seed]
         runs-on: ubuntu-latest
+        timeout-minutes: 30
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -393,9 +419,13 @@ jobs:
 
     # ---------- cross-ref contention dispatcher (xa/xb) ----------
     xref-contention:
+        permissions:
+            contents: write
+            actions: write
         if: inputs.subject == ''
         needs: [xref-seed]
         runs-on: ubuntu-latest
+        timeout-minutes: 30
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -491,6 +521,8 @@ jobs:
                   exit $FAILED
 
     t5-lock:
+        permissions:
+            contents: write
         needs: t5-seed
         if: inputs.subject == ''
         uses: ./.github/workflows/shared-lock.yml
@@ -503,6 +535,8 @@ jobs:
             upload_result_artifact: true
 
     t5-unlock:
+        permissions:
+            contents: write
         needs: t5-lock
         if: inputs.subject == ''
         uses: ./.github/workflows/shared-unlock.yml
@@ -513,9 +547,12 @@ jobs:
             job_name: t5-unlock
 
     t5-assert:
+        permissions:
+            contents: write
         needs: [t5-seed, t5-lock, t5-unlock]
         if: always() && inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -554,8 +591,11 @@ jobs:
     # the triggering actor. Asserted via the expected-fails dispatcher below,
     # because a failing reusable-call job reddens the run (no continue-on-error).
     t6-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: seed-lock
               env:
@@ -586,8 +626,11 @@ jobs:
     # unlock) - github/lock's behavior on a missing lock branch is not
     # contractual, and asserting it would encode an accident.
     u1-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -606,8 +649,11 @@ jobs:
                       -f ref="refs/heads/expected-fail-ref-u1" -f sha="${{ github.sha }}" > /dev/null
 
     u2-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -626,8 +672,11 @@ jobs:
                       -f ref="refs/heads/expected-fail-ref-u2" -f sha="${{ github.sha }}" > /dev/null
 
     u3-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -656,8 +705,11 @@ jobs:
     # never acquires. Scratch refs are created here (early, alongside the
     # seeds) so workflow indexing has time to settle before dispatch.
     xref-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -678,8 +730,11 @@ jobs:
     # append_log writes markers to the state log on the bed branch
     # (read-modify-write with retries; concurrent appenders race and retry).
     bed-setup:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: create-bed-and-init-state
               env:
@@ -702,6 +757,8 @@ jobs:
 
     # ---------- case C: different keys, same ref -> overlap (outer jobs) ----------
     qC1:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         needs: bed-setup
         uses: ./.github/workflows/shared-lock.yml
@@ -714,9 +771,12 @@ jobs:
             wait_for_lock_poll_interval_in_sec: 5
 
     qC1-critical:
+        permissions:
+            contents: write
         needs: [bed-setup, qC1]
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -759,6 +819,8 @@ jobs:
                   append_log "end:c1"
 
     qC1-unlock:
+        permissions:
+            contents: write
         needs: qC1-critical
         if: inputs.subject == ''
         uses: ./.github/workflows/shared-unlock.yml
@@ -768,6 +830,8 @@ jobs:
             job_name: qC1-unlock
 
     qC2:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         needs: bed-setup
         uses: ./.github/workflows/shared-lock.yml
@@ -780,9 +844,12 @@ jobs:
             wait_for_lock_poll_interval_in_sec: 5
 
     qC2-critical:
+        permissions:
+            contents: write
         needs: [bed-setup, qC2]
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -823,6 +890,8 @@ jobs:
                   append_log "end:c2"
 
     qC2-unlock:
+        permissions:
+            contents: write
         needs: qC2-critical
         if: inputs.subject == ''
         uses: ./.github/workflows/shared-unlock.yml
@@ -833,9 +902,12 @@ jobs:
 
     # ---------- case D: lock still enforced while queueing exists ----------
     seed-qd:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         needs: bed-setup
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -851,9 +923,13 @@ jobs:
                       -f branch="$LOCK_BRANCH" > /dev/null
 
     dispatch-a:
+        permissions:
+            contents: write
+            actions: write
         if: inputs.subject == ''
         needs: bed-setup
         runs-on: ubuntu-latest
+        timeout-minutes: 30
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -919,9 +995,12 @@ jobs:
 
     # ---------- asserts (outer) ----------
     assert-a:
+        permissions:
+            contents: write
         if: always() && inputs.subject == ''
         needs: dispatch-a
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -959,9 +1038,12 @@ jobs:
                   NEEDS: ${{ toJson(needs) }}
 
     assert-c:
+        permissions:
+            contents: write
         if: always() && inputs.subject == ''
         needs: [qC1, qC1-critical, qC1-unlock, qC2, qC2-critical, qC2-unlock]
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -995,9 +1077,11 @@ jobs:
                   NEEDS: ${{ toJson(needs) }}
 
     assert-d:
+        permissions: {}
         if: always() && inputs.subject == ''
         needs: [seed-qd, expected-fails]
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: assert-lock-enforced
               run: |
@@ -1016,6 +1100,8 @@ jobs:
 
     # ---------- inner run subjects ----------
     qa1-lock:
+        permissions:
+            contents: write
         if: inputs.subject == 'a1'
         uses: ./.github/workflows/shared-lock.yml
         with:
@@ -1027,9 +1113,12 @@ jobs:
             wait_for_lock_poll_interval_in_sec: 5
 
     qa1-critical:
+        permissions:
+            contents: write
         if: inputs.subject == 'a1'
         needs: qa1-lock
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -1062,6 +1151,8 @@ jobs:
                   append_log "end:sA1"
 
     qa1-unlock:
+        permissions:
+            contents: write
         if: inputs.subject == 'a1'
         needs: qa1-critical
         uses: ./.github/workflows/shared-unlock.yml
@@ -1071,6 +1162,8 @@ jobs:
             job_name: qa1-unlock
 
     qa2-lock:
+        permissions:
+            contents: write
         if: inputs.subject == 'a2'
         uses: ./.github/workflows/shared-lock.yml
         with:
@@ -1082,9 +1175,12 @@ jobs:
             wait_for_lock_poll_interval_in_sec: 5
 
     qa2-critical:
+        permissions:
+            contents: write
         if: inputs.subject == 'a2'
         needs: qa2-lock
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -1117,6 +1213,8 @@ jobs:
                   append_log "end:sA2"
 
     qa2-unlock:
+        permissions:
+            contents: write
         if: inputs.subject == 'a2'
         needs: qa2-critical
         uses: ./.github/workflows/shared-unlock.yml
@@ -1126,6 +1224,8 @@ jobs:
             job_name: qa2-unlock
 
     qa3-lock:
+        permissions:
+            contents: write
         if: inputs.subject == 'a3'
         uses: ./.github/workflows/shared-lock.yml
         with:
@@ -1137,9 +1237,12 @@ jobs:
             wait_for_lock_poll_interval_in_sec: 5
 
     qa3-critical:
+        permissions:
+            contents: write
         if: inputs.subject == 'a3'
         needs: qa3-lock
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -1172,6 +1275,8 @@ jobs:
                   append_log "end:sA3"
 
     qa3-unlock:
+        permissions:
+            contents: write
         if: inputs.subject == 'a3'
         needs: qa3-critical
         uses: ./.github/workflows/shared-unlock.yml
@@ -1181,9 +1286,12 @@ jobs:
             job_name: qa3-unlock
     # seeding it must wait until no other lock job is polling.
     t7-seed:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         needs: [expected-fails, t2-assert, t5-assert, assert-a, assert-c, assert-d]
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -1199,9 +1307,12 @@ jobs:
                       -f branch="$LOCK_BRANCH" > /dev/null
 
     t7-release:
+        permissions:
+            contents: write
         needs: t7-seed
         if: inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -1212,6 +1323,8 @@ jobs:
                   gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/global-branch-deploy-lock"
 
     t7-lock:
+        permissions:
+            contents: write
         needs: t7-seed
         if: inputs.subject == ''
         uses: ./.github/workflows/shared-lock.yml
@@ -1225,9 +1338,12 @@ jobs:
             wait_for_lock_poll_interval_in_sec: 5
 
     t7-assert:
+        permissions:
+            contents: write
         needs: [t7-seed, t7-release, t7-lock]
         if: always() && inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
@@ -1249,6 +1365,8 @@ jobs:
 
     # ---------- t8: enabled=false -> lock job skipped ----------
     t8-lock:
+        permissions:
+            contents: write
         if: inputs.subject == ''
         uses: ./.github/workflows/shared-lock.yml
         with:
@@ -1259,9 +1377,11 @@ jobs:
             job_name: t8-lock
 
     t8-assert:
+        permissions: {}
         needs: t8-lock
         if: always() && inputs.subject == ''
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: assert
               run: |
@@ -1272,6 +1392,8 @@ jobs:
 
     # ---------- summary ----------
     summary:
+        permissions:
+            contents: write
         name: test-shared-lock
         needs:
             [
@@ -1288,6 +1410,7 @@ jobs:
             ]
         if: always()
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
             SUBJECT: ${{ inputs.subject }}

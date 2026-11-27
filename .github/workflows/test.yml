@@ -24,6 +24,7 @@ jobs:
             matrix:
                 os: [ubuntu-latest, macos-latest, windows-latest]
         runs-on: ${{ matrix.os }}
+        timeout-minutes: 30
         env:
             ZERV_TEST_NATIVE_GIT: true
             ZERV_TEST_DOCKER: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
@@ -39,7 +40,7 @@ jobs:
               run: echo "${{ env.PYTHON_VERSION }}" > .python-version
 
             - name: setup-mise
-              uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+              uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
 
             - name: verify-rust-toolchain
               # Workaround for Windows rustup bug: https://github.com/rust-lang/rustup/issues/3104
@@ -112,7 +113,7 @@ jobs:
 
             - name: sonarqube-scan
               if: matrix.os == 'ubuntu-latest'
-              uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5
+              uses: SonarSource/sonarqube-scan-action@70bad232163b09d998ea0707ee80c0ec80798c16 # v8.5.1
               env:
                   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -123,6 +124,7 @@ jobs:
                 os: [ubuntu-latest, macos-latest, windows-latest]
                 python_version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
         runs-on: ${{ matrix.os }}
+        timeout-minutes: 30
         steps:
             - name: checkout-repository
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -145,7 +147,7 @@ jobs:
               run: echo "${{ matrix.python_version }}" > .python-version
 
             - name: setup-mise
-              uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+              uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
 
             - name: verify-rust-toolchain
               # Workaround for Windows rustup bug: https://github.com/rust-lang/rustup/issues/3104
