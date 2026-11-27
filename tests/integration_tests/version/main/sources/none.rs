@@ -1,7 +1,5 @@
 use crate::util::TestCommand;
 
-/// Tests for --source none (no VCS, use only overrides)
-
 #[test]
 fn test_none_source_with_tag_version() {
     // --source none with --tag-version uses only the override

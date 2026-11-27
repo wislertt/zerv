@@ -1,9 +1,8 @@
+//! Smart source default is covered by existing flow scenario tests
+
 use zerv::test_utils::ZervFixture;
 
 use crate::util::TestCommand;
-
-/// Source tests for "zerv flow" command
-/// Smart source default is covered by existing flow scenario tests
 
 #[test]
 fn test_flow_source_stdin() {

@@ -1,10 +1,10 @@
+//! Smart source default: no explicit --source → defaults based on context
+//! - With stdin → defaults to stdin
+//! - Without stdin (in git repo) → defaults to git
+
 use zerv::test_utils::ZervFixture;
 
 use crate::util::TestCommand;
-
-/// Smart source default: no explicit --source → defaults based on context
-/// - With stdin → defaults to stdin
-/// - Without stdin (in git repo) → defaults to git
 
 #[test]
 fn test_smart_default_with_stdin_pipe() {
