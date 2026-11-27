@@ -32,11 +32,12 @@ on:
                 default: 0
                 type: number
 
-permissions:
-    contents: write
+permissions: {}
 
 jobs:
     lock:
+        permissions:
+            contents: write
         name: lock-${{ inputs.lock_key }}
         if: inputs.enabled == true
         uses: ./.github/workflows/shared-lock.yml
@@ -48,16 +49,22 @@ jobs:
             wait_for_lock_timeout_in_sec: ${{ inputs.delay_before_lock_in_sec }}
 
     deploy:
+        permissions: {}
         name: ${{ inputs.name }}
         needs: lock
         if: always() && needs.lock.result == 'success'
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: run
               run: |
-                  echo "✓ Deploy job completed: ${{ inputs.name }}"
+                  echo "✓ Deploy job completed: ${INPUTS_NAME}"
+              env:
+                  INPUTS_NAME: ${{ inputs.name }}
 
     unlock:
+        permissions:
+            contents: write
         name: unlock-${{ inputs.lock_key }}
         uses: ./.github/workflows/shared-unlock.yml
         needs: [lock, deploy]

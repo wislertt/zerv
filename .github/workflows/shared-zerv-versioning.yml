@@ -55,6 +55,7 @@ jobs:
     zerv-versioning:
         name: zerv-versioning
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         outputs:
             versions: ${{ steps.generate-versions.outputs.versions }}
         steps:
@@ -64,7 +65,7 @@ jobs:
                   fetch-depth: 0
 
             - name: setup-uv
-              uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+              uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
               with:
                   python-version: "3.15"
                   version: "latest"
@@ -81,23 +82,24 @@ jobs:
               env:
                   BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
                   COMMIT_HASH: ${{ github.event.pull_request.head.sha || github.sha }}
+                  OVERRIDDEN_TAG_VERSION: ${{ inputs.overridden_tag_version }}
+                  SCHEMA: ${{ inputs.schema }}
+                  BRANCH_RULES: ${{ inputs.branch_rules }}
               # Support github.event_name == 'pull_request' or 'push'
               shell: bash
               run: |
                   git checkout "$COMMIT_HASH"
 
-                  if [ -n "${{ inputs.overridden_tag_version }}" ]; then
-                      OVERRIDDEN_TAG_VERSION_FLAG="--tag-version ${{ inputs.overridden_tag_version }}"
+                  if [ -n "$OVERRIDDEN_TAG_VERSION" ]; then
+                      OVERRIDDEN_TAG_VERSION_FLAG="--tag-version $OVERRIDDEN_TAG_VERSION"
                   fi
 
-                  if [ -n "${{ inputs.schema }}" ]; then
-                      SCHEMA_FLAG="--schema ${{ inputs.schema }}"
+                  if [ -n "$SCHEMA" ]; then
+                      SCHEMA_FLAG="--schema $SCHEMA"
                   fi
 
-                  if [ -n "${{ inputs.branch_rules }}" ]; then
-                      # Store branch rules in a variable
-                      BRANCH_RULES_VAR='${{ inputs.branch_rules }}'
-                      BRANCH_RULES_FLAG="--branch-rules '$BRANCH_RULES_VAR'"
+                  if [ -n "$BRANCH_RULES" ]; then
+                      BRANCH_RULES_FLAG="--branch-rules '$BRANCH_RULES'"
                   fi
 
                   # Build the command
@@ -128,12 +130,11 @@ jobs:
 
             - name: convert-inputs-to-final-dictionary
               id: convert-inputs
+              env:
+                  OUTPUT_FORMATS: ${{ inputs.output_formats }}
+                  OUTPUT_TEMPLATES: ${{ inputs.output_templates }}
+                  CUSTOM_OUTPUTS: ${{ inputs.custom_outputs }}
               run: |
-                  # Parse JSON inputs
-                  OUTPUT_FORMATS='${{ inputs.output_formats }}'
-                  OUTPUT_TEMPLATES='${{ inputs.output_templates }}'
-                  CUSTOM_OUTPUTS='${{ inputs.custom_outputs }}'
-
                   # Validate JSON inputs and check for duplicate keys
                   echo "$OUTPUT_FORMATS" | jq . > /dev/null || { echo "Invalid JSON in output_formats"; exit 1; }
                   echo "$OUTPUT_TEMPLATES" | jq . > /dev/null || { echo "Invalid JSON in output_templates"; exit 1; }

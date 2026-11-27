@@ -4,17 +4,30 @@ on:
     workflow_dispatch:
     workflow_call:
 
+# queued, not cancelled: ci/cd serialize their runs instead of cancelling
+concurrency:
+    group: ${{ github.workflow }}-test-shared-affected-projects-caller-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: false
+
+permissions: {}
+
 jobs:
     # One job per scope (not a matrix): a reusable-workflow `uses:` call only
     # propagates the last matrix instance's outputs, so a matrix would make
     # per-scope assertions in `verify` unreliable. Explicit jobs keep outputs clean.
     detect-all:
+        permissions:
+            contents: read
+            pull-requests: read
         uses: ./.github/workflows/shared-affected-projects.yml
         with:
             projects_path: .github/test-fixtures/test-projects.yml
             scope: all
 
     detect-manual-pattern:
+        permissions:
+            contents: read
+            pull-requests: read
         uses: ./.github/workflows/shared-affected-projects.yml
         with:
             projects_path: .github/test-fixtures/test-projects.yml
@@ -22,14 +35,19 @@ jobs:
             project_patterns: "project-a*"
 
     detect-affected-only:
+        permissions:
+            contents: read
+            pull-requests: read
         uses: ./.github/workflows/shared-affected-projects.yml
         with:
             projects_path: .github/test-fixtures/test-projects.yml
             scope: affected-only
 
     verify:
+        permissions: {}
         needs: [detect-all, detect-manual-pattern, detect-affected-only]
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: assert-valid-json-and-counts
               env:

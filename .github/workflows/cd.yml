@@ -6,19 +6,22 @@ on:
             - main
     workflow_dispatch:
 
-permissions:
-    contents: write
-    issues: write
-    pull-requests: write
-    # test-shared.yml -> test-shared-lock.yml dispatches throwaway expected-fail
-    # runs; reusable workflows cannot exceed the caller's permissions
-    actions: write
+permissions: {}
+
+# never cancel a release mid-flight; a newer push queues behind it
+concurrency:
+    group: ${{ github.workflow }}-caller-${{ github.ref }}
+    cancel-in-progress: false
 
 jobs:
     # ====================================================
     # Versioning and Release
     # ====================================================
     semantic-release:
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
         name: semantic-release
         uses: ./.github/workflows/shared-semantic-release.yml
         with:
@@ -26,11 +29,15 @@ jobs:
             fail_on_invalid_workflow_dispatch_ref: true
 
     zerv-versioning:
+        permissions:
+            contents: read
         needs: semantic-release
         if: needs.semantic-release.outputs.is_valid_semantic_release == 'true'
         uses: ./.github/workflows/shared-zerv-versioning.yml
 
     create-version-prefix-tags:
+        permissions:
+            contents: write
         needs: [semantic-release, zerv-versioning]
         if: needs.semantic-release.outputs.new_release_published == 'true'
         uses: ./.github/workflows/shared-create-tags.yml
@@ -45,15 +52,26 @@ jobs:
     # Test and Lint
     # ====================================================
     test:
+        permissions:
+            contents: read
         uses: ./.github/workflows/test.yml
         secrets:
             SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     pre-commit:
+        permissions:
+            contents: read
         uses: ./.github/workflows/pre-commit.yml
 
     test-shared:
+        # test-shared-lock.yml dispatches throwaway expected-fail runs, and a
+        # reusable workflow cannot exceed the caller's permissions
+        permissions:
+            actions: write
+            contents: write
+            issues: write
+            pull-requests: write
         name: test-shared
         uses: ./.github/workflows/test-shared.yml
         secrets:
@@ -63,6 +81,8 @@ jobs:
     # Deployment with environment
     # ====================================================
     test-shared-global-lock:
+        permissions:
+            contents: write
         name: test-shared-global-lock
         uses: ./.github/workflows/test-shared-global-lock.yml
         with:
@@ -72,6 +92,8 @@ jobs:
             delay_before_lock_in_sec: 30
 
     test-shared-service-lock:
+        permissions:
+            contents: write
         name: test-shared-service-lock
         uses: ./.github/workflows/test-shared-service-lock.yml
         with:
@@ -84,6 +106,8 @@ jobs:
     # Deployment without environment
     # ====================================================
     release-bin:
+        permissions:
+            contents: write
         needs: zerv-versioning
         uses: ./.github/workflows/build-bin.yml
         with:
@@ -92,6 +116,8 @@ jobs:
             upload_to_release: true
 
     publish-test-pypi:
+        permissions:
+            contents: read
         needs: zerv-versioning
         uses: ./.github/workflows/publish-pypi.yml
         with:
@@ -101,6 +127,8 @@ jobs:
             PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
     publish-pypi:
+        permissions:
+            contents: read
         needs: zerv-versioning
         uses: ./.github/workflows/publish-pypi.yml
         with:
@@ -110,6 +138,8 @@ jobs:
             PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
     publish-crates:
+        permissions:
+            contents: read
         needs: [zerv-versioning, release-bin]
         uses: ./.github/workflows/publish-crates.yml
         with:

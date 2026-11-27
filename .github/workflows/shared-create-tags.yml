@@ -8,12 +8,14 @@ on:
                 required: true
                 type: string
 
-permissions:
-    contents: write
+permissions: {}
 
 jobs:
     create-tags:
+        permissions:
+            contents: write
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: checkout-repository
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,10 +32,11 @@ jobs:
                   git checkout $COMMIT_HASH
 
                   # Parse JSON array of tags
-                  TAGS='${{ inputs.tags }}'
+                  TAGS="${INPUTS_TAGS}"
                   echo "Creating tags: $TAGS"
 
                   # Create and push each tag
+                  set -o pipefail
                   echo "$TAGS" | jq -r '.[]' | while read -r tag; do
                       git tag -fa "$tag" -m "$tag"
                       git push origin "$tag" --force
@@ -41,6 +44,8 @@ jobs:
                   done
 
                   echo "All tags created/moved and pushed successfully"
+              env:
+                  INPUTS_TAGS: ${{ inputs.tags }}
 
             - name: verify-tags
               run: |

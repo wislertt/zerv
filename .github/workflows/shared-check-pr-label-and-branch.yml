@@ -38,6 +38,7 @@ jobs:
     check-pr-label-and-branch:
         name: check-pr-label-and-branch
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         outputs:
             is_valid: ${{ steps.combine-results.outputs.is_valid }}
             has_label: ${{ steps.check-label.outputs.has_label }}
@@ -50,6 +51,7 @@ jobs:
                   PR_NUMBER: ${{ github.event.pull_request.number }}
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
+                  TARGET_LABEL: ${{ inputs.target_label }}
               id: check-label
               run: |
                   if [ -z "$LABELS_JSON" ] || [ "$LABELS_JSON" = "null" ]; then
@@ -61,7 +63,6 @@ jobs:
                     fi
                   fi
 
-                  TARGET_LABEL="${{ inputs.target_label }}"
                   echo "Checking for label: $TARGET_LABEL"
                   echo "Input labels: $LABELS_JSON"
 
@@ -83,9 +84,8 @@ jobs:
               id: check-branch-exact
               env:
                   CURRENT_BRANCH: ${{ github.head_ref }}
+                  BRANCH_NAMES: ${{ inputs.branch_names }}
               run: |
-                  # Escape JSON properly for bash
-                  BRANCH_NAMES='${{ inputs.branch_names }}'
 
                   echo "Checking exact branch names: $BRANCH_NAMES"
                   echo "Current branch: $CURRENT_BRANCH"
@@ -113,9 +113,8 @@ jobs:
               id: check-branch-prefixes
               env:
                   CURRENT_BRANCH: ${{ github.head_ref }}
+                  BRANCH_PREFIXES: ${{ inputs.branch_prefixes }}
               run: |
-                  # Escape JSON properly for bash
-                  BRANCH_PREFIXES='${{ inputs.branch_prefixes }}'
 
                   echo "Checking branch prefixes: $BRANCH_PREFIXES"
                   echo "Current branch: $CURRENT_BRANCH"
@@ -152,8 +151,8 @@ jobs:
                   HAS_EXACT_MATCH="${{ steps.check-branch-exact.outputs.has_exact_match }}"
                   HAS_PREFIX_MATCH="${{ steps.check-branch-prefixes.outputs.has_prefix_match }}"
                   # Escape JSON properly for bash
-                  BRANCH_NAMES='${{ inputs.branch_names }}'
-                  BRANCH_PREFIXES='${{ inputs.branch_prefixes }}'
+                  BRANCH_NAMES="${INPUTS_BRANCH_NAMES}"
+                  BRANCH_PREFIXES="${INPUTS_BRANCH_PREFIXES}"
 
                   echo "Combining results:"
                   echo "- Has label: $HAS_LABEL"
@@ -197,9 +196,13 @@ jobs:
                   fi
 
                   echo "is_valid=$IS_VALID" >> "$GITHUB_OUTPUT"
+              env:
+                  INPUTS_BRANCH_NAMES: ${{ inputs.branch_names }}
+                  INPUTS_BRANCH_PREFIXES: ${{ inputs.branch_prefixes }}
 
             - name: display-results
               env:
+                  INPUTS_TARGET_LABEL: ${{ inputs.target_label }}
                   CURRENT_BRANCH: ${{ github.head_ref }}
               run: |
                   echo "=========================================="
@@ -207,7 +210,7 @@ jobs:
                   echo "=========================================="
                   echo ""
                   echo "Label Check:"
-                  echo "  - Target label: ${{ inputs.target_label }}"
+                  echo "  - Target label: ${INPUTS_TARGET_LABEL}"
                   echo "  - Has label: ${{ steps.check-label.outputs.has_label }}"
                   echo ""
                   echo "Branch Validation:"

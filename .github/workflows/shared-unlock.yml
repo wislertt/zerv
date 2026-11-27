@@ -1,5 +1,7 @@
 name: unlock
 
+# no concurrency: callers run unlocks in a matrix within one run, which a shared group would cancel
+# jactionlint ignore=concurrency-limits
 on:
     workflow_call:
         inputs:
@@ -43,14 +45,16 @@ on:
             fail_if_owner_mismatch: { required: false, type: boolean, default: true }
             job_name: { required: false, type: string }
 
-permissions:
-    contents: write
+permissions: {}
 
 jobs:
     unlock:
+        permissions:
+            contents: write
         name: ${{ inputs.job_name || 'unlock' }}
         if: inputs.enabled == true
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: check-lock
               uses: github/lock@9a5898804aedcdfb43592ed16b6457768d048183 # v3.0.1
@@ -62,11 +66,14 @@ jobs:
             - name: check-ownership-before-unlock
               id: check-unlock
               shell: bash
+              env:
+                  KEY_PREFIX: ${{ inputs.key_prefix }}
+                  INPUT_KEY: ${{ inputs.key }}
+                  UNLOCK_OWNER: ${{ inputs.key_owner }}
               run: |
-                  KEY="${{ inputs.key_prefix }}${{ inputs.key }}"
+                  KEY="${KEY_PREFIX}${INPUT_KEY}"
                   LOCK_REASON="${{ steps.check-lock.outputs.reason }}"
                   LOCKED="${{ steps.check-lock.outputs.locked }}"
-                  UNLOCK_OWNER="${{ inputs.key_owner }}"
                   echo "Key: $KEY"
                   echo "Locked: $LOCKED"
                   echo "Lock reason: $LOCK_REASON"
@@ -110,10 +117,13 @@ jobs:
               if: always()
               run: |
                   echo "=== Unlock Result ==="
-                  echo "Key: ${{ inputs.key_prefix }}${{ inputs.key }}"
+                  echo "Key: ${INPUTS_KEY_PREFIX}${INPUTS_KEY}"
                   echo "Status: ${{ steps.unlock.outcome }}"
                   if [ "${{ steps.check-unlock.outputs.should_unlock }}" = "true" ]; then
                       echo "Unlock: successful"
                   else
                       echo "Unlock: failed"
                   fi
+              env:
+                  INPUTS_KEY_PREFIX: ${{ inputs.key_prefix }}
+                  INPUTS_KEY: ${{ inputs.key }}

@@ -11,6 +11,11 @@ on:
     workflow_dispatch:
     workflow_call:
 
+# queued, not cancelled: ci/cd serialize their runs instead of cancelling
+concurrency:
+    group: ${{ github.workflow }}-test-shared-pr-label-checks-caller-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: false
+
 permissions:
     contents: read
 
@@ -89,6 +94,7 @@ jobs:
                 pf-no-match,
             ]
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             HEAD_REF: ${{ github.head_ref }}
             LB1_HAS_LABEL: ${{ needs.lb-branch-restrictions.outputs.has_label }}

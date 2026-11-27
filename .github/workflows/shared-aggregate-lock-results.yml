@@ -28,6 +28,7 @@ permissions:
 jobs:
     aggregate-lock-results:
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         outputs:
             successful_lock_keys: ${{ steps.output.outputs.successful_lock_keys }}
             failed_lock_keys: ${{ steps.output.outputs.failed_lock_keys }}

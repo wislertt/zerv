@@ -22,11 +22,12 @@ on:
                 default: 0
                 type: number
 
-permissions:
-    contents: write
+permissions: {}
 
 jobs:
     lock:
+        permissions:
+            contents: write
         if: ${{ inputs.deploy_labels != '' && inputs.deploy_labels != '{}' }}
         strategy:
             fail-fast: false
@@ -34,6 +35,7 @@ jobs:
                 env: [d, n, p]
         uses: ./.github/workflows/shared-lock.yml
         with:
+            # jactionlint ignore=obfuscation
             enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.env)] != null }}
             key: ${{ matrix.env }}
             key_prefix: test/
@@ -43,11 +45,15 @@ jobs:
             upload_result_artifact: true
 
     aggregate-lock-results:
+        permissions:
+            contents: read
         needs: lock
         if: always()
         uses: ./.github/workflows/shared-aggregate-lock-results.yml
 
     deploy-all-dummy-services:
+        permissions:
+            contents: read
         name: deploy-${{ matrix.dir }}-${{ matrix.env }}
         needs: [lock, aggregate-lock-results]
         if: always()
@@ -75,6 +81,8 @@ jobs:
             name: deploy-${{ matrix.dir }}-${{ matrix.env }}
 
     unlock:
+        permissions:
+            contents: write
         if: always() && inputs.unlock_after_deploy == true
         strategy:
             fail-fast: false
@@ -85,6 +93,7 @@ jobs:
             - lock
             - aggregate-lock-results
         with:
+            # jactionlint ignore=obfuscation
             enabled: ${{ fromJson(inputs.deploy_labels)[format('deploy-{0}', matrix.env)] != null }}
             key: ${{ matrix.env }}
             key_prefix: test/

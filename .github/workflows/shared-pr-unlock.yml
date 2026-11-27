@@ -26,11 +26,12 @@ on:
                 type: string
                 default: ""
 
-permissions:
-    contents: write
+permissions: {}
 
 jobs:
     unlock-all-on-close:
+        permissions:
+            contents: write
         if: github.event.action == 'closed'
         strategy:
             fail-fast: false
@@ -46,28 +47,35 @@ jobs:
             job_name: ${{ matrix.service == '' && format('unlock-{0}', matrix.env) || format('unlock-{0}-{1}', matrix.service, matrix.env) }}
 
     check-deploy-labels:
+        permissions:
+            contents: read
         if: github.event.action == 'unlabeled'
         uses: ./.github/workflows/shared-check-pr-labels-with-prefix.yml
         with:
             prefix: "${{ inputs.deploy_label_prefix }}"
 
     get-missing-deploy-labels:
+        permissions: {}
         needs: check-deploy-labels
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         outputs:
             unlock_combinations: ${{ steps.check-missing.outputs.unlock_combinations }}
         steps:
             - name: check-what-to-unlock
               id: check-missing
+              env:
+                  LABEL_PREFIX: ${{ inputs.deploy_label_prefix }}
+                  ENVIRONMENTS: ${{ inputs.environments }}
+                  SERVICE_NAMES: ${{ inputs.service_names }}
               run: |
                   LABELS='${{ needs.check-deploy-labels.outputs.labels }}'
-                  LABEL_PREFIX="${{ inputs.deploy_label_prefix }}"
 
                   # Build combinations using jq (avoiding subshell issues)
                   COMB_ARRAY=$(echo '{}' | jq -c --argjson labels "$LABELS" \
                                               --arg prefix "$LABEL_PREFIX" \
-                                              --argjson envs '${{ inputs.environments }}' \
-                                              --argjson services '${{ inputs.service_names }}' \
+                                              --argjson envs "$ENVIRONMENTS" \
+                                              --argjson services "$SERVICE_NAMES" \
                       '[
                         ($envs[] | . as $env | select(($labels | has("\($prefix)\($env)")) | not) |
                           $services[] | {"env": $env, "service": .})
@@ -83,8 +91,10 @@ jobs:
                   } >> "$GITHUB_OUTPUT"
 
     debug-unlock-combinations:
+        permissions: {}
         needs: get-missing-deploy-labels
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         if: always()
         steps:
             - name: debug-output
@@ -100,6 +110,8 @@ jobs:
                   fi
 
     unlock-on-unlabel:
+        permissions:
+            contents: write
         needs: get-missing-deploy-labels
         if: needs.get-missing-deploy-labels.outputs.unlock_combinations != '[]'
         strategy:

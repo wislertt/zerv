@@ -22,11 +22,12 @@ on:
                 default: 0
                 type: number
 
-permissions:
-    contents: write
+permissions: {}
 
 jobs:
     deploy-services:
+        permissions:
+            contents: write
         name: deploy-${{ matrix.service }}-${{ matrix.env }}
         strategy:
             fail-fast: false
@@ -48,6 +49,7 @@ jobs:
 
         uses: ./.github/workflows/test-shared-deploy-dummy-service-with-lock.yml
         with:
+            # jactionlint ignore=obfuscation
             enabled: ${{ fromJson(inputs.deploy_labels || '{}')[format('deploy-{0}', matrix.env)] != null }}
             name: deploy-${{ matrix.service }}-${{ matrix.env }}
             lock_key: ${{ matrix.env }}-${{ matrix.service }}

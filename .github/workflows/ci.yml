@@ -4,11 +4,21 @@ on:
     pull_request:
         types: [opened, synchronize, reopened]
 
+# cancelling a run mid-flight strands the lock harness's seeded sandbox locks
+concurrency:
+    group: ${{ github.workflow }}-caller-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: false
+
+permissions: {}
+
 jobs:
     # ====================================================
     # Versioning and Release
     # ====================================================
     check-pre-release:
+        permissions:
+            contents: read
+            pull-requests: read
         name: check-pre-release
         uses: ./.github/workflows/shared-check-pr-label-and-branch.yml
         with:
@@ -17,6 +27,8 @@ jobs:
             branch_names: '["develop"]'
 
     zerv-versioning:
+        permissions:
+            contents: read
         name: zerv-versioning
         needs: check-pre-release
         uses: ./.github/workflows/shared-zerv-versioning.yml
@@ -27,6 +39,8 @@ jobs:
                 || 'standard-base-prerelease-post-dev' }}
 
     tag-pre-release:
+        permissions:
+            contents: write
         name: tag-pre-release
         needs: [zerv-versioning, check-pre-release]
         if: needs.check-pre-release.outputs.is_valid == 'true'
@@ -38,18 +52,29 @@ jobs:
     # Test and Lint
     # ====================================================
     test:
+        permissions:
+            contents: read
         uses: ./.github/workflows/test.yml
         secrets:
             SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     pre-commit:
+        permissions:
+            contents: read
         uses: ./.github/workflows/pre-commit.yml
 
     build-bin:
+        permissions:
+            contents: read
         uses: ./.github/workflows/build-bin.yml
 
     test-shared:
+        permissions:
+            actions: write
+            contents: write
+            issues: write
+            pull-requests: write
         name: test-shared
         uses: ./.github/workflows/test-shared.yml
         secrets:
@@ -59,12 +84,17 @@ jobs:
     # Deployment with environment
     # ====================================================
     check-deploy-env-labels:
+        permissions:
+            contents: read
+            pull-requests: read
         name: check-deploy-env-labels
         uses: ./.github/workflows/shared-check-pr-labels-with-prefix.yml
         with:
             prefix: "deploy-"
 
     test-shared-global-lock:
+        permissions:
+            contents: write
         name: test-shared-global-lock
         needs: check-deploy-env-labels
         uses: ./.github/workflows/test-shared-global-lock.yml
@@ -75,6 +105,8 @@ jobs:
             delay_before_lock_in_sec: 0
 
     test-shared-service-lock:
+        permissions:
+            contents: write
         name: test-shared-service-lock
         needs: check-deploy-env-labels
         uses: ./.github/workflows/test-shared-service-lock.yml
@@ -88,6 +120,8 @@ jobs:
     # Deployment
     # ====================================================
     publish-test-pypi:
+        permissions:
+            contents: read
         if: needs.check-pre-release.outputs.has_label == 'true'
         needs: [zerv-versioning, check-pre-release]
         uses: ./.github/workflows/publish-pypi.yml
@@ -98,6 +132,8 @@ jobs:
             PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
     publish-crates-dry-run:
+        permissions:
+            contents: read
         if: needs.check-pre-release.outputs.has_label == 'true'
         needs: [zerv-versioning, check-pre-release]
         uses: ./.github/workflows/publish-crates.yml

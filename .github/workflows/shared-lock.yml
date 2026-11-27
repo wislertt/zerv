@@ -70,14 +70,16 @@ on:
             wait_for_lock_poll_interval_in_sec: { required: false, type: number, default: 10 }
             upload_result_artifact: { required: false, type: boolean, default: false }
 
-permissions:
-    contents: write
+permissions: {}
 
 jobs:
     lock:
+        permissions:
+            contents: write
         name: ${{ inputs.job_name || 'lock' }}
         if: inputs.enabled == true
         runs-on: ubuntu-latest
+        timeout-minutes: 360
         # Serialize same-key runs of the same ref at the job level: two deploys
         # of one branch must queue, never race. Different keys and different
         # refs get different groups and stay parallel.
@@ -93,11 +95,14 @@ jobs:
               shell: bash
               env:
                   GH_TOKEN: ${{ github.token }}
+                  KEY_PREFIX: ${{ inputs.key_prefix }}
+                  INPUT_KEY: ${{ inputs.key }}
+                  KEY_OWNER: ${{ inputs.key_owner }}
               run: |
-                  KEY="${{ inputs.key_prefix }}${{ inputs.key }}"
+                  KEY="${KEY_PREFIX}${INPUT_KEY}"
                   LOCK_BRANCH="${KEY// /-}-branch-deploy-lock"
                   GLOBAL_LOCK_BRANCH="global-branch-deploy-lock"
-                  OWNER="${{ inputs.key_owner }}"
+                  OWNER="$KEY_OWNER"
 
                   TIMEOUT="${{ inputs.wait_for_lock_timeout_in_sec }}"
                   INTERVAL="${{ inputs.wait_for_lock_poll_interval_in_sec }}"
@@ -219,10 +224,14 @@ jobs:
               run: |
                   source ./lock_check_function.sh
                   check_lock \
-                      --key "${{ inputs.key_prefix }}${{ inputs.key }}" \
-                      --key-owner "${{ inputs.key_owner }}" \
+                      --key "${INPUTS_KEY_PREFIX}${INPUTS_KEY}" \
+                      --key-owner "${INPUTS_KEY_OWNER}" \
                       --lock-reason "${{ steps.get-lock-state.outputs.reason }}" \
                       --locked "${{ steps.get-lock-state.outputs.locked }}"
+              env:
+                  INPUTS_KEY_PREFIX: ${{ inputs.key_prefix }}
+                  INPUTS_KEY: ${{ inputs.key }}
+                  INPUTS_KEY_OWNER: ${{ inputs.key_owner }}
 
             # Lock
             - name: prepare-lock-reason
@@ -230,9 +239,11 @@ jobs:
               shell: bash
               run: |
                   # Simple reason with owner information
-                  REASON="owner:${{ inputs.key_owner }}"
+                  REASON="owner:${INPUTS_KEY_OWNER}"
                   echo "Lock reason: $REASON"
                   echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+              env:
+                  INPUTS_KEY_OWNER: ${{ inputs.key_owner }}
               if: steps.check-lock.outputs.should_proceed == 'true'
 
             - name: lock
@@ -267,20 +278,28 @@ jobs:
               run: |
                   source ./lock_check_function.sh
                   check_lock \
-                      --key "${{ inputs.key_prefix }}${{ inputs.key }}" \
-                      --key-owner "${{ inputs.key_owner }}" \
+                      --key "${INPUTS_KEY_PREFIX}${INPUTS_KEY}" \
+                      --key-owner "${INPUTS_KEY_OWNER}" \
                       --lock-reason "${{ steps.get-lock-state-for-recheck.outputs.reason }}" \
                       --locked "${{ steps.get-lock-state-for-recheck.outputs.locked }}" \
                       --require-owned true
+              env:
+                  INPUTS_KEY_PREFIX: ${{ inputs.key_prefix }}
+                  INPUTS_KEY: ${{ inputs.key }}
+                  INPUTS_KEY_OWNER: ${{ inputs.key_owner }}
 
             - name: final-lock-status
               if: always()
               run: |
                   echo "=== Lock Result ==="
-                  echo "Key: ${{ inputs.key_prefix }}${{ inputs.key }}"
-                  echo "Owner: ${{ inputs.key_owner }}"
+                  echo "Key: ${INPUTS_KEY_PREFIX}${INPUTS_KEY}"
+                  echo "Owner: ${INPUTS_KEY_OWNER}"
                   echo "Status: ${{ steps.lock.outcome }}"
                   echo "Verified ownership: ${{ steps.recheck-lock.outputs.is_owned_by_us || 'N/A' }}"
+              env:
+                  INPUTS_KEY_PREFIX: ${{ inputs.key_prefix }}
+                  INPUTS_KEY: ${{ inputs.key }}
+                  INPUTS_KEY_OWNER: ${{ inputs.key_owner }}
 
             - name: create-lock-result
               if: always() && inputs.upload_result_artifact == true
@@ -301,10 +320,10 @@ jobs:
                   # Create JSON file with lock result
                   cat > lock-result.json << EOF
                   {
-                    "key": "${{ inputs.key }}",
-                    "full_key": "${{ inputs.key_prefix }}${{ inputs.key }}",
+                    "key": "${INPUT_KEY}",
+                    "full_key": "${KEY_PREFIX}${INPUT_KEY}",
                     "status": "$FINAL_STATUS",
-                    "owner": "${{ inputs.key_owner }}"
+                    "owner": "${KEY_OWNER}"
                   }
                   EOF
 
