@@ -110,7 +110,7 @@ The project uses [uv](https://github.com/astral-sh/uv) and [mise](https://github
 
 ## Contributing
 
-Contributions are welcome. See [CLAUDE.md](/.claude/CLAUDE.md) for development guidelines, including project structure, testing conventions, and the development workflow.
+Contributions are welcome. See [AGENTS.md](/AGENTS.md) for development guidelines, including project structure, testing conventions, and the development workflow.
 
 ## Author
 
@@ -120,4 +120,4 @@ Wisaroot Lertthaweedech – [wisl.dev](https://wisl.dev)
 
 Licensed under the Apache License 2.0. See [LICENSE](/LICENSE) for the full text.
 
-The wordmark in `docs/img/brand/` uses outlined paths from [Sora](https://fonts.google.com/specimen/Sora), licensed under the [SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/).
+The wordmark in `docs/site/img/brand/` uses outlined paths from [Sora](https://fonts.google.com/specimen/Sora), licensed under the [SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/).

@@ -1,8 +1,8 @@
 # Branding generators
 
-Tooling that generates the brand assets (mark, wordmark, lockup, favicons, OG card). Design decisions — colors, mark geometry, tagline, constants — live in [`BRAND.md`](./BRAND.md). Outputs are committed to `docs/img/brand/`. Regenerate only when a design constant changes, then copy the files over.
+Tooling that generates the brand assets (mark, wordmark, lockup, favicons, OG card). Design decisions — colors, mark geometry, tagline, constants — live in [`BRAND.md`](./BRAND.md). Outputs are committed to `docs/site/img/brand/`. Regenerate only when a design constant changes, then copy the files over.
 
-The mark is generated: [`gen_mark.py`](./gen_mark.py) is a parametric edge model and the single source of truth for the mark's geometry. Its output, `.cache/zerv-mark.svg`, is what every other generator reads; the committed copy lives at `docs/img/brand/zerv-mark.svg`.
+The mark is generated: [`gen_mark.py`](./gen_mark.py) is a parametric edge model and the single source of truth for the mark's geometry. Its output, `.cache/zerv-mark.svg`, is what every other generator reads; the committed copy lives at `docs/site/img/brand/zerv-mark.svg`.
 
 ## Files
 

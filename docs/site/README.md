@@ -24,7 +24,7 @@ broken links with `bake docs-check`.
 ## Conventions
 
 - Code examples must carry a `{/* Corresponding test: ... */}` comment and a
-  backing test; see `.claude/ref/documentation-maintenance.md` and
+  backing test; see `docs/reference/documentation-maintenance.md` and
   `tests/integration_tests/docs/`.
 - Adding a page: create the `.mdx` file and register its path under
   `navigation.groups` in `docs.json`.
