@@ -1,11 +1,11 @@
-# .claude/ref/ Reference Documentation
+# docs/reference/ Reference Documentation
 
 This directory contains detailed reference documentation for the Zerv project, organized by category.
 
 ## Directory Structure
 
 ```
-.claude/ref/
+docs/reference/
 ├── standards/          # Code quality and style standards
 │   ├── code-style.md        # Comments, imports, test organization, line length
 │   ├── constants.md         # Constants usage (MANDATORY)
@@ -20,15 +20,16 @@ This directory contains detailed reference documentation for the Zerv project, o
 │   ├── modules.md           # Key modules overview
 │   └── cli.md               # CLI commands and options
 └── workflows/          # Development workflows
-    ├── commands.md          # Bake commands, slash commands
-    └── cicd.md              # CI/CD configuration
+    ├── commands.md          # Bake commands
+    ├── cicd.md              # CI/CD configuration
+    └── github-actions-cache.md # GitHub Actions cache key patterns
 ```
 
 ## Usage
 
-These reference files are imported into the main `CLAUDE.md` using the `@.claude/ref/...` syntax. This allows:
+These reference files are imported into the main `AGENTS.md` using the `@docs/reference/...` syntax. This allows:
 
-- **Concise main file**: CLAUDE.md stays scannable (under 200 lines)
+- **Concise main file**: AGENTS.md stays scannable (under 200 lines)
 - **Organized details**: Deep documentation split by topic
 - **Easy maintenance**: Update individual files without navigating huge document
 - **All examples preserved**: Code examples kept for learning
@@ -51,12 +52,10 @@ Always ensure changes are reflected in the appropriate category.
 
 ✅ **Allowed**:
 
-- `CLAUDE.md` → `.claude/ref/` (via imports)
-- `.claude/plan/` → `.claude/ref/` (plans can reference standards)
+- `AGENTS.md` → `docs/reference/` (via imports)
 
 ❌ **NEVER**:
 
-- `.claude/ref/` → `.claude/plan/` (reference docs should NOT reference specific plans)
-- `.claude/ref/` → `.claude/ref/` (avoid cross-references between reference docs)
+- `docs/reference/` → `docs/reference/` (avoid cross-references between reference docs)
 
-**Why**: `.claude/plan/` contains temporary working documents with short lifecycle (created during planning, deleted when complete). Reference docs in `.claude/ref/` are permanent standards that should remain stable.
+**Why**: Reference docs in `docs/reference/` are permanent standards that should remain stable.

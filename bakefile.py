@@ -230,11 +230,11 @@ class MyBakebook(RustSpace, PythonSpace, GitHubActionsTools, BaseLibSpace):
 
     @command()
     def docs(self):
-        self.ctx.run("mintlify dev", cwd=Path("docs"))
+        self.ctx.run("mintlify dev", cwd=Path("docs/site"))
 
     @command()
     def docs_check(self):
-        self.ctx.run("mintlify broken-links", cwd=Path("docs"))
+        self.ctx.run("mintlify broken-links", cwd=Path("docs/site"))
 
     @command()
     def open_coverage(self):

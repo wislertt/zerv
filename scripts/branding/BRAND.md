@@ -6,7 +6,7 @@ Locked 2026-08-20 through companion-screen review (screens v17–v29).
 
 ## Mark
 
-Lightning-Z — a `Z` drawn as a single fast stroke, leaning left. Source of truth is [`gen_mark.py`](./gen_mark.py): a parametric edge model (12 vertex dots on a 100×100 grid, one fillet radius per dot). Output lands in `.cache/zerv-mark.svg` (committed copy: `docs/img/brand/zerv-mark.svg`); downstream assets derive from it. Never edit the SVG by hand — change a knob, regenerate.
+Lightning-Z — a `Z` drawn as a single fast stroke, leaning left. Source of truth is [`gen_mark.py`](./gen_mark.py): a parametric edge model (12 vertex dots on a 100×100 grid, one fillet radius per dot). Output lands in `.cache/zerv-mark.svg` (committed copy: `docs/site/img/brand/zerv-mark.svg`); downstream assets derive from it. Never edit the SVG by hand — change a knob, regenerate.
 
 - Procedural geometry: straight edges + tangent arcs only, one continuous outline (no Beziers, no width profile). Bottom half = top half rotated exactly 180° about the grid center, so central symmetry and end-to-end connectedness hold by construction; both bar edges stay one straight line each through the mirror seam
 - Sharp corners at the bolt and bar top; peaky compound ends (two internally tangent arcs, gentle blend into tight peak — curvature ramps to a point) at the flick tip and both bar ends; small tangent fillet-cap at the root

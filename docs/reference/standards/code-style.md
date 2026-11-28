@@ -71,5 +71,3 @@ concat!(
 ```
 
 **Why this matters**: Raw strings treat backslashes literally, so `\` continuation doesn't work. Always use `concat!()` to join raw string parts.
-
-Check with `/audit` periodically to catch violations.
